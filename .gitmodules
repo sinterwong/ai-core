@@ -1,0 +1,16 @@
+[submodule "3rdparty/logger"]
+	path = 3rdparty/logger
+	url = https://github.com/sinterwong/logger.git
+  branch = master
+[submodule "3rdparty/cpp-common-utils"]
+	path = 3rdparty/cpp-common-utils
+	url = https://github.com/sinterwong/cpp-common-utils.git
+	branch = master
+[submodule "3rdparty/encryption-tool"]
+	path = 3rdparty/encryption-tool
+	url = https://github.com/sinterwong/encryption-tool.git
+	branch = master
+[submodule "3rdparty/googletest"]
+	path = 3rdparty/googletest
+	url = https://github.com/google/googletest.git
+	branch = main
