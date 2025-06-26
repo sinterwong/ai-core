@@ -9,11 +9,14 @@
  *
  */
 
-#include "dnn_infer.hpp"
-#include "crypto.hpp"
-#include "infer_types.hpp"
-#include "logger/logger.hpp"
 #include <memory>
+#include <thread>
+
+#include "crypto.hpp"
+#include "dnn_infer.hpp"
+#include "infer_types.hpp"
+#include "logger.hpp"
+
 #include <onnxruntime_cxx_api.h>
 
 #ifdef _WIN32
@@ -62,7 +65,7 @@ InferErrorCode AlgoInference::initialize() {
     if (params->needDecrypt) {
       std::string securityKey = SECURITY_KEY;
       auto cryptoConfig = encrypt::Crypto::deriveKeyFromCommit(securityKey);
-      infer::encrypt::Crypto crypto(cryptoConfig);
+      encrypt::Crypto crypto(cryptoConfig);
       if (!crypto.decryptData(params->modelPath, engineData)) {
         LOG_ERRORS << "Failed to decrypt model data: " << params->modelPath;
         return InferErrorCode::INIT_DECRYPTION_FAILED;

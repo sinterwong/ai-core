@@ -1,12 +1,19 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 PROJECT(AICore3rdparty)
 
-SET(BUILD_TESTS OFF CACHE BOOL "Disable tests")
-SET(BUILD_TOOLS OFF CACHE BOOL "Disable tools")
+IF(NOT TARGET common_utils)
+    MESSAGE(STATUS "common_utils target not found. Adding subdirectory...")
+    ADD_SUBDIRECTORY(cpp-common-utils EXCLUDE_FROM_ALL)
+ELSE()
+    MESSAGE(STATUS "common_utils target already exists. Skipping.")
+ENDIF()
 
-ADD_SUBDIRECTORY(cpp-common-utils EXCLUDE_FROM_ALL)
-
-ADD_SUBDIRECTORY(encryption-tool EXCLUDE_FROM_ALL)
+IF(NOT TARGET encrypt)
+    MESSAGE(STATUS "encrypt target not found. Adding subdirectory...")
+    ADD_SUBDIRECTORY(encryption-tool EXCLUDE_FROM_ALL)
+ELSE()
+    MESSAGE(STATUS "encrypt target already exists. Skipping.")
+ENDIF()
 
 IF(NOT TARGET logger)
     MESSAGE(STATUS "logger target not found. Adding subdirectory...")
@@ -21,3 +28,6 @@ IF(NOT TARGET gtest)
 ELSE()
     MESSAGE(STATUS "gtest target already exists. Skipping.")
 ENDIF()
+
+FILE(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR})
+FILE(COPY nlohmann DESTINATION ${PROJECT_INCLUDE_DIR})

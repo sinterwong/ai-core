@@ -11,7 +11,7 @@
 
 #include "frame_infer.hpp"
 #include "infer_types.hpp"
-#include "logger/logger.hpp"
+#include "logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core/mat.hpp>
 

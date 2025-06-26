@@ -11,7 +11,7 @@
 
 #include "algo_manager.hpp"
 #include "infer_types.hpp"
-#include "logger/logger.hpp"
+#include "logger.hpp"
 
 namespace infer::dnn {
 

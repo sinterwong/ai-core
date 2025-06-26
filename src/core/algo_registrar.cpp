@@ -12,11 +12,11 @@
 #include "algo_registrar.hpp"
 
 #include "algo_infer_base.hpp"
-#include "common_utils/type_safe_factory.hpp"
+#include "type_safe_factory.hpp"
 #include "vision_infer.hpp"
 #include "vision_registrar.hpp"
 
-#include "logger/logger.hpp"
+#include "logger.hpp"
 
 namespace infer::dnn {
 AlgoRegistrar::AlgoRegistrar() {

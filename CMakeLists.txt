@@ -10,7 +10,7 @@ PROJECT(AICore VERSION ${AI_CORE_VERSION} LANGUAGES CXX)
 
 SET(CMAKE_CXX_STANDARD 20)
 
-OPTION(BUILD_TESTS "Build with tests" ON)
+OPTION(BUILD_AI_CORE_TESTS "Build with tests" OFF)
 
 # infer engine(You can only choose one type infer-engine)
 IF(NOT INFER_ENGINE)
@@ -19,7 +19,7 @@ ENDIF()
 
 MESSAGE(INFO "--------------------------------")
 MESSAGE(STATUS "Build AICore: ${AI_CORE_VERSION}")
-MESSAGE(STATUS "Build with tests: ${BUILD_TESTS}")
+MESSAGE(STATUS "Build with tests: ${BUILD_AI_CORE_TESTS}")
 MESSAGE(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 MESSAGE(STATUS "CMAKE_CXX_STANDARD: ${CMAKE_CXX_STANDARD}")
 
@@ -77,7 +77,7 @@ ADD_SUBDIRECTORY(3rdparty)
 MESSAGE(INFO "--------------------------------")
 ADD_SUBDIRECTORY(src)
 
-IF(BUILD_TESTS)
+IF(BUILD_AI_CORE_TESTS)
     MESSAGE(INFO "--------------------------------")
     ADD_SUBDIRECTORY(tests)
 ENDIF()

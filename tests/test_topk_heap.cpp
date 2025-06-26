@@ -1,4 +1,4 @@
-#include "common_utils/topk_heap.hpp"
+#include "topk_heap.hpp"
 #include "gtest/gtest.h"
 
 namespace topk_heap_test {
@@ -11,7 +11,7 @@ protected:
 
 TEST_F(TopKHeapTest, Normal) {
 
-  utils::TopKHeap<int> heap(5);
+  common_utils::TopKHeap<int> heap(5);
   heap.push(2);
   heap.push(5);
   heap.push(1);
@@ -32,20 +32,20 @@ TEST_F(TopKHeapTest, Normal) {
   ASSERT_EQ(topK.size(), 3);
   ASSERT_EQ(topK, expectTopKB);
 
-  utils::TopKHeap<int> heap2(heap);
+  common_utils::TopKHeap<int> heap2(heap);
   topK = heap2.getTopK();
   ASSERT_EQ(topK, expectTopKB);
 
-  utils::TopKHeap<int> heap3;
+  common_utils::TopKHeap<int> heap3;
   heap3 = heap;
   topK = heap3.getTopK();
   ASSERT_EQ(topK, expectTopKB);
 
-  utils::TopKHeap<int> heap4(std::move(heap));
+  common_utils::TopKHeap<int> heap4(std::move(heap));
   topK = heap4.getTopK();
   ASSERT_EQ(topK, expectTopKB);
 
-  utils::TopKHeap<int> heap5;
+  common_utils::TopKHeap<int> heap5;
   heap5 = std::move(heap2);
   topK = heap5.getTopK();
   ASSERT_EQ(topK, expectTopKB);

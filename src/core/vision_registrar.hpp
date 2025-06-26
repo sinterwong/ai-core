@@ -11,12 +11,12 @@
 #ifndef __VISION_REGISTRAR_HPP__
 #define __VISION_REGISTRAR_HPP__
 
-#include "common_utils/type_safe_factory.hpp"
+#include "type_safe_factory.hpp"
 #include "vision.hpp"
 
 namespace infer::dnn::vision {
 
-using VisionFactory = ::utils::Factory<VisionBase>;
+using VisionFactory = common_utils::Factory<VisionBase>;
 
 class VisionRegistrar {
 public:

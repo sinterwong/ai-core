@@ -11,7 +11,7 @@
 
 #include "vision_registrar.hpp"
 
-#include "common_utils/type_safe_factory.hpp"
+#include "type_safe_factory.hpp"
 #include "fpr_cls.hpp"
 #include "fpr_feat.hpp"
 #include "nano_det.hpp"
@@ -20,7 +20,7 @@
 #include "vision.hpp"
 #include "yolo_det.hpp"
 
-#include "logger/logger.hpp"
+#include "logger.hpp"
 
 namespace infer::dnn::vision {
 #define REGISTER_VISION_ALGO(AlgoName)                                         \

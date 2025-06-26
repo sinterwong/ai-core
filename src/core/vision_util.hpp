@@ -11,7 +11,8 @@
 #ifndef __INFERENCE_VISION_UTILS_HPP_
 #define __INFERENCE_VISION_UTILS_HPP_
 
-#include "infer_types.hpp"
+#include "algo_output_types.hpp"
+#include "infer_common_types.hpp"
 
 namespace infer::utils {
 

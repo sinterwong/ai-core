@@ -10,7 +10,7 @@
  */
 #include "softmax_cls.hpp"
 #include "infer_types.hpp"
-#include "logger/logger.hpp"
+#include "logger.hpp"
 
 namespace infer::dnn::vision {
 bool SoftmaxCls::processOutput(const ModelOutput &modelOutput,

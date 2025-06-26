@@ -12,10 +12,10 @@
 #define __ALGO_REGISTRAR_HPP__
 
 #include "algo_infer_base.hpp"
-#include "common_utils/type_safe_factory.hpp"
+#include "type_safe_factory.hpp"
 namespace infer::dnn {
 
-using AlgoInferFactory = ::utils::Factory<AlgoInferBase>;
+using AlgoInferFactory = common_utils::Factory<AlgoInferBase>;
 
 class AlgoRegistrar {
 public:

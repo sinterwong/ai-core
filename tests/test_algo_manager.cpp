@@ -1,6 +1,6 @@
 #include "algo_manager.hpp"
 #include "algo_registrar.hpp"
-#include "logger/logger.hpp"
+#include "logger.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <filesystem>

@@ -9,7 +9,6 @@
 
 namespace fs = std::filesystem;
 
-using namespace infer::encrypt;
 using namespace infer;
 using namespace infer::dnn;
 
@@ -34,8 +33,8 @@ TEST_F(ModelEncryptTest, EncryptDecrypt) {
 #endif
   ASSERT_TRUE(fs::exists(nonEncFile));
 
-  auto cryptoConfig = Crypto::deriveKeyFromCommit(commitCode);
-  Crypto crypto(cryptoConfig);
+  auto cryptoConfig = encrypt::Crypto::deriveKeyFromCommit(commitCode);
+  encrypt::Crypto crypto(cryptoConfig);
   std::vector<uchar> encData;
 
   // encrypt file

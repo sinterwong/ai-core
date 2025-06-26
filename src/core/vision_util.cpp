@@ -11,7 +11,12 @@
 #ifndef __INFERENCE_VISION_UTILS_HPP_
 #define __INFERENCE_VISION_UTILS_HPP_
 
-#include "infer_types.hpp"
+#include <unordered_map>
+
+#include "algo_output_types.hpp"
+#include "infer_common_types.hpp"
+
+#include <opencv2/opencv.hpp>
 
 namespace infer::utils {
 

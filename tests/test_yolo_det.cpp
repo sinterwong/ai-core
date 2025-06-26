@@ -1,4 +1,4 @@
-#include "core/frame_infer.hpp"
+#include "ai_core/frame_infer.hpp"
 #include "infer_types.hpp"
 #include "yolo_det.hpp"
 #include "gtest/gtest.h"

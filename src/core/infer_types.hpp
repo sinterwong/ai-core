@@ -16,8 +16,8 @@
 
 #include "algo_input_types.hpp"
 #include "algo_output_types.hpp"
-#include "common_utils/data_packet.hpp"
-#include "common_utils/param_center.hpp"
+#include "data_packet.hpp"
+#include "param_center.hpp"
 #include "infer_params_types.hpp"
 #include "postprocess_types.hpp"
 #include "typed_buffer.hpp"
@@ -58,7 +58,7 @@ enum class InferErrorCode : int32_t {
 };
 
 // Algo input
-using AlgoInput = utils::ParamCenter<std::variant<std::monostate, FrameInput>>;
+using AlgoInput = common_utils::ParamCenter<std::variant<std::monostate, FrameInput>>;
 
 // Model output(after infering, before postprocess)
 struct ModelOutput {
@@ -67,18 +67,18 @@ struct ModelOutput {
 };
 
 // Algo output
-using AlgoOutput = utils::ParamCenter<
+using AlgoOutput = common_utils::ParamCenter<
     std::variant<std::monostate, ClsRet, DetRet, FprClsRet, FeatureRet>>;
 
 // Algo postproc params
 using AlgoPostprocParams =
-    utils::ParamCenter<std::variant<std::monostate, AnchorDetParams>>;
+    common_utils::ParamCenter<std::variant<std::monostate, AnchorDetParams>>;
 
 // Algo infer params
 using AlgoInferParams =
-    utils::ParamCenter<std::variant<std::monostate, FrameInferParam>>;
+    common_utils::ParamCenter<std::variant<std::monostate, FrameInferParam>>;
 
-using AlgoConstructParams = ::utils::DataPacket;
+using AlgoConstructParams = common_utils::DataPacket;
 
 } // namespace infer
 #endif
