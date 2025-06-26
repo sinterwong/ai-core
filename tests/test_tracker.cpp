@@ -12,8 +12,8 @@
 #include "track_default.hpp"
 #include "gtest/gtest.h"
 
-using namespace infer::tracker;
-using namespace infer;
+using namespace ai_core::tracker;
+using namespace ai_core;
 
 namespace test_tracker {
 void AssertIndexVectorsEqual(std::vector<int> vec1, std::vector<int> vec2) {

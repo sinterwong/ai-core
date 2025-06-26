@@ -9,8 +9,8 @@
 
 namespace fs = std::filesystem;
 
-using namespace infer;
-using namespace infer::dnn;
+using namespace ai_core;
+using namespace ai_core::dnn;
 
 class ModelEncryptTest : public ::testing::Test {
 protected:

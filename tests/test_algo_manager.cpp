@@ -15,8 +15,8 @@
 namespace testing_algo_manager {
 namespace fs = std::filesystem;
 
-using namespace infer;
-using namespace infer::dnn;
+using namespace ai_core;
+using namespace ai_core::dnn;
 
 std::vector<std::string> getImagePathsFromDir(const std::string &dir) {
   std::vector<std::string> rets;

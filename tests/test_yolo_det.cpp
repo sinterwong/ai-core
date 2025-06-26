@@ -10,8 +10,8 @@
 namespace testing_yolo_det {
 namespace fs = std::filesystem;
 
-using namespace infer;
-using namespace infer::dnn;
+using namespace ai_core;
+using namespace ai_core::dnn;
 class YoloDetInferenceTest : public ::testing::Test {
 protected:
   void SetUp() override {
