@@ -11,7 +11,6 @@
 
 #include "dnn_infer.hpp"
 #include "crypto.hpp"
-#include "infer_types.hpp"
 #include "logger.hpp"
 #include <ncnn/allocator.h>
 #include <ncnn/cpu.h>

@@ -10,7 +10,6 @@
  */
 
 #include "frame_infer.hpp"
-#include "infer_types.hpp"
 #include "logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core/mat.hpp>
@@ -26,8 +25,8 @@ FrameInference::preprocess(AlgoInput &input) const {
     throw std::runtime_error("Invalid input parameters");
   }
 
-  int inputWidth = params->inputShape.w;
-  int inputHeight = params->inputShape.h;
+  int inputWidth = params_->inputShape.w;
+  int inputHeight = params_->inputShape.h;
   auto &args = frameInput->args;
   const cv::Mat &image = frameInput->image;
 
@@ -66,6 +65,7 @@ FrameInference::preprocess(AlgoInput &input) const {
       in = ncnn::Mat(croppedImage.cols, croppedImage.rows, 1, sizeof(float));
       memcpy(in.data, croppedImage.data, croppedImage.total() * sizeof(float));
     } else {
+      LOG_ERRORS << "Unsupported image depth";
       throw std::runtime_error("Unsupported image depth");
     }
   }

@@ -115,8 +115,13 @@ TEST_F(AlgoManagerTest, Normal) {
 
   std::string imagePath = (dataDir / "yolov11/image.png").string();
 
+#ifdef USE_NCNN
   AlgoConstructParams params =
-      loadParamFromJson((confDir / "test_algo_manager.json").string());
+      loadParamFromJson((confDir / "test_algo_manager_ncnn.json").string());
+#else
+  AlgoConstructParams params =
+      loadParamFromJson((confDir / "test_algo_manager_ort.json").string());
+#endif
   std::string moduleName = params.getParam<std::string>("moduleName");
 
   std::shared_ptr<AlgoInferBase> engine =
