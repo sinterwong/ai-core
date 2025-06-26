@@ -11,7 +11,9 @@
 #ifndef __INFERENCE_VISION_HPP_
 #define __INFERENCE_VISION_HPP_
 
-#include "infer_types.hpp"
+#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/types/model_output.hpp"
+
 namespace ai_core::dnn::vision {
 
 class VisionBase {

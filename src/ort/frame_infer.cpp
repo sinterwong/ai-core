@@ -10,7 +10,6 @@
  */
 
 #include "frame_infer.hpp"
-#include "infer_types.hpp"
 #include "logger.hpp"
 #include "vision_util.hpp"
 

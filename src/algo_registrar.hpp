@@ -11,8 +11,8 @@
 #ifndef __ALGO_REGISTRAR_HPP__
 #define __ALGO_REGISTRAR_HPP__
 
-#include "algo_infer_base.hpp"
-#include "type_safe_factory.hpp"
+#include "ai_core/algo_infer_base.hpp" // Updated path
+#include "type_safe_factory.hpp"       // Assuming this comes from common_utils and is in include path
 namespace ai_core::dnn {
 
 using AlgoInferFactory = common_utils::Factory<AlgoInferBase>;

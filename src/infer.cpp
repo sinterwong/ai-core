@@ -9,7 +9,8 @@
  *
  */
 #include "infer.hpp"
-#include "infer_common_types.hpp"
+// infer_common_types.hpp (for ModelInfo) is now included via infer.hpp -> ai_core/types/infer_common_types.hpp
+// iostream for std::cout is also included via infer.hpp
 
 namespace ai_core::dnn {
 

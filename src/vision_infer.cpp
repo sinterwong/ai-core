@@ -10,7 +10,11 @@
  */
 #include "vision_infer.hpp"
 #include "logger.hpp"
-#include "vision_registrar.hpp"
+#include "vision_registrar.hpp" // For VisionFactory
+#include <chrono>              // For std::chrono
+
+// Types like FrameInferParam, AlgoConstructParams, FrameInput, ModelOutput, InferErrorCode
+// are now included via "vision_infer.hpp" -> "ai_core/types/..."
 
 namespace ai_core::dnn::vision {
 VisionInfer::VisionInfer(const std::string &moduleName,

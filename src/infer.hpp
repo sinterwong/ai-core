@@ -11,8 +11,10 @@
 #ifndef __INFERENCE_HPP_
 #define __INFERENCE_HPP_
 
-#include "infer_types.hpp"
-#include <memory>
+#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/types/infer_common_types.hpp"
+#include "ai_core/types/infer_error_code.hpp"
+#include "ai_core/types/model_output.hpp"
 
 namespace ai_core::dnn {
 class Inference {

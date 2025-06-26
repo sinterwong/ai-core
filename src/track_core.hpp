@@ -11,7 +11,7 @@
 #ifndef __CORE_TRACKER_CORE_HPP_
 #define __CORE_TRACKER_CORE_HPP_
 
-#include "infer_types.hpp"
+#include "ai_core/types/algo_output_types.hpp"
 #include "track_types.hpp"
 #include <memory>
 

@@ -14,7 +14,6 @@
 
 #include "crypto.hpp"
 #include "dnn_infer.hpp"
-#include "infer_types.hpp"
 #include "logger.hpp"
 
 #include <onnxruntime_cxx_api.h>

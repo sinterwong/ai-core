@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+INCLUDE(CMakeFindDependencyMacro)
+
+# Include the targets file
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/ai_core-targets.cmake")
+
+CHECK_REQUIRED_COMPONENTS(ai_core)

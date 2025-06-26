@@ -11,8 +11,8 @@
 #ifndef __INFERENCE_VISION_UTILS_HPP_
 #define __INFERENCE_VISION_UTILS_HPP_
 
-#include "algo_output_types.hpp"
-#include "infer_common_types.hpp"
+#include "ai_core/types/algo_output_types.hpp"
+#include "ai_core/types/infer_common_types.hpp"
 
 namespace ai_core::utils {
 
