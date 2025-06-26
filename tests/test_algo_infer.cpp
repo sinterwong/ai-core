@@ -1,4 +1,3 @@
-#include "algo_infer_base.hpp"
 #include "algo_registrar.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -7,7 +6,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "infer_types.hpp"
 #include "vision_infer.hpp"
 
 namespace testing_algo_infer {

@@ -9,7 +9,6 @@
  *
  */
 #include "softmax_cls.hpp"
-#include "infer_types.hpp"
 #include "logger.hpp"
 
 namespace ai_core::dnn::vision {

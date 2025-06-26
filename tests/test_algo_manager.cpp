@@ -1,4 +1,4 @@
-#include "algo_manager.hpp"
+#include "ai_core/algo_manager.hpp"
 #include "algo_registrar.hpp"
 #include "logger.hpp"
 #include "gtest/gtest.h"

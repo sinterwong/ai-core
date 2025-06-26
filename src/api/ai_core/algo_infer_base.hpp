@@ -8,10 +8,13 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_ALGO_INFER_BASE_HPP__
-#define __INFERENCE_ALGO_INFER_BASE_HPP__
+#ifndef __AI_CORE_ALGO_INFER_BASE_HPP__
+#define __AI_CORE_ALGO_INFER_BASE_HPP__
 
-#include "infer_types.hpp"
+#include "types/algo_data_types.hpp"    // For AlgoInput, AlgoOutput
+#include "types/infer_common_types.hpp" // For ModelInfo
+#include "types/infer_error_code.hpp" // For InferErrorCode
+#include <string>                       // For std::string
 
 namespace ai_core::dnn {
 
@@ -31,4 +34,4 @@ public:
   virtual const std::string &getModuleName() const noexcept = 0;
 };
 } // namespace ai_core::dnn
-#endif
+#endif // __AI_CORE_ALGO_INFER_BASE_HPP__

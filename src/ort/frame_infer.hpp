@@ -11,9 +11,17 @@
 #ifndef __ORT_INFERENCE_FRAME__DET_HPP_
 #define __ORT_INFERENCE_FRAME__DET_HPP_
 
-#include "dnn_infer.hpp"
-#include "infer_types.hpp"
-#include <memory>
+#include "dnn_infer.hpp" // Internal ORT backend header
+#include "ai_core/types/algo_data_types.hpp" // For AlgoInput
+#include "ai_core/types/infer_params_types.hpp" // For FrameInferParam
+#include "ai_core/types/typed_buffer.hpp" // For TypedBuffer
+#include <memory> // For std::unique_ptr
+
+// cv::Mat is used in private method signatures.
+// It's included via ai_core/types/algo_input_types.hpp -> opencv
+namespace cv {
+class Mat; // Forward declaration is good practice if full def not needed by this header directly
+}
 
 namespace ai_core::dnn {
 class FrameInference : public AlgoInference {

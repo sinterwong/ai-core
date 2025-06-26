@@ -11,7 +11,6 @@
 #ifndef __INFERENCE_VISION_FPR_FEATURE_HPP_
 #define __INFERENCE_VISION_FPR_FEATURE_HPP_
 
-#include "infer_types.hpp"
 #include "vision.hpp"
 namespace ai_core::dnn::vision {
 class FprFeature : public VisionBase {

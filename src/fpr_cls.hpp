@@ -11,8 +11,9 @@
 #ifndef __INFERENCE_VISION_FPR_CLS_HPP_
 #define __INFERENCE_VISION_FPR_CLS_HPP_
 
-#include "infer_types.hpp"
-#include "vision.hpp"
+#include "ai_core/types/algo_data_types.hpp" // For AlgoOutput, AlgoPostprocParams, FramePreprocessArg (via algo_input_types)
+#include "ai_core/types/model_output.hpp"  // For ModelOutput
+#include "vision.hpp"                      // Internal header
 namespace ai_core::dnn::vision {
 class FprCls : public VisionBase {
 public:

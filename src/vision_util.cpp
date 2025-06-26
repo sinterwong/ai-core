@@ -13,8 +13,8 @@
 
 #include <unordered_map>
 
-#include "algo_output_types.hpp"
-#include "infer_common_types.hpp"
+#include "ai_core/types/algo_output_types.hpp"
+#include "ai_core/types/infer_common_types.hpp"
 
 #include <opencv2/opencv.hpp>
 

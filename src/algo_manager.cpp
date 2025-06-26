@@ -1,73 +1,65 @@
 /**
  * @file algo_manager.cpp
  * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-06-09
+ * @brief Manages algorithm instances and inference execution.
+ * @version 0.2 (Refactored with PImpl)
+ * @date 2025-07-15 (Update date)
  *
  * @copyright Copyright (c) 2025
  *
  */
 
-#include "algo_manager.hpp"
-#include "infer_types.hpp"
-#include "logger.hpp"
+#include "ai_core/algo_manager.hpp" // Public header
+#include "algo_manager_impl.hpp"    // Private implementation header
+
+// Note: AlgoInput, AlgoOutput, InferErrorCode etc. are pulled in via algo_manager.hpp
+// which includes the necessary public type headers from ai_core/types/.
+// AlgoInferBase is also included via algo_manager.hpp.
 
 namespace ai_core::dnn {
+
+// Constructor
+AlgoManager::AlgoManager() : pImpl(std::make_unique<Impl>()) {}
+
+// Destructor
+// Required for std::unique_ptr to an incomplete type in the header.
+// The compiler needs to see the full definition of Impl when generating
+// the destructor code for unique_ptr.
+AlgoManager::~AlgoManager() = default; // Default is fine as long as Impl's destructor is accessible
+
+// Move constructor
+// The default move constructor will correctly move the std::unique_ptr pImpl.
+AlgoManager::AlgoManager(AlgoManager &&other) noexcept = default;
+
+// Move assignment operator
+// The default move assignment operator will correctly move assign the std::unique_ptr pImpl.
+AlgoManager &AlgoManager::operator=(AlgoManager &&other) noexcept = default;
+
 
 InferErrorCode
 AlgoManager::registerAlgo(const std::string &name,
                           const std::shared_ptr<AlgoInferBase> &algo) {
-  std::unique_lock<std::shared_mutex> lock(mutex_);
-  if (algoMap_.count(name)) {
-    LOG_ERRORS << "Algo with name " << name << " already registered.";
-    return InferErrorCode::ALGO_REGISTER_FAILED;
-  }
-  algoMap_[name] = algo;
-  LOG_INFOS << "Registered algo: " << name;
-  return InferErrorCode::SUCCESS;
+  return pImpl->registerAlgo(name, algo);
 }
 
 InferErrorCode AlgoManager::unregisterAlgo(const std::string &name) {
-  std::unique_lock<std::shared_mutex> lock(mutex_);
-  if (algoMap_.count(name)) {
-    algoMap_.erase(name);
-    LOG_INFOS << "Unregistered algo: " << name;
-  }
-  return InferErrorCode::SUCCESS;
+  return pImpl->unregisterAlgo(name);
 }
 
 InferErrorCode AlgoManager::infer(const std::string &name, AlgoInput &input,
                                   AlgoOutput &output) {
-  std::shared_lock<std::shared_mutex> lock(mutex_);
-  auto it = algoMap_.find(name);
-  if (it == algoMap_.end()) {
-    LOG_ERRORS << "Algo with name " << name << " not found.";
-    return InferErrorCode::ALGO_INFER_FAILED;
-  }
-  return it->second->infer(input, output);
+  return pImpl->infer(name, input, output);
 }
 
 std::shared_ptr<AlgoInferBase>
 AlgoManager::getAlgo(const std::string &name) const {
-  std::shared_lock<std::shared_mutex> lock(mutex_);
-  auto it = algoMap_.find(name);
-  if (it == algoMap_.end()) {
-    LOG_ERRORS << "Algo with name " << name << " not found.";
-    return nullptr;
-  }
-  return it->second;
+  return pImpl->getAlgo(name);
 }
 
 bool AlgoManager::hasAlgo(const std::string &name) const {
-  std::shared_lock<std::shared_mutex> lock(mutex_);
-  return algoMap_.count(name) > 0;
+  return pImpl->hasAlgo(name);
 }
 
-void AlgoManager::clear() {
-  std::unique_lock<std::shared_mutex> lock(mutex_);
-  algoMap_.clear();
-  LOG_INFOS << "Cleared all registered algos.";
-}
+void AlgoManager::clear() { pImpl->clear(); }
 
 } // namespace ai_core::dnn

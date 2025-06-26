@@ -1,26 +1,21 @@
-/**
- * @file vision_algo_manager.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-04-13
- *
- * @copyright Copyright (c) 2025
- *
- */
-#ifndef __CORE_ALGO_MANAGER_HPP_
-#define __CORE_ALGO_MANAGER_HPP_
-#include "algo_infer_base.hpp"
+#ifndef __AI_CORE_ALGO_MANAGER_IMPL_HPP_
+#define __AI_CORE_ALGO_MANAGER_IMPL_HPP_
+
+#include "ai_core/algo_infer_base.hpp"
+#include "ai_core/algo_manager.hpp"
+#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/types/infer_error_code.hpp"
 #include <memory>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
 namespace ai_core::dnn {
-class AlgoManager : public std::enable_shared_from_this<AlgoManager> {
+
+class AlgoManager::Impl {
 public:
-  AlgoManager() = default;
-  ~AlgoManager() = default;
+  Impl();
+  ~Impl();
 
   InferErrorCode registerAlgo(const std::string &name,
                               const std::shared_ptr<AlgoInferBase> &algo);
@@ -43,4 +38,4 @@ private:
 
 } // namespace ai_core::dnn
 
-#endif
+#endif // __AI_CORE_ALGO_MANAGER_IMPL_HPP_
