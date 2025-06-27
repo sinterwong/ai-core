@@ -18,8 +18,10 @@
 
 #ifdef WITH_NCNN
 #include "ncnn_image_preprocessor.hpp"
+using ai_core::dnn::ncnn::ImagePreprocessor;
 #else
 #include "cpu_image_preprocessor.hpp"
+using ai_core::dnn::cpu::ImagePreprocessor;
 #endif
 
 namespace ai_core::dnn {

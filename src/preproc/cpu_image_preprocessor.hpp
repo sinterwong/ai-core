@@ -19,7 +19,7 @@ class Mat;
 } // namespace cv
 
 // TODO: will add the "ort" namespace
-namespace ai_core::dnn {
+namespace ai_core::dnn::cpu {
 class ImagePreprocessor {
 public:
   explicit ImagePreprocessor() {}
@@ -34,5 +34,5 @@ private:
   TypedBuffer preprocessFP16(const cv::Mat &normalizedImage, int inputChannels,
                              int inputHeight, int inputWidth) const;
 };
-} // namespace ai_core::dnn
+} // namespace ai_core::dnn::cpu
 #endif

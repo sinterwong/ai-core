@@ -1,23 +1,22 @@
 /**
- * @file dnn_infer.cpp
+ * @file ncnn_image_preprocessor.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
- * @date 2025-01-17
+ * @date 2025-06-28
  *
  * @copyright Copyright (c) 2025
  *
  */
-
-#include "frame_infer_base.hpp"
+#include "ncnn_image_preprocessor.hpp"
 #include "logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core/mat.hpp>
 
 namespace ai_core::dnn {
 
-std::vector<std::pair<std::string, ncnn::Mat>>
-FrameInference::preprocess(AlgoInput &input) const {
+TypedBuffer ImagePreprocessor::process(FramePreprocessArg &params,
+                                       const FrameInput &frameInput) const {
   // Get input parameters
   auto *frameInput = input.getParams<FrameInput>();
   if (!frameInput) {

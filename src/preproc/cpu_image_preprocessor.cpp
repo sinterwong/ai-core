@@ -14,7 +14,7 @@
 #include "opencv2/imgproc.hpp"
 #include "vision_util.hpp"
 
-namespace ai_core::dnn {
+namespace ai_core::dnn::cpu {
 TypedBuffer ImagePreprocessor::process(FramePreprocessArg &params_,
                                        const FrameInput &frameInput) const {
   const cv::Mat &image = frameInput.image;
@@ -206,4 +206,4 @@ TypedBuffer ImagePreprocessor::preprocessFP16(const cv::Mat &normalizedImage,
 
   return result;
 }
-} // namespace ai_core::dnn
+} // namespace ai_core::dnn::cpu

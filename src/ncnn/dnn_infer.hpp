@@ -12,22 +12,24 @@
 #ifndef __NCNN_INFERENCE_HPP_
 #define __NCNN_INFERENCE_HPP_
 
+#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/types/infer_params_types.hpp"
 #include "infer_base.hpp"
 #include <atomic>
-#include <memory>
 #include <mutex>
 #include <ncnn/net.h>
 
 namespace ai_core::dnn {
-class AlgoInference : public Inference {
+class NCNNAlgoInference : public InferBase {
 public:
-  AlgoInference(const InferParamBase &param)
-      : params(std::make_unique<InferParamBase>(param)), isInitialized(false) {
+  NCNNAlgoInference(const AlgoConstructParams &params)
+      : params_(std::move(params.getParam<AlgoInferParams>("params"))),
+        isInitialized(false) {
     blobPoolAllocator.set_size_compare_ratio(0.f);
     workspacePoolAllocator.set_size_compare_ratio(0.f);
   }
 
-  virtual ~AlgoInference() override {
+  virtual ~NCNNAlgoInference() override {
     net.clear();
     blobPoolAllocator.clear();
     workspacePoolAllocator.clear();
@@ -41,8 +43,8 @@ public:
 
   virtual InferErrorCode initialize() override;
 
-  virtual InferErrorCode infer(AlgoInput &input,
-                               TensorData &modelOutput) override;
+  virtual InferErrorCode infer(TensorData &inputs,
+                               TensorData &outputs) override;
 
   virtual const ModelInfo &getModelInfo() override;
 
@@ -53,7 +55,7 @@ protected:
   preprocess(AlgoInput &input) const = 0;
 
 protected:
-  std::unique_ptr<InferParamBase> params;
+  AlgoInferParams params_;
   std::vector<std::string> inputNames;
   std::vector<std::string> outputNames;
 

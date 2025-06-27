@@ -9,8 +9,8 @@
  *
  */
 
+#include "dnn_infer.hpp"
 #include "crypto.hpp"
-#include "dnn_infer_base.hpp"
 #include "logger.hpp"
 #include <ncnn/allocator.h>
 #include <ncnn/cpu.h>
@@ -20,7 +20,7 @@
 
 namespace ai_core::dnn {
 
-InferErrorCode AlgoInference::initialize() {
+InferErrorCode NCNNAlgoInference::initialize() {
   std::lock_guard lock(mtx_);
 
   // ensure visibility if other threads check
@@ -156,7 +156,8 @@ InferErrorCode AlgoInference::initialize() {
   }
 }
 
-InferErrorCode AlgoInference::infer(AlgoInput &input, TensorData &modelOutput) {
+InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
+                                        TensorData &outputs) {
   if (!isInitialized.load(std::memory_order_acquire)) {
     LOG_ERRORS << "Inference called on uninitialized model: "
                << (params ? params->name : "Unknown");
@@ -234,7 +235,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input, TensorData &modelOutput) {
   }
 }
 
-const ModelInfo &AlgoInference::getModelInfo() {
+const ModelInfo &NCNNAlgoInference::getModelInfo() {
   if (isInitialized.load(std::memory_order_acquire) && modelInfo) {
     std::lock_guard lock(mtx_);
     if (modelInfo) {
@@ -278,7 +279,7 @@ const ModelInfo &AlgoInference::getModelInfo() {
   }
 }
 
-InferErrorCode AlgoInference::terminate() {
+InferErrorCode NCNNAlgoInference::terminate() {
   std::lock_guard lock(mtx_);
   LOG_INFOS << "Terminating model: " << (params ? params->name : "Unknown");
   try {
