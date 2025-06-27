@@ -1,6 +1,6 @@
 # AI Core
 
-AI Core is a C++ library designed for managing and executing AI inference algorithms. It features a modular architecture, leveraging registrar patterns (`AlgoRegistrar`, `VisionRegistrar`) and factory mechanisms (`AlgoInferFactory`, `VisionFactory`). This design promotes extensibility, allowing developers to easily register and integrate new algorithms and vision processing modules. The library appears to support various inference engines (ONNX Runtime is used in CI examples) and is geared towards computer vision applications such as object detection and tracking.
+AI Core is a C++ library designed for managing and executing AI inference algorithms. It features a modular architecture, leveraging registrar patterns (`AlgoRegistrar`, `PostprocessRegistrar`) and factory mechanisms (`AlgoInferFactory`, `PostprocFactory`). This design promotes extensibility, allowing developers to easily register and integrate new algorithms and vision processing modules. The library appears to support various inference engines (ONNX Runtime is used in CI examples) and is geared towards computer vision applications such as object detection and tracking.
 
 ## Build and Installation
 

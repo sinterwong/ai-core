@@ -9,7 +9,6 @@
  *
  */
 
-#include <memory>
 #include <thread>
 
 #include "crypto.hpp"
@@ -17,6 +16,7 @@
 #include "logger.hpp"
 
 #include <onnxruntime_cxx_api.h>
+#include <opencv2/opencv.hpp>
 
 #ifdef _WIN32
 #include <codecvt>
@@ -33,7 +33,7 @@ inline auto adaPlatformPath(const std::string &path) {
 #endif
 }
 
-InferErrorCode AlgoInference::initialize() {
+InferErrorCode OrtAlgoInference::initialize() {
   std::lock_guard lk = std::lock_guard(mtx_);
 
   inputNames.clear();
@@ -43,11 +43,11 @@ InferErrorCode AlgoInference::initialize() {
   modelInfo.reset();
 
   try {
-    LOG_INFOS << "Initializing model: " << params->name;
+    LOG_INFOS << "Initializing model: " << params_.name;
 
     // create environment
     env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
-                                     params->name.c_str());
+                                     params_.name.c_str());
 
     // session options
     Ort::SessionOptions sessionOptions;
@@ -58,27 +58,27 @@ InferErrorCode AlgoInference::initialize() {
 
     sessionOptions.SetDeterministicCompute(true);
 
-    LOG_INFOS << "Creating session options for model: " << params->name;
+    LOG_INFOS << "Creating session options for model: " << params_.name;
     // create session
     std::vector<unsigned char> engineData;
-    if (params->needDecrypt) {
+    if (params_.needDecrypt) {
       std::string securityKey = SECURITY_KEY;
       auto cryptoConfig = encrypt::Crypto::deriveKeyFromCommit(securityKey);
       encrypt::Crypto crypto(cryptoConfig);
-      if (!crypto.decryptData(params->modelPath, engineData)) {
-        LOG_ERRORS << "Failed to decrypt model data: " << params->modelPath;
+      if (!crypto.decryptData(params_.modelPath, engineData)) {
+        LOG_ERRORS << "Failed to decrypt model data: " << params_.modelPath;
         return InferErrorCode::INIT_DECRYPTION_FAILED;
       }
       if (engineData.empty()) {
         LOG_ERRORS << "Decryption resulted in empty model data: "
-                   << params->modelPath;
+                   << params_.modelPath;
         return InferErrorCode::INIT_MODEL_LOAD_FAILED;
       }
     }
 
     if (engineData.empty()) {
       session = std::make_unique<Ort::Session>(
-          *env, adaPlatformPath(params->modelPath).c_str(), sessionOptions);
+          *env, adaPlatformPath(params_.modelPath).c_str(), sessionOptions);
     } else {
       session = std::make_unique<Ort::Session>(
           *env, engineData.data(), engineData.size(), sessionOptions);
@@ -120,7 +120,7 @@ InferErrorCode AlgoInference::initialize() {
       auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
       outputShapes[i] = tensorInfo.GetShape();
     }
-    LOG_INFOS << "Model " << params->name << " initialized successfully";
+    LOG_INFOS << "Model " << params_.name << " initialized successfully";
     return InferErrorCode::SUCCESS;
   } catch (const Ort::Exception &e) {
     LOG_ERRORS << "ONNX Runtime error during initialization: " << e.what();
@@ -131,18 +131,18 @@ InferErrorCode AlgoInference::initialize() {
   }
 }
 
-InferErrorCode AlgoInference::infer(AlgoInput &input,
-                                    ModelOutput &modelOutput) {
+InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
+                                       TensorData &outputs) {
   if (env == nullptr || session == nullptr || memoryInfo == nullptr) {
     LOG_ERRORS << "Session is not initialized";
     return InferErrorCode::INFER_FAILED;
   }
   try {
-    modelOutput.outputs.clear();
-    modelOutput.outputShapes.clear();
+    outputs.datas.clear();
+    outputs.shapes.clear();
 
-    auto startPre = std::chrono::steady_clock::now();
-    std::vector<TypedBuffer> prepDatas = preprocess(input);
+    auto &prepDatas = inputs.datas;
+    const auto &prepDatasShapes = inputs.shapes;
 
     if (prepDatas.empty()) {
       LOG_ERRORS << "Empty input data after preprocessing";
@@ -172,7 +172,8 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     std::vector<Ort::Value> inputs;
     inputs.reserve(prepDatas.size());
     for (size_t i = 0; i < inputShapes.size(); ++i) {
-      auto &prepData = prepDatas[i];
+      const std::string &inputName = inputNames.at(i);
+      auto &prepData = prepDatas.at(inputName);
       switch (prepData.dataType) {
       case DataType::FLOAT32: {
         inputs.emplace_back(Ort::Value::CreateTensor(
@@ -205,20 +206,15 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
       }
     }
 
-    auto endPre = std::chrono::steady_clock::now();
-    auto durationPre = std::chrono::duration_cast<std::chrono::milliseconds>(
-        endPre - startPre);
-    LOG_INFOS << "preprocess cost " << durationPre.count() << "ms";
-
-    std::vector<Ort::Value> outputs;
+    std::vector<Ort::Value> modelOutputs;
     auto inferStart = std::chrono::steady_clock::now();
     // session.Run itself is thread-safe
-    outputs = session->Run(Ort::RunOptions{nullptr}, inputNamesPtr.data(),
-                           inputs.data(), inputs.size(), outputNamesPtr.data(),
-                           outputNames.size());
-    for (size_t i = 0; i < outputs.size(); ++i) {
-      auto &output = outputs[i];
-      auto typeInfo = output.GetTensorTypeAndShapeInfo();
+    modelOutputs = session->Run(Ort::RunOptions{nullptr}, inputNamesPtr.data(),
+                                inputs.data(), inputs.size(),
+                                outputNamesPtr.data(), outputNames.size());
+    for (size_t i = 0; i < modelOutputs.size(); ++i) {
+      auto &modelOutput = modelOutputs[i];
+      auto typeInfo = modelOutput.GetTensorTypeAndShapeInfo();
       auto elemCount = typeInfo.GetElementCount();
 
       TypedBuffer outputData;
@@ -227,7 +223,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
       auto elemType = typeInfo.GetElementType();
 
       if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-        const auto *rawData = output.GetTensorData<uint8_t>();
+        const auto *rawData = modelOutput.GetTensorData<uint8_t>();
         const size_t byteSize = elemCount * sizeof(float);
         std::vector<uint8_t> byteData(byteSize);
         std::memcpy(byteData.data(), rawData, byteSize);
@@ -236,7 +232,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
       } else if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
         // FIXME: FP16 will be converted to FP32 right now
         // FP16 -> FP32
-        const uint16_t *fp16Data = output.GetTensorData<uint16_t>();
+        const uint16_t *fp16Data = modelOutput.GetTensorData<uint16_t>();
         cv::Mat halfMat(1, elemCount, CV_16F, (void *)fp16Data);
         cv::Mat floatMat(1, elemCount, CV_32F);
         halfMat.convertTo(floatMat, CV_32F);
@@ -252,20 +248,20 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
         return InferErrorCode::INFER_FAILED;
       }
 
-      modelOutput.outputs.insert(
+      outputs.datas.insert(
           std::make_pair(outputNames.at(i), std::move(outputData)));
       std::vector<int> outputShape;
-      outputShape.reserve(output.GetTensorTypeAndShapeInfo().GetShape().size());
-      for (int64_t dim : output.GetTensorTypeAndShapeInfo().GetShape()) {
+      outputShape.reserve(
+          modelOutput.GetTensorTypeAndShapeInfo().GetShape().size());
+      for (int64_t dim : modelOutput.GetTensorTypeAndShapeInfo().GetShape()) {
         outputShape.push_back(static_cast<int>(dim));
       }
-      modelOutput.outputShapes.insert(
-          std::make_pair(outputNames.at(i), outputShape));
+      outputs.shapes.insert(std::make_pair(outputNames.at(i), outputShape));
       auto inferEnd = std::chrono::steady_clock::now();
       auto durationInfer =
           std::chrono::duration_cast<std::chrono::milliseconds>(inferEnd -
                                                                 inferStart);
-      LOG_INFOS << params->name << " inference cost " << durationInfer.count()
+      LOG_INFOS << params_.name << " inference cost " << durationInfer.count()
                 << " ms";
     }
     return InferErrorCode::SUCCESS;
@@ -278,7 +274,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
   }
 }
 
-InferErrorCode AlgoInference::terminate() {
+InferErrorCode OrtAlgoInference::terminate() {
   std::lock_guard lk = std::lock_guard(mtx_);
   try {
     session.reset();
@@ -297,13 +293,13 @@ InferErrorCode AlgoInference::terminate() {
   }
 }
 
-const ModelInfo &AlgoInference::getModelInfo() {
+const ModelInfo &OrtAlgoInference::getModelInfo() {
   if (modelInfo)
     return *modelInfo;
 
   modelInfo = std::make_shared<ModelInfo>();
 
-  modelInfo->name = params->name;
+  modelInfo->name = params_.name;
   if (!session) {
     LOG_ERRORS << "Session is not initialized";
     return *modelInfo;

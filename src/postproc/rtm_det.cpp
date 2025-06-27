@@ -11,24 +11,30 @@
 #include "rtm_det.hpp"
 #include "logger.hpp"
 #include "vision_util.hpp"
+#include <opencv2/core.hpp>
 
-namespace ai_core::dnn::vision {
-bool RTMDet::processOutput(const ModelOutput &modelOutput,
-                           const FramePreprocessArg &args,
-                           AlgoOutput &algoOutput) {
-  if (modelOutput.outputs.empty()) {
+namespace ai_core::dnn {
+bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
+                     AlgoOutput &algoOutput, AlgoPostprocParams &postArgs) {
+  if (modelOutput.datas.empty()) {
     return false;
   }
 
-  auto params = mParams.getParams<AnchorDetParams>();
+  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
+  if (prepParams == nullptr) {
+    LOG_ERRORS << "FramePreprocessArg is nullptr";
+    throw std::runtime_error("FramePreprocessArg is nullptr");
+  }
+
+  auto params = postArgs.getParams<AnchorDetParams>();
   if (params == nullptr) {
     LOG_ERRORS << "AnchorDetParams params is nullptr";
     throw std::runtime_error("AnchorDetParams params is nullptr");
   }
 
-  const auto &outputShapes = modelOutput.outputShapes;
+  const auto &outputShapes = modelOutput.shapes;
   const auto &inputShape = params->inputShape;
-  const auto &outputs = modelOutput.outputs;
+  const auto &outputs = modelOutput.datas;
 
   // two output
   auto detPred = outputs.at("1018");
@@ -41,14 +47,14 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
   int anchorNum = detOutShape.at(detOutShape.size() - 2);
 
   Shape originShape;
-  if (args.roi.area() > 0) {
-    originShape.w = args.roi.width;
-    originShape.h = args.roi.height;
+  if (prepParams->roi.area() > 0) {
+    originShape.w = prepParams->roi.width;
+    originShape.h = prepParams->roi.height;
   } else {
-    originShape = args.originShape;
+    originShape = prepParams->originShape;
   }
   auto [scaleX, scaleY] =
-      utils::scaleRatio(originShape, inputShape, args.isEqualScale);
+      utils::scaleRatio(originShape, inputShape, prepParams->isEqualScale);
 
   std::vector<BBox> results;
   auto detDataPtr = detPred.getTypedPtr<float>();
@@ -66,9 +72,9 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
       float w = detData[2] - x;
       float h = detData[3] - y;
 
-      if (args.isEqualScale) {
-        x = (x - args.leftPad) / scaleX;
-        y = (y - args.topPad) / scaleY;
+      if (prepParams->isEqualScale) {
+        x = (x - prepParams->leftPad) / scaleX;
+        y = (y - prepParams->topPad) / scaleY;
       } else {
         x = x / scaleX;
         y = y / scaleY;
@@ -78,8 +84,8 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
       BBox result;
       result.score = score;
       result.label = classIdPoint.x;
-      x += args.roi.x;
-      y += args.roi.y;
+      x += prepParams->roi.x;
+      y += prepParams->roi.y;
 
       result.rect = {static_cast<int>(x), static_cast<int>(y),
                      static_cast<int>(w), static_cast<int>(h)};
@@ -93,4 +99,4 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
   return true;
 }
 
-} // namespace ai_core::dnn::vision
+} // namespace ai_core::dnn

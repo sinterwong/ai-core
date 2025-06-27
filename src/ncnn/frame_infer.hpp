@@ -1,5 +1,5 @@
 /**
- * @file frame_infer.hpp
+ * @file frame_infer_base.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -13,7 +13,7 @@
 
 #include "ai_core/types/algo_data_types.hpp"
 #include "ai_core/types/infer_params_types.hpp"
-#include "dnn_infer.hpp"
+#include "dnn_infer_base.hpp"
 #include <memory>
 
 namespace ai_core::dnn {

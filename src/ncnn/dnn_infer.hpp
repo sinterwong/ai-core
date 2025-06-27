@@ -1,5 +1,5 @@
 /**
- * @file dnn_infer.hpp
+ * @file dnn_infer_base.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -12,7 +12,7 @@
 #ifndef __NCNN_INFERENCE_HPP_
 #define __NCNN_INFERENCE_HPP_
 
-#include "infer.hpp"
+#include "infer_base.hpp"
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -42,7 +42,7 @@ public:
   virtual InferErrorCode initialize() override;
 
   virtual InferErrorCode infer(AlgoInput &input,
-                               ModelOutput &modelOutput) override;
+                               TensorData &modelOutput) override;
 
   virtual const ModelInfo &getModelInfo() override;
 

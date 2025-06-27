@@ -12,8 +12,8 @@
 #define __ALGO_INPUT_TYPES_HPP__
 
 #include "infer_common_types.hpp"
-
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
 
 namespace ai_core {
 struct FramePreprocessArg {
@@ -21,17 +21,20 @@ struct FramePreprocessArg {
   std::vector<float> meanVals;
   std::vector<float> normVals;
   Shape originShape;
+  Shape modelInputShape;
 
   bool needResize = true;
   bool isEqualScale;
   cv::Scalar pad = {0, 0, 0};
   int topPad = 0;
   int leftPad = 0;
+
+  DataType dataType;
 };
 
 struct FrameInput {
   cv::Mat image;
-  FramePreprocessArg args;
+  std::string inputName;
 };
 
 } // namespace ai_core

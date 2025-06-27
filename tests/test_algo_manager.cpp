@@ -1,5 +1,4 @@
 #include "ai_core/algo_manager.hpp"
-#include "algo_registrar.hpp"
 #include "logger.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -33,7 +32,7 @@ std::vector<std::string> getImagePathsFromDir(const std::string &dir) {
 
 class AlgoManagerTest : public ::testing::Test {
 protected:
-  void SetUp() override { AlgoRegistrar::getInstance(); }
+  void SetUp() override {}
   void TearDown() override {}
 
   fs::path confDir = fs::path("conf");
@@ -70,32 +69,52 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
     throw std::runtime_error("Config 'algorithms' array is empty.");
   }
 
-  // Assuming we are loading parameters for the first algorithm in the list
   const auto &algoConfig = j["algorithms"][0];
 
-  std::string moduleName = algoConfig.at("type").get<std::string>();
-  params.setParam("moduleName", moduleName);
+  if (algoConfig.contains("name")) {
+    params.setParam("moduleName", algoConfig["name"].get<std::string>());
+  }
+
+  if (algoConfig.contains("types")) {
+    const auto &types = algoConfig["types"];
+    params.setParam("preprocType", types["preproc"].get<std::string>());
+    params.setParam("inferType", types["infer"].get<std::string>());
+    params.setParam("postprocType", types["postproc"].get<std::string>());
+  }
+
+  if (algoConfig.contains("preprocParams")) {
+    FramePreprocessArg framePreprocessArg;
+    const auto &preprocJson = algoConfig["preprocParams"];
+    framePreprocessArg.modelInputShape.w =
+        preprocJson["inputShape"].at("w").get<int>();
+    framePreprocessArg.modelInputShape.h =
+        preprocJson["inputShape"].at("h").get<int>();
+    framePreprocessArg.meanVals = preprocJson["mean"].get<std::vector<float>>();
+    framePreprocessArg.normVals = preprocJson["std"].get<std::vector<float>>();
+    framePreprocessArg.dataType =
+        static_cast<DataType>(preprocJson["dataType"].get<int>());
+    framePreprocessArg.isEqualScale = preprocJson["isEqualScale"].get<bool>();
+    framePreprocessArg.needResize = preprocJson["needResize"].get<bool>();
+    const auto &padVec = preprocJson["pad"].get<std::vector<int>>();
+    framePreprocessArg.pad = cv::Scalar{static_cast<double>(padVec[0]),
+                                        static_cast<double>(padVec[1]),
+                                        static_cast<double>(padVec[2])};
+    params.setParam("preprocParams", framePreprocessArg);
+  }
 
   if (algoConfig.contains("inferParams")) {
     AlgoInferParams inferParams;
     const auto &inferJson = algoConfig["inferParams"];
-    FrameInferParam frameInferParam;
-    frameInferParam.modelPath = inferJson.at("modelPath").get<std::string>();
-    if (inferJson.contains("inputShape")) {
-      frameInferParam.inputShape.w = inferJson["inputShape"].at("w").get<int>();
-      frameInferParam.inputShape.h = inferJson["inputShape"].at("h").get<int>();
-    }
-    frameInferParam.deviceType =
+    inferParams.modelPath = inferJson.at("modelPath").get<std::string>();
+    inferParams.deviceType =
         static_cast<DeviceType>(inferJson.at("deviceType").get<int>());
-    frameInferParam.dataType =
+    inferParams.dataType =
         static_cast<DataType>(inferJson.at("dataType").get<int>());
-    inferParams.setParams(frameInferParam);
     params.setParam("inferParams", inferParams);
   }
 
-  if (algoConfig.contains("postProcParams")) {
-    AlgoPostprocParams postProcParams;
-    const auto &postProcJson = algoConfig["postProcParams"];
+  if (algoConfig.contains("postprocParams")) {
+    const auto &postProcJson = algoConfig["postprocParams"];
     AnchorDetParams anchorDetParams;
     anchorDetParams.condThre = postProcJson.at("condThre").get<float>();
     anchorDetParams.nmsThre = postProcJson.at("nmsThre").get<float>();
@@ -105,8 +124,7 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
       anchorDetParams.inputShape.h =
           postProcJson["inputShape"].at("h").get<int>();
     }
-    postProcParams.setParams(anchorDetParams);
-    params.setParam("postProcParams", postProcParams);
+    params.setParam("postprocParams", anchorDetParams);
   }
   return params;
 }
@@ -122,20 +140,26 @@ TEST_F(AlgoManagerTest, Normal) {
   AlgoConstructParams params =
       loadParamFromJson((confDir / "test_algo_manager_ort.json").string());
 #endif
-  std::string moduleName = params.getParam<std::string>("moduleName");
+  std::string name = params.getParam<std::string>("moduleName");
 
-  std::shared_ptr<AlgoInferBase> engine =
-      AlgoInferFactory::instance().create("VisionInfer", params);
+  AlgoModuleTypes moduleTypes;
+  moduleTypes.preprocModule = params.getParam<std::string>("preprocType");
+  moduleTypes.inferModule = params.getParam<std::string>("inferType");
+  moduleTypes.postprocModule = params.getParam<std::string>("postprocType");
+
+  AlgoInferParams inferParams = params.getParam<AlgoInferParams>("inferParams");
+
+  std::shared_ptr<AlgoInference> engine =
+      std::make_shared<AlgoInference>(moduleTypes, inferParams);
+
   ASSERT_NE(engine, nullptr);
-
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
-
   std::shared_ptr<AlgoManager> manager = std::make_shared<AlgoManager>();
   ASSERT_NE(manager, nullptr);
 
-  ASSERT_EQ(manager->registerAlgo(moduleName, engine), InferErrorCode::SUCCESS);
-  ASSERT_TRUE(manager->hasAlgo(moduleName));
-  ASSERT_NE(manager->getAlgo(moduleName), nullptr);
+  ASSERT_EQ(manager->registerAlgo(name, engine), InferErrorCode::SUCCESS);
+  ASSERT_TRUE(manager->hasAlgo(name));
+  ASSERT_NE(manager->getAlgo(name), nullptr);
 
   // prepare input data
   cv::Mat image = cv::imread(imagePath);
@@ -143,20 +167,28 @@ TEST_F(AlgoManagerTest, Normal) {
   cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
+  AlgoPreprocParams preprocParams;
+  auto framePreprocessArg =
+      params.getParam<FramePreprocessArg>("preprocParams");
+  framePreprocessArg.roi = {0, 0, imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows};
+  preprocParams.setParams(framePreprocessArg);
+
+  AlgoPostprocParams postprocParams;
+  AnchorDetParams anchorDetParams =
+      params.getParam<AnchorDetParams>("postprocParams");
+  postprocParams.setParams(anchorDetParams);
+
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.args.originShape = {imageRGB.cols, imageRGB.rows};
-  frameInput.args.roi = {0, 0, imageRGB.cols, imageRGB.rows};
-  frameInput.args.isEqualScale = true;
-  frameInput.args.pad = {0, 0, 0};
-  frameInput.args.meanVals = {0, 0, 0};
-  frameInput.args.normVals = {255.f, 255.f, 255.f};
+  frameInput.inputName = "images";
 
   AlgoInput algoInput;
   algoInput.setParams(frameInput);
 
   AlgoOutput managerOutput;
-  ASSERT_EQ(manager->infer(moduleName, algoInput, managerOutput),
+  ASSERT_EQ(manager->infer(name, algoInput, preprocParams, managerOutput,
+                           postprocParams),
             InferErrorCode::SUCCESS);
 
   auto managerDetRet = managerOutput.getParams<DetRet>();
@@ -169,8 +201,8 @@ TEST_F(AlgoManagerTest, Normal) {
   ASSERT_EQ(managerDetRet->bboxes[1].label, 0);
   ASSERT_NEAR(managerDetRet->bboxes[1].score, 0.8, 1e-2);
 
-  ASSERT_EQ(manager->unregisterAlgo(moduleName), InferErrorCode::SUCCESS);
-  ASSERT_FALSE(manager->hasAlgo(moduleName));
-  ASSERT_EQ(manager->getAlgo(moduleName), nullptr);
+  ASSERT_EQ(manager->unregisterAlgo(name), InferErrorCode::SUCCESS);
+  ASSERT_FALSE(manager->hasAlgo(name));
+  ASSERT_EQ(manager->getAlgo(name), nullptr);
 }
 } // namespace testing_algo_manager

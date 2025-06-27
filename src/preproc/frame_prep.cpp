@@ -1,0 +1,37 @@
+/**
+ * @file single_frame_prep.cpp
+ * @author Sinter Wong (sintercver@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2025-06-27
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
+#include "frame_prep.hpp"
+#include "ai_core/types/algo_data_types.hpp"
+#include "logger.hpp"
+
+namespace ai_core::dnn {
+
+FramePreprocess::FramePreprocess() {
+  processor_ = std::make_unique<ImagePreprocessor>();
+}
+
+bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
+                              TensorData &output) {
+  auto paramsPtr = params.getParams<FramePreprocessArg>();
+  if (paramsPtr == nullptr) {
+    LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
+    return false;
+  }
+  auto frameInput = input.getParams<FrameInput>();
+  if (!frameInput) {
+    return false;
+  }
+
+  output.datas.insert(std::make_pair(
+      frameInput->inputName, processor_->process(*paramsPtr, *frameInput)));
+  return true;
+}
+} // namespace ai_core::dnn

@@ -9,8 +9,8 @@
  *
  */
 
-#include "dnn_infer.hpp"
 #include "crypto.hpp"
+#include "dnn_infer_base.hpp"
 #include "logger.hpp"
 #include <ncnn/allocator.h>
 #include <ncnn/cpu.h>
@@ -156,8 +156,7 @@ InferErrorCode AlgoInference::initialize() {
   }
 }
 
-InferErrorCode AlgoInference::infer(AlgoInput &input,
-                                    ModelOutput &modelOutput) {
+InferErrorCode AlgoInference::infer(AlgoInput &input, TensorData &modelOutput) {
   if (!isInitialized.load(std::memory_order_acquire)) {
     LOG_ERRORS << "Inference called on uninitialized model: "
                << (params ? params->name : "Unknown");

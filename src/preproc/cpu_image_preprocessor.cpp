@@ -1,77 +1,45 @@
 /**
- * @file dnn_infer.cpp
+ * @file cpu_image_preprocessor.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
- * @date 2025-01-17
+ * @date 2025-06-28
  *
  * @copyright Copyright (c) 2025
  *
  */
-
-#include "frame_infer.hpp"
+#include "cpu_image_preprocessor.hpp"
 #include "logger.hpp"
+#include "opencv2/core.hpp"
+#include "opencv2/imgproc.hpp"
 #include "vision_util.hpp"
 
 namespace ai_core::dnn {
-
-std::vector<TypedBuffer> FrameInference::preprocess(AlgoInput &input) const {
-  // Get input parameters
-  auto *frameInput = input.getParams<FrameInput>();
-  if (!frameInput) {
-    LOG_ERRORS << "Invalid input parameters";
-    throw std::runtime_error("Invalid input parameters");
-  }
-
-  if (inputNames.size() != 1) {
-    LOG_ERRORS << "Input node number is not 1";
-    throw std::runtime_error("Input node number is not 1");
-  }
-
-  const auto &inputShape = inputShapes.at(0);
-  const size_t numDims = inputShape.size();
-
-  // Parse input dimensions
-  int inputWidth = 1, inputHeight = 1, inputChannels = 1, inputBatch = 1;
-
-  // Handle different input dimensions
-  if (numDims >= 2) {
-    inputWidth = inputShape[numDims - 1];
-    inputHeight = inputShape[numDims - 2];
-  }
-  if (numDims >= 3) {
-    inputChannels = inputShape[numDims - 3];
-  }
-  if (numDims >= 4) {
-    inputBatch = inputShape[numDims - 4];
-  }
-
-  // Ensure batch size is 1
-  if (inputBatch != 1) {
-    throw std::runtime_error("Only batch size 1 is supported");
-  }
-
-  const cv::Mat &image = frameInput->image;
-  auto &args = frameInput->args;
+TypedBuffer ImagePreprocessor::process(FramePreprocessArg &params_,
+                                       const FrameInput &frameInput) const {
+  const cv::Mat &image = frameInput.image;
+  int inputChannels = image.channels();
 
   // Crop ROI
   cv::Mat croppedImage;
-  if (args.roi.area() > 0) {
-    croppedImage = image(args.roi).clone();
+  if (params_.roi.area() > 0) {
+    croppedImage = image(params_.roi).clone();
   } else {
     croppedImage = image;
   }
 
   // Resize
   cv::Mat resizedImage;
-  if (args.needResize) {
-    if (args.isEqualScale) {
+  if (params_.needResize) {
+    if (params_.isEqualScale) {
       auto padRet = utils::escaleResizeWithPad(
-          croppedImage, resizedImage, inputHeight, inputWidth, args.pad);
-      args.topPad = padRet.h;
-      args.leftPad = padRet.w;
+          croppedImage, resizedImage, params_.modelInputShape.h,
+          params_.modelInputShape.w, params_.pad);
+      params_.topPad = padRet.h;
+      params_.leftPad = padRet.w;
     } else {
-      cv::resize(croppedImage, resizedImage, cv::Size(inputWidth, inputHeight),
+      cv::resize(croppedImage, resizedImage,
+                 cv::Size(params_.modelInputShape.w, params_.modelInputShape.h),
                  0, 0, cv::INTER_LINEAR);
     }
   } else {
@@ -84,10 +52,10 @@ std::vector<TypedBuffer> FrameInference::preprocess(AlgoInput &input) const {
 
   // Normalization
   cv::Mat normalizedImage;
-  if (!args.meanVals.empty() && !args.normVals.empty()) {
+  if (!params_.meanVals.empty() && !params_.normVals.empty()) {
     // Validate normalization parameters
-    if (args.meanVals.size() != inputChannels ||
-        args.normVals.size() != inputChannels) {
+    if (params_.meanVals.size() != inputChannels ||
+        params_.normVals.size() != inputChannels) {
       throw std::runtime_error(
           "meanVals and normVals size must match input channels");
     }
@@ -97,33 +65,33 @@ std::vector<TypedBuffer> FrameInference::preprocess(AlgoInput &input) const {
 
     // Apply normalization per channel
     for (int i = 0; i < inputChannels; ++i) {
-      channels[i] = (channels[i] - args.meanVals[i]) / args.normVals[i];
+      channels[i] = (channels[i] - params_.meanVals[i]) / params_.normVals[i];
     }
     cv::merge(channels, normalizedImage);
   } else {
     normalizedImage = floatImage;
   }
 
-  switch (params->dataType) {
+  switch (params_.dataType) {
   case DataType::FLOAT32:
-    return preprocessFP32(normalizedImage, inputChannels, inputHeight,
-                          inputWidth);
+    return preprocessFP32(normalizedImage, inputChannels,
+                          params_.modelInputShape.h, params_.modelInputShape.w);
 
   case DataType::FLOAT16:
-    return preprocessFP16(normalizedImage, inputChannels, inputHeight,
-                          inputWidth);
+    return preprocessFP16(normalizedImage, inputChannels,
+                          params_.modelInputShape.h, params_.modelInputShape.w);
 
   default:
     LOG_ERRORS << "Unsupported data type: "
-               << static_cast<int>(params->dataType);
+               << static_cast<int>(params_.dataType);
     throw std::runtime_error("Unsupported data type");
   }
 }
 
-std::vector<TypedBuffer>
-FrameInference::preprocessFP32(const cv::Mat &normalizedImage,
-                               int inputChannels, int inputHeight,
-                               int inputWidth) const {
+TypedBuffer ImagePreprocessor::preprocessFP32(const cv::Mat &normalizedImage,
+                                              int inputChannels,
+                                              int inputHeight,
+                                              int inputWidth) const {
 
   TypedBuffer result;
   result.dataType = DataType::FLOAT32;
@@ -170,13 +138,13 @@ FrameInference::preprocessFP32(const cv::Mat &normalizedImage,
   result.data = std::move(byteData);
   result.elementCount = tensorData.size();
 
-  return {result};
+  return result;
 }
 
-std::vector<TypedBuffer>
-FrameInference::preprocessFP16(const cv::Mat &normalizedImage,
-                               int inputChannels, int inputHeight,
-                               int inputWidth) const {
+TypedBuffer ImagePreprocessor::preprocessFP16(const cv::Mat &normalizedImage,
+                                              int inputChannels,
+                                              int inputHeight,
+                                              int inputWidth) const {
 
   TypedBuffer result;
   result.dataType = DataType::FLOAT16;
@@ -236,6 +204,6 @@ FrameInference::preprocessFP16(const cv::Mat &normalizedImage,
   result.data = std::move(byteData);
   result.elementCount = tensorDataFP32.size();
 
-  return {result};
+  return result;
 }
 } // namespace ai_core::dnn

@@ -2,17 +2,41 @@
     "algorithms": [
         {
             "name": "yolo-det-80c",
-            "type": "Yolov11Det",
-            "inferParams": {
-                "modelPath": "models/yolov11n.ncnn",
+            "types": {
+                "preproc": "FramePreprocess",
+                "infer": "NcnnAlgoInference",
+                "postproc": "Yolov11Det"
+            },
+            "preprocParams": {
                 "inputShape": {
                     "w": 640,
                     "h": 640
                 },
+                "mean": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "std": [
+                    255.0,
+                    255.0,
+                    255.0
+                ],
+                "pad": [
+                    0,
+                    0,
+                    0
+                ],
+                "isEqualScale": true,
+                "needResize": true,
+                "dataType": 1
+            },
+            "inferParams": {
+                "modelPath": "models/yolov11n.ncnn",
                 "deviceType": 0,
                 "dataType": 1
             },
-            "postProcParams": {
+            "postprocParams": {
                 "condThre": 0.5,
                 "nmsThre": 0.45,
                 "inputShape": {

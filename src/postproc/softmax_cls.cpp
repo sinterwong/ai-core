@@ -10,18 +10,19 @@
  */
 #include "softmax_cls.hpp"
 #include "logger.hpp"
+#include <opencv2/core.hpp>
 
-namespace ai_core::dnn::vision {
-bool SoftmaxCls::processOutput(const ModelOutput &modelOutput,
-                               const FramePreprocessArg &args,
-                               AlgoOutput &algoOutput) {
-  if (modelOutput.outputs.empty()) {
+namespace ai_core::dnn {
+bool SoftmaxCls::process(const TensorData &modelOutput,
+                         AlgoPreprocParams &prepArgs, AlgoOutput &algoOutput,
+                         AlgoPostprocParams &postArgs) {
+  if (modelOutput.datas.empty()) {
     LOG_ERRORS << "modelOutput.outputs is empty";
     return false;
   }
 
-  const auto &outputShapes = modelOutput.outputShapes;
-  const auto &outputs = modelOutput.outputs;
+  const auto &outputShapes = modelOutput.shapes;
+  const auto &outputs = modelOutput.datas;
 
   // just one output
   if (outputs.size() != 1) {
@@ -45,4 +46,4 @@ bool SoftmaxCls::processOutput(const ModelOutput &modelOutput,
   algoOutput.setParams(clsRet);
   return true;
 }
-} // namespace ai_core::dnn::vision
+} // namespace ai_core::dnn

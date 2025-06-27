@@ -11,24 +11,22 @@
 #ifndef __INFERENCE_VISION_YOLOV11_DETECTION_HPP_
 #define __INFERENCE_VISION_YOLOV11_DETECTION_HPP_
 
-#include "vision.hpp"
-namespace ai_core::dnn::vision {
-class Yolov11Det : public VisionBase {
+#include "postproc_base.hpp"
+namespace ai_core::dnn {
+class Yolov11Det : public PostprocssBase {
 public:
-  explicit Yolov11Det(const AlgoPostprocParams &params) : mParams(params) {}
+  explicit Yolov11Det() {}
 
-  virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
-                             AlgoOutput &) override;
+  virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
+                       AlgoPostprocParams &) override;
 
 private:
   std::vector<BBox> processRawOutput(const cv::Mat &transposedOutput,
                                      const Shape &inputShape,
-                                     const FramePreprocessArg &args,
+                                     const FramePreprocessArg &prepArgs,
+                                     const AnchorDetParams &postArgs,
                                      int numClasses);
-
-private:
-  AlgoPostprocParams mParams;
 };
-} // namespace ai_core::dnn::vision
+} // namespace ai_core::dnn
 
 #endif

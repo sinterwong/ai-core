@@ -1,5 +1,10 @@
-#include "frame_infer.hpp"
-#include "yolo_det.hpp"
+#include "ai_core/types/algo_input_types.hpp"
+#include "ai_core/types/infer_params_types.hpp"
+#include "infer_base.hpp"
+#include "ort/dnn_infer.hpp"
+#include "postproc/yolo_det.hpp"
+#include "preproc/frame_prep.hpp"
+#include "preproc_base.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <opencv2/imgcodecs.hpp>
@@ -14,15 +19,26 @@ using namespace ai_core::dnn;
 class YoloDetInferenceTest : public ::testing::Test {
 protected:
   void SetUp() override {
+    AlgoConstructParams tempInferParams;
+    inferParams.dataType = DataType::FLOAT16;
+    inferParams.modelPath = "models/yolov11n-fp16.onnx";
+    inferParams.name = "yolov11n";
+    inferParams.deviceType = DeviceType::CPU;
+    tempInferParams.setParam("params", inferParams);
 
-    AnchorDetParams anchorDetParams;
-    anchorDetParams.condThre = 0.5f;
-    anchorDetParams.nmsThre = 0.45f;
-    anchorDetParams.inputShape = {640, 640};
-    params.setParams(anchorDetParams);
+#ifdef USE_NCNN
+    engine_ = std::make_shared<ncnn::NCNNAloInference>(tempInferParams);
+#else
+    engine = std::make_shared<OrtAlgoInference>(tempInferParams);
+#endif
+    ASSERT_NE(engine, nullptr);
+    ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
-    yoloDet = std::make_shared<vision::Yolov11Det>(params);
-    ASSERT_NE(yoloDet, nullptr);
+    framePreproc = std::make_shared<FramePreprocess>();
+    ASSERT_NE(framePreproc, nullptr);
+
+    yoloDetPostproc = std::make_shared<Yolov11Det>();
+    ASSERT_NE(yoloDetPostproc, nullptr);
   }
   void TearDown() override {}
 
@@ -30,53 +46,57 @@ protected:
 
   std::string imagePath = (dataDir / "yolov11/image.png").string();
 
-  AlgoPostprocParams params;
+  AlgoInferParams inferParams;
 
-  std::shared_ptr<vision::VisionBase> yoloDet;
+  std::shared_ptr<PreprocssBase> framePreproc;
+  std::shared_ptr<PostprocssBase> yoloDetPostproc;
+
+  std::shared_ptr<InferBase> engine;
 };
 
 TEST_F(YoloDetInferenceTest, Normal) {
-  FrameInferParam yoloParam;
-  yoloParam.name = "test-yolodet";
-
-#ifdef USE_NCNN
-  yoloParam.modelPath = "models/yolov11n.ncnn";
-#else
-  yoloParam.modelPath = "models/yolov11n-fp16.onnx";
-#endif
-  yoloParam.inputShape = {640, 640};
-  yoloParam.deviceType = DeviceType::CPU;
-  yoloParam.dataType = DataType::FLOAT16;
-
-  std::shared_ptr<Inference> engine =
-      std::make_shared<FrameInference>(yoloParam);
-  ASSERT_NE(engine, nullptr);
-  ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
   cv::Mat image = cv::imread(imagePath);
   cv::Mat imageRGB;
   cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
+  AlgoPreprocParams preprocParams;
+  FramePreprocessArg framePreprocessArg;
+  framePreprocessArg.modelInputShape = {640, 640};
+  framePreprocessArg.dataType = DataType::FLOAT16;
+  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.roi = {0, 0, imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.isEqualScale = true;
+  framePreprocessArg.pad = {0, 0, 0};
+  framePreprocessArg.meanVals = {0, 0, 0};
+  framePreprocessArg.normVals = {255.f, 255.f, 255.f};
+  preprocParams.setParams(framePreprocessArg);
+  ASSERT_NE(framePreproc, nullptr);
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.args.originShape = {imageRGB.cols, imageRGB.rows};
-  frameInput.args.roi = {0, 0, imageRGB.cols, imageRGB.rows};
-  frameInput.args.isEqualScale = true;
-  frameInput.args.pad = {0, 0, 0};
-  frameInput.args.meanVals = {0, 0, 0};
-  frameInput.args.normVals = {255.f, 255.f, 255.f};
+  frameInput.inputName = "images";
+
+  AlgoPostprocParams postprocParams;
+  AnchorDetParams anchorDetParams;
+  anchorDetParams.condThre = 0.5f;
+  anchorDetParams.nmsThre = 0.45f;
+  anchorDetParams.inputShape = {640, 640};
+  postprocParams.setParams(anchorDetParams);
 
   AlgoInput algoInput;
   algoInput.setParams(frameInput);
 
-  ModelOutput modelOutput;
-  ASSERT_EQ(engine->infer(algoInput, modelOutput), InferErrorCode::SUCCESS);
+  TensorData modelInput;
+  framePreproc->process(algoInput, preprocParams, modelInput);
+
+  TensorData modelOutput;
+  ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);
 
   auto frameInputPtr = algoInput.getParams<FrameInput>();
   AlgoOutput algoOutput;
-  ASSERT_TRUE(
-      yoloDet->processOutput(modelOutput, frameInputPtr->args, algoOutput));
+  ASSERT_TRUE(yoloDetPostproc->process(modelOutput, preprocParams, algoOutput,
+                                       postprocParams));
 
   auto *detRet = algoOutput.getParams<DetRet>();
   ASSERT_NE(detRet, nullptr);
@@ -97,41 +117,36 @@ TEST_F(YoloDetInferenceTest, Normal) {
                 cv::Scalar(0, 0, 255), 2);
   }
   cv::imwrite("vis_yolodet.png", visImage);
-
-  engine->terminate();
 }
 
 TEST_F(YoloDetInferenceTest, MulitThreads) {
-  FrameInferParam yoloParam;
-  yoloParam.name = "test-yolodet";
-
-#ifdef USE_NCNN
-  yoloParam.modelPath = "models/yolov11n.ncnn";
-#else
-  yoloParam.modelPath = "models/yolov11n-fp16.onnx";
-#endif
-  yoloParam.inputShape = {640, 640};
-  yoloParam.deviceType = DeviceType::CPU;
-  yoloParam.dataType = DataType::FLOAT16;
-
-  std::shared_ptr<Inference> engine =
-      std::make_shared<FrameInference>(yoloParam);
-  ASSERT_NE(engine, nullptr);
-  ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
-
   cv::Mat image = cv::imread(imagePath);
   cv::Mat imageRGB;
   cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
+  AlgoPreprocParams preprocParams;
+  FramePreprocessArg framePreprocessArg;
+  framePreprocessArg.modelInputShape = {640, 640};
+  framePreprocessArg.dataType = DataType::FLOAT16;
+  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.roi = {0, 0, imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.isEqualScale = true;
+  framePreprocessArg.pad = {0, 0, 0};
+  framePreprocessArg.meanVals = {0, 0, 0};
+  framePreprocessArg.normVals = {255.f, 255.f, 255.f};
+  preprocParams.setParams(framePreprocessArg);
+  ASSERT_NE(framePreproc, nullptr);
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.args.originShape = {imageRGB.cols, imageRGB.rows};
-  frameInput.args.roi = {0, 0, imageRGB.cols, imageRGB.rows};
-  frameInput.args.isEqualScale = true;
-  frameInput.args.pad = {0, 0, 0};
-  frameInput.args.meanVals = {0, 0, 0};
-  frameInput.args.normVals = {255.f, 255.f, 255.f};
+  frameInput.inputName = "images";
+
+  AlgoPostprocParams postprocParams;
+  AnchorDetParams anchorDetParams;
+  anchorDetParams.condThre = 0.5f;
+  anchorDetParams.nmsThre = 0.45f;
+  anchorDetParams.inputShape = {640, 640};
+  postprocParams.setParams(anchorDetParams);
 
   AlgoInput algoInput;
   algoInput.setParams(frameInput);
@@ -139,13 +154,17 @@ TEST_F(YoloDetInferenceTest, MulitThreads) {
   std::vector<std::thread> threads;
   for (int i = 0; i < 100; ++i) {
     threads.emplace_back([&]() {
-      ModelOutput modelOutput;
-      ASSERT_EQ(engine->infer(algoInput, modelOutput), InferErrorCode::SUCCESS);
+      TensorData modelInput;
+      framePreproc->process(algoInput, preprocParams, modelInput);
+
+      TensorData modelOutput;
+      ASSERT_EQ(engine->infer(modelInput, modelOutput),
+                InferErrorCode::SUCCESS);
 
       auto frameInputPtr = algoInput.getParams<FrameInput>();
       AlgoOutput algoOutput;
-      ASSERT_TRUE(
-          yoloDet->processOutput(modelOutput, frameInputPtr->args, algoOutput));
+      ASSERT_TRUE(yoloDetPostproc->process(modelOutput, preprocParams,
+                                           algoOutput, postprocParams));
 
       auto *detRet = algoOutput.getParams<DetRet>();
       ASSERT_NE(detRet, nullptr);
@@ -162,6 +181,5 @@ TEST_F(YoloDetInferenceTest, MulitThreads) {
   for (auto &thread : threads) {
     thread.join();
   }
-  engine->terminate();
 }
 } // namespace testing_yolo_det

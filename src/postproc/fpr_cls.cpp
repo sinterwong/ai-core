@@ -9,26 +9,21 @@
  *
  */
 #include "fpr_cls.hpp"
-// ModelOutput, FramePreprocessArg, AlgoOutput are included via "fpr_cls.hpp"
-// which includes "ai_core/types/algo_data_types.hpp" and "ai_core/types/model_output.hpp".
-// We need FprClsRet from "ai_core/types/algo_output_types.hpp".
-#include "ai_core/types/algo_output_types.hpp" // For FprClsRet
+#include "ai_core/types/algo_output_types.hpp"
 #include "logger.hpp"
 
-// OpenCV types like cv::Mat, cv::Point are used.
-// These are included via "ai_core/types/algo_input_types.hpp" which is part of "algo_data_types.hpp".
+#include <opencv2/core.hpp>
 
-namespace ai_core::dnn::vision {
-bool FprCls::processOutput(const ModelOutput &modelOutput,
-                           const FramePreprocessArg &args,
-                           AlgoOutput &algoOutput) {
-  if (modelOutput.outputs.empty()) {
+namespace ai_core::dnn {
+bool FprCls::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
+                     AlgoOutput &algoOutput, AlgoPostprocParams &postArgs) {
+  if (modelOutput.datas.empty()) {
     LOG_ERRORS << "modelOutput.outputs is empty";
     return false;
   }
 
-  const auto &outputShapes = modelOutput.outputShapes;
-  const auto &outputs = modelOutput.outputs;
+  const auto &outputShapes = modelOutput.shapes;
+  const auto &outputs = modelOutput.datas;
 
   auto pScores = outputs.at("14");
   auto pBirads = outputs.at("15");
@@ -62,4 +57,4 @@ bool FprCls::processOutput(const ModelOutput &modelOutput,
   algoOutput.setParams(fprRet);
   return true;
 }
-} // namespace ai_core::dnn::vision
+} // namespace ai_core::dnn

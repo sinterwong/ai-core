@@ -11,17 +11,17 @@
 #include "fpr_feat.hpp"
 #include "logger.hpp"
 
-namespace ai_core::dnn::vision {
-bool FprFeature::processOutput(const ModelOutput &modelOutput,
-                               const FramePreprocessArg &args,
-                               AlgoOutput &algoOutput) {
-  if (modelOutput.outputs.empty()) {
+namespace ai_core::dnn {
+bool FprFeature::process(const TensorData &modelOutput,
+                         AlgoPreprocParams &prepArgs, AlgoOutput &algoOutput,
+                         AlgoPostprocParams &postArgs) {
+  if (modelOutput.datas.empty()) {
     LOG_ERRORS << "modelOutput.outputs is empty";
     return false;
   }
 
-  const auto &outputShapes = modelOutput.outputShapes;
-  const auto &outputs = modelOutput.outputs;
+  const auto &outputShapes = modelOutput.shapes;
+  const auto &outputs = modelOutput.datas;
 
   // just one output
   auto output = outputs.at("171");
@@ -34,4 +34,4 @@ bool FprFeature::processOutput(const ModelOutput &modelOutput,
   algoOutput.setParams(ret);
   return true;
 }
-} // namespace ai_core::dnn::vision
+} // namespace ai_core::dnn

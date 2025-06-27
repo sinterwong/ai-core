@@ -1,5 +1,5 @@
 /**
- * @file infer.cpp
+ * @file infer_base.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,13 +8,12 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "infer.hpp"
-// infer_common_types.hpp (for ModelInfo) is now included via infer.hpp -> ai_core/types/infer_common_types.hpp
-// iostream for std::cout is also included via infer.hpp
+#include <iostream>
 
+#include "infer_base.hpp"
 namespace ai_core::dnn {
 
-void Inference::prettyPrintModelInfos() {
+void InferBase::prettyPrintModelInfos() {
   if (!modelInfo) {
     getModelInfo();
     if (!modelInfo) {

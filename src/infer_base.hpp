@@ -1,5 +1,5 @@
 /**
- * @file infer.hpp
+ * @file infer_base.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -11,21 +11,22 @@
 #ifndef __INFERENCE_HPP_
 #define __INFERENCE_HPP_
 
-#include "ai_core/types/algo_data_types.hpp"
+#include <memory>
+
 #include "ai_core/types/infer_common_types.hpp"
 #include "ai_core/types/infer_error_code.hpp"
-#include "ai_core/types/model_output.hpp"
+#include "ai_core/types/tensor_data.hpp"
 
 namespace ai_core::dnn {
-class Inference {
+class InferBase {
 public:
-  Inference() = default;
+  InferBase() = default;
 
-  virtual ~Inference() {}
+  virtual ~InferBase() {}
 
   virtual InferErrorCode initialize() = 0;
 
-  virtual InferErrorCode infer(AlgoInput &input, ModelOutput &modelOutput) = 0;
+  virtual InferErrorCode infer(TensorData &inputs, TensorData &outputs) = 0;
 
   virtual InferErrorCode terminate() = 0;
 

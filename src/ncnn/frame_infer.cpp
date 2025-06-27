@@ -9,7 +9,7 @@
  *
  */
 
-#include "frame_infer.hpp"
+#include "frame_infer_base.hpp"
 #include "logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core/mat.hpp>

@@ -11,24 +11,31 @@
 #include "nano_det.hpp"
 #include "logger.hpp"
 #include "vision_util.hpp"
+#include <opencv2/core.hpp>
 
-namespace ai_core::dnn::vision {
-bool NanoDet::processOutput(const ModelOutput &modelOutput,
-                            const FramePreprocessArg &args,
-                            AlgoOutput &algoOutput) {
-  if (modelOutput.outputs.empty()) {
+namespace ai_core::dnn {
+bool NanoDet::process(const TensorData &modelOutput,
+                      AlgoPreprocParams &prepArgs, AlgoOutput &algoOutput,
+                      AlgoPostprocParams &postArgs) {
+  if (modelOutput.datas.empty()) {
     return false;
   }
 
-  auto params = mParams.getParams<AnchorDetParams>();
+  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
+  if (prepParams == nullptr) {
+    LOG_ERRORS << "FramePreprocessArg is nullptr";
+    throw std::runtime_error("FramePreprocessArg is nullptr");
+  }
+
+  auto params = postArgs.getParams<AnchorDetParams>();
   if (params == nullptr) {
     LOG_ERRORS << "AnchorDetParams params is nullptr";
     throw std::runtime_error("AnchorDetParams params is nullptr");
   }
 
-  const auto &outputShapes = modelOutput.outputShapes;
+  const auto &outputShapes = modelOutput.shapes;
   const auto &inputShape = params->inputShape;
-  const auto &outputs = modelOutput.outputs;
+  const auto &outputs = modelOutput.datas;
 
   // just one output
   if (outputs.size() != 1) {
@@ -49,14 +56,14 @@ bool NanoDet::processOutput(const ModelOutput &modelOutput,
                   const_cast<void *>(output.getTypedPtr<void>()));
 
   Shape originShape;
-  if (args.roi.area() > 0) {
-    originShape.w = args.roi.width;
-    originShape.h = args.roi.height;
+  if (prepParams->roi.area() > 0) {
+    originShape.w = prepParams->roi.width;
+    originShape.h = prepParams->roi.height;
   } else {
-    originShape = args.originShape;
+    originShape = prepParams->originShape;
   }
   auto [scaleX, scaleY] =
-      utils::scaleRatio(originShape, inputShape, args.isEqualScale);
+      utils::scaleRatio(originShape, inputShape, prepParams->isEqualScale);
 
   std::vector<BBox> results;
   for (int i = 0; i < rawData.rows; ++i) {
@@ -80,12 +87,12 @@ bool NanoDet::processOutput(const ModelOutput &modelOutput,
       float h = y2 - y1;
       float x, y;
 
-      x = (x1 - args.leftPad) / scaleX;
-      y = (y1 - args.topPad) / scaleY;
+      x = (x1 - prepParams->leftPad) / scaleX;
+      y = (y1 - prepParams->topPad) / scaleY;
       w = w / scaleX;
       h = h / scaleY;
-      x += args.roi.x;
-      y += args.roi.y;
+      x += prepParams->roi.x;
+      y += prepParams->roi.y;
       result.rect = {static_cast<int>(x), static_cast<int>(y),
                      static_cast<int>(w), static_cast<int>(h)};
       results.push_back(result);
@@ -96,4 +103,4 @@ bool NanoDet::processOutput(const ModelOutput &modelOutput,
   algoOutput.setParams(detRet);
   return true;
 }
-} // namespace ai_core::dnn::vision
+} // namespace ai_core::dnn
