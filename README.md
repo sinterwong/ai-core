@@ -40,12 +40,14 @@ The project relies on several third-party libraries. The CI workflow downloads p
     cmake .. -GNinja \
           -DCMAKE_INSTALL_PREFIX=../install \
           -DBUILD_AI_CORE_TESTS=ON \
-          -DINFER_ENGINE=ORT \
+          -DWITH_ORT_ENGINE=ON \
+          -DWITH_NCNN_ENGINE=ON \
           -DCMAKE_BUILD_TYPE=Release
     ```
     *   `CMAKE_INSTALL_PREFIX`: Specifies the installation directory.
     *   `BUILD_AI_CORE_TESTS=ON`: Enables building of tests.
-    *   `INFER_ENGINE=ORT`: Specifies ONNX Runtime as the inference engine. You might need to change this if using a different engine or if the project supports multiple.
+    *   `WITH_ORT_ENGINE=ON`: Enables ONNXRuntime inference engine.
+    *   `WITH_NCNN_ENGINE=ON`: Enables NCNN inference engine.
     *   `CMAKE_BUILD_TYPE=Release`: Specifies the build type.
 
 4.  **Build the project:**
