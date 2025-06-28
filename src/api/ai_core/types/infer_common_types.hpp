@@ -20,10 +20,11 @@ enum class DeviceType { CPU = 0, GPU = 1 };
 struct Shape {
   int w;
   int h;
+  int c;
 };
 
-enum class DataType {
-  FLOAT32,
+enum class DataType : u_char {
+  FLOAT32 = 0,
   FLOAT16,
   INT8,
 };

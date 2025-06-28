@@ -16,13 +16,17 @@
 #include "preproc_base.hpp"
 #include <memory>
 
-#ifdef WITH_NCNN
-#include "ncnn_image_preprocessor.hpp"
-using ai_core::dnn::ncnn::ImagePreprocessor;
-#else
-#include "cpu_image_preprocessor.hpp"
+// TODO: accomplish the preprocessing of the NCNN version.
+// #ifdef WITH_NCNN
+// #include "ncnn_image_preprocessor.hpp"
+// using ai_core::dnn::mncnn::ImagePreprocessor;
+// #else
+// #include "opencv_image_preprocessor.hpp"
+// using ai_core::dnn::cpu::ImagePreprocessor;
+// #endif
+
+#include "opencv_image_preprocessor.hpp"
 using ai_core::dnn::cpu::ImagePreprocessor;
-#endif
 
 namespace ai_core::dnn {
 class FramePreprocess : public PreprocssBase {

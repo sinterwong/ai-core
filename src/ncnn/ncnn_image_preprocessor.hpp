@@ -8,14 +8,13 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __NCNN_INFERENCE_FRAME__DET_HPP_
-#define __NCNN_INFERENCE_FRAME__DET_HPP_
+#ifndef __NCNN_IMAGE_PREPROCESSOR_HPP_
+#define __NCNN_IMAGE_PREPROCESSOR_HPP_
 
-#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/types/algo_input_types.hpp"
 #include "ai_core/types/typed_buffer.hpp"
-#include <memory>
 
-namespace ai_core::dnn::ncnn {
+namespace ai_core::dnn::mncnn {
 class ImagePreprocessor {
 public:
   explicit ImagePreprocessor() {}
@@ -23,5 +22,5 @@ public:
   TypedBuffer process(FramePreprocessArg &params,
                       const FrameInput &frameInput) const;
 };
-} // namespace ai_core::dnn::ncnn
+} // namespace ai_core::dnn::mncnn
 #endif

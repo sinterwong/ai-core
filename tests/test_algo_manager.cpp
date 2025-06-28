@@ -89,6 +89,9 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
         preprocJson["inputShape"].at("w").get<int>();
     framePreprocessArg.modelInputShape.h =
         preprocJson["inputShape"].at("h").get<int>();
+    framePreprocessArg.modelInputShape.c =
+        preprocJson["inputShape"].at("c").get<int>();
+
     framePreprocessArg.meanVals = preprocJson["mean"].get<std::vector<float>>();
     framePreprocessArg.normVals = preprocJson["std"].get<std::vector<float>>();
     framePreprocessArg.dataType =
@@ -99,6 +102,7 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
     framePreprocessArg.pad = cv::Scalar{static_cast<double>(padVec[0]),
                                         static_cast<double>(padVec[1]),
                                         static_cast<double>(padVec[2])};
+    framePreprocessArg.hwc2chw = preprocJson["hwc2chw"].get<bool>();
     params.setParam("preprocParams", framePreprocessArg);
   }
 
@@ -129,17 +133,11 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
   return params;
 }
 
-TEST_F(AlgoManagerTest, Normal) {
-
+#ifdef WITH_ORT
+TEST_F(AlgoManagerTest, ORTNormal) {
   std::string imagePath = (dataDir / "yolov11/image.png").string();
-
-#ifdef USE_NCNN
-  AlgoConstructParams params =
-      loadParamFromJson((confDir / "test_algo_manager_ncnn.json").string());
-#else
   AlgoConstructParams params =
       loadParamFromJson((confDir / "test_algo_manager_ort.json").string());
-#endif
   std::string name = params.getParam<std::string>("moduleName");
 
   AlgoModuleTypes moduleTypes;
@@ -171,7 +169,8 @@ TEST_F(AlgoManagerTest, Normal) {
   auto framePreprocessArg =
       params.getParam<FramePreprocessArg>("preprocParams");
   framePreprocessArg.roi = {0, 0, imageRGB.cols, imageRGB.rows};
-  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows,
+                                    imageRGB.channels()};
   preprocParams.setParams(framePreprocessArg);
 
   AlgoPostprocParams postprocParams;
@@ -205,4 +204,80 @@ TEST_F(AlgoManagerTest, Normal) {
   ASSERT_FALSE(manager->hasAlgo(name));
   ASSERT_EQ(manager->getAlgo(name), nullptr);
 }
+#endif
+
+#ifdef WITH_NCNN
+TEST_F(AlgoManagerTest, NCNNNormal) {
+  std::string imagePath = (dataDir / "yolov11/image.png").string();
+
+  AlgoConstructParams params =
+      loadParamFromJson((confDir / "test_algo_manager_ncnn.json").string());
+
+  std::string name = params.getParam<std::string>("moduleName");
+
+  AlgoModuleTypes moduleTypes;
+  moduleTypes.preprocModule = params.getParam<std::string>("preprocType");
+  moduleTypes.inferModule = params.getParam<std::string>("inferType");
+  moduleTypes.postprocModule = params.getParam<std::string>("postprocType");
+
+  AlgoInferParams inferParams = params.getParam<AlgoInferParams>("inferParams");
+
+  std::shared_ptr<AlgoInference> engine =
+      std::make_shared<AlgoInference>(moduleTypes, inferParams);
+
+  ASSERT_NE(engine, nullptr);
+  ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
+  std::shared_ptr<AlgoManager> manager = std::make_shared<AlgoManager>();
+  ASSERT_NE(manager, nullptr);
+
+  ASSERT_EQ(manager->registerAlgo(name, engine), InferErrorCode::SUCCESS);
+  ASSERT_TRUE(manager->hasAlgo(name));
+  ASSERT_NE(manager->getAlgo(name), nullptr);
+
+  // prepare input data
+  cv::Mat image = cv::imread(imagePath);
+  cv::Mat imageRGB;
+  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
+  ASSERT_FALSE(image.empty());
+
+  AlgoPreprocParams preprocParams;
+  auto framePreprocessArg =
+      params.getParam<FramePreprocessArg>("preprocParams");
+  framePreprocessArg.roi = {0, 0, imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows,
+                                    imageRGB.channels()};
+  preprocParams.setParams(framePreprocessArg);
+
+  AlgoPostprocParams postprocParams;
+  AnchorDetParams anchorDetParams =
+      params.getParam<AnchorDetParams>("postprocParams");
+  postprocParams.setParams(anchorDetParams);
+
+  FrameInput frameInput;
+  frameInput.image = imageRGB;
+  frameInput.inputName = "in0";
+
+  AlgoInput algoInput;
+  algoInput.setParams(frameInput);
+
+  AlgoOutput managerOutput;
+  ASSERT_EQ(manager->infer(name, algoInput, preprocParams, managerOutput,
+                           postprocParams),
+            InferErrorCode::SUCCESS);
+
+  auto managerDetRet = managerOutput.getParams<DetRet>();
+  ASSERT_NE(managerDetRet, nullptr);
+  ASSERT_EQ(managerDetRet->bboxes.size(), 2);
+
+  ASSERT_EQ(managerDetRet->bboxes[0].label, 7);
+  ASSERT_NEAR(managerDetRet->bboxes[0].score, 0.54, 1e-2);
+
+  ASSERT_EQ(managerDetRet->bboxes[1].label, 0);
+  ASSERT_NEAR(managerDetRet->bboxes[1].score, 0.8, 1e-2);
+
+  ASSERT_EQ(manager->unregisterAlgo(name), InferErrorCode::SUCCESS);
+  ASSERT_FALSE(manager->hasAlgo(name));
+  ASSERT_EQ(manager->getAlgo(name), nullptr);
+}
+#endif
 } // namespace testing_algo_manager
