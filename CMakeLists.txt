@@ -14,14 +14,14 @@ SET(CMAKE_CXX_STANDARD 20)
 
 OPTION(BUILD_AI_CORE_TESTS "Build with tests" OFF)
 
-# infer engine(You can only choose one type infer-engine)
-IF(NOT INFER_ENGINE)
-    SET(INFER_ENGINE ORT)  # supported: [ORT, NCNN]
-ENDIF()
+OPTION(WITH_ORT_ENGINE "Build with onnxruntime" ON)
+OPTION(WITH_NCNN_ENGINE "Build with ncnn" OFF)
 
 MESSAGE(INFO "--------------------------------")
 MESSAGE(STATUS "Build AICore: ${AI_CORE_VERSION}")
 MESSAGE(STATUS "Build with tests: ${BUILD_AI_CORE_TESTS}")
+MESSAGE(STATUS "Build with onnxruntime: ${WITH_ORT_ENGINE}")
+MESSAGE(STATUS "Build with ncnn: ${WITH_NCNN_ENGINE}")
 MESSAGE(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 MESSAGE(STATUS "CMAKE_CXX_STANDARD: ${CMAKE_CXX_STANDARD}")
 

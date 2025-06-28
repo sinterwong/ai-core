@@ -12,7 +12,7 @@
 #ifndef __INFERENCE_SAFE_WRAPPER_HPP__
 #define __INFERENCE_SAFE_WRAPPER_HPP__
 
-#include "infer.hpp"
+#include "infer_base.hpp"
 #include "infer_types.hpp"
 #include <atomic>
 #include <memory>

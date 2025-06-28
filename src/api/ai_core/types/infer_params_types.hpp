@@ -16,7 +16,7 @@
 #include <string>
 
 namespace ai_core {
-struct InferParamBase {
+struct AlgoInferParams {
   std::string name;
   std::string modelPath;
   bool needDecrypt = false;
@@ -24,11 +24,6 @@ struct InferParamBase {
   DeviceType deviceType;
   DataType dataType;
 };
-
-struct FrameInferParam : public InferParamBase {
-  Shape inputShape;
-};
-
 } // namespace ai_core
 
 #endif // __INFER_PARAMS_TYPES_HPP__

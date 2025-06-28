@@ -9,36 +9,22 @@
  *
  */
 
-#include "ai_core/algo_manager.hpp" // Public header
-#include "algo_manager_impl.hpp"    // Private implementation header
-
-// Note: AlgoInput, AlgoOutput, InferErrorCode etc. are pulled in via algo_manager.hpp
-// which includes the necessary public type headers from ai_core/types/.
-// AlgoInferBase is also included via algo_manager.hpp.
+#include "ai_core/algo_manager.hpp"
+#include "algo_manager_impl.hpp"
 
 namespace ai_core::dnn {
 
-// Constructor
 AlgoManager::AlgoManager() : pImpl(std::make_unique<Impl>()) {}
 
-// Destructor
-// Required for std::unique_ptr to an incomplete type in the header.
-// The compiler needs to see the full definition of Impl when generating
-// the destructor code for unique_ptr.
-AlgoManager::~AlgoManager() = default; // Default is fine as long as Impl's destructor is accessible
+AlgoManager::~AlgoManager() = default;
 
-// Move constructor
-// The default move constructor will correctly move the std::unique_ptr pImpl.
 AlgoManager::AlgoManager(AlgoManager &&other) noexcept = default;
 
-// Move assignment operator
-// The default move assignment operator will correctly move assign the std::unique_ptr pImpl.
 AlgoManager &AlgoManager::operator=(AlgoManager &&other) noexcept = default;
-
 
 InferErrorCode
 AlgoManager::registerAlgo(const std::string &name,
-                          const std::shared_ptr<AlgoInferBase> &algo) {
+                          const std::shared_ptr<AlgoInference> &algo) {
   return pImpl->registerAlgo(name, algo);
 }
 
@@ -47,11 +33,13 @@ InferErrorCode AlgoManager::unregisterAlgo(const std::string &name) {
 }
 
 InferErrorCode AlgoManager::infer(const std::string &name, AlgoInput &input,
-                                  AlgoOutput &output) {
-  return pImpl->infer(name, input, output);
+                                  AlgoPreprocParams &preprocParams,
+                                  AlgoOutput &output,
+                                  AlgoPostprocParams &postprocParams) {
+  return pImpl->infer(name, input, preprocParams, output, postprocParams);
 }
 
-std::shared_ptr<AlgoInferBase>
+std::shared_ptr<AlgoInference>
 AlgoManager::getAlgo(const std::string &name) const {
   return pImpl->getAlgo(name);
 }

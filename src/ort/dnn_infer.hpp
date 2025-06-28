@@ -1,5 +1,5 @@
 /**
- * @file ort_dnn_infer.hpp
+ * @file ort_dnn_infer_base.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -11,32 +11,33 @@
 #ifndef __ONNXRUNTIME_INFERENCE_H_
 #define __ONNXRUNTIME_INFERENCE_H_
 
-#include "infer.hpp"
 #include <memory>
+
+#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/types/infer_params_types.hpp"
+#include "infer_base.hpp"
+
 #include <onnxruntime_cxx_api.h>
 
 namespace ai_core::dnn {
-class AlgoInference : public Inference {
+class OrtAlgoInference : public InferBase {
 public:
-  AlgoInference(const InferParamBase &params)
-      : params(std::make_unique<InferParamBase>(params)) {}
+  OrtAlgoInference(const AlgoConstructParams &params)
+      : params_(std::move(params.getParam<AlgoInferParams>("params"))) {}
 
-  virtual ~AlgoInference() override {}
+  virtual ~OrtAlgoInference() override {}
 
   virtual InferErrorCode initialize() override;
 
-  virtual InferErrorCode infer(AlgoInput &input,
-                               ModelOutput &modelOutput) override;
+  virtual InferErrorCode infer(TensorData &inputs,
+                               TensorData &outputs) override;
 
   virtual const ModelInfo &getModelInfo() override;
 
   virtual InferErrorCode terminate() override;
 
 protected:
-  virtual std::vector<TypedBuffer> preprocess(AlgoInput &input) const = 0;
-
-protected:
-  std::unique_ptr<InferParamBase> params;
+  AlgoInferParams params_;
   std::vector<std::string> inputNames;
   std::vector<std::string> outputNames;
 

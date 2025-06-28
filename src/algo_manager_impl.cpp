@@ -9,24 +9,18 @@
  *
  */
 
-#include "algo_manager_impl.hpp" // Corresponding header
-#include "logger.hpp"            // For LOG_ macros. Relies on include path setup by CMake.
-                                 // This matches the original include in algo_manager.cpp.
-                                 // The actual logger.hpp is expected to be in 3rdparty/logger (submodule).
+#include "algo_manager_impl.hpp"
+#include "logger.hpp"
 
 namespace ai_core::dnn {
 
-AlgoManager::Impl::Impl() {
-  // Constructor for Impl, if any specific initialization is needed for its members
-}
+AlgoManager::Impl::Impl() {}
 
-AlgoManager::Impl::~Impl() {
-  // Destructor for Impl, if any specific cleanup is needed
-}
+AlgoManager::Impl::~Impl() {}
 
 InferErrorCode
 AlgoManager::Impl::registerAlgo(const std::string &name,
-                                const std::shared_ptr<AlgoInferBase> &algo) {
+                                const std::shared_ptr<AlgoInference> &algo) {
   std::unique_lock<std::shared_mutex> lock(mutex_);
   if (algoMap_.count(name)) {
     LOG_ERRORS << "Algo with name " << name << " already registered.";
@@ -54,26 +48,28 @@ InferErrorCode AlgoManager::Impl::unregisterAlgo(const std::string &name) {
 
 InferErrorCode AlgoManager::Impl::infer(const std::string &name,
                                         AlgoInput &input,
-                                        AlgoOutput &output) {
+                                        AlgoPreprocParams &preprocParams,
+                                        AlgoOutput &output,
+                                        AlgoPostprocParams &postprocParams) {
   std::shared_lock<std::shared_mutex> lock(mutex_);
   auto it = algoMap_.find(name);
   if (it == algoMap_.end()) {
     LOG_ERRORS << "Algo with name " << name << " not found for inference.";
-    return InferErrorCode::ALGO_NOT_FOUND; // Changed from ALGO_INFER_FAILED to be more specific
+    return InferErrorCode::ALGO_NOT_FOUND;
   }
   if (!it->second) {
     LOG_ERRORS << "Algo with name " << name << " is registered but null.";
     return InferErrorCode::ALGO_NOT_FOUND;
   }
-  return it->second->infer(input, output);
+  return it->second->infer(input, preprocParams, output, postprocParams);
 }
 
-std::shared_ptr<AlgoInferBase>
+std::shared_ptr<AlgoInference>
 AlgoManager::Impl::getAlgo(const std::string &name) const {
   std::shared_lock<std::shared_mutex> lock(mutex_);
   auto it = algoMap_.find(name);
   if (it == algoMap_.end()) {
-    // LOG_ERRORS << "Algo with name " << name << " not found in getAlgo."; // Optional: logging in a const getter
+    LOG_ERRORS << "Algo with name " << name << " not found in getAlgo.";
     return nullptr;
   }
   return it->second;

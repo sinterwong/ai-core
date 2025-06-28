@@ -12,59 +12,51 @@
 #ifndef __NCNN_INFERENCE_HPP_
 #define __NCNN_INFERENCE_HPP_
 
-#include "infer.hpp"
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <vector>
+
+#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/types/infer_params_types.hpp"
+#include "infer_base.hpp"
+#include <ncnn/allocator.h>
 #include <ncnn/net.h>
 
 namespace ai_core::dnn {
-class AlgoInference : public Inference {
+class NCNNAlgoInference : public InferBase {
 public:
-  AlgoInference(const InferParamBase &param)
-      : params(std::make_unique<InferParamBase>(param)), isInitialized(false) {
+  NCNNAlgoInference(const AlgoConstructParams &params)
+      : params_(std::move(params.getParam<AlgoInferParams>("params"))),
+        isInitialized(false) {
     blobPoolAllocator.set_size_compare_ratio(0.f);
     workspacePoolAllocator.set_size_compare_ratio(0.f);
   }
 
-  virtual ~AlgoInference() override {
-    net.clear();
-    blobPoolAllocator.clear();
-    workspacePoolAllocator.clear();
-    for (void *ptr : m_aligned_buffers) {
-      free(ptr);
-    }
-    m_aligned_buffers.clear();
-    inputNames.clear();
-    outputNames.clear();
-  }
+  virtual ~NCNNAlgoInference() override;
 
   virtual InferErrorCode initialize() override;
 
-  virtual InferErrorCode infer(AlgoInput &input,
-                               ModelOutput &modelOutput) override;
+  virtual InferErrorCode infer(TensorData &inputs,
+                               TensorData &outputs) override;
 
   virtual const ModelInfo &getModelInfo() override;
 
   virtual InferErrorCode terminate() override;
 
 protected:
-  virtual std::vector<std::pair<std::string, ncnn::Mat>>
-  preprocess(AlgoInput &input) const = 0;
-
-protected:
-  std::unique_ptr<InferParamBase> params;
+  AlgoInferParams params_;
   std::vector<std::string> inputNames;
   std::vector<std::string> outputNames;
+  std::shared_ptr<ModelInfo> modelInfo;
 
   ncnn::Net net;
-
   ncnn::PoolAllocator blobPoolAllocator;
   ncnn::PoolAllocator workspacePoolAllocator;
+  std::vector<void *>
+      m_aligned_buffers; // For manually managed memory if needed
 
-private:
-  std::vector<void *> m_aligned_buffers;
-  mutable std::mutex mtx_;
+  std::mutex mtx_; // Mutex for thread safety
   std::atomic_bool isInitialized;
 };
 } // namespace ai_core::dnn
