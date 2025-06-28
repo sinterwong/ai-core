@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __ORT_IMAGE_PREPROCESSOR_HPP_
-#define __ORT_IMAGE_PREPROCESSOR_HPP_
+#ifndef __OPENCV_IMAGE_PREPROCESSOR_HPP_
+#define __OPENCV_IMAGE_PREPROCESSOR_HPP_
 
 #include "ai_core/types/algo_input_types.hpp"
 #include "ai_core/types/typed_buffer.hpp"
@@ -29,10 +29,14 @@ public:
 
 private:
   TypedBuffer preprocessFP32(const cv::Mat &normalizedImage, int inputChannels,
-                             int inputHeight, int inputWidth) const;
+                             int inputHeight, int inputWidth,
+                             bool hwc2chw) const;
 
   TypedBuffer preprocessFP16(const cv::Mat &normalizedImage, int inputChannels,
-                             int inputHeight, int inputWidth) const;
+                             int inputHeight, int inputWidth,
+                             bool hwc2chw) const;
+
+  void convertLayout(const cv::Mat &image, float *dst, bool hwc2chw) const;
 };
 } // namespace ai_core::dnn::cpu
 #endif

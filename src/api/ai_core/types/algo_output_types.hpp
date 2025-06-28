@@ -13,7 +13,7 @@
 #define __ALGO_OUTPUT_TYPES_HPP__
 
 #include <opencv2/core/types.hpp>
-#include <vector> // For std::vector
+#include <vector>
 
 namespace ai_core {
 

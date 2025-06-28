@@ -10,7 +10,8 @@
             "preprocParams": {
                 "inputShape": {
                     "w": 640,
-                    "h": 640
+                    "h": 640,
+                    "c": 3
                 },
                 "mean": [
                     0.0,
@@ -29,7 +30,8 @@
                 ],
                 "isEqualScale": true,
                 "needResize": true,
-                "dataType": 1
+                "dataType": 1,
+                "hwc2chw": true
             },
             "inferParams": {
                 "modelPath": "models/yolov11n-fp16.onnx",

@@ -1,5 +1,5 @@
 /**
- * @file dnn_infer_base.hpp
+ * @file dnn_infer.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -12,11 +12,15 @@
 #ifndef __NCNN_INFERENCE_HPP_
 #define __NCNN_INFERENCE_HPP_
 
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <vector>
+
 #include "ai_core/types/algo_data_types.hpp"
 #include "ai_core/types/infer_params_types.hpp"
 #include "infer_base.hpp"
-#include <atomic>
-#include <mutex>
+#include <ncnn/allocator.h>
 #include <ncnn/net.h>
 
 namespace ai_core::dnn {
@@ -29,17 +33,7 @@ public:
     workspacePoolAllocator.set_size_compare_ratio(0.f);
   }
 
-  virtual ~NCNNAlgoInference() override {
-    net.clear();
-    blobPoolAllocator.clear();
-    workspacePoolAllocator.clear();
-    for (void *ptr : m_aligned_buffers) {
-      free(ptr);
-    }
-    m_aligned_buffers.clear();
-    inputNames.clear();
-    outputNames.clear();
-  }
+  virtual ~NCNNAlgoInference() override;
 
   virtual InferErrorCode initialize() override;
 
@@ -51,22 +45,18 @@ public:
   virtual InferErrorCode terminate() override;
 
 protected:
-  virtual std::vector<std::pair<std::string, ncnn::Mat>>
-  preprocess(AlgoInput &input) const = 0;
-
-protected:
   AlgoInferParams params_;
   std::vector<std::string> inputNames;
   std::vector<std::string> outputNames;
+  std::shared_ptr<ModelInfo> modelInfo;
 
   ncnn::Net net;
-
   ncnn::PoolAllocator blobPoolAllocator;
   ncnn::PoolAllocator workspacePoolAllocator;
+  std::vector<void *>
+      m_aligned_buffers; // For manually managed memory if needed
 
-private:
-  std::vector<void *> m_aligned_buffers;
-  mutable std::mutex mtx_;
+  std::mutex mtx_; // Mutex for thread safety
   std::atomic_bool isInitialized;
 };
 } // namespace ai_core::dnn

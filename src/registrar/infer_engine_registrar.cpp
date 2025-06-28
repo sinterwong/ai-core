@@ -11,10 +11,15 @@
 
 #include "infer_engine_registrar.hpp"
 #include "ai_core/types/algo_data_types.hpp"
+#include "dnn_infer.hpp"
 #include "logger.hpp"
 
 #ifdef WITH_ORT
 #include "ort/dnn_infer.hpp"
+#endif
+
+#ifdef WITH_NCNN
+#include "ncnn/dnn_infer.hpp"
 #endif
 
 namespace ai_core::dnn {
@@ -30,6 +35,10 @@ namespace ai_core::dnn {
 InferEngineRegistrar::InferEngineRegistrar() {
 #ifdef WITH_ORT
   REGISTER_INFER_ENGINE(OrtAlgoInference);
+#endif
+
+#ifdef WITH_NCNN
+  REGISTER_INFER_ENGINE(NCNNAlgoInference);
 #endif
 }
 } // namespace ai_core::dnn

@@ -6,14 +6,14 @@ SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 SET(NCNN_MODULE_PRIVATE_INCLUDES
     ${OpenCV_INCLUDE_DIRS}
-		${NCNN_INCLUDE_DIR}
+    ${NCNN_INCLUDE_DIR}
 )
 
 SET(NCNN_MODULE_LINK_LIBS
     encrypt::encrypt
     logger::logger
-		${OpenMP_CXX_FLAGS}
-		${NCNN_LIBS}
+    ${OpenMP_CXX_FLAGS}
+    ${NCNN_LIBS}
     ${OpenCV_LIBS}
 )
 

@@ -30,6 +30,7 @@ struct FramePreprocessArg {
   int leftPad = 0;
 
   DataType dataType;
+  bool hwc2chw = false;
 };
 
 struct FrameInput {

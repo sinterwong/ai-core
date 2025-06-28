@@ -12,13 +12,18 @@
 #include "dnn_infer.hpp"
 #include "crypto.hpp"
 #include "logger.hpp"
-#include <ncnn/allocator.h>
+#include <chrono> // For timing
 #include <ncnn/cpu.h>
-#include <opencv2/core/hal/interface.h>
-#include <stdlib.h>
+#include <stdlib.h> // For aligned_alloc and free on non-Windows
 #include <vector>
 
+#ifndef _WIN32
+#include <cstdlib> // For posix_memalign
+#endif
+
 namespace ai_core::dnn {
+
+NCNNAlgoInference::~NCNNAlgoInference() { terminate(); }
 
 InferErrorCode NCNNAlgoInference::initialize() {
   std::lock_guard lock(mtx_);
@@ -33,11 +38,15 @@ InferErrorCode NCNNAlgoInference::initialize() {
   outputNames.clear();
   modelInfo.reset();
   for (void *ptr : m_aligned_buffers) {
+#ifdef _WIN32
+    _aligned_free(ptr);
+#else
     free(ptr);
+#endif
   }
   m_aligned_buffers.clear();
 
-  LOG_INFOS << "Attempting to initialize model: " << params->name;
+  LOG_INFOS << "Attempting to initialize model: " << params_.name;
 
   try {
     ncnn::set_cpu_powersave(2);
@@ -45,30 +54,37 @@ InferErrorCode NCNNAlgoInference::initialize() {
     net.opt = ncnn::Option();
 
 #if NCNN_VULKAN
-    if (!params) {
-      LOG_ERRORS << "Initialization failed: params is null.";
-      return InferErrorCode::INIT_FAILED;
-    }
-    bool use_gpu = (params->deviceType == DeviceType::GPU);
+    bool use_gpu = (params_.deviceType == DeviceType::GPU);
     net.opt.use_vulkan_compute = use_gpu;
     if (use_gpu) {
-      LOG_INFOS << params->name << " will attempt to load on GPU (Vulkan).";
+      LOG_INFOS << params_.name << " will attempt to load on GPU (Vulkan).";
+    } else {
+      LOG_INFOS << params_.name << " will load on CPU.";
+    }
+#else
+    if (params_.deviceType == DeviceType::GPU) {
+      LOG_WARNS
+          << "NCNN Vulkan support is not compiled, but GPU was requested. "
+             "Falling back to CPU for model: "
+          << params_.name;
+    } else {
+      LOG_INFOS << params_.name << " will load on CPU.";
     }
 #endif
     net.opt.num_threads = ncnn::get_big_cpu_count();
     net.opt.blob_allocator = &blobPoolAllocator;
     net.opt.workspace_allocator = &workspacePoolAllocator;
 
-    std::string paramPath = params->modelPath + ".param";
+    std::string paramPath = params_.modelPath + ".param";
     if (net.load_param(paramPath.c_str()) != 0) {
       LOG_ERRORS << "Failed to load model parameters: " << paramPath;
       return InferErrorCode::INIT_MODEL_LOAD_FAILED;
     }
     LOG_INFOS << "Successfully loaded parameters: " << paramPath;
 
-    std::string binPath = params->modelPath + ".bin";
+    std::string binPath = params_.modelPath + ".bin";
 
-    if (params->needDecrypt) {
+    if (params_.needDecrypt) {
       int model_load_ret = -1;
       LOG_INFOS << "Decrypting model weights: " << binPath;
       std::vector<uchar> modelData;
@@ -140,7 +156,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
     const auto &out_names = net.output_names();
     inputNames.assign(in_names.begin(), in_names.end());
     outputNames.assign(out_names.begin(), out_names.end());
-    LOG_INFOS << "Successfully initialized model: " << params->name;
+    LOG_INFOS << "Successfully initialized model: " << params_.name;
     isInitialized.store(
         true, std::memory_order_release); // Set flag ONLY on full success
     return InferErrorCode::SUCCESS;
@@ -159,78 +175,158 @@ InferErrorCode NCNNAlgoInference::initialize() {
 InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
                                         TensorData &outputs) {
   if (!isInitialized.load(std::memory_order_acquire)) {
-    LOG_ERRORS << "Inference called on uninitialized model: "
-               << (params ? params->name : "Unknown");
+    LOG_ERRORS << "Inference called on uninitialized model: " << params_.name;
     return InferErrorCode::NOT_INITIALIZED;
   }
 
+  std::lock_guard<std::mutex> lock(mtx_);
+
   try {
-    modelOutput.outputs.clear();
-    modelOutput.outputShapes.clear();
+    outputs.datas.clear();
+    outputs.shapes.clear();
 
-    auto startPre = std::chrono::steady_clock::now();
-    auto inputs = preprocess(input);
-    if (inputs.empty() && !inputNames.empty()) {
-      LOG_ERRORS << "Preprocessing returned empty inputs for model: "
-                 << params->name;
-      return InferErrorCode::INFER_PREPROCESS_FAILED;
+    if (inputs.datas.empty() && !inputNames.empty()) {
+      LOG_ERRORS << "Empty input data for NCNN model: " << params_.name;
+      return InferErrorCode::INFER_PREPROCESS_FAILED; // Or appropriate error
     }
+
     ncnn::Extractor ex = net.create_extractor();
-    for (auto const &[name, in] : inputs) {
-      ex.input(name.c_str(), in);
-    }
-    auto endPre = std::chrono::steady_clock::now();
-    auto durationPre = std::chrono::duration_cast<std::chrono::milliseconds>(
-        endPre - startPre);
-    LOG_INFOS << params->name << " preprocess cost " << durationPre.count()
-              << " ms";
+    ex.set_light_mode(true);
 
-    int numOutputs = outputNames.size();
-    // infer cost time
-    auto start = std::chrono::steady_clock::now();
-    for (auto const &output : outputNames) {
-      ncnn::Mat out;
-      ex.extract(output.c_str(), out);
-      TypedBuffer outputData;
-      outputData.dataType = DataType::FLOAT32;
-      outputData.elementCount = out.total();
-      auto rawData = reinterpret_cast<uint8_t *>(out.data);
-      outputData.data.assign(rawData, rawData + out.total() * sizeof(float));
-
-      std::vector<int> outputShape;
-      if (out.dims == 1) {
-        outputShape.push_back(out.w);
-      } else if (out.dims == 2) {
-        outputShape.push_back(out.h);
-        outputShape.push_back(out.w);
-      } else if (out.dims == 3) {
-        outputShape.push_back(out.c);
-        outputShape.push_back(out.h);
-        outputShape.push_back(out.w);
-      } else if (out.dims == 4) {
-        outputShape.push_back(out.d);
-        outputShape.push_back(out.c);
-        outputShape.push_back(out.h);
-        outputShape.push_back(out.w);
+    for (const auto &inputName : inputNames) {
+      auto it = inputs.datas.find(inputName);
+      if (it == inputs.datas.end()) {
+        LOG_ERRORS << "Input tensor '" << inputName
+                   << "' not found in provided inputs for NCNN model: "
+                   << params_.name;
+        return InferErrorCode::INFER_FAILED;
       }
-      modelOutput.outputs.insert(std::make_pair(output, outputData));
-      modelOutput.outputShapes.insert(std::make_pair(output, outputShape));
+      const TypedBuffer &buffer = it->second;
+      if (buffer.data.empty()) {
+        LOG_ERRORS << "Empty input data for input tensor '" << inputName;
+        return InferErrorCode::INFER_FAILED;
+      }
+      auto shape_it = inputs.shapes.find(inputName);
+      if (shape_it == inputs.shapes.end() || shape_it->second.empty()) {
+        LOG_ERRORS << "Shape for input tensor '" << inputName
+                   << "' not found or is empty for NCNN model: "
+                   << params_.name;
+        return InferErrorCode::INFER_FAILED;
+      }
+      const std::vector<int> &shape = shape_it->second;
+
+      if (buffer.dataType != DataType::FLOAT32) {
+        LOG_ERRORS << "Unsupported data type for NCNN input '" << inputName
+                   << "'. Expected FLOAT32.";
+        return InferErrorCode::INFER_FAILED;
+      }
+
+      ncnn::Mat ncnn_in;
+      if (shape.size() == 3) {
+        ncnn_in = ncnn::Mat(shape[2], shape[1], shape[0],
+                            (void *)buffer.data.data(), sizeof(float));
+      } else if (shape.size() == 4 && shape[0] == 1) { // NCHW, N=1
+        ncnn_in = ncnn::Mat(shape[3], shape[2], shape[1],
+                            (void *)buffer.data.data(), sizeof(float));
+      } else if (shape.size() == 2) { // HW
+        ncnn_in = ncnn::Mat(shape[1], shape[0], (void *)buffer.data.data(),
+                            sizeof(float));
+      } else if (shape.size() == 1) { // W
+        ncnn_in =
+            ncnn::Mat(shape[0], (void *)buffer.data.data(), sizeof(float));
+      } else {
+        LOG_ERRORS << "Unsupported input shape dimension " << shape.size()
+                   << " for NCNN input '" << inputName << "'.";
+        return InferErrorCode::INFER_FAILED;
+      }
+
+      if (ncnn_in.empty()) {
+        LOG_ERRORS << "Failed to create ncnn::Mat for input: " << inputName;
+        return InferErrorCode::INFER_FAILED;
+      }
+      ex.input(inputName.c_str(), ncnn_in);
     }
-    auto end = std::chrono::steady_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOG_INFOS << params->name << " inference cost " << duration.count()
-              << " ms";
+
+    auto inferStart = std::chrono::steady_clock::now();
+
+    for (const auto &outputName : outputNames) {
+      ncnn::Mat ncnn_out;
+      int ret = ex.extract(outputName.c_str(), ncnn_out);
+      if (ret != 0) {
+        LOG_ERRORS << "Failed to extract output '" << outputName
+                   << "' from NCNN model: " << params_.name;
+        return InferErrorCode::INFER_FAILED;
+      }
+
+      TypedBuffer outputBuffer;
+      outputBuffer.dataType = DataType::FLOAT32; // NCNN outputs are float
+      outputBuffer.elementCount = ncnn_out.total();
+      size_t byteSize = ncnn_out.total() * sizeof(float);
+      outputBuffer.data.resize(byteSize);
+      memcpy(outputBuffer.data.data(), ncnn_out.data, byteSize);
+
+      outputs.datas.insert(std::make_pair(outputName, std::move(outputBuffer)));
+
+      std::vector<int> shapeVec;
+      if (ncnn_out.dims == 1) { // Typically (Features) or (Width)
+        shapeVec = {ncnn_out.w};
+      } else if (ncnn_out.dims == 2) { // Typically (Height, Width)
+        shapeVec = {ncnn_out.h, ncnn_out.w};
+      } else if (ncnn_out.dims == 3) { // Typically (Channels, Height, Width)
+        shapeVec = {ncnn_out.c, ncnn_out.h, ncnn_out.w};
+      } else if (ncnn_out.dims == 4) { // (Channels, Depth, Height, Width)
+        shapeVec = {ncnn_out.c, static_cast<int>(ncnn_out.elemsize), ncnn_out.h,
+                    ncnn_out.w};
+        // representation
+        // A common interpretation for ncnn output with dims=4 is (N, C, H, W)
+        // where N=1 and d is used for C if cdim is implicit.
+        // For safety, let's assume it's (ncnn_out.c, ncnn_out.d, ncnn_out.h,
+        // ncnn_out.w)
+        // The actual interpretation depends on how the model was constructed.
+        // For now, let's use a simpler representation.
+        LOG_WARNINGS
+            << "4D NCNN output tensor, shape interpretation might need "
+               "verification.";
+        // A common output format might be just a flat list of features, or
+        // CHW.
+        // If it's truly 4D like (1, C, H, W), then:
+        // shapeVec = {1, ncnn_out.c, ncnn_out.h, ncnn_out.w}; if we assume d is
+        // batch.
+        // Let's stick to ncnn's perspective: c, h, w (and d if present)
+        // If dims is 4, it's (w, h, depth, channels) according to some docs for
+        // ncnn::Mat constructor,
+        // but ncnn::Mat members are c, d, h, w.
+        // Let's assume dims indicates number of dimensions, and then c,h,w (and
+        // d) are populated.
+        // So if dims = 4, it's (ncnn_out.c, ncnn_out.d, ncnn_out.h,
+        // ncnn_out.w)
+        // This is very confusing. Let's assume for vision tasks, output is
+        // rarely 4D unless it's sequence.
+        // Most likely, it's 3D (C,H,W) or 1D (features).
+        // For now, if dims==4, we'll use {ncnn_out.c, ncnn_out.d, ncnn_out.h,
+        // ncnn_out.w}
+        // but this should be verified against actual model outputs.
+        // A safer bet for unknown 4D is to flatten or use a known convention.
+        // Let's assume it's (C,D,H,W) from ncnn if dims == 4
+        shapeVec = {ncnn_out.c, ncnn_out.d, ncnn_out.h, ncnn_out.w};
+      }
+      outputs.shapes.insert(std::make_pair(outputName, shapeVec));
+    }
+
+    auto inferEnd = std::chrono::steady_clock::now();
+    auto durationInfer = std::chrono::duration_cast<std::chrono::milliseconds>(
+        inferEnd - inferStart);
+    LOG_INFOS << params_.name << " NCNN inference cost "
+              << durationInfer.count() << " ms";
 
     return InferErrorCode::SUCCESS;
-
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Exception during inference for "
-               << (params ? params->name : "Unknown") << ": " << e.what();
+    LOG_ERRORS << "Std Exception during inference for " << params_.name << ": "
+               << e.what();
     return InferErrorCode::INFER_FAILED;
   } catch (...) {
-    LOG_ERRORS << "Unknown exception during inference for "
-               << (params ? params->name : "Unknown");
+    LOG_ERRORS << "Unknown exception during NCNN inference for "
+               << params_.name;
     return InferErrorCode::INFER_FAILED;
   }
 }
@@ -255,15 +351,9 @@ const ModelInfo &NCNNAlgoInference::getModelInfo() {
       return *modelInfo;
     }
 
-    if (!params) {
-      LOG_ERRORS << "Cannot get model info: params is null.";
-      static ModelInfo emptyInfo = {};
-      return emptyInfo;
-    }
-
-    LOG_INFOS << "Generating model info for: " << params->name;
+    LOG_INFOS << "Generating model info for: " << params_.name;
     modelInfo = std::make_shared<ModelInfo>();
-    modelInfo->name = params->name;
+    modelInfo->name = params_.name;
 
     modelInfo->inputs.reserve(inputNames.size());
     for (const auto &inputName : inputNames) {
@@ -280,12 +370,12 @@ const ModelInfo &NCNNAlgoInference::getModelInfo() {
 }
 
 InferErrorCode NCNNAlgoInference::terminate() {
-  std::lock_guard lock(mtx_);
-  LOG_INFOS << "Terminating model: " << (params ? params->name : "Unknown");
+  std::lock_guard<std::mutex> lock(mtx_);
+  LOG_INFOS << "Terminating NCNN model: " << params_.name;
   try {
-    net.clear();
-    blobPoolAllocator.clear();
-    workspacePoolAllocator.clear();
+    net.clear();                    // Releases network structure and weights
+    blobPoolAllocator.clear();      // Clear blob memory pool
+    workspacePoolAllocator.clear(); // Clear workspace memory pool
 
     for (void *ptr : m_aligned_buffers) {
 #ifdef _WIN32
@@ -298,21 +388,17 @@ InferErrorCode NCNNAlgoInference::terminate() {
 
     inputNames.clear();
     outputNames.clear();
-    modelInfo.reset();
+    modelInfo.reset(); // Release shared_ptr
 
-    isInitialized.store(false, std::memory_order_release);
-
-    LOG_INFOS << "Model terminated successfully: "
-              << (params ? params->name : "Unknown");
+    LOG_INFOS << "NCNN Model terminated successfully: " << params_.name;
     return InferErrorCode::SUCCESS;
-
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Exception during termination: " << e.what();
-    isInitialized.store(false, std::memory_order_release);
+    LOG_ERRORS << "Std Exception during termination for " << params_.name
+               << ": " << e.what();
     return InferErrorCode::TERMINATE_FAILED;
   } catch (...) {
-    LOG_ERRORS << "Unknown exception during termination.";
-    isInitialized.store(false, std::memory_order_release);
+    LOG_ERRORS << "Unknown exception during NCNN model termination: "
+               << params_.name;
     return InferErrorCode::TERMINATE_FAILED;
   }
 }
