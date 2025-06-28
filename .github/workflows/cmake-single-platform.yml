@@ -60,7 +60,8 @@ jobs:
         cmake -B ${{ github.workspace }}/build -GNinja
         -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
         -DBUILD_AI_CORE_TESTS=ON
-        -DINFER_ENGINE=ORT
+        -DWITH_ORT_ENGINE=ON
+        -DWITH_NCNN_ENGINE=ON
         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
         -S ${{ github.workspace }}
 
