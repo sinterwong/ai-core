@@ -31,11 +31,14 @@ struct FramePreprocessArg {
 
   DataType dataType;
   bool hwc2chw = false;
+
+  // this type of input is only allowed to have one
+  // multi-inputs may require the expansion of the preprocessing plugin
+  std::string inputName;
 };
 
 struct FrameInput {
   cv::Mat image;
-  std::string inputName;
 };
 
 } // namespace ai_core

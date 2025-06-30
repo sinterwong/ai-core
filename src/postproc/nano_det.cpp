@@ -44,9 +44,9 @@ bool NanoDet::process(const TensorData &modelOutput,
     throw std::runtime_error(
         "AnchorDetParams(NanoDet)  unexpected size of outputs");
   }
-  auto output = outputs.at("output");
+  auto output = outputs.at(params->outputNames.at(0));
 
-  std::vector<int> outputShape = outputShapes.at("output");
+  std::vector<int> outputShape = outputShapes.at(params->outputNames.at(0));
   int numAnchors = outputShape.at(outputShape.size() - 2);
   int stride = outputShape.at(outputShape.size() - 1);
   int numClasses = stride - 4;

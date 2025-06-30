@@ -44,9 +44,9 @@ bool Yolov11Det::process(const TensorData &modelOutput,
     throw std::runtime_error(
         "AnchorDetParams(Yolov11Det)  unexpected size of outputs");
   }
-  auto output = outputs.at("output0");
+  auto output = outputs.at(params->outputNames.at(0));
 
-  std::vector<int> outputShape = outputShapes.at("output0");
+  std::vector<int> outputShape = outputShapes.at(params->outputNames.at(0));
   int signalResultNum = outputShape.at(outputShape.size() - 2);
   int strideNum = outputShape.at(outputShape.size() - 1);
 

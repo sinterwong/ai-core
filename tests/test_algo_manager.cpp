@@ -103,6 +103,8 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
                                         static_cast<double>(padVec[1]),
                                         static_cast<double>(padVec[2])};
     framePreprocessArg.hwc2chw = preprocJson["hwc2chw"].get<bool>();
+    framePreprocessArg.inputName =
+        preprocJson["inputNames"].get<std::vector<std::string>>()[0];
     params.setParam("preprocParams", framePreprocessArg);
   }
 
@@ -127,6 +129,10 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
           postProcJson["inputShape"].at("w").get<int>();
       anchorDetParams.inputShape.h =
           postProcJson["inputShape"].at("h").get<int>();
+    }
+    if (postProcJson.contains("outputNames")) {
+      anchorDetParams.outputNames =
+          postProcJson["outputNames"].get<std::vector<std::string>>();
     }
     params.setParam("postprocParams", anchorDetParams);
   }
@@ -180,7 +186,6 @@ TEST_F(AlgoManagerTest, ORTNormal) {
 
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.inputName = "images";
 
   AlgoInput algoInput;
   algoInput.setParams(frameInput);
@@ -255,7 +260,6 @@ TEST_F(AlgoManagerTest, NCNNNormal) {
 
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.inputName = "in0";
 
   AlgoInput algoInput;
   algoInput.setParams(frameInput);

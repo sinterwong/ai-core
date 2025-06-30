@@ -31,7 +31,7 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
   }
 
   output.datas.insert(std::make_pair(
-      frameInput->inputName, processor_->process(*paramsPtr, *frameInput)));
+      paramsPtr->inputName, processor_->process(*paramsPtr, *frameInput)));
   std::vector<int> shape;
   if (paramsPtr->hwc2chw) {
     shape = {paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
@@ -40,7 +40,7 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
     shape = {paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
              paramsPtr->modelInputShape.c};
   }
-  output.shapes.insert(std::make_pair(frameInput->inputName, shape));
+  output.shapes.insert(std::make_pair(paramsPtr->inputName, shape));
   return true;
 }
 } // namespace ai_core::dnn

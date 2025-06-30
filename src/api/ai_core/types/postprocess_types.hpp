@@ -20,6 +20,7 @@ struct AnchorDetParams {
   float condThre;
   float nmsThre;
   Shape inputShape;
+  std::vector<std::string> outputNames;
 };
 } // namespace ai_core
 

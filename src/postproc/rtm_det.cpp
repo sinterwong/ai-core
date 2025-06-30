@@ -37,11 +37,13 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
   const auto &outputs = modelOutput.datas;
 
   // two output
-  auto detPred = outputs.at("1018");
-  auto clsPred = outputs.at("1019");
+  const auto &detOutputName = params->outputNames.at(0);
+  const auto &clsOutputName = params->outputNames.at(1);
+  auto detPred = outputs.at(detOutputName);
+  auto clsPred = outputs.at(clsOutputName);
 
-  std::vector<int> detOutShape = outputShapes.at("1018");
-  std::vector<int> clsOutShape = outputShapes.at("1019");
+  std::vector<int> detOutShape = outputShapes.at(detOutputName);
+  std::vector<int> clsOutShape = outputShapes.at(clsOutputName);
 
   int numClasses = clsOutShape.at(clsOutShape.size() - 1);
   int anchorNum = detOutShape.at(detOutShape.size() - 2);

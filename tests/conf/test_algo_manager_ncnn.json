@@ -31,7 +31,10 @@
                 "isEqualScale": true,
                 "needResize": true,
                 "dataType": 0,
-                "hwc2chw": true
+                "hwc2chw": true,
+                "inputNames": [
+                    "in0"
+                ]
             },
             "inferParams": {
                 "modelPath": "models/yolov11n.ncnn",
@@ -44,7 +47,10 @@
                 "inputShape": {
                     "w": 640,
                     "h": 640
-                }
+                },
+                "outputNames": [
+                    "output0"
+                ]
             }
         }
     ]
