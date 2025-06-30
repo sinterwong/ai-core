@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "typed_buffer.hpp"
+#include "ai_core/typed_buffer.hpp"
 
 namespace ai_core {
 

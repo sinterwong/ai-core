@@ -1,9 +1,9 @@
 #ifndef __AI_CORE_ALGO_DATA_TYPES_HPP__
 #define __AI_CORE_ALGO_DATA_TYPES_HPP__
 
-#include "ai_core/types/algo_input_types.hpp"
-#include "ai_core/types/algo_output_types.hpp"
-#include "ai_core/types/postprocess_types.hpp"
+#include "ai_core/algo_input_types.hpp"
+#include "ai_core/algo_output_types.hpp"
+#include "ai_core/postprocess_types.hpp"
 #include "data_packet.hpp"
 #include "param_center.hpp"
 

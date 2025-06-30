@@ -11,8 +11,8 @@
 #ifndef __OPENCV_IMAGE_PREPROCESSOR_HPP_
 #define __OPENCV_IMAGE_PREPROCESSOR_HPP_
 
-#include "ai_core/types/algo_input_types.hpp"
-#include "ai_core/types/typed_buffer.hpp"
+#include "ai_core/algo_input_types.hpp"
+#include "ai_core/typed_buffer.hpp"
 
 namespace cv {
 class Mat;

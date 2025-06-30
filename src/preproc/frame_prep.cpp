@@ -9,7 +9,7 @@
  *
  */
 #include "frame_prep.hpp"
-#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/algo_data_types.hpp"
 #include "logger.hpp"
 
 namespace ai_core::dnn {

@@ -10,7 +10,7 @@
  */
 #include <chrono>
 
-#include "ai_core/types/infer_error_code.hpp"
+#include "ai_core/infer_error_code.hpp"
 #include "algo_infer_impl.hpp"
 #include "registrar/infer_engine_registrar.hpp"
 #include "registrar/postproc_registrar.hpp"

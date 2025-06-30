@@ -11,8 +11,8 @@
 #ifndef __PREPROCESS_SINGLE_FRAME_INPUT_HPP_
 #define __PREPROCESS_SINGLE_FRAME_INPUT_HPP_
 
-#include "ai_core/types/algo_data_types.hpp"
-#include "ai_core/types/tensor_data.hpp"
+#include "ai_core/algo_data_types.hpp"
+#include "ai_core/tensor_data.hpp"
 #include "preproc_base.hpp"
 #include <memory>
 

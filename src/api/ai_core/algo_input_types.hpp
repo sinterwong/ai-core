@@ -11,7 +11,7 @@
 #ifndef __ALGO_INPUT_TYPES_HPP__
 #define __ALGO_INPUT_TYPES_HPP__
 
-#include "infer_common_types.hpp"
+#include "ai_core/infer_common_types.hpp"
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 

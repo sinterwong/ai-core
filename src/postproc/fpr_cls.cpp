@@ -9,7 +9,7 @@
  *
  */
 #include "fpr_cls.hpp"
-#include "ai_core/types/algo_output_types.hpp"
+#include "ai_core/algo_output_types.hpp"
 #include "logger.hpp"
 
 #include <opencv2/core.hpp>

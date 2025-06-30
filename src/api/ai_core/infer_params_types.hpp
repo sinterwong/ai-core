@@ -12,7 +12,7 @@
 #ifndef __INFER_PARAMS_TYPES_HPP__
 #define __INFER_PARAMS_TYPES_HPP__
 
-#include "infer_common_types.hpp"
+#include "ai_core/infer_common_types.hpp"
 #include <string>
 
 namespace ai_core {

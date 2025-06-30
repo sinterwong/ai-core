@@ -11,11 +11,11 @@
 #ifndef __INFERENCE_VISION_INFER_HPP__
 #define __INFERENCE_VISION_INFER_HPP__
 
+#include "ai_core/algo_data_types.hpp"
 #include "ai_core/algo_infer.hpp"
-#include "ai_core/types/algo_data_types.hpp"
-#include "ai_core/types/infer_common_types.hpp"
-#include "ai_core/types/infer_error_code.hpp"
-#include "ai_core/types/infer_params_types.hpp"
+#include "ai_core/infer_common_types.hpp"
+#include "ai_core/infer_error_code.hpp"
+#include "ai_core/infer_params_types.hpp"
 #include "infer_base.hpp"
 #include "postproc_base.hpp"
 #include "preproc_base.hpp"

@@ -11,12 +11,12 @@
 #ifndef __AI_CORE_ALGO_MANAGER_HPP_
 #define __AI_CORE_ALGO_MANAGER_HPP_
 
-#include "algo_infer.hpp"
-#include "types/infer_error_code.hpp"
+#include "ai_core/algo_infer.hpp"
+#include "ai_core/infer_error_code.hpp"
 #include <memory>
 #include <string>
 
-#include "types/algo_data_types.hpp"
+#include "ai_core/algo_data_types.hpp"
 
 namespace ai_core::dnn {
 

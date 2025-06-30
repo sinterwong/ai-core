@@ -1,10 +1,10 @@
 #ifndef __AI_CORE_ALGO_MANAGER_IMPL_HPP_
 #define __AI_CORE_ALGO_MANAGER_IMPL_HPP_
 
+#include "ai_core/algo_data_types.hpp"
 #include "ai_core/algo_infer.hpp"
 #include "ai_core/algo_manager.hpp"
-#include "ai_core/types/algo_data_types.hpp"
-#include "ai_core/types/infer_error_code.hpp"
+#include "ai_core/infer_error_code.hpp"
 #include <memory>
 #include <shared_mutex>
 #include <string>

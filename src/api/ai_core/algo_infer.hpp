@@ -11,10 +11,10 @@
 #ifndef __AI_CORE_ALGO_INFER_BASE_HPP__
 #define __AI_CORE_ALGO_INFER_BASE_HPP__
 
-#include "types/algo_data_types.hpp"
-#include "types/infer_common_types.hpp"
-#include "types/infer_error_code.hpp"
-#include "types/infer_params_types.hpp"
+#include "ai_core/algo_data_types.hpp"
+#include "ai_core/infer_common_types.hpp"
+#include "ai_core/infer_error_code.hpp"
+#include "ai_core/infer_params_types.hpp"
 
 namespace ai_core::dnn {
 

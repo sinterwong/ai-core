@@ -11,8 +11,8 @@
 #ifndef __INFERENCE_VISION_FPR_CLS_HPP_
 #define __INFERENCE_VISION_FPR_CLS_HPP_
 
-#include "ai_core/types/algo_data_types.hpp"
-#include "ai_core/types/tensor_data.hpp"
+#include "ai_core/algo_data_types.hpp"
+#include "ai_core/tensor_data.hpp"
 #include "postproc_base.hpp"
 namespace ai_core::dnn {
 class FprCls : public PostprocssBase {

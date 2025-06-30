@@ -1,5 +1,5 @@
-#include "ai_core/types/algo_input_types.hpp"
-#include "ai_core/types/infer_params_types.hpp"
+#include "ai_core/algo_input_types.hpp"
+#include "ai_core/infer_params_types.hpp"
 #include "infer_base.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/frame_prep.hpp"

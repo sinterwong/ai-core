@@ -13,9 +13,9 @@
 
 #include <memory>
 
-#include "ai_core/types/infer_common_types.hpp"
-#include "ai_core/types/infer_error_code.hpp"
-#include "ai_core/types/tensor_data.hpp"
+#include "ai_core/infer_common_types.hpp"
+#include "ai_core/infer_error_code.hpp"
+#include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {
 class InferBase {

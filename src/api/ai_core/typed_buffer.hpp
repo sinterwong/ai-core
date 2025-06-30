@@ -10,7 +10,7 @@
  */
 #ifndef __TYPED_BUFFER_HPP__
 #define __TYPED_BUFFER_HPP__
-#include "infer_common_types.hpp"
+#include "ai_core/infer_common_types.hpp"
 #include <cstdint>
 #include <vector>
 

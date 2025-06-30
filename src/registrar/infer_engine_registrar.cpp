@@ -10,7 +10,7 @@
  */
 
 #include "infer_engine_registrar.hpp"
-#include "ai_core/types/algo_data_types.hpp"
+#include "ai_core/algo_data_types.hpp"
 #include "dnn_infer.hpp"
 #include "logger.hpp"
 
