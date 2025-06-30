@@ -73,17 +73,18 @@ TEST_F(YoloDetInferenceTest, ORTNormal) {
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
+  framePreprocessArg.inputName = "images";
   preprocParams.setParams(framePreprocessArg);
   ASSERT_NE(framePreproc, nullptr);
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.inputName = "images";
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.inputShape = {640, 640};
+  anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 
   AlgoInput algoInput;
@@ -151,17 +152,18 @@ TEST_F(YoloDetInferenceTest, ORTMulitThreads) {
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
+  framePreprocessArg.inputName = "images";
   preprocParams.setParams(framePreprocessArg);
   ASSERT_NE(framePreproc, nullptr);
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.inputName = "images";
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.inputShape = {640, 640};
+  anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 
   AlgoInput algoInput;
@@ -230,17 +232,18 @@ TEST_F(YoloDetInferenceTest, NCNNNormal) {
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
+  framePreprocessArg.inputName = "in0";
   preprocParams.setParams(framePreprocessArg);
   ASSERT_NE(framePreproc, nullptr);
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.inputName = "in0";
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.inputShape = {640, 640};
+  anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 
   AlgoInput algoInput;
@@ -307,17 +310,18 @@ TEST_F(YoloDetInferenceTest, NCNNMultiThreads) {
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
+  framePreprocessArg.inputName = "in0";
   preprocParams.setParams(framePreprocessArg);
   ASSERT_NE(framePreproc, nullptr);
   FrameInput frameInput;
   frameInput.image = imageRGB;
-  frameInput.inputName = "in0";
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.inputShape = {640, 640};
+  anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 
   AlgoInput algoInput;
