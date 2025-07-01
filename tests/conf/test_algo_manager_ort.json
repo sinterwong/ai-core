@@ -44,10 +44,6 @@
             "postprocParams": {
                 "condThre": 0.5,
                 "nmsThre": 0.45,
-                "inputShape": {
-                    "w": 640,
-                    "h": 640
-                },
                 "outputNames": [
                     "output0"
                 ]

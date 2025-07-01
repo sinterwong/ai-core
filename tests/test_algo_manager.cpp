@@ -124,12 +124,7 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
     AnchorDetParams anchorDetParams;
     anchorDetParams.condThre = postProcJson.at("condThre").get<float>();
     anchorDetParams.nmsThre = postProcJson.at("nmsThre").get<float>();
-    if (postProcJson.contains("inputShape")) {
-      anchorDetParams.inputShape.w =
-          postProcJson["inputShape"].at("w").get<int>();
-      anchorDetParams.inputShape.h =
-          postProcJson["inputShape"].at("h").get<int>();
-    }
+
     if (postProcJson.contains("outputNames")) {
       anchorDetParams.outputNames =
           postProcJson["outputNames"].get<std::vector<std::string>>();

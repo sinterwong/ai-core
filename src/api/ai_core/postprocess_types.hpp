@@ -12,14 +12,13 @@
 #ifndef __POSTPROCESS_TYPES_HPP__
 #define __POSTPROCESS_TYPES_HPP__
 
-#include "ai_core/infer_common_types.hpp"
-
+#include <string>
+#include <vector>
 namespace ai_core {
 
 struct AnchorDetParams {
   float condThre;
   float nmsThre;
-  Shape inputShape;
   std::vector<std::string> outputNames;
 };
 } // namespace ai_core

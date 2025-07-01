@@ -83,7 +83,6 @@ TEST_F(YoloDetInferenceTest, ORTNormal) {
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.inputShape = {640, 640};
   anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 
@@ -162,7 +161,6 @@ TEST_F(YoloDetInferenceTest, ORTMulitThreads) {
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.inputShape = {640, 640};
   anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 
@@ -242,7 +240,6 @@ TEST_F(YoloDetInferenceTest, NCNNNormal) {
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.inputShape = {640, 640};
   anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 
@@ -320,7 +317,6 @@ TEST_F(YoloDetInferenceTest, NCNNMultiThreads) {
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.inputShape = {640, 640};
   anchorDetParams.outputNames = {"output0"};
   postprocParams.setParams(anchorDetParams);
 

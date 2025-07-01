@@ -34,7 +34,7 @@ bool NanoDet::process(const TensorData &modelOutput,
   }
 
   const auto &outputShapes = modelOutput.shapes;
-  const auto &inputShape = params->inputShape;
+  const auto &inputShape = prepParams->modelInputShape;
   const auto &outputs = modelOutput.datas;
 
   // just one output

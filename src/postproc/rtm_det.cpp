@@ -33,7 +33,7 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
   }
 
   const auto &outputShapes = modelOutput.shapes;
-  const auto &inputShape = params->inputShape;
+  const auto &inputShape = prepParams->modelInputShape;
   const auto &outputs = modelOutput.datas;
 
   // two output
