@@ -22,16 +22,25 @@ bool FprCls::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
     return false;
   }
 
+  auto postParams = postArgs.getParams<GenericPostParams>();
+  if (postParams == nullptr) {
+    LOG_ERRORS << "FprCls::process: GenericPostParams is nullptr";
+    throw std::runtime_error("FprCls::process: GenericPostParams is nullptr");
+  }
+
+  const auto &scoreOutputName = postParams->outputNames.at(0);
+  const auto &biradOutputName = postParams->outputNames.at(1);
+
   const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;
 
-  auto pScores = outputs.at("14");
-  auto pBirads = outputs.at("15");
+  auto pScores = outputs.at(scoreOutputName);
+  auto pBirads = outputs.at(biradOutputName);
 
-  std::vector<int> pScoresShape = outputShapes.at("14");
+  std::vector<int> pScoresShape = outputShapes.at(scoreOutputName);
   int numClasses = pScoresShape.at(pScoresShape.size() - 1);
 
-  std::vector<int> pBiradsShape = outputShapes.at("15");
+  std::vector<int> pBiradsShape = outputShapes.at(biradOutputName);
   int numBirads = pBiradsShape.at(pBiradsShape.size() - 1);
 
   cv::Mat scores(1, numClasses, CV_32F,

@@ -20,12 +20,21 @@ bool FprFeature::process(const TensorData &modelOutput,
     return false;
   }
 
+  auto postParams = postArgs.getParams<GenericPostParams>();
+  if (postParams == nullptr) {
+    LOG_ERRORS << "FprFeature::process: GenericPostParams is nullptr";
+    throw std::runtime_error(
+        "FprFeature::process: GenericPostParams is nullptr");
+  }
+
+  const auto &featureOutputName = postParams->outputNames.at(0);
+
   const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;
 
   // just one output
-  auto output = outputs.at("171");
-  auto outputShape = outputShapes.at("171");
+  auto output = outputs.at(featureOutputName);
+  auto outputShape = outputShapes.at(featureOutputName);
 
   FeatureRet ret;
   ret.feature.assign(output.getTypedPtr<float>(),

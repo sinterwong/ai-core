@@ -12,7 +12,6 @@
 #include "dnn_infer.hpp"
 #include "crypto.hpp"
 #include "logger.hpp"
-#include <chrono> // For timing
 #include <ncnn/cpu.h>
 #include <stdlib.h> // For aligned_alloc and free on non-Windows
 #include <vector>
@@ -247,8 +246,6 @@ InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
       ex.input(inputName.c_str(), ncnn_in);
     }
 
-    auto inferStart = std::chrono::steady_clock::now();
-
     for (const auto &outputName : outputNames) {
       ncnn::Mat ncnn_out;
       int ret = ex.extract(outputName.c_str(), ncnn_out);
@@ -312,13 +309,6 @@ InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
       }
       outputs.shapes.insert(std::make_pair(outputName, shapeVec));
     }
-
-    auto inferEnd = std::chrono::steady_clock::now();
-    auto durationInfer = std::chrono::duration_cast<std::chrono::milliseconds>(
-        inferEnd - inferStart);
-    LOG_INFOS << params_.name << " NCNN inference cost "
-              << durationInfer.count() << " ms";
-
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
     LOG_ERRORS << "Std Exception during inference for " << params_.name << ": "

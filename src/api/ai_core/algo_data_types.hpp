@@ -22,8 +22,8 @@ using AlgoPreprocParams =
     common_utils::ParamCenter<std::variant<std::monostate, FramePreprocessArg>>;
 
 // Algo postproc params
-using AlgoPostprocParams =
-    common_utils::ParamCenter<std::variant<std::monostate, AnchorDetParams>>;
+using AlgoPostprocParams = common_utils::ParamCenter<
+    std::variant<std::monostate, AnchorDetParams, GenericPostParams>>;
 
 // Algo construct params
 using AlgoConstructParams = common_utils::DataPacket;

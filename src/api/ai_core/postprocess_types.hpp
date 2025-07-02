@@ -16,6 +16,10 @@
 #include <vector>
 namespace ai_core {
 
+struct GenericPostParams {
+  std::vector<std::string> outputNames;
+};
+
 struct AnchorDetParams {
   float condThre;
   float nmsThre;

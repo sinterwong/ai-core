@@ -21,6 +21,15 @@ bool SoftmaxCls::process(const TensorData &modelOutput,
     return false;
   }
 
+  auto postParams = postArgs.getParams<GenericPostParams>();
+  if (postParams == nullptr) {
+    LOG_ERRORS << "SoftmaxCls::process: GenericPostParams is nullptr";
+    throw std::runtime_error(
+        "SoftmaxCls::process: GenericPostParams is nullptr");
+  }
+
+  const auto &scoreOutputName = postParams->outputNames.at(0);
+
   const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;
 
@@ -29,9 +38,9 @@ bool SoftmaxCls::process(const TensorData &modelOutput,
     LOG_ERRORS << "SoftmaxCls unexpected size of outputs " << outputs.size();
     throw std::runtime_error("SoftmaxCls  unexpected size of outputs");
   }
-  auto output = outputs.at("output");
+  auto output = outputs.at(scoreOutputName);
 
-  std::vector<int> outputShape = outputShapes.at("output");
+  std::vector<int> outputShape = outputShapes.at(scoreOutputName);
   int numClasses = outputShape.at(outputShape.size() - 1);
 
   cv::Mat scores(1, numClasses, CV_32F,
