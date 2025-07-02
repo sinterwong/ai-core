@@ -8,8 +8,12 @@
  * @copyright Copyright (c) 2025
  *
  */
+
+#include <ostream>
+
 #include "fpr_feat.hpp"
-#include "logger.hpp"
+
+#include <logger.hpp>
 
 namespace ai_core::dnn {
 bool FprFeature::process(const TensorData &modelOutput,

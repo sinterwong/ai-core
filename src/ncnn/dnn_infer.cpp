@@ -13,7 +13,8 @@
 #include "crypto.hpp"
 #include "logger.hpp"
 #include <ncnn/cpu.h>
-#include <stdlib.h> // For aligned_alloc and free on non-Windows
+#include <ostream>
+#include <stdlib.h>
 #include <vector>
 
 #ifndef _WIN32

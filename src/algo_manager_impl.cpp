@@ -10,7 +10,8 @@
  */
 
 #include "algo_manager_impl.hpp"
-#include "logger.hpp"
+#include <logger.hpp>
+#include <ostream>
 
 namespace ai_core::dnn {
 

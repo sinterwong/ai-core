@@ -8,8 +8,7 @@
  * @copyright Copyright (c) 2025
  *
  */
-
-#include "postproc_registrar.hpp"
+#include <ostream>
 
 #include "postproc/fpr_cls.hpp"
 #include "postproc/fpr_feat.hpp"
@@ -18,9 +17,10 @@
 #include "postproc/softmax_cls.hpp"
 #include "postproc/yolo_det.hpp"
 #include "postproc_base.hpp"
+#include "postproc_registrar.hpp"
 #include "type_safe_factory.hpp"
 
-#include "logger.hpp"
+#include <logger.hpp>
 
 namespace ai_core::dnn {
 #define REGISTER_POSTPROCESS_ALGO(AlgoName)                                    \

@@ -8,11 +8,13 @@
  * @copyright Copyright (c) 2025
  *
  */
+#include <ostream>
 
-#include "infer_engine_registrar.hpp"
 #include "ai_core/algo_data_types.hpp"
 #include "dnn_infer.hpp"
-#include "logger.hpp"
+#include "infer_engine_registrar.hpp"
+
+#include <logger.hpp>
 
 #ifdef WITH_ORT
 #include "ort/dnn_infer.hpp"

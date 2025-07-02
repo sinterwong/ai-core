@@ -99,3 +99,15 @@ ENDMACRO()
 MACRO(LOAD_OPENMP)
     FIND_PACKAGE(OpenMP REQUIRED)
 ENDMACRO()
+
+MACRO(LOAD_ANDROID_ENV)
+    SET(ANDROID_JIN_INCLUDE_DIR "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include")
+    SET(ANDROID_JIN_LIBS_DIR "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/${TARGET_ARCH}-linux-android/24")
+    SET(ANDROID_JIN_LIBS 
+        android
+        log
+        z
+        dl
+    )
+    LINK_DIRECTORIES(${ANDROID_JIN_LIBS_DIR})
+ENDMACRO()

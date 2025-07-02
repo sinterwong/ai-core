@@ -8,9 +8,12 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "preproc_registrar.hpp"
-#include "logger.hpp"
+#include <ostream>
+
 #include "preproc/frame_prep.hpp"
+#include "preproc_registrar.hpp"
+
+#include <logger.hpp>
 
 namespace ai_core::dnn {
 #define REGISTER_PREPROCESS_ALGO(AlgoName)                                     \

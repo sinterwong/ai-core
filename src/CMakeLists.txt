@@ -10,6 +10,11 @@ ADD_DEFINITIONS(-DSECURITY_KEY="${COMMIT_CODE}")
 
 LOAD_OPENCV()
 
+IF (TARGET_OS STREQUAL "Android")
+    LOAD_ANDROID_ENV()
+    LIST(APPEND ANDROID_JIN_LIBS mediandk)
+ENDIF()
+
 SET(DEPENDENCY_INCLUDES
 	${OpenCV_INCLUDE_DIRS}
 )
@@ -19,6 +24,7 @@ SET(DEPENDENCY_LIBS
 	encrypt::encrypt
 	logger::logger
 	${OpenCV_LIBS}
+	${ANDROID_JIN_LIBS}
 )
 
 # Public headers
