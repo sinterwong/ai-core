@@ -34,9 +34,9 @@ class AlgoManagerTest : public ::testing::Test {
 protected:
   void SetUp() override {}
   void TearDown() override {}
-
-  fs::path confDir = fs::path("conf");
-  fs::path dataDir = fs::path("data");
+  fs::path resourceDir = fs::path("resources");
+  fs::path confDir = resourceDir / "conf";
+  fs::path dataDir = resourceDir / "data";
 };
 
 AlgoConstructParams loadParamFromJson(const std::string &configPath) {

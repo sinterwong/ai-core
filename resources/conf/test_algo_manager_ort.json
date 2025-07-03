@@ -37,7 +37,7 @@
                 ]
             },
             "inferParams": {
-                "modelPath": "models/yolov11n-fp16.onnx",
+                "modelPath": "resources/models/yolov11n-fp16.onnx",
                 "deviceType": 0,
                 "dataType": 1
             },

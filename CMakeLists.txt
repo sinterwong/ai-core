@@ -83,3 +83,6 @@ IF(BUILD_AI_CORE_TESTS)
     MESSAGE(INFO "--------------------------------")
     ADD_SUBDIRECTORY(tests)
 ENDIF()
+
+message(INFO "--------- Install Resource --------")
+add_subdirectory(resources)

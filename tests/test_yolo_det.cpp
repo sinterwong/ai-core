@@ -33,10 +33,12 @@ protected:
   }
   void TearDown() override {}
 
-  fs::path dataDir = fs::path("data");
+  fs::path resourceDir = fs::path("resources");
+  fs::path confDir = resourceDir / "conf";
+  fs::path dataDir = resourceDir / "data";
+  fs::path modelDir = resourceDir / "models";
 
   std::string imagePath = (dataDir / "yolov11/image.png").string();
-
   AlgoInferParams inferParams;
 
   std::shared_ptr<PreprocssBase> framePreproc;
@@ -47,7 +49,7 @@ protected:
 TEST_F(YoloDetInferenceTest, ORTNormal) {
   AlgoConstructParams tempInferParams;
   inferParams.dataType = DataType::FLOAT16;
-  inferParams.modelPath = "models/yolov11n-fp16.onnx";
+  inferParams.modelPath = (modelDir / "yolov11n-fp16.onnx").string();
   inferParams.name = "yolov11n";
   inferParams.deviceType = DeviceType::CPU;
   tempInferParams.setParam("params", inferParams);
@@ -125,7 +127,7 @@ TEST_F(YoloDetInferenceTest, ORTMulitThreads) {
 
   AlgoConstructParams tempInferParams;
   inferParams.dataType = DataType::FLOAT16;
-  inferParams.modelPath = "models/yolov11n-fp16.onnx";
+  inferParams.modelPath = (modelDir / "yolov11n-fp16.onnx").string();
   inferParams.name = "yolov11n";
   inferParams.deviceType = DeviceType::CPU;
   tempInferParams.setParam("params", inferParams);
@@ -204,7 +206,7 @@ TEST_F(YoloDetInferenceTest, ORTMulitThreads) {
 TEST_F(YoloDetInferenceTest, NCNNNormal) {
   AlgoConstructParams tempInferParams;
   inferParams.dataType = DataType::FLOAT16;
-  inferParams.modelPath = "models/yolov11n.ncnn";
+  inferParams.modelPath = (modelDir / "yolov11n.ncnn").string();
   inferParams.name = "yolov11n";
   inferParams.deviceType = DeviceType::CPU;
   tempInferParams.setParam("params", inferParams);
@@ -281,7 +283,7 @@ TEST_F(YoloDetInferenceTest, NCNNNormal) {
 TEST_F(YoloDetInferenceTest, NCNNMultiThreads) {
   AlgoConstructParams tempInferParams;
   inferParams.dataType = DataType::FLOAT16;
-  inferParams.modelPath = "models/yolov11n.ncnn";
+  inferParams.modelPath = (modelDir / "yolov11n.ncnn").string();
   inferParams.name = "yolov11n";
   inferParams.deviceType = DeviceType::CPU;
   tempInferParams.setParam("params", inferParams);
