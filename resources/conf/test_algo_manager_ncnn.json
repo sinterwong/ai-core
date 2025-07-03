@@ -37,9 +37,11 @@
                 ]
             },
             "inferParams": {
-                "modelPath": "resources/models/yolov11n.ncnn",
+                "name": "yolo-det-80c-001",
+                "modelPath": "models/yolov11n.ncnn",
                 "deviceType": 0,
-                "dataType": 1
+                "dataType": 1,
+                "needDecrypt": false
             },
             "postprocParams": {
                 "condThre": 0.5,
