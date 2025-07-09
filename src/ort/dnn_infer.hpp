@@ -22,7 +22,7 @@
 namespace ai_core::dnn {
 class OrtAlgoInference : public InferBase {
 public:
-  OrtAlgoInference(const AlgoConstructParams &params)
+  explicit OrtAlgoInference(const AlgoConstructParams &params)
       : params_(std::move(params.getParam<AlgoInferParams>("params"))) {}
 
   virtual ~OrtAlgoInference() override {}
@@ -49,7 +49,7 @@ protected:
   std::unique_ptr<Ort::Session> session;
   std::unique_ptr<Ort::MemoryInfo> memoryInfo;
 
-  std::mutex mtx_;
+  mutable std::mutex mtx_;
 };
 } // namespace ai_core::dnn
 #endif

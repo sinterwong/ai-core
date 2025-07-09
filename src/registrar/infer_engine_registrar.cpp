@@ -24,6 +24,10 @@
 #include "ncnn/dnn_infer.hpp"
 #endif
 
+#ifdef WITH_TRT
+#include "trt/dnn_infer.hpp"
+#endif
+
 namespace ai_core::dnn {
 
 #define REGISTER_INFER_ENGINE(EngineName)                                      \
@@ -41,6 +45,10 @@ InferEngineRegistrar::InferEngineRegistrar() {
 
 #ifdef WITH_NCNN
   REGISTER_INFER_ENGINE(NCNNAlgoInference);
+#endif
+
+#ifdef WITH_TRT
+  REGISTER_INFER_ENGINE(TrtAlgoInference);
 #endif
 }
 } // namespace ai_core::dnn

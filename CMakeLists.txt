@@ -16,6 +16,7 @@ OPTION(BUILD_AI_CORE_TESTS "Build with tests" OFF)
 
 OPTION(WITH_ORT_ENGINE "Build with onnxruntime" ON)
 OPTION(WITH_NCNN_ENGINE "Build with ncnn" OFF)
+OPTION(WITH_TRT_ENGINE "Build with tensorrt" OFF)
 
 MESSAGE(INFO "--------------------------------")
 MESSAGE(STATUS "Build AICore: ${AI_CORE_VERSION}")

@@ -26,7 +26,7 @@
 namespace ai_core::dnn {
 class NCNNAlgoInference : public InferBase {
 public:
-  NCNNAlgoInference(const AlgoConstructParams &params)
+  explicit NCNNAlgoInference(const AlgoConstructParams &params)
       : params_(std::move(params.getParam<AlgoInferParams>("params"))),
         isInitialized(false) {
     blobPoolAllocator.set_size_compare_ratio(0.f);
@@ -56,7 +56,7 @@ protected:
   std::vector<void *>
       m_aligned_buffers; // For manually managed memory if needed
 
-  std::mutex mtx_; // Mutex for thread safety
+  mutable std::mutex mtx_; // Mutex for thread safety
   std::atomic_bool isInitialized;
 };
 } // namespace ai_core::dnn
