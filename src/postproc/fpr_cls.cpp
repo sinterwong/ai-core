@@ -43,10 +43,8 @@ bool FprCls::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
   std::vector<int> pBiradsShape = outputShapes.at(biradOutputName);
   int numBirads = pBiradsShape.at(pBiradsShape.size() - 1);
 
-  cv::Mat scores(1, numClasses, CV_32F,
-                 const_cast<void *>(pScores.getTypedPtr<void>()));
-  cv::Mat birads(1, numBirads, CV_32F,
-                 const_cast<void *>(pBirads.getTypedPtr<void>()));
+  cv::Mat scores(1, numClasses, CV_32F, pScores.getRawHostPtr());
+  cv::Mat birads(1, numBirads, CV_32F, pBirads.getRawHostPtr());
 
   cv::Point classIdPoint;
   double score;
@@ -59,8 +57,8 @@ bool FprCls::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
   FprClsRet fprRet;
   fprRet.score = score;
   fprRet.label = classIdPoint.x;
-  fprRet.scoreProbs.assign(pScores.getTypedPtr<float>(),
-                           pScores.getTypedPtr<float>() +
+  fprRet.scoreProbs.assign(pScores.getHostPtr<float>(),
+                           pScores.getHostPtr<float>() +
                                pScores.getElementCount());
   fprRet.birad = biradsIdPoint.x;
   algoOutput.setParams(fprRet);

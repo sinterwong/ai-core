@@ -53,7 +53,7 @@ bool NanoDet::process(const TensorData &modelOutput,
 
   // [1, 3598, 11]
   cv::Mat rawData(numAnchors, stride, CV_32F,
-                  const_cast<void *>(output.getTypedPtr<void>()));
+                  const_cast<void *>(output.getRawHostPtr()));
 
   Shape originShape;
   if (prepParams->roi.area() > 0) {

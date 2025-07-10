@@ -123,16 +123,15 @@ TypedBuffer ImagePreprocessor::preprocessFP32(const cv::Mat &normalizedImage,
                                               int inputHeight, int inputWidth,
                                               bool hwc2chw) const {
   TypedBuffer result;
-  result.dataType = DataType::FLOAT32;
+
   const size_t totalElements =
       static_cast<size_t>(inputChannels) * inputHeight * inputWidth;
+  result.resize(totalElements);
 
-  result.data.resize(totalElements * sizeof(float));
+  float *dataPtr = result.getHostPtr<float>();
 
-  convertLayout(normalizedImage, reinterpret_cast<float *>(result.data.data()),
-                hwc2chw);
+  convertLayout(normalizedImage, dataPtr, hwc2chw);
 
-  result.elementCount = totalElements;
   return result;
 }
 
@@ -140,29 +139,26 @@ TypedBuffer ImagePreprocessor::preprocessFP16(const cv::Mat &normalizedImage,
                                               int inputChannels,
                                               int inputHeight, int inputWidth,
                                               bool hwc2chw) const {
-  TypedBuffer result;
-  result.dataType = DataType::FLOAT16;
   const size_t totalElements =
       static_cast<size_t>(inputChannels) * inputHeight * inputWidth;
 
   std::vector<float> tensorDataFP32(totalElements);
-
   convertLayout(normalizedImage, tensorDataFP32.data(), hwc2chw);
 
   const float fp16MaxValue = 65504.0f;
-  for (size_t i = 0; i < totalElements; ++i) {
-    tensorDataFP32[i] =
-        std::clamp(tensorDataFP32[i], -fp16MaxValue, fp16MaxValue);
+  for (float &val : tensorDataFP32) {
+    val = std::clamp(val, -fp16MaxValue, fp16MaxValue);
   }
 
-  cv::Mat floatMat(1, totalElements, CV_32F, tensorDataFP32.data());
+  cv::Mat floatMat(1, static_cast<int>(totalElements), CV_32F,
+                   tensorDataFP32.data());
   cv::Mat halfMat;
   floatMat.convertTo(halfMat, CV_16F);
 
-  result.data.resize(totalElements * sizeof(uint16_t));
-  std::memcpy(result.data.data(), halfMat.data, result.data.size());
+  const size_t byteSize = totalElements * sizeof(uint16_t);
+  const uint8_t *startPtr = halfMat.data;
+  std::vector<uint8_t> finalData(startPtr, startPtr + byteSize);
 
-  result.elementCount = totalElements;
-  return result;
+  return TypedBuffer::createFromCpu(DataType::FLOAT16, std::move(finalData));
 }
 } // namespace ai_core::dnn::cpu

@@ -41,8 +41,8 @@ bool FprFeature::process(const TensorData &modelOutput,
   auto outputShape = outputShapes.at(featureOutputName);
 
   FeatureRet ret;
-  ret.feature.assign(output.getTypedPtr<float>(),
-                     output.getTypedPtr<float>() + output.getElementCount());
+  ret.feature.assign(output.getHostPtr<float>(),
+                     output.getHostPtr<float>() + output.getElementCount());
   ret.featSize = outputShape.at(outputShape.size() - 1);
   algoOutput.setParams(ret);
   return true;
