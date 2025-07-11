@@ -46,7 +46,7 @@ void TrtAlgoInference::releaseResources() {
   mManagedBuffers.clear();
   mTensorAddressMap.clear();
   mTensorSizeMap.clear();
-  mModelInfo.reset();
+  modelInfo.reset();
   LOG_INFOS << "TensorRT resources released for model: " << mParams.name;
 }
 
@@ -133,8 +133,8 @@ InferErrorCode TrtAlgoInference::setupBindings() {
   mManagedBuffers.clear();
   mTensorAddressMap.clear();
   mTensorSizeMap.clear();
-  mModelInfo = std::make_shared<ModelInfo>();
-  mModelInfo->name = mParams.name;
+  modelInfo = std::make_shared<ModelInfo>();
+  modelInfo->name = mParams.name;
 
   const int32_t numIOTensors = mEngine->getNbIOTensors();
   mManagedBuffers.reserve(numIOTensors);
@@ -169,9 +169,9 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     tensorInfo.dataType = trt_utils::trtDataTypeToAiCore(trtDtype);
 
     if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
-      mModelInfo->inputs.push_back(std::move(tensorInfo));
+      modelInfo->inputs.push_back(std::move(tensorInfo));
     } else {
-      mModelInfo->outputs.push_back(std::move(tensorInfo));
+      modelInfo->outputs.push_back(std::move(tensorInfo));
     }
   }
 
@@ -227,7 +227,7 @@ InferErrorCode TrtAlgoInference::infer(TensorData &inputs,
   try {
     // Prepare input buffers: Copy data from user-provided TypedBuffers
     // to the internal device buffers managed by this class.
-    for (const auto &inputInfo : mModelInfo->inputs) {
+    for (const auto &inputInfo : modelInfo->inputs) {
       const auto &name = inputInfo.name;
       auto it = inputs.datas.find(name);
       if (it == inputs.datas.end()) {
@@ -289,7 +289,7 @@ InferErrorCode TrtAlgoInference::infer(TensorData &inputs,
     // The output is consistently placed on the CPU for subsequent processing.
     outputs.datas.clear();
     outputs.shapes.clear();
-    for (const auto &outputInfo : mModelInfo->outputs) {
+    for (const auto &outputInfo : modelInfo->outputs) {
       const auto &name = outputInfo.name;
       void *srcDevicePtr = mTensorAddressMap.at(name);
       size_t bufferSizeBytes = mTensorSizeMap.at(name);
@@ -322,12 +322,12 @@ InferErrorCode TrtAlgoInference::infer(TensorData &inputs,
 }
 
 const ModelInfo &TrtAlgoInference::getModelInfo() {
-  if (!mIsInitialized || !mModelInfo) {
+  if (!mIsInitialized || !modelInfo) {
     LOG_WARNINGS << "getModelInfo() called on uninitialized model.";
     static ModelInfo emptyInfo;
     return emptyInfo;
   }
-  return *mModelInfo;
+  return *modelInfo;
 }
 
 int64_t TrtAlgoInference::calculateVolume(const nvinfer1::Dims &dims) {

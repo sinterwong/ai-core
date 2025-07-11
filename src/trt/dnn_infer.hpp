@@ -77,7 +77,6 @@ private:
 
   AlgoInferParams mParams;
   TrtFrameworkLogger mLogger;
-  std::shared_ptr<ModelInfo> mModelInfo;
 
   // trt core components
   std::unique_ptr<nvinfer1::IRuntime> mRuntime;

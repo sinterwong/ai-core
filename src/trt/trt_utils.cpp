@@ -53,6 +53,8 @@ size_t getTrtElementSize(nvinfer1::DataType trt_type) {
     return sizeof(int8_t);
   case nvinfer1::DataType::kINT32:
     return sizeof(int32_t);
+  case nvinfer1::DataType::kINT64:
+    return sizeof(int64_t);
   case nvinfer1::DataType::kBOOL:
     return sizeof(bool);
   default:
