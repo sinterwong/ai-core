@@ -12,13 +12,18 @@
 #ifndef __ALGO_OUTPUT_TYPES_HPP__
 #define __ALGO_OUTPUT_TYPES_HPP__
 
-#include <opencv2/core/types.hpp>
+#include <memory>
 #include <vector>
 
+namespace cv {
+template <typename _Tp> class Rect_;
+
+using Rect = Rect_<int>;
+} // namespace cv
 namespace ai_core {
 
 struct BBox {
-  cv::Rect rect;
+  std::shared_ptr<cv::Rect> rect;
   float score;
   int label;
 };

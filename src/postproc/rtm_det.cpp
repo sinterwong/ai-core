@@ -49,9 +49,11 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
   int anchorNum = detOutShape.at(detOutShape.size() - 2);
 
   Shape originShape;
-  if (prepParams->roi.area() > 0) {
-    originShape.w = prepParams->roi.width;
-    originShape.h = prepParams->roi.height;
+
+  const auto &inputRoi = *prepParams->roi;
+  if (inputRoi.area() > 0) {
+    originShape.w = inputRoi.width;
+    originShape.h = inputRoi.height;
   } else {
     originShape = prepParams->originShape;
   }
@@ -86,11 +88,12 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
       BBox result;
       result.score = score;
       result.label = classIdPoint.x;
-      x += prepParams->roi.x;
-      y += prepParams->roi.y;
+      x += inputRoi.x;
+      y += inputRoi.y;
 
-      result.rect = {static_cast<int>(x), static_cast<int>(y),
-                     static_cast<int>(w), static_cast<int>(h)};
+      result.rect =
+          std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
+                                     static_cast<int>(w), static_cast<int>(h));
       results.emplace_back(result);
     }
   }

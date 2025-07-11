@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __OPENCV_IMAGE_PREPROCESSOR_HPP_
-#define __OPENCV_IMAGE_PREPROCESSOR_HPP_
+#ifndef __OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP__
+#define __OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP__
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/typed_buffer.hpp"

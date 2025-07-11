@@ -12,6 +12,7 @@
 #include "dnn_infer.hpp"
 #include "crypto.hpp"
 #include "logger.hpp"
+#include <cctype>
 #include <ncnn/cpu.h>
 #include <ostream>
 #include <stdlib.h>
@@ -87,7 +88,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
     if (params_.needDecrypt) {
       int model_load_ret = -1;
       LOG_INFOS << "Decrypting model weights: " << binPath;
-      std::vector<uchar> modelData;
+      std::vector<u_char> modelData;
       std::string securityKey = SECURITY_KEY;
       auto cryptoConfig = encrypt::Crypto::deriveKeyFromCommit(securityKey);
       encrypt::Crypto crypto(cryptoConfig);

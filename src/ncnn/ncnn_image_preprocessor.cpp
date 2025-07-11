@@ -22,7 +22,9 @@ namespace ai_core::dnn::mncnn {
 
 TypedBuffer ImagePreprocessor::process(FramePreprocessArg &args,
                                        const FrameInput &frameData) const {
-  const cv::Mat &cvImageOrig = frameData.image;
+  const auto &cvImageOrig = *frameData.image;
+  const auto &inputRoi = *args.roi;
+  const auto &inputPad = *args.pad;
   if (cvImageOrig.empty()) {
     LOG_ERRORS << "Input cv::Mat image is empty.";
     throw std::runtime_error("Input cv::Mat image is empty.");
@@ -30,7 +32,7 @@ TypedBuffer ImagePreprocessor::process(FramePreprocessArg &args,
 
   int targetWidth = args.modelInputShape.w;
   int targetHeight = args.modelInputShape.h;
-  int targetChannels = frameData.image.channels();
+  int targetChannels = cvImageOrig.channels();
 
   if (targetWidth <= 0 || targetHeight <= 0 || targetChannels <= 0) {
     LOG_ERRORS << "Invalid target dimensions in FramePreprocessArg: W="
@@ -42,9 +44,9 @@ TypedBuffer ImagePreprocessor::process(FramePreprocessArg &args,
 
   cv::Mat currentCvMat = cvImageOrig;
 
-  if (args.roi.area() > 0) {
+  if (inputRoi.area() > 0) {
     cv::Rect validRoi =
-        args.roi & cv::Rect(0, 0, currentCvMat.cols, currentCvMat.rows);
+        inputRoi & cv::Rect(0, 0, currentCvMat.cols, currentCvMat.rows);
     if (validRoi.area() > 0) {
       currentCvMat = currentCvMat(validRoi).clone();
     } else {
@@ -101,7 +103,7 @@ TypedBuffer ImagePreprocessor::process(FramePreprocessArg &args,
 
       ncnn::copy_make_border(tempNcnnMat, ncnnIn, args.topPad, bottomPad,
                              args.leftPad, rightPad, ncnn::BORDER_CONSTANT,
-                             (float)args.pad[0]);
+                             (float)inputPad[0]);
       if (ncnnIn.w != targetWidth || ncnnIn.h != targetHeight) {
         LOG_WARNINGS << "Padded NCNN Mat size (" << ncnnIn.w << "x" << ncnnIn.h
                      << ") mismatch target (" << targetWidth << "x"

@@ -15,6 +15,7 @@
 #include "ai_core/infer_common_types.hpp"
 #include "ai_core/infer_error_code.hpp"
 #include "ai_core/infer_params_types.hpp"
+#include <memory>
 
 namespace ai_core::dnn {
 

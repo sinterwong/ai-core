@@ -70,9 +70,10 @@ Yolov11Det::processRawOutput(const cv::Mat &transposedOutput,
                              const AnchorDetParams &postArgs, int numClasses) {
   std::vector<BBox> results;
   Shape originShape;
-  if (prepArgs.roi.area() > 0) {
-    originShape.w = prepArgs.roi.width;
-    originShape.h = prepArgs.roi.height;
+  const auto &inputRoi = *prepArgs.roi;
+  if (inputRoi.area() > 0) {
+    originShape.w = inputRoi.width;
+    originShape.h = inputRoi.height;
   } else {
     originShape = prepArgs.originShape;
   }
@@ -109,10 +110,12 @@ Yolov11Det::processRawOutput(const cv::Mat &transposedOutput,
       }
       w = w / scaleX;
       h = h / scaleY;
-      x += prepArgs.roi.x;
-      y += prepArgs.roi.y;
-      result.rect = {static_cast<int>(x), static_cast<int>(y),
-                     static_cast<int>(w), static_cast<int>(h)};
+      x += inputRoi.x;
+      y += inputRoi.y;
+      result.rect =
+          std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
+                                     static_cast<int>(w), static_cast<int>(h));
+
       results.push_back(result);
     }
   }

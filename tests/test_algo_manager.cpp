@@ -92,7 +92,17 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
             preprocJson["std"].get<std::vector<float>>();
       }
       if (preprocJson.contains("pad")) {
-        framePreprocessArg.pad = preprocJson["pad"].get<std::vector<int>>()[0];
+        const auto &pad = preprocJson["pad"].get<std::vector<int>>();
+        if (pad.size() == 1) {
+          framePreprocessArg.pad =
+              std::make_shared<cv::Scalar>(pad[0], pad[0], pad[0]);
+        } else if (pad.size() == 3) {
+          framePreprocessArg.pad =
+              std::make_shared<cv::Scalar>(pad[0], pad[1], pad[2]);
+        } else {
+          LOG_ERRORS << "Invalid pad size. Expected 1 or 3 elements.";
+          throw std::runtime_error("Invalid pad size.");
+        }
       }
 
       if (preprocJson.contains("hwc2chw")) {
@@ -235,7 +245,8 @@ TEST_P(AlgoManagerTest, NormalFlow) {
   AlgoPreprocParams preprocParams;
   auto framePreprocessArg =
       params.getParam<FramePreprocessArg>("preprocParams");
-  framePreprocessArg.roi = {0, 0, imageRGB.cols, imageRGB.rows};
+  framePreprocessArg.roi =
+      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows,
                                     imageRGB.channels()};
   preprocParams.setParams(framePreprocessArg);
@@ -245,7 +256,7 @@ TEST_P(AlgoManagerTest, NormalFlow) {
   postprocParams.setParams(anchorDetParams);
 
   FrameInput frameInput;
-  frameInput.image = imageRGB;
+  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
   AlgoInput algoInput;
   algoInput.setParams(frameInput);
 

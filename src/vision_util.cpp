@@ -35,20 +35,21 @@ std::pair<float, float> scaleRatio(Shape const &originShape,
 }
 
 float calculateIoU(const BBox &bbox1, const BBox &bbox2) {
-  float x1 = std::max(bbox1.rect.x, bbox2.rect.x);
-  float y1 = std::max(bbox1.rect.y, bbox2.rect.y);
-  float x2 = std::min(bbox1.rect.x + bbox1.rect.width,
-                      bbox2.rect.x + bbox2.rect.width);
-  float y2 = std::min(bbox1.rect.y + bbox1.rect.height,
-                      bbox2.rect.y + bbox2.rect.height);
+  const auto &b1Rect = *bbox1.rect;
+  const auto &b2Rect = *bbox2.rect;
+
+  float x1 = std::max(b1Rect.x, b2Rect.x);
+  float y1 = std::max(b1Rect.y, b2Rect.y);
+  float x2 = std::min(b1Rect.x + b1Rect.width, b2Rect.x + b2Rect.width);
+  float y2 = std::min(b1Rect.y + b1Rect.height, b2Rect.y + b2Rect.height);
 
   if (x2 < x1 || y2 < y1) {
     return 0.0f;
   }
 
   float intersection = (x2 - x1) * (y2 - y1);
-  float area1 = bbox1.rect.width * bbox1.rect.height;
-  float area2 = bbox2.rect.width * bbox2.rect.height;
+  float area1 = b1Rect.area();
+  float area2 = b2Rect.area();
   float unionArea = area1 + area2 - intersection;
 
   return intersection / unionArea;
@@ -70,7 +71,7 @@ std::vector<BBox> NMS(const std::vector<BBox> &results, float nmsThre,
     std::vector<int> indices;
 
     for (const auto &result : classResult) {
-      boxes.push_back(result.rect);
+      boxes.push_back(*result.rect);
       scores.push_back(result.score);
     }
 
