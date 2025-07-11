@@ -11,38 +11,113 @@
 #ifndef __TYPED_BUFFER_HPP__
 #define __TYPED_BUFFER_HPP__
 #include "ai_core/infer_common_types.hpp"
+
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 namespace ai_core {
 
-struct TypedBuffer {
-  DataType dataType;
-  std::vector<uint8_t> data; // raw data
-  size_t elementCount;
+enum class BufferLocation { CPU, GPU_DEVICE };
 
-  template <typename T> const T *getTypedPtr() const {
-    return reinterpret_cast<const T *>(data.data());
-  }
+/**
+ * @brief
+ * Data storage:
+ * if location is CPU, cpuData_ holds the data.
+ * if location is GPU_DEVICE, devicePtr_ points to the data on the device.
+ * TypedBuffer itself does not manage the lifecycle of devicePtr_ memory.
+ */
+class TypedBuffer {
+public:
+  TypedBuffer() = default;
 
-  size_t getElementCount() const {
-    size_t elemSize = getElementSize(dataType);
-    return data.size() / elemSize;
-  }
+  ~TypedBuffer() = default;
 
-  static size_t getElementSize(DataType type) {
-    switch (type) {
-    case DataType::FLOAT32:
-      return sizeof(float);
-    case DataType::FLOAT16:
-      return sizeof(uint16_t);
-    case DataType::INT8:
-      return sizeof(int8_t);
-    default:
-      return 0;
-    }
-  }
+  // 拷贝构造函数
+  // CPU数据 -> 深拷贝
+  // GPU引用 -> 拷贝引用 (这是一个设计决策，因为我们不拥有GPU内存)
+  TypedBuffer(const TypedBuffer &other);
+
+  TypedBuffer &operator=(const TypedBuffer &other);
+
+  TypedBuffer(TypedBuffer &&other) noexcept;
+
+  TypedBuffer &operator=(TypedBuffer &&other) noexcept;
+
+  static TypedBuffer createFromCpu(DataType type,
+                                   const std::vector<uint8_t> &data);
+  static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t> &&data);
+
+  static TypedBuffer createFromGpu(DataType type, void *devicePtr,
+                                   size_t sizeBytes, int deviceId = 0);
+
+  DataType dataType() const noexcept { return mDataType; }
+  BufferLocation location() const noexcept { return mLocation; }
+  size_t getSizeBytes() const noexcept;
+  size_t getElementCount() const noexcept { return mElementCount; }
+  int getDeviceId() const noexcept;
+
+  template <typename T> const T *getHostPtr() const;
+  template <typename T> T *getHostPtr();
+
+  const void *getRawHostPtr() const;
+  void *getRawHostPtr();
+
+  void *getRawDevicePtr() const;
+
+  void setCpuData(DataType type, const std::vector<uint8_t> &data);
+  void setCpuData(DataType type, std::vector<uint8_t> &&data);
+
+  void setGpuDataReference(DataType type, void *ptr, size_t sizeBytes,
+                           int devId = 0);
+
+  void resize(size_t newElementCount);
+
+  void clear();
+
+  static size_t getElementSize(DataType type) noexcept;
+
+private:
+  TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData);
+  TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData);
+  TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
+              int deviceId);
+
+  void reset();
+
+  DataType mDataType{DataType::FLOAT32};
+  BufferLocation mLocation{BufferLocation::CPU};
+
+  std::vector<uint8_t> mCpuData;
+
+  void *mDevicePtr{nullptr};
+  size_t mDeviceBufferSizeBytes{0};
+  int mDeviceId{0};
+
+  size_t mElementCount{0};
 };
+
+template <typename T> const T *TypedBuffer::getHostPtr() const {
+  if (mLocation != BufferLocation::CPU) {
+    throw std::runtime_error(
+        "Attempted to get host pointer from a non-CPU buffer.");
+  }
+  if (sizeof(T) != getElementSize(mDataType) && !mCpuData.empty()) {
+    throw std::runtime_error("Mismatched type size for host data access.");
+  }
+  return reinterpret_cast<const T *>(mCpuData.data());
+}
+
+template <typename T> T *TypedBuffer::getHostPtr() {
+  if (mLocation != BufferLocation::CPU) {
+    throw std::runtime_error(
+        "Attempted to get host pointer from a non-CPU buffer.");
+  }
+  if (sizeof(T) != getElementSize(mDataType) && !mCpuData.empty()) {
+    throw std::runtime_error("Mismatched type size for host data access.");
+  }
+  return reinterpret_cast<T *>(mCpuData.data());
+}
 
 } // namespace ai_core
 

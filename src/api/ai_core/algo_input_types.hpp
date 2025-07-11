@@ -12,12 +12,30 @@
 #define __ALGO_INPUT_TYPES_HPP__
 
 #include "ai_core/infer_common_types.hpp"
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/types.hpp>
+#include "ai_core/typed_buffer.hpp"
+#include <memory>
+
+namespace cv {
+template <typename _Tp> class Rect_;
+template <typename _Tp> class Scalar_;
+
+using Rect = Rect_<int>;
+using Scalar = Scalar_<double>;
+
+class Mat;
+} // namespace cv
 
 namespace ai_core {
+
+enum class FramePreprocType : int8_t {
+  OPENCV_CPU_GENERIC = 0, // ROI -> Resize -> Normalize -> Layout convert
+  NCNN_GENERIC,
+  CUDA_GENERIC
+};
 struct FramePreprocessArg {
-  cv::Rect roi;
+  FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
+
+  std::shared_ptr<cv::Rect> roi;
   std::vector<float> meanVals;
   std::vector<float> normVals;
   Shape originShape;
@@ -25,20 +43,19 @@ struct FramePreprocessArg {
 
   bool needResize = true;
   bool isEqualScale;
-  cv::Scalar pad = {0, 0, 0};
+  std::shared_ptr<cv::Scalar> pad;
   int topPad = 0;
   int leftPad = 0;
 
   DataType dataType;
+  BufferLocation outputLocation = BufferLocation::CPU;
   bool hwc2chw = false;
 
-  // this type of input is only allowed to have one
-  // multi-inputs may require the expansion of the preprocessing plugin
-  std::string inputName;
+  std::vector<std::string> inputNames;
 };
 
 struct FrameInput {
-  cv::Mat image;
+  std::shared_ptr<cv::Mat> image;
 };
 
 } // namespace ai_core

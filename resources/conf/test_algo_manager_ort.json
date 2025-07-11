@@ -34,7 +34,8 @@
                 "hwc2chw": true,
                 "inputNames": [
                     "images"
-                ]
+                ],
+                "preprocTaskType": 0
             },
             "inferParams": {
                 "name": "yolo-det-80c-001",

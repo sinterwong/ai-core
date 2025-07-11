@@ -53,12 +53,14 @@ bool NanoDet::process(const TensorData &modelOutput,
 
   // [1, 3598, 11]
   cv::Mat rawData(numAnchors, stride, CV_32F,
-                  const_cast<void *>(output.getTypedPtr<void>()));
+                  const_cast<void *>(output.getRawHostPtr()));
+
+  const auto &inputRoi = *prepParams->roi;
 
   Shape originShape;
-  if (prepParams->roi.area() > 0) {
-    originShape.w = prepParams->roi.width;
-    originShape.h = prepParams->roi.height;
+  if (inputRoi.area() > 0) {
+    originShape.w = inputRoi.width;
+    originShape.h = inputRoi.height;
   } else {
     originShape = prepParams->originShape;
   }
@@ -91,10 +93,11 @@ bool NanoDet::process(const TensorData &modelOutput,
       y = (y1 - prepParams->topPad) / scaleY;
       w = w / scaleX;
       h = h / scaleY;
-      x += prepParams->roi.x;
-      y += prepParams->roi.y;
-      result.rect = {static_cast<int>(x), static_cast<int>(y),
-                     static_cast<int>(w), static_cast<int>(h)};
+      x += inputRoi.x;
+      y += inputRoi.y;
+      result.rect =
+          std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
+                                     static_cast<int>(w), static_cast<int>(h));
       results.push_back(result);
     }
   }

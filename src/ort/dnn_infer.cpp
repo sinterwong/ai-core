@@ -174,10 +174,10 @@ InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
     for (size_t i = 0; i < inputShapes.size(); ++i) {
       const std::string &inputName = inputNames.at(i);
       auto &prepData = prepDatas.at(inputName);
-      switch (prepData.dataType) {
+      switch (prepData.dataType()) {
       case DataType::FLOAT32: {
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, prepData.data.data(), prepData.data.size(),
+            *memoryInfo, prepData.getRawHostPtr(), prepData.getSizeBytes(),
             inputShapes[i].data(), inputShapes[i].size(),
             ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
         break;
@@ -186,12 +186,12 @@ InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
       case DataType::FLOAT16: {
 #if ORT_API_VERSION >= 12
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, prepData.data.data(), prepData.data.size(),
+            *memoryInfo, prepData.getRawHostPtr(), prepData.getSizeBytes(),
             inputShapes[i].data(), inputShapes[i].size(),
             ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
 #else
         size_t elemCount = prepData.getElementCount();
-        auto typedPtr = prepData.getTypedPtr<uint16_t>();
+        auto typedPtr = prepData.getHostPtr<uint16_t>();
         inputs.emplace_back(Ort::Value::CreateTensor<uint16_t>(
             *memoryInfo, const_cast<uint16_t *>(typedPtr), elemCount,
             inputShapes[i].data(), inputShapes[i].size()));
@@ -201,7 +201,7 @@ InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
 
       default:
         LOG_ERRORS << "Unsupported data type: "
-                   << static_cast<int>(prepData.dataType);
+                   << static_cast<int>(prepData.dataType());
         return InferErrorCode::INFER_FAILED;
       }
     }
@@ -218,17 +218,14 @@ InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
       auto elemCount = typeInfo.GetElementCount();
 
       TypedBuffer outputData;
-      outputData.elementCount = elemCount;
-
       auto elemType = typeInfo.GetElementType();
-
       if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
         const auto *rawData = modelOutput.GetTensorData<uint8_t>();
         const size_t byteSize = elemCount * sizeof(float);
-        std::vector<uint8_t> byteData(byteSize);
-        std::memcpy(byteData.data(), rawData, byteSize);
-        outputData.data = std::move(byteData);
-        outputData.dataType = DataType::FLOAT32;
+
+        std::vector<uint8_t> byteData(rawData, rawData + byteSize);
+        outputData =
+            TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(byteData));
       } else if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
         // FIXME: FP16 will be converted to FP32 right now
         // FP16 -> FP32
@@ -238,10 +235,11 @@ InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
         halfMat.convertTo(floatMat, CV_32F);
 
         const size_t byteSize = elemCount * sizeof(float);
-        std::vector<uint8_t> byteData(byteSize);
-        std::memcpy(byteData.data(), floatMat.data, byteSize);
-        outputData.data = std::move(byteData);
-        outputData.dataType = DataType::FLOAT32;
+        const auto *floatMatData =
+            reinterpret_cast<const uint8_t *>(floatMat.data);
+        std::vector<uint8_t> byteData(floatMatData, floatMatData + byteSize);
+        outputData =
+            TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(byteData));
       } else {
         LOG_ERRORS << "Unsupported output tensor data type: "
                    << static_cast<int>(elemType);

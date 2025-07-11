@@ -1,5 +1,5 @@
 /**
- * @file cpu_image_preprocessor.hpp
+ * @file cpu_generic_preprocessor.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,24 +8,24 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __OPENCV_IMAGE_PREPROCESSOR_HPP_
-#define __OPENCV_IMAGE_PREPROCESSOR_HPP_
+#ifndef __OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP__
+#define __OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP__
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/typed_buffer.hpp"
+#include "frame_preprocessor_base.hpp"
 
 namespace cv {
 class Mat;
 } // namespace cv
 
-// TODO: will add the "ort" namespace
 namespace ai_core::dnn::cpu {
-class ImagePreprocessor {
+class CpuGenericCvPreprocessor : public IFramePreprocessor {
 public:
-  explicit ImagePreprocessor() {}
+  explicit CpuGenericCvPreprocessor() {}
 
-  TypedBuffer process(FramePreprocessArg &params,
-                      const FrameInput &frameInput) const;
+  TypedBuffer process(FramePreprocessArg &args,
+                      const FrameInput &input) const override;
 
 private:
   TypedBuffer preprocessFP32(const cv::Mat &normalizedImage, int inputChannels,

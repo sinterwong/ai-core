@@ -1,0 +1,44 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+
+PROJECT(TrtEngineModule)
+
+SET(CMAKE_POSITION_INDEPENDENT_CODE ON) 
+
+SET(TRT_MODULE_PRIVATE_INCLUDES
+    ${OpenCV_INCLUDE_DIRS}
+    ${TensorRT_INCLUDE_DIR}
+    ${CUDAToolkit_INCLUDE_DIRS}
+)
+
+SET(TRT_MODULE_LINK_LIBS
+    TensorRT::nvinfer
+    ${CUDA_LIBRARIES}
+    encrypt::encrypt
+    logger::logger
+    ${OpenCV_LIBS}
+)
+
+SET(TRT_MODULE_LIBS ${TRT_MODULE_LINK_LIBS} PARENT_SCOPE)
+
+FILE(GLOB_RECURSE CURRENT_DIR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cu)
+
+MESSAGE(STATUS "Inference engine type is TensorRT, preparing object files.")
+
+ADD_LIBRARY(ai_trt_module OBJECT
+    ${CURRENT_DIR_SRCS}
+)
+
+TARGET_INCLUDE_DIRECTORIES(ai_trt_module
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..> 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../api> 
+    PRIVATE
+        ${TRT_MODULE_PRIVATE_INCLUDES}
+)
+
+TARGET_LINK_LIBRARIES(ai_trt_module PRIVATE
+    encrypt::encrypt
+    common_utils::common_utils
+    logger::logger
+)

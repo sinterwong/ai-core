@@ -1,7 +1,6 @@
 #ifndef __AI_CORE_INFER_ERROR_CODE_HPP__
 #define __AI_CORE_INFER_ERROR_CODE_HPP__
-
-#include <cstdint> // For int32_t
+#include <cstdint>
 
 namespace ai_core {
 
@@ -16,6 +15,10 @@ enum class InferErrorCode : int32_t {
   INIT_MEMORY_ALLOC_FAILED = 104,
   INIT_DECRYPTION_FAILED = 105,
   NOT_INITIALIZED = 106,
+  INIT_RUNTIME_FAILED = 107,
+  INIT_ENGINE_FAILED = 108,
+  INIT_CONTEXT_FAILED = 109,
+  INIT_BINDING_FAILED = 110,
 
   // infer error
   INFER_FAILED = 200,
@@ -27,6 +30,11 @@ enum class InferErrorCode : int32_t {
   INFER_SET_INPUT_FAILED = 206,
   INFER_EXTRACT_FAILED = 207,
   INFER_UNSUPPORTED_OUTPUT_TYPE = 208,
+  INFER_TYPE_MISMATCH = 209,
+  INFER_SIZE_MISMATCH = 210,
+  INFER_INVALID_INPUT = 211,
+  INFER_EXECUTION_FAILED = 212,
+  INFER_BINDING_ERROR = 213,
 
   // release error
   TERMINATE_FAILED = 300,

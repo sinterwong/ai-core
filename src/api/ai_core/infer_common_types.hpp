@@ -32,18 +32,14 @@ enum class DataType : u_char {
 struct ModelInfo {
   std::string name;
 
-  struct InputInfo {
+  struct TensorInfo {
     std::string name;
     std::vector<int64_t> shape;
+    DataType dataType;
   };
 
-  struct OutputInfo {
-    std::string name;
-    std::vector<int64_t> shape;
-  };
-
-  std::vector<InputInfo> inputs;
-  std::vector<OutputInfo> outputs;
+  std::vector<TensorInfo> inputs;
+  std::vector<TensorInfo> outputs;
 };
 
 } // namespace ai_core

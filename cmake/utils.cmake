@@ -1,5 +1,5 @@
-FUNCTION(AI_CORE_extract_version)
-    FILE(READ "${CMAKE_CURRENT_LIST_DIR}/src/common/version.hpp" file_contents)
+FUNCTION(AI_CORE_EXTRACT_VERSION)
+    FILE(READ "${CMAKE_CURRENT_LIST_DIR}/src/api/ai_core/ai_core_version.hpp" file_contents)
     STRING(REGEX MATCH "AI_CORE_VER_MAJOR ([0-9]+)" _  "${file_contents}")
     IF(NOT CMAKE_MATCH_COUNT EQUAL 1)
         MESSAGE(FATAL_ERROR "Could not extract major version number from version.hpp")
