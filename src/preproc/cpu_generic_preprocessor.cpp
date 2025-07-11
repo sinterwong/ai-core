@@ -1,5 +1,5 @@
 /**
- * @file cpu_image_preprocessor.cpp
+ * @file cpu_generic_preprocessor.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "opencv_image_preprocessor.hpp"
+#include "cpu_generic_preprocessor.hpp"
 #include "vision_util.hpp"
 #include <logger.hpp>
 #include <opencv2/core.hpp>
@@ -16,12 +16,14 @@
 #include <opencv2/imgproc.hpp>
 
 namespace ai_core::dnn::cpu {
-TypedBuffer ImagePreprocessor::process(FramePreprocessArg &params_,
-                                       const FrameInput &frameInput) const {
+TypedBuffer
+CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
+                                  const FrameInput &frameInput) const {
 
   if (params_.outputLocation != BufferLocation::CPU) {
-    LOG_WARNINGS << "CPU ImagePreprocessor requested to output to GPU_DEVICE. "
-                    "This is not supported. Output will be on CPU.";
+    LOG_WARNINGS
+        << "CPU CpuGenericCvPreprocessor requested to output to GPU_DEVICE. "
+           "This is not supported. Output will be on CPU.";
   }
   const auto &image = *frameInput.image;
   const auto &roi = *params_.roi;
@@ -97,8 +99,8 @@ TypedBuffer ImagePreprocessor::process(FramePreprocessArg &params_,
   }
 }
 
-void ImagePreprocessor::convertLayout(const cv::Mat &image, float *dst,
-                                      bool hwc2chw) const {
+void CpuGenericCvPreprocessor::convertLayout(const cv::Mat &image, float *dst,
+                                             bool hwc2chw) const {
   const int height = image.rows;
   const int width = image.cols;
   const int channels = image.channels();
@@ -126,10 +128,10 @@ void ImagePreprocessor::convertLayout(const cv::Mat &image, float *dst,
   }
 }
 
-TypedBuffer ImagePreprocessor::preprocessFP32(const cv::Mat &normalizedImage,
-                                              int inputChannels,
-                                              int inputHeight, int inputWidth,
-                                              bool hwc2chw) const {
+TypedBuffer
+CpuGenericCvPreprocessor::preprocessFP32(const cv::Mat &normalizedImage,
+                                         int inputChannels, int inputHeight,
+                                         int inputWidth, bool hwc2chw) const {
   TypedBuffer result;
 
   const size_t totalElements =
@@ -143,10 +145,10 @@ TypedBuffer ImagePreprocessor::preprocessFP32(const cv::Mat &normalizedImage,
   return result;
 }
 
-TypedBuffer ImagePreprocessor::preprocessFP16(const cv::Mat &normalizedImage,
-                                              int inputChannels,
-                                              int inputHeight, int inputWidth,
-                                              bool hwc2chw) const {
+TypedBuffer
+CpuGenericCvPreprocessor::preprocessFP16(const cv::Mat &normalizedImage,
+                                         int inputChannels, int inputHeight,
+                                         int inputWidth, bool hwc2chw) const {
   const size_t totalElements =
       static_cast<size_t>(inputChannels) * inputHeight * inputWidth;
 

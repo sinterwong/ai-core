@@ -39,7 +39,9 @@ struct TestConfig {
   DataType preprocDataType;
   DeviceType deviceType;
   std::string inputName;
+
   bool needDecrypt = false;
+  FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
 };
 
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
@@ -113,7 +115,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputName = config.inputName;
+  framePreprocessArg.inputNames = {config.inputName};
   preprocParams.setParams(framePreprocessArg);
 
   AlgoPostprocParams postprocParams;
@@ -186,7 +188,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputName = config.inputName;
+  framePreprocessArg.inputNames = {config.inputName};
   preprocParams.setParams(framePreprocessArg);
 
   AlgoPostprocParams postprocParams;

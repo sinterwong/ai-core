@@ -27,12 +27,14 @@ class Mat;
 
 namespace ai_core {
 
-enum class ImagePreprocType {
-  CPU_GENERIC, // ROI -> Resize -> Normalize -> Layout convert
+enum class FramePreprocType : int8_t {
+  OPENCV_CPU_GENERIC = 0, // ROI -> Resize -> Normalize -> Layout convert
+  NCNN_GENERIC,
   CUDA_GENERIC
 };
 struct FramePreprocessArg {
-  ImagePreprocType preproc_task_type = ImagePreprocType::CPU_GENERIC;
+  FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
+
   std::shared_ptr<cv::Rect> roi;
   std::vector<float> meanVals;
   std::vector<float> normVals;
@@ -49,9 +51,7 @@ struct FramePreprocessArg {
   BufferLocation outputLocation = BufferLocation::CPU;
   bool hwc2chw = false;
 
-  // this type of input is only allowed to have one
-  // multi-inputs may require the expansion of the preprocessing plugin
-  std::string inputName;
+  std::vector<std::string> inputNames;
 };
 
 struct FrameInput {

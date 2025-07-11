@@ -1,5 +1,5 @@
 /**
- * @file ncnn_image_preprocessor.cpp
+ * @file ncnn_generic_preprocessor.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,9 +8,10 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ncnn_image_preprocessor.hpp"
-#include "logger.hpp"
+#include "ncnn_generic_preprocessor.hpp"
+
 #include <algorithm>
+#include <logger.hpp>
 #include <ncnn/mat.h>
 #include <ncnn/option.h>
 #include <opencv2/core/mat.hpp>
@@ -20,8 +21,9 @@
 
 namespace ai_core::dnn::mncnn {
 
-TypedBuffer ImagePreprocessor::process(FramePreprocessArg &args,
-                                       const FrameInput &frameData) const {
+TypedBuffer
+NcnnGenericPreprocessor::process(FramePreprocessArg &args,
+                                 const FrameInput &frameData) const {
   const auto &cvImageOrig = *frameData.image;
   const auto &inputRoi = *args.roi;
   const auto &inputPad = *args.pad;
