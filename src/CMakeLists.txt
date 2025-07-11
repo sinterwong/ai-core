@@ -95,7 +95,7 @@ ADD_LIBRARY(ai_core SHARED
 	# if WITH_NCNN_ENGINE is ON
 	$<$<BOOL:${WITH_NCNN_ENGINE}>:$<TARGET_OBJECTS:ai_ncnn_module>>
 	# if WITH_TRT_ENGINE is ON
-	$<$<BOOL:${WITH_NCNN_ENGINE}>:$<TARGET_OBJECTS:ai_trt_module>>
+	$<$<BOOL:${WITH_TRT_ENGINE}>:$<TARGET_OBJECTS:ai_trt_module>>
 )
 ADD_LIBRARY(ai_core::ai_core ALIAS ai_core)
 
