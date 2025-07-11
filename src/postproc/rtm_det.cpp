@@ -59,8 +59,8 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
       utils::scaleRatio(originShape, inputShape, prepParams->isEqualScale);
 
   std::vector<BBox> results;
-  auto detDataPtr = detPred.getTypedPtr<float>();
-  auto clsDataPtr = clsPred.getTypedPtr<float>();
+  auto detDataPtr = detPred.getHostPtr<float>();
+  auto clsDataPtr = clsPred.getHostPtr<float>();
   for (int i = 0; i < anchorNum; ++i) {
     auto detData = detDataPtr + i * 4;
     auto clsData = clsDataPtr + i * numClasses;

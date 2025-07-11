@@ -44,7 +44,7 @@ bool SoftmaxCls::process(const TensorData &modelOutput,
   int numClasses = outputShape.at(outputShape.size() - 1);
 
   cv::Mat scores(1, numClasses, CV_32F,
-                 const_cast<void *>(output.getTypedPtr<void>()));
+                 const_cast<void *>(output.getRawHostPtr()));
   cv::Point classIdPoint;
   double score;
   cv::minMaxLoc(scores, nullptr, &score, nullptr, &classIdPoint);

@@ -202,7 +202,7 @@ InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
         return InferErrorCode::INFER_FAILED;
       }
       const TypedBuffer &buffer = it->second;
-      if (buffer.data.empty()) {
+      if (buffer.getSizeBytes() == 0) {
         LOG_ERRORS << "Empty input data for input tensor '" << inputName;
         return InferErrorCode::INFER_FAILED;
       }
@@ -215,7 +215,7 @@ InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
       }
       const std::vector<int> &shape = shape_it->second;
 
-      if (buffer.dataType != DataType::FLOAT32) {
+      if (buffer.dataType() != DataType::FLOAT32) {
         LOG_ERRORS << "Unsupported data type for NCNN input '" << inputName
                    << "'. Expected FLOAT32.";
         return InferErrorCode::INFER_FAILED;
@@ -224,16 +224,20 @@ InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
       ncnn::Mat ncnn_in;
       if (shape.size() == 3) {
         ncnn_in = ncnn::Mat(shape[2], shape[1], shape[0],
-                            (void *)buffer.data.data(), sizeof(float));
+                            const_cast<void *>(buffer.getRawHostPtr()),
+                            sizeof(float));
       } else if (shape.size() == 4 && shape[0] == 1) { // NCHW, N=1
         ncnn_in = ncnn::Mat(shape[3], shape[2], shape[1],
-                            (void *)buffer.data.data(), sizeof(float));
+                            const_cast<void *>(buffer.getRawHostPtr()),
+                            sizeof(float));
       } else if (shape.size() == 2) { // HW
-        ncnn_in = ncnn::Mat(shape[1], shape[0], (void *)buffer.data.data(),
+        ncnn_in = ncnn::Mat(shape[1], shape[0],
+                            const_cast<void *>(buffer.getRawHostPtr()),
                             sizeof(float));
       } else if (shape.size() == 1) { // W
         ncnn_in =
-            ncnn::Mat(shape[0], (void *)buffer.data.data(), sizeof(float));
+            ncnn::Mat(shape[0], const_cast<void *>(buffer.getRawHostPtr()),
+                      sizeof(float));
       } else {
         LOG_ERRORS << "Unsupported input shape dimension " << shape.size()
                    << " for NCNN input '" << inputName << "'.";
@@ -257,11 +261,9 @@ InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
       }
 
       TypedBuffer outputBuffer;
-      outputBuffer.dataType = DataType::FLOAT32; // NCNN outputs are float
-      outputBuffer.elementCount = ncnn_out.total();
-      size_t byteSize = ncnn_out.total() * sizeof(float);
-      outputBuffer.data.resize(byteSize);
-      memcpy(outputBuffer.data.data(), ncnn_out.data, byteSize);
+      outputBuffer.resize(ncnn_out.total());
+      memcpy(outputBuffer.getRawHostPtr(), ncnn_out.data,
+             outputBuffer.getSizeBytes());
 
       outputs.datas.insert(std::make_pair(outputName, std::move(outputBuffer)));
 

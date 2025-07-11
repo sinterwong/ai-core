@@ -52,7 +52,7 @@ bool Yolov11Det::process(const TensorData &modelOutput,
 
   cv::Mat rawData(strideNum, signalResultNum, CV_32F);
   cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F,
-                        const_cast<void *>(output.getTypedPtr<void>())),
+                        const_cast<void *>(output.getRawHostPtr())),
                 rawData);
   std::vector<BBox> results = processRawOutput(rawData, inputShape, *prepParams,
                                                *params, signalResultNum - 4);
