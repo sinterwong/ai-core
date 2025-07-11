@@ -12,6 +12,7 @@ SET(TRT_MODULE_PRIVATE_INCLUDES
 
 SET(TRT_MODULE_LINK_LIBS
     TensorRT::nvinfer
+    ${CUDA_LIBRARIES}
     encrypt::encrypt
     logger::logger
     ${OpenCV_LIBS}

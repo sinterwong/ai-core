@@ -14,32 +14,90 @@
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_params_types.hpp"
 #include "infer_base.hpp"
+#include "trt_device_buffer.hpp"
+
+#include <NvInfer.h>
+#include <NvInferRuntime.h>
+#include <logger.hpp>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace ai_core::dnn {
+
+// logger for trt that forwards messages to our framework's logger
+class TrtFrameworkLogger : public nvinfer1::ILogger {
+public:
+  void log(Severity severity, const char *msg) noexcept override {
+    switch (severity) {
+    case Severity::kINTERNAL_ERROR:
+      LOG_FATALS << "[TRT] " << msg;
+      break;
+    case Severity::kERROR:
+      LOG_ERRORS << "[TRT] " << msg;
+      break;
+    case Severity::kWARNING:
+      LOG_WARNINGS << "[TRT] " << msg;
+      break;
+    case Severity::kINFO:
+      LOG_INFOS << "[TRT] " << msg;
+      break;
+    case Severity::kVERBOSE:
+      LOG_INFOS << "[TRT] " << msg;
+      break;
+    default:
+      LOG_INFOS << "[TRT] " << msg;
+      break;
+    }
+  }
+};
+
 class TrtAlgoInference : public InferBase {
 public:
   explicit TrtAlgoInference(const AlgoConstructParams &params);
+  ~TrtAlgoInference() override;
 
-  virtual ~TrtAlgoInference() override {}
+  InferErrorCode initialize() override;
+  InferErrorCode infer(TensorData &inputs, TensorData &outputs) override;
+  const ModelInfo &getModelInfo() override;
+  InferErrorCode terminate() override;
 
-  virtual InferErrorCode initialize() override;
+private:
+  // helper to calculate volume of dimensions
+  static int64_t calculateVolume(const nvinfer1::Dims &dims);
 
-  virtual InferErrorCode infer(TensorData &inputs,
-                               TensorData &outputs) override;
+  // initialization helpers
+  InferErrorCode loadEngineFromPath(const std::string &path,
+                                    bool needs_decrypt);
+  InferErrorCode setupBindings();
 
-  virtual const ModelInfo &getModelInfo() override;
+  void releaseResources();
 
-  virtual InferErrorCode terminate() override;
+  AlgoInferParams mParams;
+  TrtFrameworkLogger mLogger;
+  std::shared_ptr<ModelInfo> mModelInfo;
 
-protected:
-  AlgoInferParams params_;
-  std::vector<std::string> inputNames_;
-  std::vector<std::string> outputNames_;
+  // trt core components
+  std::unique_ptr<nvinfer1::IRuntime> mRuntime;
+  std::unique_ptr<nvinfer1::ICudaEngine> mEngine;
+  std::unique_ptr<nvinfer1::IExecutionContext> mContext;
 
-  std::vector<std::vector<int64_t>> inputShapes_;
-  std::vector<std::vector<int64_t>> outputShapes_;
+  cudaStream_t mStream{nullptr};
 
-  mutable std::mutex mtx_;
+  // Owns the actual device memory for all I/O tensors.
+  std::vector<trt_utils::TrtDeviceBuffer> mManagedBuffers;
+
+  // Maps tensor names to their corresponding device pointers.
+  std::unordered_map<std::string, void *> mTensorAddressMap;
+
+  // Maps tensor names to their size in bytes.
+  std::unordered_map<std::string, size_t> mTensorSizeMap;
+
+  bool mIsInitialized{false};
+  mutable std::mutex mMutex;
 };
+
 } // namespace ai_core::dnn
 #endif
