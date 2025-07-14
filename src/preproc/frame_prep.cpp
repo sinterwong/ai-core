@@ -39,7 +39,7 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
   }
 
   switch (paramsPtr->preprocTaskType) {
-  case FramePreprocType::OPENCV_CPU_GENERIC: {
+  case FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC: {
     std::unique_ptr<IFramePreprocessor> processor_ =
         std::make_unique<cpu::CpuGenericCvPreprocessor>();
     output.datas.insert(
@@ -56,13 +56,13 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
     output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
     break;
   }
-  case FramePreprocType::NCNN_GENERIC: {
+  case FramePreprocessArg::FramePreprocType::NCNN_GENERIC: {
     LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
                   "not enabled.";
     return false;
     break;
   }
-  case FramePreprocType::CUDA_GENERIC: {
+  case FramePreprocessArg::FramePreprocType::CUDA_GENERIC: {
     LOG_ERRORS << "CUDA_GENERIC preprocessor not implemented yet.";
     return false;
   }

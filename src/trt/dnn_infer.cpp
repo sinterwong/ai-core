@@ -12,6 +12,7 @@
 #include "dnn_infer.hpp"
 #include "ai_core/infer_error_code.hpp"
 #include "crypto.hpp"
+#include "trt_device_buffer.hpp"
 #include "trt_utils.hpp"
 #include <filesystem>
 #include <fstream>
@@ -149,7 +150,7 @@ InferErrorCode TrtAlgoInference::setupBindings() {
         static_cast<size_t>(volume) * trt_utils::getTrtElementSize(trtDtype);
 
     // Allocate buffer and get pointer
-    mManagedBuffers.emplace_back(bufferSize);
+    mManagedBuffers.emplace_back(trt_utils::TrtDeviceBuffer{bufferSize});
     void *devicePtr = mManagedBuffers.back().get();
 
     // Populate the name-based maps

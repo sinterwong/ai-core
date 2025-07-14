@@ -126,8 +126,9 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
           static_cast<DataType>(preprocJson["dataType"].get<int>());
       framePreprocessArg.inputNames =
           preprocJson["inputNames"].get<std::vector<std::string>>();
-      framePreprocessArg.preprocTaskType = static_cast<FramePreprocType>(
-          preprocJson["preprocTaskType"].get<int>());
+      framePreprocessArg.preprocTaskType =
+          static_cast<FramePreprocessArg::FramePreprocType>(
+              preprocJson["preprocTaskType"].get<int>());
       params.setParam("preprocParams", framePreprocessArg);
     } else {
       LOG_ERRORS << "Unsupported preprocType: "

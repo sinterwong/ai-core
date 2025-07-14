@@ -27,12 +27,14 @@ class Mat;
 
 namespace ai_core {
 
-enum class FramePreprocType : int8_t {
-  OPENCV_CPU_GENERIC = 0, // ROI -> Resize -> Normalize -> Layout convert
-  NCNN_GENERIC,
-  CUDA_GENERIC
-};
 struct FramePreprocessArg {
+  enum class FramePreprocType : int8_t {
+    OPENCV_CPU_GENERIC = 0, // ROI -> Resize -> Normalize -> Layout convert
+    NCNN_GENERIC,
+    CUDA_GENERIC,
+    OPENCV_CPU_WITH_MASK
+  };
+
   FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
 
   std::shared_ptr<cv::Rect> roi;
@@ -47,10 +49,10 @@ struct FramePreprocessArg {
   int topPad = 0;
   int leftPad = 0;
 
-  DataType dataType;
-  BufferLocation outputLocation = BufferLocation::CPU;
   bool hwc2chw = false;
 
+  DataType dataType;
+  BufferLocation outputLocation = BufferLocation::CPU;
   std::vector<std::string> inputNames;
 };
 

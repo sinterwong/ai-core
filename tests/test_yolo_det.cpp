@@ -41,7 +41,8 @@ struct TestConfig {
   std::string inputName;
 
   bool needDecrypt = false;
-  FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
+  FramePreprocessArg::FramePreprocType preprocTaskType =
+      FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
 };
 
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {

@@ -9,7 +9,7 @@
   "cmake.exportCompileCommandsFile": true,
   "cmake.environment": {
     "PATH": "${env:PATH}:/home/sinter/softwares/miniconda3/bin",
-    "ANDROID_NDK": "/home/sinter/softwares/android-ndk-r27c"
+    // "ANDROID_NDK": "/home/sinter/softwares/android-ndk-r27c"
   },
   "cmake.configureArgs": [
     "-DBUILD_AI_CORE_TESTS=ON",
