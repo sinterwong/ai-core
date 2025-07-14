@@ -92,19 +92,8 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
             preprocJson["std"].get<std::vector<float>>();
       }
       if (preprocJson.contains("pad")) {
-        const auto &pad = preprocJson["pad"].get<std::vector<int>>();
-        if (pad.size() == 1) {
-          framePreprocessArg.pad =
-              std::make_shared<cv::Scalar>(pad[0], pad[0], pad[0]);
-        } else if (pad.size() == 3) {
-          framePreprocessArg.pad =
-              std::make_shared<cv::Scalar>(pad[0], pad[1], pad[2]);
-        } else {
-          LOG_ERRORS << "Invalid pad size. Expected 1 or 3 elements.";
-          throw std::runtime_error("Invalid pad size.");
-        }
+        framePreprocessArg.pad = preprocJson["pad"].get<std::vector<int>>();
       }
-
       if (preprocJson.contains("hwc2chw")) {
         framePreprocessArg.hwc2chw = preprocJson["hwc2chw"].get<bool>();
       } else {

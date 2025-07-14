@@ -27,7 +27,7 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
   }
   const auto &image = *frameInput.image;
   const auto &roi = *params_.roi;
-  const auto &pad = *params_.pad;
+
   int inputChannels = image.channels();
 
   // Crop ROI
@@ -39,6 +39,14 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
   }
 
   // Resize
+  cv::Scalar pad;
+  if (params_.pad.size() == 3) {
+    pad = cv::Scalar(params_.pad[0], params_.pad[1], params_.pad[2]);
+  } else if (params_.pad.size() == 1) {
+    pad = cv::Scalar(params_.pad[0]);
+  } else {
+    throw std::runtime_error("Invalid pad size. Must be 1 or 4.");
+  }
   cv::Mat resizedImage;
   if (params_.needResize) {
     if (params_.isEqualScale) {

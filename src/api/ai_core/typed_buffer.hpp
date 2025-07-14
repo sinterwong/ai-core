@@ -13,6 +13,7 @@
 #include "ai_core/infer_common_types.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -20,36 +21,27 @@ namespace ai_core {
 
 enum class BufferLocation { CPU, GPU_DEVICE };
 
-/**
- * @brief
- * Data storage:
- * if location is CPU, cpuData_ holds the data.
- * if location is GPU_DEVICE, devicePtr_ points to the data on the device.
- * TypedBuffer itself does not manage the lifecycle of devicePtr_ memory.
- */
+class GpuBufferImpl;
+
 class TypedBuffer {
 public:
-  TypedBuffer() = default;
+  TypedBuffer();
+  ~TypedBuffer();
 
-  ~TypedBuffer() = default;
-
-  // 拷贝构造函数
-  // CPU数据 -> 深拷贝
-  // GPU引用 -> 拷贝引用 (这是一个设计决策，因为我们不拥有GPU内存)
   TypedBuffer(const TypedBuffer &other);
-
   TypedBuffer &operator=(const TypedBuffer &other);
-
   TypedBuffer(TypedBuffer &&other) noexcept;
-
   TypedBuffer &operator=(TypedBuffer &&other) noexcept;
 
   static TypedBuffer createFromCpu(DataType type,
                                    const std::vector<uint8_t> &data);
   static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t> &&data);
 
+  static TypedBuffer createFromGpu(DataType type, size_t sizeBytes,
+                                   int deviceId = 0);
   static TypedBuffer createFromGpu(DataType type, void *devicePtr,
-                                   size_t sizeBytes, int deviceId = 0);
+                                   size_t sizeBytes, int deviceId,
+                                   bool manageMemory);
 
   DataType dataType() const noexcept { return mDataType; }
   BufferLocation location() const noexcept { return mLocation; }
@@ -80,8 +72,9 @@ public:
 private:
   TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData);
   TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData);
+  TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId);
   TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
-              int deviceId);
+              int deviceId, bool manageMemory);
 
   void reset();
 
@@ -90,7 +83,7 @@ private:
 
   std::vector<uint8_t> mCpuData;
 
-  void *mDevicePtr{nullptr};
+  std::unique_ptr<GpuBufferImpl> mGpuImpl;
   size_t mDeviceBufferSizeBytes{0};
   int mDeviceId{0};
 

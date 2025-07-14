@@ -112,7 +112,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
   framePreprocessArg.roi =
       std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   framePreprocessArg.isEqualScale = true;
-  framePreprocessArg.pad = std::make_shared<cv::Scalar>(0, 0, 0);
+  framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
@@ -185,7 +185,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   framePreprocessArg.roi =
       std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   framePreprocessArg.isEqualScale = true;
-  framePreprocessArg.pad = std::make_shared<cv::Scalar>(0, 0, 0);
+  framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;

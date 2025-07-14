@@ -26,7 +26,6 @@ NcnnGenericPreprocessor::process(FramePreprocessArg &args,
                                  const FrameInput &frameData) const {
   const auto &cvImageOrig = *frameData.image;
   const auto &inputRoi = *args.roi;
-  const auto &inputPad = *args.pad;
   if (cvImageOrig.empty()) {
     LOG_ERRORS << "Input cv::Mat image is empty.";
     throw std::runtime_error("Input cv::Mat image is empty.");
@@ -105,7 +104,7 @@ NcnnGenericPreprocessor::process(FramePreprocessArg &args,
 
       ncnn::copy_make_border(tempNcnnMat, ncnnIn, args.topPad, bottomPad,
                              args.leftPad, rightPad, ncnn::BORDER_CONSTANT,
-                             (float)inputPad[0]);
+                             (float)args.pad[0]);
       if (ncnnIn.w != targetWidth || ncnnIn.h != targetHeight) {
         LOG_WARNINGS << "Padded NCNN Mat size (" << ncnnIn.w << "x" << ncnnIn.h
                      << ") mismatch target (" << targetWidth << "x"

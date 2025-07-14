@@ -9,50 +9,43 @@
  *
  */
 #include "ai_core/typed_buffer.hpp"
+#include "trt/gpu_buffer_impl.hpp"
 #include <logger.hpp>
 
 namespace ai_core {
 
+TypedBuffer::TypedBuffer() = default;
+TypedBuffer::~TypedBuffer() = default;
+
 TypedBuffer::TypedBuffer(const TypedBuffer &other)
     : mDataType(other.mDataType), mLocation(other.mLocation),
-      mCpuData(other.mCpuData), mDevicePtr(other.mDevicePtr),
+      mCpuData(other.mCpuData),
       mDeviceBufferSizeBytes(other.mDeviceBufferSizeBytes),
-      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount) {}
+      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount) {
+  if (other.mGpuImpl) {
+    mGpuImpl = std::make_unique<GpuBufferImpl>(*other.mGpuImpl);
+  }
+}
 
 TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
   if (this != &other) {
     mDataType = other.mDataType;
     mLocation = other.mLocation;
     mCpuData = other.mCpuData;
-    mDevicePtr = other.mDevicePtr;
     mDeviceBufferSizeBytes = other.mDeviceBufferSizeBytes;
     mDeviceId = other.mDeviceId;
     mElementCount = other.mElementCount;
+    if (other.mGpuImpl) {
+      mGpuImpl = std::make_unique<GpuBufferImpl>(*other.mGpuImpl);
+    } else {
+      mGpuImpl.reset();
+    }
   }
   return *this;
 }
 
-TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept
-    : mDataType(other.mDataType), mLocation(other.mLocation),
-      mCpuData(std::move(other.mCpuData)), mDevicePtr(other.mDevicePtr),
-      mDeviceBufferSizeBytes(other.mDeviceBufferSizeBytes),
-      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount) {
-  other.reset();
-}
-
-TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept {
-  if (this != &other) {
-    mDataType = other.mDataType;
-    mLocation = other.mLocation;
-    mCpuData = std::move(other.mCpuData);
-    mDevicePtr = other.mDevicePtr;
-    mDeviceBufferSizeBytes = other.mDeviceBufferSizeBytes;
-    mDeviceId = other.mDeviceId;
-    mElementCount = other.mElementCount;
-    other.reset();
-  }
-  return *this;
-}
+TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept = default;
+TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept = default;
 
 TypedBuffer TypedBuffer::createFromCpu(DataType type,
                                        const std::vector<uint8_t> &data) {
@@ -64,9 +57,15 @@ TypedBuffer TypedBuffer::createFromCpu(DataType type,
   return TypedBuffer(type, std::move(data));
 }
 
+TypedBuffer TypedBuffer::createFromGpu(DataType type, size_t sizeBytes,
+                                       int deviceId) {
+  return TypedBuffer(type, sizeBytes, deviceId);
+}
+
 TypedBuffer TypedBuffer::createFromGpu(DataType type, void *devicePtr,
-                                       size_t sizeBytes, int deviceId) {
-  return TypedBuffer(type, devicePtr, sizeBytes, deviceId);
+                                       size_t sizeBytes, int deviceId,
+                                       bool manageMemory) {
+  return TypedBuffer(type, devicePtr, sizeBytes, deviceId, manageMemory);
 }
 
 size_t TypedBuffer::getSizeBytes() const noexcept {
@@ -102,7 +101,7 @@ void *TypedBuffer::getRawDevicePtr() const {
     throw std::runtime_error(
         "Attempted to get device pointer from a non-GPU buffer.");
   }
-  return mDevicePtr;
+  return mGpuImpl ? mGpuImpl->get() : nullptr;
 }
 
 void TypedBuffer::setCpuData(DataType type, const std::vector<uint8_t> &data) {
@@ -115,16 +114,21 @@ void TypedBuffer::setCpuData(DataType type, std::vector<uint8_t> &&data) {
 
 void TypedBuffer::setGpuDataReference(DataType type, void *ptr,
                                       size_t sizeBytes, int devId) {
-  *this = createFromGpu(type, ptr, sizeBytes, devId);
+  *this = createFromGpu(type, ptr, sizeBytes, devId, false);
 }
 
 void TypedBuffer::resize(size_t newElementCount) {
-  if (mLocation != BufferLocation::CPU) {
-    throw std::runtime_error(
-        "Cannot resize a buffer that references GPU memory.");
+  if (mLocation == BufferLocation::CPU) {
+    mElementCount = newElementCount;
+    mCpuData.resize(mElementCount * getElementSize(mDataType));
+  } else {
+    size_t newSize = newElementCount * getElementSize(mDataType);
+    if (newSize > mDeviceBufferSizeBytes) {
+      mGpuImpl = std::make_unique<GpuBufferImpl>(newSize);
+      mDeviceBufferSizeBytes = newSize;
+    }
+    mElementCount = newElementCount;
   }
-  mElementCount = newElementCount;
-  mCpuData.resize(mElementCount * getElementSize(mDataType));
 }
 
 void TypedBuffer::clear() { reset(); }
@@ -159,24 +163,37 @@ TypedBuffer::TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData)
   mElementCount = mCpuData.empty() ? 0 : mCpuData.size() / elemSize;
 }
 
-TypedBuffer::TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
-                         int deviceId)
+TypedBuffer::TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId)
     : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
-      mDevicePtr(devicePtr), mDeviceBufferSizeBytes(bufferSizeBytes),
-      mDeviceId(deviceId) {
+      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
+  mGpuImpl = std::make_unique<GpuBufferImpl>(bufferSizeBytes);
   const size_t elemSize = getElementSize(mDataType);
   if (elemSize == 0 && bufferSizeBytes > 0)
     throw std::runtime_error("Unsupported data type.");
-  mElementCount = (mDevicePtr == nullptr || bufferSizeBytes == 0)
+  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
                       ? 0
-                      : mDeviceBufferSizeBytes / elemSize;
+                      : bufferSizeBytes / elemSize;
+}
+
+TypedBuffer::TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
+                         int deviceId, bool manageMemory)
+    : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
+      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
+  mGpuImpl =
+      std::make_unique<GpuBufferImpl>(devicePtr, bufferSizeBytes, manageMemory);
+  const size_t elemSize = getElementSize(mDataType);
+  if (elemSize == 0 && bufferSizeBytes > 0)
+    throw std::runtime_error("Unsupported data type.");
+  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
+                      ? 0
+                      : bufferSizeBytes / elemSize;
 }
 
 void TypedBuffer::reset() {
   mDataType = DataType::FLOAT32;
   mLocation = BufferLocation::CPU;
   mCpuData.clear();
-  mDevicePtr = nullptr;
+  mGpuImpl.reset();
   mDeviceBufferSizeBytes = 0;
   mDeviceId = 0;
   mElementCount = 0;

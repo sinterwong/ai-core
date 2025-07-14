@@ -21,7 +21,7 @@
 #endif
 
 #ifdef WITH_TRT
-// #include "cuda_generic_preprocessor.hpp"
+#include "gpu_generic_cuda_preprocessor.hpp"
 #endif
 
 namespace ai_core::dnn {
@@ -62,9 +62,22 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
     return false;
     break;
   }
-  case FramePreprocessArg::FramePreprocType::CUDA_GENERIC: {
-    LOG_ERRORS << "CUDA_GENERIC preprocessor not implemented yet.";
-    return false;
+  case FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC: {
+    std::unique_ptr<IFramePreprocessor> processor_ =
+        std::make_unique<gpu::GpuGenericCudaPreprocessor>();
+    output.datas.insert(
+        std::make_pair(paramsPtr->inputNames[0],
+                       processor_->process(*paramsPtr, *frameInput)));
+    std::vector<int> shape;
+    if (paramsPtr->hwc2chw) {
+      shape = {paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
+               paramsPtr->modelInputShape.w};
+    } else {
+      shape = {paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
+               paramsPtr->modelInputShape.c};
+    }
+    output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
+    break;
   }
   default: {
     LOG_ERRORS << "Unknown preprocessor type: "
