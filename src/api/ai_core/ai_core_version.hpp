@@ -14,7 +14,7 @@
 // for cmake
 #define AI_CORE_VER_MAJOR 1
 #define AI_CORE_VER_MINOR 1
-#define AI_CORE_VER_PATCH 0
+#define AI_CORE_VER_PATCH 1
 
 #define AI_CORE_VERSION                                                        \
   (AI_CORE_VER_MAJOR * 10000 + AI_CORE_VER_MINOR * 100 + AI_CORE_VER_PATCH)

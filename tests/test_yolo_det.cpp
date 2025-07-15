@@ -1,5 +1,6 @@
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/infer_params_types.hpp"
+#include "ai_core/typed_buffer.hpp"
 #include "infer_base.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/frame_prep.hpp"
@@ -43,6 +44,7 @@ struct TestConfig {
   bool needDecrypt = false;
   FramePreprocessArg::FramePreprocType preprocTaskType =
       FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
+  BufferLocation bufferLocation = BufferLocation::CPU;
 };
 
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
@@ -117,6 +119,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
   framePreprocessArg.inputNames = {config.inputName};
+  framePreprocessArg.preprocTaskType = config.preprocTaskType;
+  framePreprocessArg.outputLocation = config.bufferLocation;
   preprocParams.setParams(framePreprocessArg);
 
   AlgoPostprocParams postprocParams;
@@ -190,6 +194,8 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
   framePreprocessArg.inputNames = {config.inputName};
+  framePreprocessArg.preprocTaskType = config.preprocTaskType;
+  framePreprocessArg.outputLocation = config.bufferLocation;
   preprocParams.setParams(framePreprocessArg);
 
   AlgoPostprocParams postprocParams;
@@ -254,7 +260,9 @@ std::vector<TestConfig> GetTestConfigs() {
                        return std::make_shared<TrtAlgoInference>(p);
                      },
                      "yolov11n_trt_fp16.engine", DataType::FLOAT32,
-                     DataType::FLOAT32, DeviceType::GPU, "images", false});
+                     DataType::FLOAT32, DeviceType::GPU, "images", false,
+                     FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
+                     BufferLocation::GPU_DEVICE});
 #endif
   return configs;
 }

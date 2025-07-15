@@ -111,13 +111,26 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
       } else {
         framePreprocessArg.isEqualScale = false;
       }
-      framePreprocessArg.dataType =
-          static_cast<DataType>(preprocJson["dataType"].get<int>());
+      if (preprocJson.contains("dataType")) {
+        framePreprocessArg.dataType =
+            static_cast<DataType>(preprocJson["dataType"].get<int>());
+      } else {
+        framePreprocessArg.dataType = DataType::FLOAT32;
+      }
+      if (preprocJson.contains("bufferLocation")) {
+        framePreprocessArg.outputLocation = static_cast<BufferLocation>(
+            preprocJson["bufferLocation"].get<int>());
+      } else {
+        framePreprocessArg.outputLocation = BufferLocation::CPU;
+      }
+      if (preprocJson.contains("preprocTaskType")) {
+        framePreprocessArg.preprocTaskType =
+            static_cast<FramePreprocessArg::FramePreprocType>(
+                preprocJson["preprocTaskType"].get<int>());
+      }
+
       framePreprocessArg.inputNames =
           preprocJson["inputNames"].get<std::vector<std::string>>();
-      framePreprocessArg.preprocTaskType =
-          static_cast<FramePreprocessArg::FramePreprocType>(
-              preprocJson["preprocTaskType"].get<int>());
       params.setParam("preprocParams", framePreprocessArg);
     } else {
       LOG_ERRORS << "Unsupported preprocType: "
@@ -273,9 +286,9 @@ std::vector<ManagerTestParam> GetManagerTestParams() {
 #ifdef WITH_NCNN
   params.push_back({"NCNN", "test_algo_manager_ncnn.json"});
 #endif
-  // #ifdef WITH_TRT
-  //     params.push_back({"TRT", "test_algo_manager_trt.json"});
-  // #endif
+#ifdef WITH_TRT
+  params.push_back({"TRT", "test_algo_manager_trt.json"});
+#endif
   return params;
 }
 
