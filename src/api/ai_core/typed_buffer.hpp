@@ -10,18 +10,16 @@
  */
 #ifndef __TYPED_BUFFER_HPP__
 #define __TYPED_BUFFER_HPP__
+#include "ai_core/device_buffer_impl.hpp"
 #include "ai_core/infer_common_types.hpp"
 
 #include <cstdint>
-#include <memory>
 #include <stdexcept>
 #include <vector>
 
 namespace ai_core {
 
 enum class BufferLocation { CPU, GPU_DEVICE };
-
-class GpuBufferImpl;
 
 class TypedBuffer {
 public:
@@ -83,7 +81,7 @@ private:
 
   std::vector<uint8_t> mCpuData;
 
-  std::unique_ptr<GpuBufferImpl> mGpuImpl;
+  std::unique_ptr<DeviceBufferImpl> mGpuImpl;
   size_t mDeviceBufferSizeBytes{0};
   int mDeviceId{0};
 

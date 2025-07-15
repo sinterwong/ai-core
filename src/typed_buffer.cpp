@@ -9,7 +9,7 @@
  *
  */
 #include "ai_core/typed_buffer.hpp"
-#include "trt/gpu_buffer_impl.hpp"
+#include "ai_core/device_buffer_impl.hpp"
 #include <logger.hpp>
 
 namespace ai_core {
@@ -23,7 +23,7 @@ TypedBuffer::TypedBuffer(const TypedBuffer &other)
       mDeviceBufferSizeBytes(other.mDeviceBufferSizeBytes),
       mDeviceId(other.mDeviceId), mElementCount(other.mElementCount) {
   if (other.mGpuImpl) {
-    mGpuImpl = std::make_unique<GpuBufferImpl>(*other.mGpuImpl);
+    mGpuImpl = DeviceBufferImpl::clone(*other.mGpuImpl);
   }
 }
 
@@ -36,12 +36,54 @@ TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
     mDeviceId = other.mDeviceId;
     mElementCount = other.mElementCount;
     if (other.mGpuImpl) {
-      mGpuImpl = std::make_unique<GpuBufferImpl>(*other.mGpuImpl);
+      mGpuImpl = DeviceBufferImpl::clone(*other.mGpuImpl);
     } else {
       mGpuImpl.reset();
     }
   }
   return *this;
+}
+
+TypedBuffer::TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData)
+    : mDataType(type), mLocation(BufferLocation::CPU), mCpuData(cpuData) {
+  const size_t elemSize = getElementSize(mDataType);
+  if (elemSize == 0 && !mCpuData.empty())
+    throw std::runtime_error("Unsupported data type.");
+  mElementCount = mCpuData.empty() ? 0 : mCpuData.size() / elemSize;
+}
+
+TypedBuffer::TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData)
+    : mDataType(type), mLocation(BufferLocation::CPU),
+      mCpuData(std::move(cpuData)) {
+  const size_t elemSize = getElementSize(mDataType);
+  if (elemSize == 0 && !mCpuData.empty())
+    throw std::runtime_error("Unsupported data type.");
+  mElementCount = mCpuData.empty() ? 0 : mCpuData.size() / elemSize;
+}
+
+TypedBuffer::TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId)
+    : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
+      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
+  mGpuImpl = DeviceBufferImpl::create(bufferSizeBytes);
+  const size_t elemSize = getElementSize(mDataType);
+  if (elemSize == 0 && bufferSizeBytes > 0)
+    throw std::runtime_error("Unsupported data type.");
+  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
+                      ? 0
+                      : bufferSizeBytes / elemSize;
+}
+
+TypedBuffer::TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
+                         int deviceId, bool manageMemory)
+    : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
+      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
+  mGpuImpl = DeviceBufferImpl::create(devicePtr, bufferSizeBytes, manageMemory);
+  const size_t elemSize = getElementSize(mDataType);
+  if (elemSize == 0 && bufferSizeBytes > 0)
+    throw std::runtime_error("Unsupported data type.");
+  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
+                      ? 0
+                      : bufferSizeBytes / elemSize;
 }
 
 TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept = default;
@@ -124,7 +166,7 @@ void TypedBuffer::resize(size_t newElementCount) {
   } else {
     size_t newSize = newElementCount * getElementSize(mDataType);
     if (newSize > mDeviceBufferSizeBytes) {
-      mGpuImpl = std::make_unique<GpuBufferImpl>(newSize);
+      mGpuImpl = DeviceBufferImpl::create(newSize);
       mDeviceBufferSizeBytes = newSize;
     }
     mElementCount = newElementCount;
@@ -144,49 +186,6 @@ size_t TypedBuffer::getElementSize(DataType type) noexcept {
   default:
     return 0;
   }
-}
-
-TypedBuffer::TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData)
-    : mDataType(type), mLocation(BufferLocation::CPU), mCpuData(cpuData) {
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && !mCpuData.empty())
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = mCpuData.empty() ? 0 : mCpuData.size() / elemSize;
-}
-
-TypedBuffer::TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData)
-    : mDataType(type), mLocation(BufferLocation::CPU),
-      mCpuData(std::move(cpuData)) {
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && !mCpuData.empty())
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = mCpuData.empty() ? 0 : mCpuData.size() / elemSize;
-}
-
-TypedBuffer::TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId)
-    : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
-      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
-  mGpuImpl = std::make_unique<GpuBufferImpl>(bufferSizeBytes);
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && bufferSizeBytes > 0)
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
-                      ? 0
-                      : bufferSizeBytes / elemSize;
-}
-
-TypedBuffer::TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
-                         int deviceId, bool manageMemory)
-    : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
-      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
-  mGpuImpl =
-      std::make_unique<GpuBufferImpl>(devicePtr, bufferSizeBytes, manageMemory);
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && bufferSizeBytes > 0)
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
-                      ? 0
-                      : bufferSizeBytes / elemSize;
 }
 
 void TypedBuffer::reset() {
