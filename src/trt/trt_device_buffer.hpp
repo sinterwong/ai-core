@@ -11,61 +11,32 @@
 #ifndef __TRT_DEVICE_BUFFER_HPP__
 #define __TRT_DEVICE_BUFFER_HPP__
 
-#include "trt_utils.hpp"
-#include <cuda_runtime_api.h>
-
+#include <cstddef>
 namespace ai_core::trt_utils {
 
 class TrtDeviceBuffer {
 public:
-  TrtDeviceBuffer() : mBuffer_(nullptr), mSizeBytes_(0) {}
+  TrtDeviceBuffer();
 
-  explicit TrtDeviceBuffer(size_t sizeBytes)
-      : mBuffer_(nullptr), mSizeBytes_(0) {
-    if (sizeBytes > 0) {
-      CHECK_CUDA(cudaMalloc(&mBuffer_, sizeBytes));
-      if (mBuffer_) {
-        mSizeBytes_ = sizeBytes;
-      } else {
-        throw std::runtime_error(
-            "TrtDeviceBuffer: Failed to allocate CUDA memory.");
-      }
-    }
-  }
+  explicit TrtDeviceBuffer(size_t sizeBytes);
 
-  TrtDeviceBuffer(const TrtDeviceBuffer &) = delete;
-  TrtDeviceBuffer &operator=(const TrtDeviceBuffer &) = delete;
+  TrtDeviceBuffer(const TrtDeviceBuffer &other);
 
-  TrtDeviceBuffer(TrtDeviceBuffer &&other) noexcept
-      : mBuffer_(other.mBuffer_), mSizeBytes_(other.mSizeBytes_) {
-    other.mBuffer_ = nullptr;
-    other.mSizeBytes_ = 0;
-  }
+  TrtDeviceBuffer &operator=(const TrtDeviceBuffer &other);
 
-  TrtDeviceBuffer &operator=(TrtDeviceBuffer &&other) noexcept {
-    if (this != &other) {
-      release();
-      mBuffer_ = other.mBuffer_;
-      mSizeBytes_ = other.mSizeBytes_;
-      other.mBuffer_ = nullptr;
-      other.mSizeBytes_ = 0;
-    }
-    return *this;
-  }
+  TrtDeviceBuffer(TrtDeviceBuffer &&other) noexcept;
 
-  ~TrtDeviceBuffer() { release(); }
+  TrtDeviceBuffer &operator=(TrtDeviceBuffer &&other) noexcept;
 
-  void *get() const { return mBuffer_; }
+  ~TrtDeviceBuffer();
 
-  size_t getSizeBytes() const { return mSizeBytes_; }
+  void *get() const;
 
-  void release() {
-    if (mBuffer_) {
-      cudaFree(mBuffer_);
-      mBuffer_ = nullptr;
-      mSizeBytes_ = 0;
-    }
-  }
+  size_t getSizeBytes() const;
+
+  void release();
+
+  void swap(TrtDeviceBuffer &other) noexcept;
 
 private:
   void *mBuffer_;
