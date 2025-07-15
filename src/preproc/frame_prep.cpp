@@ -57,12 +57,16 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
     break;
   }
   case FramePreprocessArg::FramePreprocType::NCNN_GENERIC: {
+#ifdef WITH_NCNN
+#else
     LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
                   "not enabled.";
+#endif
     return false;
     break;
   }
   case FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC: {
+#ifdef WITH_TRT
     std::unique_ptr<IFramePreprocessor> processor_ =
         std::make_unique<gpu::GpuGenericCudaPreprocessor>();
     output.datas.insert(
@@ -77,6 +81,11 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
                paramsPtr->modelInputShape.c};
     }
     output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
+#else
+    LOG_ERRORS << "CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT is "
+                  "not enabled.";
+    return false;
+#endif
     break;
   }
   default: {

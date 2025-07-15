@@ -30,12 +30,13 @@
                 ],
                 "isEqualScale": true,
                 "needResize": true,
-                "dataType": 1,
+                "dataType": 0,
                 "hwc2chw": true,
                 "inputNames": [
                     "images"
                 ],
-                "preprocTaskType": 2
+                "preprocTaskType": 2,
+                "bufferLocation": 1
             },
             "inferParams": {
                 "name": "yolo-det-80c-001-trt",
