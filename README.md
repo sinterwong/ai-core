@@ -1,80 +1,182 @@
 # AI Core
+<p align="center">
+  <img src="assets/icon/logo.jpeg" alt="ai-core Logo" width="500"> <br/>
+</p>
 
-AI Core is a C++ library designed for managing and executing AI inference algorithms. It features a modular architecture, leveraging registrar patterns (`AlgoRegistrar`, `PostprocessRegistrar`) and factory mechanisms (`AlgoInferFactory`, `PostprocFactory`). This design promotes extensibility, allowing developers to easily register and integrate new algorithms and vision processing modules. The library appears to support various inference engines (ONNX Runtime is used in CI examples) and is geared towards computer vision applications such as object detection and tracking.
+<p align="center">
+  A highly scalable deep learning algorithm computing library.
+</p>
 
-## Build and Installation
+AI Core is a powerful and extensible C++ library for managing and executing AI inference algorithms. Designed with a modular architecture, it allows developers to seamlessly integrate and switch between different inference engines like ONNX Runtime, NCNN, and TensorRT.
 
-This project uses CMake for building and managing dependencies. The following instructions are based on the GitHub Actions CI workflow.
+## Features
+
+*   **Multiple Inference Engines:** Supports ONNX Runtime, NCNN, and TensorRT.
+*   **Modular Design:** Easily extend the library by adding new algorithms and pre/post-processing modules.
+*   **Configuration-based:** Use JSON files to define and configure your AI algorithms.
+
+## Getting Started
 
 ### Prerequisites
 
-*   A C++ compiler supporting C++17 (GCC 13 is used in CI).
-*   CMake (version 3.16 or higher recommended).
-*   Ninja (optional, but used in CI for faster builds).
-*   Git LFS (for handling large model files).
+*   C++17 compliant compiler (e.g., GCC 9+, Clang 9+).
+*   CMake (3.16 or higher).
+*   Git.
 
 ### Dependencies
 
-The project relies on several third-party libraries. The CI workflow downloads prebuilt dependencies from a specific URL. For a local build, you might need to ensure these dependencies are available or adjust the CMake configuration. The core dependencies seem to include:
-*   ONNX Runtime (for model inference)
-*   OpenCV (likely for image processing)
-*   Other utility libraries (encryption, logging)
+AI Core requires the following dependencies:
 
-### Building the Project
+*   **ONNX Runtime:** For running ONNX models if you use.
+*   **NCNN:** For running NCNN models if you use.
+*   **TensorRT:** For running TensorRT engines if you use.
+*   **OpenCV:** For image pre-processing.
+*   **[logger](https://github.com/sinterwong/logger.git):** For logging.
+*   **[encryption-tool](https://github.com/sinterwong/encryption-tool.git):** For encryption file.
+*   **[cpp-common-utils](https://github.com/sinterwong/cpp-common-utils.git):** For the The data structures and tools used for building the project.
+*   **nlohmann-json:** For parsing JSON configuration files.
 
-1.  **Clone the repository (with submodules and LFS):**
+The project uses CMake to manage dependencies. You can either install them on your system or use a dependency manager like vcpkg or Conan.
+
+### Building
+
+1.  **Clone the repository:**
     ```bash
-    git clone --recurse-submodules <repository_url>
-    cd <repository_name>
-    git lfs pull
+    git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
+    cd ai-core
+    ```
+    If you have already cloned the repository without the submodules, you can initialize them:
+    ```bash
+    git submodule update --init --recursive
     ```
 
-2.  **Download and Extract Dependencies (if not handled by CMake automatically):**
-    The CI script downloads dependencies from `https://github.com/sinterwong/ai-core/releases/download/v1.0.0-alpha/dependency-Linux_x86_64.tgz` and extracts them to `3rdparty/target/`. You may need to replicate this step or configure CMake to find your local installations of these dependencies.
-
-3.  **Configure CMake:**
-    Create a build directory and run CMake.
+2.  **Configure with CMake:**
     ```bash
-    mkdir build
-    cd build
-    cmake .. -GNinja \
-          -DCMAKE_INSTALL_PREFIX=../install \
-          -DBUILD_AI_CORE_TESTS=ON \
-          -DWITH_ORT_ENGINE=ON \
-          -DWITH_NCNN_ENGINE=ON \
-          -DCMAKE_BUILD_TYPE=Release
+    mkdir build && cd build
+    cmake .. -DBUILD_AI_CORE_TESTS=ON -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
     ```
-    *   `CMAKE_INSTALL_PREFIX`: Specifies the installation directory.
-    *   `BUILD_AI_CORE_TESTS=ON`: Enables building of tests.
-    *   `WITH_ORT_ENGINE=ON`: Enables ONNXRuntime inference engine.
-    *   `WITH_NCNN_ENGINE=ON`: Enables NCNN inference engine.
-    *   `CMAKE_BUILD_TYPE=Release`: Specifies the build type.
+    *   Use `-DWITH_ORT_ENGINE=ON`, `-DWITH_NCNN_ENGINE=ON`, and `-DWITH_TRT_ENGINE=ON` to enable the respective inference engines.
 
-4.  **Build the project:**
+3.  **Build the project:**
     ```bash
-    cmake --build . --config Release
-    ```
-    Or if using Ninja directly:
-    ```bash
-    ninja
+    cmake --build .
     ```
 
-5.  **Install (optional):**
-    This step will copy the built libraries, executables, and headers to the directory specified by `CMAKE_INSTALL_PREFIX`.
-    ```bash
-    cmake --install .
-    ```
+### Installation
 
-### Running Tests
+To install the library, run the following command from the `build` directory:
 
-After building and installing, you can run the tests. The CI script sets up `LD_LIBRARY_PATH` before running tests. You might need to do something similar depending on your system and where the dependencies are located.
-
-From the `install` directory (or wherever you installed the project):
 ```bash
-# Example of setting up library path (adjust paths as needed)
-export LD_LIBRARY_PATH=./lib:../build/3rdparty/encryption-tool/x86_64/lib:../build/3rdparty/logger/x86_64/lib:<path_to_onnxruntime>/lib:<path_to_opencv>/lib:$LD_LIBRARY_PATH
-
-./tests/ai_core_tests --gtest_filter=*.*
+cmake --install .
 ```
 
-This README provides a basic overview. For more detailed information, please refer to the project's wiki (if available) or source code documentation.
+## Usage
+
+### `AlgoInference`: The Core of Execution
+
+The `AlgoInference` class is the workhorse of AI Core. It encapsulates the entire inference pipeline for a single algorithm, including pre-processing, inference, and post-processing. You can use it directly for more fine-grained control over the inference process.
+
+Here's an example of how to use `AlgoInference` for a YOLOv11 object detection model:
+
+```cpp
+#include "ai_core/algo_infer.hpp"
+#include "ai_core/algo_data_types.hpp"
+#include <opencv2/opencv.hpp>
+
+int main() {
+    // 1. Define the algorithm modules and parameters
+    ai_core::dnn::AlgoModuleTypes module_types;
+    module_types.preproc = "FramePreprocess";
+    module_types.infer = "OrtAlgoInference";
+    module_types.postproc = "Yolov11Det";
+
+    ai_core::dnn::AlgoInferParams infer_params;
+    infer_params.modelPath = "models/yolov11n-fp16.onnx";
+    infer_params.deviceType = ai_core::dnn::DeviceType::CPU;
+
+    // 2. Create an AlgoInference instance
+    auto algo = std::make_shared<ai_core::dnn::AlgoInference>(module_types, infer_params);
+    if (algo->initialize() != ai_core::dnn::InferErrorCode::SUCCESS) {
+        return -1;
+    }
+
+    // 3. Create input data structures
+    ai_core::dnn::AlgoInput input;
+    // ... set input data ...
+
+    // 4. Create output data structures
+    ai_core::dnn::AlgoOutput output;
+
+    // 5. Define pre-processing and post-processing parameters
+    ai_core::dnn::AlgoPreprocParams preproc_params;
+    // ... set pre-processing parameters ...
+
+    ai_core::dnn::AlgoPostprocParams postproc_params;
+    // ... set post-processing parameters ...
+
+    // 6. Run inference
+    algo->infer(input, preproc_params, output, postproc_params);
+
+    // 7. Process the output
+    // ...
+
+    return 0;
+}
+```
+
+### `AlgoManager`: Simplified Algorithm Management
+
+The `AlgoManager` class provides a higher-level interface for managing multiple algorithms. It loads algorithm configurations from a JSON file and provides a simple way to run inference by name.
+
+### Configuration
+
+AI Core uses JSON files to configure algorithms. Here's an example configuration for a YOLOv11 object detection model using ONNX Runtime:
+
+```json
+{
+    "algorithms": [
+        {
+            "name": "yolo-det-80c",
+            "types": {
+                "preproc": "FramePreprocess",
+                "infer": "OrtAlgoInference",
+                "postproc": "Yolov11Det"
+            },
+            "preprocParams": {
+                "inputShape": { "w": 640, "h": 640, "c": 3 },
+                "mean": [ 0.0, 0.0, 0.0 ],
+                "std": [ 255.0, 255.0, 255.0 ],
+                "isEqualScale": true,
+                "hwc2chw": true
+            },
+            "inferParams": {
+                "modelPath": "models/yolov11n-fp16.onnx",
+                "deviceType": 0
+            },
+            "postprocParams": {
+                "condThre": 0.5,
+                "nmsThre": 0.45
+            }
+        }
+    ]
+}
+```
+
+## Running Tests
+
+To run the tests, first build the project with tests enabled:
+
+```bash
+cmake .. -DBUILD_AI_CORE_TESTS=ON
+cmake --build .
+```
+
+Then, from the `build` directory, run:
+
+```bash
+./bin/ai_core_tests
+```
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.

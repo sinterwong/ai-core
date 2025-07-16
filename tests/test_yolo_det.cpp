@@ -73,7 +73,7 @@ protected:
     ASSERT_NEAR(box0.score, 0.8, 1e-2);
   }
 
-  fs::path resourceDir = fs::path("resources");
+  fs::path resourceDir = fs::path("assets");
   fs::path confDir = resourceDir / "conf";
   fs::path dataDir = resourceDir / "data";
   fs::path modelDir = resourceDir / "models";

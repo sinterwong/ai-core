@@ -86,4 +86,4 @@ IF(BUILD_AI_CORE_TESTS)
 ENDIF()
 
 message(INFO "--------- Install Resource --------")
-add_subdirectory(resources)
+add_subdirectory(assets)
