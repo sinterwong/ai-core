@@ -11,68 +11,35 @@
 #include <chrono>
 
 #include "ai_core/infer_error_code.hpp"
+#include "ai_core/tensor_data.hpp"
 #include "algo_infer_impl.hpp"
-#include "registrar/infer_engine_registrar.hpp"
-#include "registrar/postproc_registrar.hpp"
-#include "registrar/preproc_registrar.hpp"
-
-#include "logger.hpp"
+#include <logger.hpp>
 
 namespace ai_core::dnn {
 AlgoInference::Impl::Impl(const AlgoModuleTypes &algoModuleTypes,
                           const AlgoInferParams &inferParams)
-    : algoModuleTypes_(algoModuleTypes), inferParams_(inferParams){};
+    : algoModuleTypes_(algoModuleTypes), inferParams_(inferParams) {
+  preprocessor_ = std::make_shared<AlgoPreproc>(algoModuleTypes_.preprocModule,
+                                                AlgoPreprocParams{});
+  engine_ = std::make_shared<AlgoInferEngine>(algoModuleTypes_.inferModule,
+                                              inferParams_);
+  postprocessor_ = std::make_shared<AlgoPostproc>(
+      algoModuleTypes_.postprocModule, AlgoPostprocParams{});
+};
 
 InferErrorCode AlgoInference::Impl::initialize() {
-  try {
-    AlgoConstructParams tempInferParams;
-    tempInferParams.setParam("params", inferParams_);
-    engine_ = InferEngineFactory::instance().create(
-        algoModuleTypes_.inferModule, tempInferParams);
-
-    if (engine_ == nullptr) {
-      LOG_ERRORS << "Failed to create inference engine for name: "
-                 << inferParams_.name;
-      return InferErrorCode::INIT_FAILED;
-    }
-  } catch (const std::exception &e) {
-    LOG_ERRORS << "Failed to create inference engine: " << e.what();
+  if (preprocessor_->initialize() != InferErrorCode::SUCCESS) {
+    LOG_ERRORS << "Failed to initialize preprocessor.";
     return InferErrorCode::INIT_FAILED;
   }
-
   if (engine_->initialize() != InferErrorCode::SUCCESS) {
     LOG_ERRORS << "Failed to initialize inference engine.";
     return InferErrorCode::INIT_FAILED;
   }
-
-  try {
-    AlgoConstructParams prepConsParams;
-    preprocessor_ = PreprocFactory::instance().create(
-        algoModuleTypes_.preprocModule, AlgoConstructParams{});
-    if (preprocessor_ == nullptr) {
-      LOG_ERRORS << "Failed to create preprocessor for module: "
-                 << algoModuleTypes_.preprocModule;
-      return InferErrorCode::INIT_FAILED;
-    }
-  } catch (const std::exception &e) {
-    LOG_ERRORS << "Failed to create preprocessor: " << e.what();
+  if (postprocessor_->initialize() != InferErrorCode::SUCCESS) {
+    LOG_ERRORS << "Failed to initialize postprocessor.";
     return InferErrorCode::INIT_FAILED;
   }
-
-  try {
-    postprocessor_ = PostprocFactory::instance().create(
-        algoModuleTypes_.postprocModule, AlgoConstructParams{});
-
-    if (postprocessor_ == nullptr) {
-      LOG_ERRORS << "Failed to create postprocessor for module: "
-                 << algoModuleTypes_.postprocModule;
-      return InferErrorCode::INIT_FAILED;
-    }
-  } catch (const std::exception &e) {
-    LOG_ERRORS << "Failed to create vision module: " << e.what();
-    return InferErrorCode::INIT_FAILED;
-  }
-
   return InferErrorCode::SUCCESS;
 }
 
@@ -80,7 +47,8 @@ InferErrorCode AlgoInference::Impl::infer(AlgoInput &input,
                                           AlgoPreprocParams &preprocParams,
                                           AlgoOutput &output,
                                           AlgoPostprocParams &postprocParams) {
-  if (engine_ == nullptr) {
+  if (engine_ == nullptr || preprocessor_ == nullptr ||
+      postprocessor_ == nullptr) {
     LOG_ERRORS << "Please initialize first";
     return InferErrorCode::INIT_FAILED;
   }
@@ -88,7 +56,8 @@ InferErrorCode AlgoInference::Impl::infer(AlgoInput &input,
   // prep const time
   auto startPre = std::chrono::steady_clock::now();
   TensorData modelInput;
-  if (!preprocessor_->process(input, preprocParams, modelInput)) {
+  if (preprocessor_->process(input, preprocParams, modelInput) !=
+      InferErrorCode::SUCCESS) {
     LOG_ERRORS << "Failed to preprocess input.";
     return InferErrorCode::INFER_PREPROCESS_FAILED;
   }
@@ -109,8 +78,11 @@ InferErrorCode AlgoInference::Impl::infer(AlgoInput &input,
 
   // post cost time
   auto startPost = std::chrono::steady_clock::now();
-  bool result = postprocessor_->process(modelOutput, preprocParams, output,
-                                        postprocParams);
+  if (postprocessor_->process(modelOutput, preprocParams, output,
+                              postprocParams) != InferErrorCode::SUCCESS) {
+    LOG_ERRORS << "Failed to postprocess output.";
+    return InferErrorCode::INFER_OUTPUT_ERROR;
+  }
   auto endPost = std::chrono::steady_clock::now();
   auto durationPost = std::chrono::duration_cast<std::chrono::milliseconds>(
       endPost - startPost);
@@ -119,14 +91,13 @@ InferErrorCode AlgoInference::Impl::infer(AlgoInput &input,
             << " ms, Infer time: " << durationInfer.count()
             << " ms, Postprocess time: " << durationPost.count() << " ms.";
 
-  if (!result) {
-    LOG_ERRORS << "Failed to postprocess output.";
-    return InferErrorCode::INFER_OUTPUT_ERROR;
-  }
   return InferErrorCode::SUCCESS;
 }
 
-InferErrorCode AlgoInference::Impl::terminate() { return engine_->terminate(); }
+InferErrorCode AlgoInference::Impl::terminate() {
+  engine_->terminate();
+  return InferErrorCode::SUCCESS;
+}
 
 const ModelInfo &AlgoInference::Impl::getModelInfo() const noexcept {
   if (engine_ == nullptr) {

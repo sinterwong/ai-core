@@ -26,7 +26,8 @@ public:
 
   virtual InferErrorCode initialize() = 0;
 
-  virtual InferErrorCode infer(TensorData &inputs, TensorData &outputs) = 0;
+  virtual InferErrorCode infer(const TensorData &inputs,
+                               TensorData &outputs) = 0;
 
   virtual InferErrorCode terminate() = 0;
 

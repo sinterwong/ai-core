@@ -29,7 +29,7 @@ public:
 
   virtual InferErrorCode initialize() override;
 
-  virtual InferErrorCode infer(TensorData &inputs,
+  virtual InferErrorCode infer(const TensorData &inputs,
                                TensorData &outputs) override;
 
   virtual const ModelInfo &getModelInfo() override;
