@@ -217,7 +217,7 @@ InferErrorCode TrtAlgoInference::initialize() {
   }
 }
 
-InferErrorCode TrtAlgoInference::infer(TensorData &inputs,
+InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
   std::lock_guard<std::mutex> lock(mMutex);
   if (!mIsInitialized) {
@@ -237,7 +237,7 @@ InferErrorCode TrtAlgoInference::infer(TensorData &inputs,
         return InferErrorCode::INFER_INPUT_ERROR;
       }
 
-      TypedBuffer &inputBuffer = it->second;
+      const TypedBuffer &inputBuffer = it->second;
 
       const size_t expectedSizeBytes = mTensorSizeMap.at(name);
       const size_t actualSizeBytes = inputBuffer.getSizeBytes();

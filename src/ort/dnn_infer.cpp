@@ -131,7 +131,7 @@ InferErrorCode OrtAlgoInference::initialize() {
   }
 }
 
-InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
+InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
   if (env == nullptr || session == nullptr || memoryInfo == nullptr) {
     LOG_ERRORS << "Session is not initialized";
@@ -141,7 +141,7 @@ InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
     outputs.datas.clear();
     outputs.shapes.clear();
 
-    auto &prepDatas = inputs.datas;
+    const auto &prepDatas = inputs.datas;
     const auto &prepDatasShapes = inputs.shapes;
 
     if (prepDatas.empty()) {
@@ -177,18 +177,18 @@ InferErrorCode OrtAlgoInference::infer(TensorData &inputs,
       switch (prepData.dataType()) {
       case DataType::FLOAT32: {
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, prepData.getRawHostPtr(), prepData.getSizeBytes(),
-            inputShapes[i].data(), inputShapes[i].size(),
-            ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
+            *memoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
+            prepData.getSizeBytes(), inputShapes[i].data(),
+            inputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
         break;
       }
 
       case DataType::FLOAT16: {
 #if ORT_API_VERSION >= 12
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, prepData.getRawHostPtr(), prepData.getSizeBytes(),
-            inputShapes[i].data(), inputShapes[i].size(),
-            ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
+            *memoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
+            prepData.getSizeBytes(), inputShapes[i].data(),
+            inputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
 #else
         size_t elemCount = prepData.getElementCount();
         auto typedPtr = prepData.getHostPtr<uint16_t>();

@@ -60,7 +60,7 @@ public:
   ~TrtAlgoInference() override;
 
   InferErrorCode initialize() override;
-  InferErrorCode infer(TensorData &inputs, TensorData &outputs) override;
+  InferErrorCode infer(const TensorData &inputs, TensorData &outputs) override;
   const ModelInfo &getModelInfo() override;
   InferErrorCode terminate() override;
 

@@ -173,7 +173,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
   }
 }
 
-InferErrorCode NCNNAlgoInference::infer(TensorData &inputs,
+InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
                                         TensorData &outputs) {
   if (!isInitialized.load(std::memory_order_acquire)) {
     LOG_ERRORS << "Inference called on uninitialized model: " << params_.name;
