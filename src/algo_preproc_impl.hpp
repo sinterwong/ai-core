@@ -19,7 +19,7 @@ namespace ai_core::dnn {
 
 class AlgoPreproc::Impl {
 public:
-  Impl(const std::string &moduleName, const AlgoPreprocParams &preprocParams);
+  Impl(const std::string &moduleName);
 
   ~Impl() = default;
 
@@ -32,7 +32,6 @@ public:
 
 private:
   std::string moduleName_;
-  AlgoPreprocParams preprocParams_;
   std::shared_ptr<PreprocssBase> preprocessor_;
 };
 } // namespace ai_core::dnn

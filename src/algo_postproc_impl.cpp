@@ -13,9 +13,8 @@
 #include "registrar/postproc_registrar.hpp"
 
 namespace ai_core::dnn {
-AlgoPostproc::Impl::Impl(const std::string &moduleName,
-                         const AlgoPostprocParams &postprocParams)
-    : moduleName_(moduleName), postprocParams_(postprocParams) {}
+AlgoPostproc::Impl::Impl(const std::string &moduleName)
+    : moduleName_(moduleName) {}
 
 InferErrorCode AlgoPostproc::Impl::initialize() {
   try {

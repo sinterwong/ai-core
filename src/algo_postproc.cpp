@@ -15,9 +15,8 @@
 
 namespace ai_core::dnn {
 
-AlgoPostproc::AlgoPostproc(const std::string &moduleName,
-                           const AlgoPostprocParams &postprocParams)
-    : pImpl(std::make_unique<Impl>(moduleName, postprocParams)) {}
+AlgoPostproc::AlgoPostproc(const std::string &moduleName)
+    : pImpl(std::make_unique<Impl>(moduleName)) {}
 
 AlgoPostproc::~AlgoPostproc() = default;
 

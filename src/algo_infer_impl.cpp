@@ -19,12 +19,11 @@ namespace ai_core::dnn {
 AlgoInference::Impl::Impl(const AlgoModuleTypes &algoModuleTypes,
                           const AlgoInferParams &inferParams)
     : algoModuleTypes_(algoModuleTypes), inferParams_(inferParams) {
-  preprocessor_ = std::make_shared<AlgoPreproc>(algoModuleTypes_.preprocModule,
-                                                AlgoPreprocParams{});
+  preprocessor_ = std::make_shared<AlgoPreproc>(algoModuleTypes_.preprocModule);
   engine_ = std::make_shared<AlgoInferEngine>(algoModuleTypes_.inferModule,
                                               inferParams_);
-  postprocessor_ = std::make_shared<AlgoPostproc>(
-      algoModuleTypes_.postprocModule, AlgoPostprocParams{});
+  postprocessor_ =
+      std::make_shared<AlgoPostproc>(algoModuleTypes_.postprocModule);
 };
 
 InferErrorCode AlgoInference::Impl::initialize() {

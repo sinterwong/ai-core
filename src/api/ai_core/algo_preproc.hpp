@@ -20,8 +20,7 @@ namespace ai_core::dnn {
 
 class AlgoPreproc {
 public:
-  AlgoPreproc(const std::string &moduleName,
-              const AlgoPreprocParams &preprocParams);
+  AlgoPreproc(const std::string &moduleName);
 
   ~AlgoPreproc();
 

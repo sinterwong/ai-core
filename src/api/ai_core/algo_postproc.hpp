@@ -20,8 +20,7 @@ namespace ai_core::dnn {
 
 class AlgoPostproc {
 public:
-  AlgoPostproc(const std::string &moduleName,
-               const AlgoPostprocParams &postprocParams);
+  AlgoPostproc(const std::string &moduleName);
 
   ~AlgoPostproc();
 

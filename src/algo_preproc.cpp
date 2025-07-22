@@ -15,9 +15,8 @@
 
 namespace ai_core::dnn {
 
-AlgoPreproc::AlgoPreproc(const std::string &moduleName,
-                         const AlgoPreprocParams &preprocParams)
-    : pImpl(std::make_unique<Impl>(moduleName, preprocParams)) {}
+AlgoPreproc::AlgoPreproc(const std::string &moduleName)
+    : pImpl(std::make_unique<Impl>(moduleName)) {}
 
 AlgoPreproc::~AlgoPreproc() = default;
 

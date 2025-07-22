@@ -13,9 +13,8 @@
 #include <logger.hpp>
 
 namespace ai_core::dnn {
-AlgoPreproc::Impl::Impl(const std::string &moduleName,
-                        const AlgoPreprocParams &preprocParams)
-    : moduleName_(moduleName), preprocParams_(preprocParams) {}
+AlgoPreproc::Impl::Impl(const std::string &moduleName)
+    : moduleName_(moduleName) {}
 
 InferErrorCode AlgoPreproc::Impl::initialize() {
   try {

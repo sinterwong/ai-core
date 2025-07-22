@@ -19,7 +19,7 @@ namespace ai_core::dnn {
 
 class AlgoPostproc::Impl {
 public:
-  Impl(const std::string &moduleName, const AlgoPostprocParams &postprocParams);
+  Impl(const std::string &moduleName);
 
   ~Impl() = default;
 
@@ -33,7 +33,6 @@ public:
 
 private:
   std::string moduleName_;
-  AlgoPostprocParams postprocParams_;
   std::shared_ptr<PostprocssBase> postprocessor_;
 };
 } // namespace ai_core::dnn
