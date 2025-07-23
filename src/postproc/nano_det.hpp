@@ -11,14 +11,14 @@
 #ifndef __INFERENCE_VISION_NANODET_DETECTION_HPP_
 #define __INFERENCE_VISION_NANODET_DETECTION_HPP_
 
-#include "postproc_base.hpp"
+#include "anchor_det_post_base.hpp"
 namespace ai_core::dnn {
-class NanoDet : public PostprocssBase {
+class NanoDet : public IAnchorDetPostprocessor {
 public:
   explicit NanoDet() {}
 
-  virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
-                       AlgoPostprocParams &) override;
+  virtual bool process(const TensorData &, const FramePreprocessArg &,
+                       AlgoOutput &, const AnchorDetParams &) const override;
 };
 } // namespace ai_core::dnn
 

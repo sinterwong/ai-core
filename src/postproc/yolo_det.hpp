@@ -11,21 +11,21 @@
 #ifndef __INFERENCE_VISION_YOLOV11_DETECTION_HPP_
 #define __INFERENCE_VISION_YOLOV11_DETECTION_HPP_
 
-#include "postproc_base.hpp"
+#include "anchor_det_post_base.hpp"
 namespace ai_core::dnn {
-class Yolov11Det : public PostprocssBase {
+class Yolov11Det : public IAnchorDetPostprocessor {
 public:
   explicit Yolov11Det() {}
 
-  virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
-                       AlgoPostprocParams &) override;
+  virtual bool process(const TensorData &, const FramePreprocessArg &,
+                       AlgoOutput &, const AnchorDetParams &) const override;
 
 private:
   std::vector<BBox> processRawOutput(const cv::Mat &transposedOutput,
                                      const Shape &inputShape,
                                      const FramePreprocessArg &prepArgs,
                                      const AnchorDetParams &postArgs,
-                                     int numClasses);
+                                     int numClasses) const;
 };
 } // namespace ai_core::dnn
 

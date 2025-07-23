@@ -3,7 +3,8 @@
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/algo_output_types.hpp"
-#include "ai_core/postprocess_types.hpp"
+#include "ai_core/postproc_types.hpp"
+#include "ai_core/preproc_types.hpp"
 #include "data_packet.hpp"
 #include "param_center.hpp"
 

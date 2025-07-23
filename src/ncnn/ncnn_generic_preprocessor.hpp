@@ -12,6 +12,7 @@
 #define __NCNN_GENERIC_PREPROCESSOR_HPP_
 
 #include "ai_core/algo_input_types.hpp"
+#include "ai_core/preproc_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "preproc/frame_preprocessor_base.hpp"
 

@@ -5,7 +5,7 @@
             "types": {
                 "preproc": "FramePreprocess",
                 "infer": "OrtAlgoInference",
-                "postproc": "Yolov11Det"
+                "postproc": "AnchorDetPostproc"
             },
             "preprocParams": {
                 "inputShape": {
@@ -45,6 +45,7 @@
                 "needDecrypt": false
             },
             "postprocParams": {
+                "detAlogType": 0,
                 "condThre": 0.5,
                 "nmsThre": 0.45,
                 "outputNames": [

@@ -9,29 +9,16 @@
  *
  */
 
-#include <ostream>
-
 #include "fpr_feat.hpp"
 
 #include <logger.hpp>
 
 namespace ai_core::dnn {
 bool FprFeature::process(const TensorData &modelOutput,
-                         AlgoPreprocParams &prepArgs, AlgoOutput &algoOutput,
-                         AlgoPostprocParams &postArgs) {
-  if (modelOutput.datas.empty()) {
-    LOG_ERRORS << "modelOutput.outputs is empty";
-    return false;
-  }
-
-  auto postParams = postArgs.getParams<GenericPostParams>();
-  if (postParams == nullptr) {
-    LOG_ERRORS << "FprFeature::process: GenericPostParams is nullptr";
-    throw std::runtime_error(
-        "FprFeature::process: GenericPostParams is nullptr");
-  }
-
-  const auto &featureOutputName = postParams->outputNames.at(0);
+                         const FramePreprocessArg &prepArgs,
+                         AlgoOutput &algoOutput,
+                         const GenericPostParams &postArgs) const {
+  const auto &featureOutputName = postArgs.outputNames.at(0);
 
   const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;

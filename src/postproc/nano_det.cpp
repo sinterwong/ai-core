@@ -9,32 +9,21 @@
  *
  */
 #include "nano_det.hpp"
-#include "logger.hpp"
 #include "vision_util.hpp"
+#include <logger.hpp>
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
 bool NanoDet::process(const TensorData &modelOutput,
-                      AlgoPreprocParams &prepArgs, AlgoOutput &algoOutput,
-                      AlgoPostprocParams &postArgs) {
+                      const FramePreprocessArg &prepArgs,
+                      AlgoOutput &algoOutput,
+                      const AnchorDetParams &postArgs) const {
   if (modelOutput.datas.empty()) {
     return false;
   }
 
-  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
-  if (prepParams == nullptr) {
-    LOG_ERRORS << "FramePreprocessArg is nullptr";
-    throw std::runtime_error("FramePreprocessArg is nullptr");
-  }
-
-  auto params = postArgs.getParams<AnchorDetParams>();
-  if (params == nullptr) {
-    LOG_ERRORS << "AnchorDetParams params is nullptr";
-    throw std::runtime_error("AnchorDetParams params is nullptr");
-  }
-
   const auto &outputShapes = modelOutput.shapes;
-  const auto &inputShape = prepParams->modelInputShape;
+  const auto &inputShape = prepArgs.modelInputShape;
   const auto &outputs = modelOutput.datas;
 
   // just one output
@@ -44,9 +33,9 @@ bool NanoDet::process(const TensorData &modelOutput,
     throw std::runtime_error(
         "AnchorDetParams(NanoDet)  unexpected size of outputs");
   }
-  auto output = outputs.at(params->outputNames.at(0));
+  auto output = outputs.at(postArgs.outputNames.at(0));
 
-  std::vector<int> outputShape = outputShapes.at(params->outputNames.at(0));
+  std::vector<int> outputShape = outputShapes.at(postArgs.outputNames.at(0));
   int numAnchors = outputShape.at(outputShape.size() - 2);
   int stride = outputShape.at(outputShape.size() - 1);
   int numClasses = stride - 4;
@@ -55,17 +44,17 @@ bool NanoDet::process(const TensorData &modelOutput,
   cv::Mat rawData(numAnchors, stride, CV_32F,
                   const_cast<void *>(output.getRawHostPtr()));
 
-  const auto &inputRoi = *prepParams->roi;
+  const auto &inputRoi = *prepArgs.roi;
 
   Shape originShape;
   if (inputRoi.area() > 0) {
     originShape.w = inputRoi.width;
     originShape.h = inputRoi.height;
   } else {
-    originShape = prepParams->originShape;
+    originShape = prepArgs.originShape;
   }
   auto [scaleX, scaleY] =
-      utils::scaleRatio(originShape, inputShape, prepParams->isEqualScale);
+      utils::scaleRatio(originShape, inputShape, prepArgs.isEqualScale);
 
   std::vector<BBox> results;
   for (int i = 0; i < rawData.rows; ++i) {
@@ -76,7 +65,7 @@ bool NanoDet::process(const TensorData &modelOutput,
     double score;
     cv::minMaxLoc(scores, nullptr, &score, nullptr, &classIdPoint);
 
-    if (score > params->condThre) {
+    if (score > postArgs.condThre) {
       BBox result;
       result.score = score;
       result.label = classIdPoint.x;
@@ -89,8 +78,8 @@ bool NanoDet::process(const TensorData &modelOutput,
       float h = y2 - y1;
       float x, y;
 
-      x = (x1 - prepParams->leftPad) / scaleX;
-      y = (y1 - prepParams->topPad) / scaleY;
+      x = (x1 - prepArgs.leftPad) / scaleX;
+      y = (y1 - prepArgs.topPad) / scaleY;
       w = w / scaleX;
       h = h / scaleY;
       x += inputRoi.x;
@@ -102,7 +91,7 @@ bool NanoDet::process(const TensorData &modelOutput,
     }
   }
   DetRet detRet;
-  detRet.bboxes = utils::NMS(results, params->nmsThre, params->condThre);
+  detRet.bboxes = utils::NMS(results, postArgs.nmsThre, postArgs.condThre);
   algoOutput.setParams(detRet);
   return true;
 }

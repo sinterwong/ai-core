@@ -13,6 +13,7 @@
 #define __I_FRAME_PREPROCESSOR_HPP__
 
 #include "ai_core/algo_input_types.hpp"
+#include "ai_core/preproc_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 
 namespace ai_core {

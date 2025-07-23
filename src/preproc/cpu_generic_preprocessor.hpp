@@ -12,6 +12,7 @@
 #define __OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP__
 
 #include "ai_core/algo_input_types.hpp"
+#include "ai_core/preproc_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "frame_preprocessor_base.hpp"
 

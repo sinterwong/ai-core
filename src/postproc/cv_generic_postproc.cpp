@@ -1,0 +1,61 @@
+/**
+ * @file cv_generic_postproc.cpp
+ * @author Sinter Wong (sintercver@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2025-07-23
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
+#include "cv_generic_postproc.hpp"
+#include "postproc/fpr_cls.hpp"
+#include "postproc/fpr_feat.hpp"
+#include "postproc/softmax_cls.hpp"
+#include <logger.hpp>
+#include <opencv2/core.hpp>
+
+namespace ai_core::dnn {
+bool CVGenericPostproc::process(const TensorData &modelOutput,
+                                AlgoPreprocParams &prepArgs,
+                                AlgoOutput &algoOutput,
+                                AlgoPostprocParams &postArgs) const {
+  if (modelOutput.datas.empty()) {
+    LOG_ERRORS << "modelOutput.outputs is empty";
+    return false;
+  }
+
+  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
+  if (prepParams == nullptr) {
+    LOG_ERRORS << "FramePreprocessArg is nullptr";
+    throw std::runtime_error("FramePreprocessArg is nullptr");
+  }
+
+  auto params = postArgs.getParams<GenericPostParams>();
+  if (params == nullptr) {
+    LOG_ERRORS << "GenericPostParams params is nullptr";
+    throw std::runtime_error("GenericPostParams params is nullptr");
+  }
+
+  switch (params->postprocType) {
+  case GenericPostParams::GenericAlgoType::SOFTMAX_CLS: {
+    SoftmaxCls postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
+  case GenericPostParams::GenericAlgoType::FPR_CLS: {
+    FprCls postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
+  case GenericPostParams::GenericAlgoType::FPR_FEAT: {
+    FprFeature postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
+  default: {
+    LOG_ERRORS << "Unknown generic algorithm type: "
+               << static_cast<int>(params->postprocType);
+    return false;
+  }
+  }
+  return true;
+}
+} // namespace ai_core::dnn

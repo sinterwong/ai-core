@@ -11,18 +11,14 @@
 #ifndef __INFERENCE_VISION_FPR_CLS_HPP_
 #define __INFERENCE_VISION_FPR_CLS_HPP_
 
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/tensor_data.hpp"
-#include "postproc_base.hpp"
+#include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
-class FprCls : public PostprocssBase {
+class FprCls : public ICVGenericPostprocessor {
 public:
   explicit FprCls() {}
 
-  virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
-                       AlgoPostprocParams &) override;
-
-  AlgoPostprocParams mParams;
+  virtual bool process(const TensorData &, const FramePreprocessArg &,
+                       AlgoOutput &, const GenericPostParams &) const override;
 };
 } // namespace ai_core::dnn
 
