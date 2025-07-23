@@ -17,12 +17,27 @@
 namespace ai_core {
 
 struct GenericPostParams {
+  enum class GenericAlgoType : int8_t {
+    SOFTMAX_CLS = 0,
+    FPR_CLS,
+    FPR_FEAT,
+  };
+
+  GenericAlgoType postprocType;
   std::vector<std::string> outputNames;
 };
 
 struct AnchorDetParams {
+  enum class AnchorDetAlogType : int8_t {
+    YOLO_DET_V11 = 0,
+    RTM_DET,
+    NANO_DET,
+  };
+
   float condThre;
   float nmsThre;
+
+  AnchorDetAlogType detAlogType;
   std::vector<std::string> outputNames;
 };
 } // namespace ai_core

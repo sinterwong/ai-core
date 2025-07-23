@@ -22,7 +22,7 @@ public:
   ~FramePreprocess() = default;
 
   virtual bool process(AlgoInput &input, AlgoPreprocParams &params,
-                       TensorData &output) override;
+                       TensorData &output) const override;
 };
 } // namespace ai_core::dnn
 

@@ -9,36 +9,24 @@
  *
  */
 #include "rtm_det.hpp"
-#include "logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
-                     AlgoOutput &algoOutput, AlgoPostprocParams &postArgs) {
+bool RTMDet::process(const TensorData &modelOutput,
+                     const FramePreprocessArg &prepArgs, AlgoOutput &algoOutput,
+                     const AnchorDetParams &postArgs) const {
   if (modelOutput.datas.empty()) {
     return false;
   }
 
-  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
-  if (prepParams == nullptr) {
-    LOG_ERRORS << "FramePreprocessArg is nullptr";
-    throw std::runtime_error("FramePreprocessArg is nullptr");
-  }
-
-  auto params = postArgs.getParams<AnchorDetParams>();
-  if (params == nullptr) {
-    LOG_ERRORS << "AnchorDetParams params is nullptr";
-    throw std::runtime_error("AnchorDetParams params is nullptr");
-  }
-
   const auto &outputShapes = modelOutput.shapes;
-  const auto &inputShape = prepParams->modelInputShape;
+  const auto &inputShape = prepArgs.modelInputShape;
   const auto &outputs = modelOutput.datas;
 
   // two output
-  const auto &detOutputName = params->outputNames.at(0);
-  const auto &clsOutputName = params->outputNames.at(1);
+  const auto &detOutputName = postArgs.outputNames.at(0);
+  const auto &clsOutputName = postArgs.outputNames.at(1);
   auto detPred = outputs.at(detOutputName);
   auto clsPred = outputs.at(clsOutputName);
 
@@ -50,15 +38,15 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
 
   Shape originShape;
 
-  const auto &inputRoi = *prepParams->roi;
+  const auto &inputRoi = *prepArgs.roi;
   if (inputRoi.area() > 0) {
     originShape.w = inputRoi.width;
     originShape.h = inputRoi.height;
   } else {
-    originShape = prepParams->originShape;
+    originShape = prepArgs.originShape;
   }
   auto [scaleX, scaleY] =
-      utils::scaleRatio(originShape, inputShape, prepParams->isEqualScale);
+      utils::scaleRatio(originShape, inputShape, prepArgs.isEqualScale);
 
   std::vector<BBox> results;
   auto detDataPtr = detPred.getHostPtr<float>();
@@ -70,15 +58,15 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
     cv::Point classIdPoint;
     double score;
     cv::minMaxLoc(scores, nullptr, &score, nullptr, &classIdPoint);
-    if (score > params->condThre) {
+    if (score > postArgs.condThre) {
       float x = detData[0];
       float y = detData[1];
       float w = detData[2] - x;
       float h = detData[3] - y;
 
-      if (prepParams->isEqualScale) {
-        x = (x - prepParams->leftPad) / scaleX;
-        y = (y - prepParams->topPad) / scaleY;
+      if (prepArgs.isEqualScale) {
+        x = (x - prepArgs.leftPad) / scaleX;
+        y = (y - prepArgs.topPad) / scaleY;
       } else {
         x = x / scaleX;
         y = y / scaleY;
@@ -99,7 +87,7 @@ bool RTMDet::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
   }
 
   DetRet detRet;
-  detRet.bboxes = utils::NMS(results, params->nmsThre, params->condThre);
+  detRet.bboxes = utils::NMS(results, postArgs.nmsThre, postArgs.condThre);
   algoOutput.setParams(detRet);
   return true;
 }

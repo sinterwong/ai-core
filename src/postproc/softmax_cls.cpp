@@ -14,21 +14,15 @@
 
 namespace ai_core::dnn {
 bool SoftmaxCls::process(const TensorData &modelOutput,
-                         AlgoPreprocParams &prepArgs, AlgoOutput &algoOutput,
-                         AlgoPostprocParams &postArgs) {
+                         const FramePreprocessArg &prepArgs,
+                         AlgoOutput &algoOutput,
+                         const GenericPostParams &postArgs) const {
   if (modelOutput.datas.empty()) {
     LOG_ERRORS << "modelOutput.outputs is empty";
     return false;
   }
 
-  auto postParams = postArgs.getParams<GenericPostParams>();
-  if (postParams == nullptr) {
-    LOG_ERRORS << "SoftmaxCls::process: GenericPostParams is nullptr";
-    throw std::runtime_error(
-        "SoftmaxCls::process: GenericPostParams is nullptr");
-  }
-
-  const auto &scoreOutputName = postParams->outputNames.at(0);
+  const auto &scoreOutputName = postArgs.outputNames.at(0);
 
   const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;

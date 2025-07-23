@@ -11,14 +11,14 @@
 #ifndef __INFERENCE_VISION_SOFTMAX_CLS_HPP_
 #define __INFERENCE_VISION_SOFTMAX_CLS_HPP_
 
-#include "postproc_base.hpp"
+#include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
-class SoftmaxCls : public PostprocssBase {
+class SoftmaxCls : public ICVGenericPostprocessor {
 public:
   explicit SoftmaxCls() {}
 
-  virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
-                       AlgoPostprocParams &) override;
+  virtual bool process(const TensorData &, const FramePreprocessArg &,
+                       AlgoOutput &, const GenericPostParams &) const override;
 
 private:
   AlgoPostprocParams mParams;

@@ -18,12 +18,10 @@ namespace ai_core::dnn {
 
 class PostprocssBase {
 public:
-  explicit PostprocssBase() {}
-
   virtual ~PostprocssBase(){};
 
   virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
-                       AlgoPostprocParams &) = 0;
+                       AlgoPostprocParams &) const = 0;
 };
 } // namespace ai_core::dnn
 

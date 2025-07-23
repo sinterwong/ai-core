@@ -10,26 +10,15 @@
  */
 #include "fpr_cls.hpp"
 #include "ai_core/algo_output_types.hpp"
-#include "logger.hpp"
 
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool FprCls::process(const TensorData &modelOutput, AlgoPreprocParams &prepArgs,
-                     AlgoOutput &algoOutput, AlgoPostprocParams &postArgs) {
-  if (modelOutput.datas.empty()) {
-    LOG_ERRORS << "modelOutput.outputs is empty";
-    return false;
-  }
-
-  auto postParams = postArgs.getParams<GenericPostParams>();
-  if (postParams == nullptr) {
-    LOG_ERRORS << "FprCls::process: GenericPostParams is nullptr";
-    throw std::runtime_error("FprCls::process: GenericPostParams is nullptr");
-  }
-
-  const auto &scoreOutputName = postParams->outputNames.at(0);
-  const auto &biradOutputName = postParams->outputNames.at(1);
+bool FprCls::process(const TensorData &modelOutput,
+                     const FramePreprocessArg &prepArgs, AlgoOutput &algoOutput,
+                     const GenericPostParams &postArgs) const {
+  const auto &scoreOutputName = postArgs.outputNames.at(0);
+  const auto &biradOutputName = postArgs.outputNames.at(1);
 
   const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;

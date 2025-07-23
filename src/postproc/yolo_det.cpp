@@ -15,26 +15,11 @@
 
 namespace ai_core::dnn {
 bool Yolov11Det::process(const TensorData &modelOutput,
-                         AlgoPreprocParams &prepArgs, AlgoOutput &algoOutput,
-                         AlgoPostprocParams &postArgs) {
-  if (modelOutput.datas.empty()) {
-    return false;
-  }
-
-  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
-  if (prepParams == nullptr) {
-    LOG_ERRORS << "FramePreprocessArg is nullptr";
-    throw std::runtime_error("FramePreprocessArg is nullptr");
-  }
-
-  auto params = postArgs.getParams<AnchorDetParams>();
-  if (params == nullptr) {
-    LOG_ERRORS << "AnchorDetParams(Yolov11Det) params is nullptr";
-    throw std::runtime_error("AnchorDetParams params is nullptr");
-  }
-
+                         const FramePreprocessArg &prepArgs,
+                         AlgoOutput &algoOutput,
+                         const AnchorDetParams &postArgs) const {
   const auto &outputShapes = modelOutput.shapes;
-  const auto &inputShape = prepParams->modelInputShape;
+  const auto &inputShape = prepArgs.modelInputShape;
   const auto &outputs = modelOutput.datas;
 
   // just one output
@@ -44,9 +29,9 @@ bool Yolov11Det::process(const TensorData &modelOutput,
     throw std::runtime_error(
         "AnchorDetParams(Yolov11Det)  unexpected size of outputs");
   }
-  auto output = outputs.at(params->outputNames.at(0));
+  auto output = outputs.at(postArgs.outputNames.at(0));
 
-  std::vector<int> outputShape = outputShapes.at(params->outputNames.at(0));
+  std::vector<int> outputShape = outputShapes.at(postArgs.outputNames.at(0));
   int signalResultNum = outputShape.at(outputShape.size() - 2);
   int strideNum = outputShape.at(outputShape.size() - 1);
 
@@ -54,20 +39,19 @@ bool Yolov11Det::process(const TensorData &modelOutput,
   cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F,
                         const_cast<void *>(output.getRawHostPtr())),
                 rawData);
-  std::vector<BBox> results = processRawOutput(rawData, inputShape, *prepParams,
-                                               *params, signalResultNum - 4);
+  std::vector<BBox> results = processRawOutput(rawData, inputShape, prepArgs,
+                                               postArgs, signalResultNum - 4);
 
   DetRet detRet;
-  detRet.bboxes = utils::NMS(results, params->nmsThre, params->condThre);
+  detRet.bboxes = utils::NMS(results, postArgs.nmsThre, postArgs.condThre);
   algoOutput.setParams(detRet);
   return true;
 }
 
-std::vector<BBox>
-Yolov11Det::processRawOutput(const cv::Mat &transposedOutput,
-                             const Shape &inputShape,
-                             const FramePreprocessArg &prepArgs,
-                             const AnchorDetParams &postArgs, int numClasses) {
+std::vector<BBox> Yolov11Det::processRawOutput(
+    const cv::Mat &transposedOutput, const Shape &inputShape,
+    const FramePreprocessArg &prepArgs, const AnchorDetParams &postArgs,
+    int numClasses) const {
   std::vector<BBox> results;
   Shape originShape;
   const auto &inputRoi = *prepArgs.roi;

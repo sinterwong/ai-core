@@ -27,7 +27,7 @@
 namespace ai_core::dnn {
 
 bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
-                              TensorData &output) {
+                              TensorData &output) const {
   auto paramsPtr = params.getParams<FramePreprocessArg>();
   if (paramsPtr == nullptr) {
     LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";

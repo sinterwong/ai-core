@@ -160,10 +160,13 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
     const auto outputNames =
         postProcJson["outputNames"].get<std::vector<std::string>>();
     // FIXME: 就这么先瞎写写吧，后面再完善
-    if (params.getParam<std::string>("postprocType") == "RTMDet" ||
-        params.getParam<std::string>("postprocType") == "Yolov11Det" ||
-        params.getParam<std::string>("postprocType") == "NanoDet") {
+    if (params.getParam<std::string>("postprocType") == "AnchorDetPostproc") {
       AnchorDetParams anchorDetParams;
+      if (postProcJson.contains("detAlogType")) {
+        anchorDetParams.detAlogType =
+            static_cast<AnchorDetParams::AnchorDetAlogType>(
+                postProcJson.at("detAlogType").get<int>());
+      }
       if (postProcJson.contains("condThre")) {
         anchorDetParams.condThre = postProcJson.at("condThre").get<float>();
       }

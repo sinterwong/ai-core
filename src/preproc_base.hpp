@@ -18,12 +18,10 @@ namespace ai_core::dnn {
 
 class PreprocssBase {
 public:
-  explicit PreprocssBase() {}
-
   virtual ~PreprocssBase(){};
 
   virtual bool process(AlgoInput &, AlgoPreprocParams &params,
-                       TensorData &) = 0;
+                       TensorData &) const = 0;
 };
 } // namespace ai_core::dnn
 

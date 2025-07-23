@@ -2,7 +2,8 @@
 #include "ai_core/infer_params_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "infer_base.hpp"
-#include "postproc/yolo_det.hpp"
+#include "postproc/anchor_det_postproc.hpp"
+#include "postproc_base.hpp"
 #include "preproc/frame_prep.hpp"
 #include "preproc_base.hpp"
 #include "gtest/gtest.h"
@@ -53,7 +54,7 @@ protected:
     framePreproc = std::make_shared<FramePreprocess>();
     ASSERT_NE(framePreproc, nullptr);
 
-    yoloDetPostproc = std::make_shared<Yolov11Det>();
+    yoloDetPostproc = std::make_shared<AnchorDetPostproc>();
     ASSERT_NE(yoloDetPostproc, nullptr);
   }
 
@@ -125,6 +126,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
+  anchorDetParams.detAlogType =
+      AnchorDetParams::AnchorDetAlogType::YOLO_DET_V11;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.outputNames = {"output0"};
