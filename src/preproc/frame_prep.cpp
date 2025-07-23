@@ -12,8 +12,8 @@
 #include "ai_core/algo_data_types.hpp"
 #include "cpu_generic_preprocessor.hpp"
 #include "frame_preprocessor_base.hpp"
-
 #include <logger.hpp>
+#include <opencv2/opencv.hpp>
 #include <ostream>
 
 #ifdef WITH_NCNN
@@ -37,6 +37,11 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
   if (!frameInput) {
     return false;
   }
+
+  // TODO:
+  paramsPtr->originShape = {frameInput->image->cols, frameInput->image->rows,
+                            frameInput->image->channels()};
+  paramsPtr->roi = frameInput->inputRoi;
 
   switch (paramsPtr->preprocTaskType) {
   case FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC: {

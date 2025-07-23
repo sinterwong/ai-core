@@ -14,12 +14,16 @@
 #include <memory>
 
 namespace cv {
+template <typename _Tp> class Rect_;
+using Rect = Rect_<int>;
+
 class Mat;
 } // namespace cv
 
 namespace ai_core {
 struct FrameInput {
   std::shared_ptr<cv::Mat> image;
+  std::shared_ptr<cv::Rect> inputRoi;
 };
 
 } // namespace ai_core

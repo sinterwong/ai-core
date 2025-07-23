@@ -253,10 +253,6 @@ TEST_P(AlgoManagerTest, NormalFlow) {
   AlgoPreprocParams preprocParams;
   auto framePreprocessArg =
       params.getParam<FramePreprocessArg>("preprocParams");
-  framePreprocessArg.roi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows,
-                                    imageRGB.channels()};
   preprocParams.setParams(framePreprocessArg);
 
   AlgoPostprocParams postprocParams;
@@ -265,6 +261,8 @@ TEST_P(AlgoManagerTest, NormalFlow) {
 
   FrameInput frameInput;
   frameInput.image = std::make_shared<cv::Mat>(imageRGB);
+  frameInput.inputRoi =
+      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   AlgoInput algoInput;
   algoInput.setParams(frameInput);
 

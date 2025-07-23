@@ -111,9 +111,6 @@ TEST_P(YoloDetInferenceTest, Normal) {
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
   framePreprocessArg.dataType = config.preprocDataType; // 使用 config
-  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows};
-  framePreprocessArg.roi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};
@@ -136,6 +133,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
   AlgoInput algoInput;
   FrameInput frameInput;
   frameInput.image = std::make_shared<cv::Mat>(imageRGB);
+  frameInput.inputRoi =
+      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   algoInput.setParams(frameInput);
 
   TensorData modelInput;
@@ -188,9 +187,6 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
   framePreprocessArg.dataType = config.preprocDataType;
-  framePreprocessArg.originShape = {imageRGB.cols, imageRGB.rows};
-  framePreprocessArg.roi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};
@@ -211,6 +207,8 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   AlgoInput algoInput;
   FrameInput frameInput;
   frameInput.image = std::make_shared<cv::Mat>(imageRGB);
+  frameInput.inputRoi =
+      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   algoInput.setParams(frameInput);
 
   std::vector<std::thread> threads;
