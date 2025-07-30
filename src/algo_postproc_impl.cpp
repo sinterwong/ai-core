@@ -9,8 +9,8 @@
  *
  */
 #include "algo_postproc_impl.hpp"
-#include "logger.hpp"
 #include "registrar/postproc_registrar.hpp"
+#include <logger.hpp>
 
 namespace ai_core::dnn {
 AlgoPostproc::Impl::Impl(const std::string &moduleName)

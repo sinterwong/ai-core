@@ -39,17 +39,25 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
   }
 
   // Resize
-  cv::Scalar pad;
-  if (params_.pad.size() == 3) {
-    pad = cv::Scalar(params_.pad[0], params_.pad[1], params_.pad[2]);
-  } else if (params_.pad.size() == 1) {
-    pad = cv::Scalar(params_.pad[0]);
-  } else {
-    throw std::runtime_error("Invalid pad size. Must be 1 or 4.");
-  }
   cv::Mat resizedImage;
   if (params_.needResize) {
     if (params_.isEqualScale) {
+      cv::Scalar pad;
+      if (params_.pad.empty()) {
+        if (inputChannels == 1) {
+          pad = cv::Scalar(0);
+        } else {
+          pad = cv::Scalar(0, 0, 0);
+        }
+      } else {
+        if (params_.pad.size() == 3) {
+          pad = cv::Scalar(params_.pad[0], params_.pad[1], params_.pad[2]);
+        } else if (params_.pad.size() == 1) {
+          pad = cv::Scalar(params_.pad[0]);
+        } else {
+          throw std::runtime_error("Invalid pad size. Must be 1 or 3.");
+        }
+      }
       auto padRet = utils::escaleResizeWithPad(croppedImage, resizedImage,
                                                params_.modelInputShape.h,
                                                params_.modelInputShape.w, pad);
