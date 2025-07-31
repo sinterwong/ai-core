@@ -17,8 +17,9 @@
 
 namespace cv {
 template <typename _Tp> class Rect_;
-
 using Rect = Rect_<int>;
+
+class Mat;
 } // namespace cv
 namespace ai_core {
 
@@ -47,6 +48,15 @@ struct FprClsRet {
 
 struct DetRet {
   std::vector<BBox> bboxes;
+};
+
+struct DaulRawSegRet {
+  std::shared_ptr<cv::Mat> mask;
+  std::shared_ptr<cv::Mat> prob;
+  std::shared_ptr<cv::Rect> roi;
+  float ratio;
+  int leftShift;
+  int topShift;
 };
 
 } // namespace ai_core

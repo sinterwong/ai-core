@@ -111,6 +111,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
   framePreprocessArg.dataType = config.preprocDataType; // 使用 config
+  framePreprocessArg.needResize = true;
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};
@@ -187,6 +188,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
   framePreprocessArg.dataType = config.preprocDataType;
+  framePreprocessArg.needResize = true;
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};

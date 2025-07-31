@@ -1,5 +1,5 @@
 /**
- * @file single_frame_prep.cpp
+ * @file frame_prep.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -33,6 +33,12 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
     LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
     return false;
   }
+
+  if (paramsPtr->inputNames.size() != 1) {
+    LOG_ERRORS << "FramePreprocess expects exactly one input name.";
+    return false;
+  }
+
   auto frameInput = input.getParams<FrameInput>();
   if (!frameInput) {
     return false;

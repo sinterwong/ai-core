@@ -27,5 +27,15 @@ std::vector<BBox> NMS(const std::vector<BBox> &results, float nmsThre,
 
 Shape escaleResizeWithPad(const cv::Mat &src, cv::Mat &dst, int targetWidth,
                           int targetHeight, const cv::Scalar &pad);
+
+template <typename T>
+cv::Scalar createScalarFromVector(const std::vector<T> &values) {
+  cv::Scalar s;
+  size_t n = std::min(values.size(), (size_t)4);
+  for (size_t i = 0; i < n; ++i) {
+    s[i] = static_cast<double>(values[i]);
+  }
+  return s;
+}
 } // namespace ai_core::utils
 #endif
