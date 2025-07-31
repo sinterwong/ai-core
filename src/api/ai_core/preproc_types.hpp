@@ -25,9 +25,13 @@ namespace ai_core {
 
 struct FramePreprocessArg {
   enum class FramePreprocType : int8_t {
-    OPENCV_CPU_GENERIC = 0, // ROI -> Resize -> Normalize -> Layout convert
+    // ROI -> Resize -> Normalize -> Layout convert
+    OPENCV_CPU_GENERIC = 0,
     NCNN_GENERIC,
     CUDA_GPU_GENERIC,
+
+    // ROI -> Concat -> Resize -> Normalize -> Layout convert
+    OPENCV_CPU_CONCAT_MASK
   };
 
   FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
@@ -36,7 +40,7 @@ struct FramePreprocessArg {
   Shape originShape;
   Shape modelInputShape;
 
-  bool needResize = true;
+  bool needResize;
   bool isEqualScale;
   std::vector<int> pad;
   int topPad = 0;
@@ -45,13 +49,12 @@ struct FramePreprocessArg {
   std::vector<float> meanVals;
   std::vector<float> normVals;
 
-  bool hwc2chw = false;
+  bool hwc2chw;
 
   DataType dataType;
   BufferLocation outputLocation = BufferLocation::CPU;
   std::vector<std::string> inputNames;
 };
-
 } // namespace ai_core
 
 #endif // __PREPROCESS_TYPES_HPP__

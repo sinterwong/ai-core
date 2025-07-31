@@ -10,13 +10,12 @@
 
 namespace ai_core {
 // Algo input
-using AlgoInput =
-    common_utils::ParamCenter<std::variant<std::monostate, FrameInput>>;
+using AlgoInput = common_utils::ParamCenter<
+    std::variant<std::monostate, FrameInput, FrameInputWithMask>>;
 
 // Algo output
-using AlgoOutput = common_utils::ParamCenter<
-    std::variant<std::monostate, ai_core::ClsRet, ai_core::DetRet,
-                 ai_core::FprClsRet, ai_core::FeatureRet>>;
+using AlgoOutput = common_utils::ParamCenter<std::variant<
+    std::monostate, ClsRet, DetRet, FprClsRet, FeatureRet, DaulRawSegRet>>;
 
 // Algo preproc params
 using AlgoPreprocParams =

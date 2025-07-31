@@ -33,6 +33,12 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
     LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
     return false;
   }
+
+  if (paramsPtr->inputNames.size() != 1) {
+    LOG_ERRORS << "FramePreprocess expects exactly one input name.";
+    return false;
+  }
+
   auto frameInput = input.getParams<FrameInput>();
   if (!frameInput) {
     return false;

@@ -26,7 +26,7 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
            "This is not supported. Output will be on CPU.";
   }
   const auto &image = *frameInput.image;
-  const auto &roi = *params_.roi;
+  const auto &roi = *frameInput.inputRoi;
 
   int inputChannels = image.channels();
 
@@ -42,22 +42,12 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
   cv::Mat resizedImage;
   if (params_.needResize) {
     if (params_.isEqualScale) {
-      cv::Scalar pad;
-      if (params_.pad.empty()) {
-        if (inputChannels == 1) {
-          pad = cv::Scalar(0);
-        } else {
-          pad = cv::Scalar(0, 0, 0);
-        }
-      } else {
-        if (params_.pad.size() == 3) {
-          pad = cv::Scalar(params_.pad[0], params_.pad[1], params_.pad[2]);
-        } else if (params_.pad.size() == 1) {
-          pad = cv::Scalar(params_.pad[0]);
-        } else {
-          throw std::runtime_error("Invalid pad size. Must be 1 or 3.");
-        }
+      if (params_.pad.size() > 4) {
+        LOG_WARNINGS << "Padding vector has more than 4 elements. Only the "
+                        "first 4 will be used.";
       }
+
+      cv::Scalar pad = utils::createScalarFromVector(params_.pad);
       auto padRet = utils::escaleResizeWithPad(croppedImage, resizedImage,
                                                params_.modelInputShape.h,
                                                params_.modelInputShape.w, pad);
@@ -77,7 +67,7 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
   resizedImage.convertTo(floatImage, CV_32F);
 
   // Normalization
-  cv::Mat normalizedImage;
+  cv::Mat normalizedImage = floatImage;
   if (!params_.meanVals.empty() && !params_.normVals.empty()) {
     // Validate normalization parameters
     if (params_.meanVals.size() != inputChannels ||
@@ -87,15 +77,13 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
     }
 
     std::vector<cv::Mat> channels(inputChannels);
-    cv::split(floatImage, channels);
+    cv::split(normalizedImage, channels);
 
     // Apply normalization per channel
     for (int i = 0; i < inputChannels; ++i) {
       channels[i] = (channels[i] - params_.meanVals[i]) / params_.normVals[i];
     }
     cv::merge(channels, normalizedImage);
-  } else {
-    normalizedImage = floatImage;
   }
 
   switch (params_.dataType) {
@@ -107,7 +95,6 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
     return preprocessFP16(normalizedImage, inputChannels,
                           params_.modelInputShape.h, params_.modelInputShape.w,
                           params_.hwc2chw);
-
   default:
     LOG_ERRORS << "Unsupported data type: "
                << static_cast<int>(params_.dataType);

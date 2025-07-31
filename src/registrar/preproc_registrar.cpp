@@ -11,6 +11,8 @@
 #include <ostream>
 
 #include "preproc/frame_prep.hpp"
+#include "preproc/frame_with_mask_prep.hpp"
+
 #include "preproc_registrar.hpp"
 
 #include <logger.hpp>
@@ -27,5 +29,6 @@ namespace ai_core::dnn {
 
 PreprocessRegistrar::PreprocessRegistrar() {
   REGISTER_PREPROCESS_ALGO(FramePreprocess);
+  REGISTER_PREPROCESS_ALGO(FrameWithMaskPreprocess);
 }
 } // namespace ai_core::dnn

@@ -12,6 +12,7 @@
 #include "postproc/fpr_cls.hpp"
 #include "postproc/fpr_feat.hpp"
 #include "postproc/softmax_cls.hpp"
+#include "postproc/unet_daul_out_seg.hpp"
 #include <logger.hpp>
 #include <opencv2/core.hpp>
 
@@ -50,6 +51,11 @@ bool CVGenericPostproc::process(const TensorData &modelOutput,
     FprFeature postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
+  case GenericPostParams::GenericAlgoType::UNET_DUAL_OUTPUT: {
+    UNetDaulOutputSeg postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
+
   default: {
     LOG_ERRORS << "Unknown generic algorithm type: "
                << static_cast<int>(params->postprocType);
