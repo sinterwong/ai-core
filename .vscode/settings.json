@@ -13,6 +13,7 @@
   },
   "cmake.configureArgs": [
     "-DBUILD_AI_CORE_TESTS=ON",
+    "-DBUILD_AI_CORE_BENCHMARKS=ON",
     "-DWITH_ORT_ENGINE=ON",
     "-DWITH_NCNN_ENGINE=ON",
     "-DWITH_TRT_ENGINE=OFF",

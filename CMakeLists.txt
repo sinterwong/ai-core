@@ -14,6 +14,8 @@ SET(CMAKE_CXX_STANDARD 20)
 
 OPTION(BUILD_AI_CORE_TESTS "Build with tests" OFF)
 
+OPTION(BUILD_AI_CORE_BENCHMARKS "Build with benchmarks" OFF)
+
 OPTION(WITH_ORT_ENGINE "Build with onnxruntime" ON)
 OPTION(WITH_NCNN_ENGINE "Build with ncnn" OFF)
 OPTION(WITH_TRT_ENGINE "Build with tensorrt" OFF)
@@ -83,6 +85,11 @@ ADD_SUBDIRECTORY(src)
 IF(BUILD_AI_CORE_TESTS)
     MESSAGE(INFO "--------------------------------")
     ADD_SUBDIRECTORY(tests)
+ENDIF()
+
+IF(BUILD_AI_CORE_BENCHMARKS)
+    MESSAGE(INFO "--------------------------------")
+    ADD_SUBDIRECTORY(benchmarks)
 ENDIF()
 
 message(INFO "--------- Install Resource --------")
