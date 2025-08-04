@@ -62,8 +62,8 @@ InferErrorCode OrtAlgoInference::initialize() {
     // create session
     std::vector<unsigned char> engineData;
     if (params_.needDecrypt) {
-      std::string securityKey = SECURITY_KEY;
-      auto cryptoConfig = encrypt::Crypto::deriveKeyFromCommit(securityKey);
+      auto cryptoConfig =
+          encrypt::Crypto::deriveKeyFromCommit(params_.decryptkeyStr);
       encrypt::Crypto crypto(cryptoConfig);
       if (!crypto.decryptData(params_.modelPath, engineData)) {
         LOG_ERRORS << "Failed to decrypt model data: " << params_.modelPath;
