@@ -33,8 +33,10 @@ IF(BUILD_AI_CORE_TESTS)
         MESSAGE(STATUS "gtest target already exists. Skipping.")
     ENDIF()
 ENDIF()
-    
+
 IF(BUILD_AI_CORE_BENCHMARKS)
+    SET(BUILD_SHARED_LIBS OFF)
+    SET(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable test for benchmark")
     IF(NOT TARGET benchmark)
         MESSAGE(STATUS "benchmark target not found. Adding subdirectory...")
         ADD_SUBDIRECTORY(benchmark EXCLUDE_FROM_ALL)
