@@ -259,8 +259,6 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
       auto durationInfer =
           std::chrono::duration_cast<std::chrono::milliseconds>(inferEnd -
                                                                 inferStart);
-      LOG_INFOS << params_.name << " inference cost " << durationInfer.count()
-                << " ms";
     }
     return InferErrorCode::SUCCESS;
   } catch (const Ort::Exception &e) {

@@ -60,6 +60,7 @@ jobs:
         cmake -B ${{ github.workspace }}/build -GNinja
         -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
         -DBUILD_AI_CORE_TESTS=ON
+        -DBUILD_AI_CORE_BENCHMARKS=ON
         -DWITH_ORT_ENGINE=ON
         -DWITH_NCNN_ENGINE=ON
         -DWITH_TRT_ENGINE=OFF
@@ -85,3 +86,7 @@ jobs:
     - name: Test
       working-directory: ${{github.workspace}}/install
       run: ./tests/ai_core_tests --gtest_filter=*.*
+
+    - name: Benchmark
+      working-directory: ${{github.workspace}}/install
+      run: ./benchmarks/ai_core_benchmarks
