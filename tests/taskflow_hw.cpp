@@ -72,6 +72,7 @@ TEST_F(TaskflowTest, YoloAlgoProcess) {
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
   framePreprocessArg.dataType = inferParams.dataType;
+  framePreprocessArg.needResize = true;
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};

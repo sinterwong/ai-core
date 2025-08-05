@@ -46,7 +46,6 @@ struct TestConfig {
   FramePreprocessArg::FramePreprocType preprocTaskType =
       FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
   BufferLocation bufferLocation = BufferLocation::CPU;
-
   bool needDecrypt = false;
   std::string decryptkeyStr = "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25";
 };
