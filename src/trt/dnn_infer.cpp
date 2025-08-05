@@ -74,8 +74,8 @@ InferErrorCode TrtAlgoInference::loadEngineFromPath(const std::string &path,
   if (needsDecrypt) {
     LOG_INFOS << "Decrypting TensorRT engine: " << path;
     std::vector<unsigned char> decryptedData;
-    std::string securityKey = SECURITY_KEY;
-    auto cryptoConfig = encrypt::Crypto::deriveKeyFromCommit(securityKey);
+    auto cryptoConfig =
+        encrypt::Crypto::deriveKeyFromCommit(mParams.decryptkeyStr);
     encrypt::Crypto crypto(cryptoConfig);
     if (!crypto.decryptData(path, decryptedData)) {
       LOG_ERRORS << "Failed to decrypt model data: " << path;

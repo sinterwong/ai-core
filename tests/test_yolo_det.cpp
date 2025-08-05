@@ -34,18 +34,20 @@ using namespace ai_core::dnn;
 
 struct TestConfig {
   std::string testName;
+
   std::function<std::shared_ptr<InferBase>(const AlgoConstructParams &)>
       engineFactory;
-  std::string modelFile;
+
+  std::string modelPath;
   DataType inferDataType;
   DataType preprocDataType;
   DeviceType deviceType;
   std::string inputName;
-
-  bool needDecrypt = false;
   FramePreprocessArg::FramePreprocType preprocTaskType =
       FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
   BufferLocation bufferLocation = BufferLocation::CPU;
+  bool needDecrypt = false;
+  std::string decryptkeyStr = "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25";
 };
 
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
@@ -77,7 +79,6 @@ protected:
   fs::path resourceDir = fs::path("assets");
   fs::path confDir = resourceDir / "conf";
   fs::path dataDir = resourceDir / "data";
-  fs::path modelDir = resourceDir / "models";
 
   std::string imagePath = (dataDir / "yolov11/image.png").string();
 
@@ -91,10 +92,11 @@ TEST_P(YoloDetInferenceTest, Normal) {
   AlgoConstructParams tempInferParams;
   AlgoInferParams inferParams;
   inferParams.dataType = config.inferDataType;
-  inferParams.modelPath = (modelDir / config.modelFile).string();
+  inferParams.modelPath = config.modelPath;
   inferParams.name = "yolov11n";
   inferParams.deviceType = config.deviceType;
   inferParams.needDecrypt = config.needDecrypt;
+  inferParams.decryptkeyStr = config.decryptkeyStr;
   tempInferParams.setParam("params", inferParams);
 
   std::shared_ptr<InferBase> engine = config.engineFactory(tempInferParams);
@@ -169,10 +171,11 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   AlgoConstructParams tempInferParams;
   AlgoInferParams inferParams;
   inferParams.dataType = config.inferDataType;
-  inferParams.modelPath = (modelDir / config.modelFile).string();
+  inferParams.modelPath = config.modelPath;
   inferParams.name = "yolov11n";
   inferParams.deviceType = config.deviceType;
   inferParams.needDecrypt = config.needDecrypt;
+  inferParams.decryptkeyStr = config.decryptkeyStr;
   tempInferParams.setParam("params", inferParams);
 
   std::shared_ptr<InferBase> engine = config.engineFactory(tempInferParams);
@@ -242,30 +245,61 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
 std::vector<TestConfig> GetTestConfigs() {
   std::vector<TestConfig> configs;
 #ifdef WITH_ORT
-  configs.push_back({"ort", // testName
+  configs.push_back({"ort",
                      [](const AlgoConstructParams &p) {
                        return std::make_shared<OrtAlgoInference>(p);
                      },
-                     "yolov11n-fp16.onnx", DataType::FLOAT16, DataType::FLOAT16,
-                     DeviceType::CPU, "images"});
+                     "assets/models/yolov11n-fp16.onnx", DataType::FLOAT16,
+                     DataType::FLOAT16, DeviceType::CPU, "images",
+                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     BufferLocation::CPU, false});
+  configs.push_back({"ort_enc",
+                     [](const AlgoConstructParams &p) {
+                       return std::make_shared<OrtAlgoInference>(p);
+                     },
+                     "assets/enc_models/yolov11n-fp16.enc.onnx",
+                     DataType::FLOAT16, DataType::FLOAT16, DeviceType::CPU,
+                     "images",
+                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     BufferLocation::CPU, true});
 #endif
 #ifdef WITH_NCNN
   configs.push_back({"ncnn",
                      [](const AlgoConstructParams &p) {
                        return std::make_shared<NCNNAlgoInference>(p);
                      },
-                     "yolov11n.ncnn", DataType::FLOAT16, DataType::FLOAT32,
-                     DeviceType::CPU, "in0"});
+                     "assets/models/yolov11n.ncnn", DataType::FLOAT16,
+                     DataType::FLOAT32, DeviceType::CPU, "in0",
+                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     BufferLocation::CPU, false});
+  configs.push_back({"ncnn_enc",
+                     [](const AlgoConstructParams &p) {
+                       return std::make_shared<NCNNAlgoInference>(p);
+                     },
+                     "assets/enc_models/yolov11n.enc.ncnn", DataType::FLOAT16,
+                     DataType::FLOAT32, DeviceType::CPU, "in0",
+                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     BufferLocation::CPU, true});
 #endif
 #ifdef WITH_TRT
   configs.push_back({"trt",
                      [](const AlgoConstructParams &p) {
                        return std::make_shared<TrtAlgoInference>(p);
                      },
-                     "yolov11n_trt_fp16.engine", DataType::FLOAT32,
-                     DataType::FLOAT32, DeviceType::GPU, "images", false,
+                     "assets/models/yolov11n_trt_fp16.engine",
+                     DataType::FLOAT32, DataType::FLOAT32, DeviceType::GPU,
+                     "images",
                      FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
-                     BufferLocation::GPU_DEVICE});
+                     BufferLocation::GPU_DEVICE, false});
+  configs.push_back({"trt_enc",
+                     [](const AlgoConstructParams &p) {
+                       return std::make_shared<TrtAlgoInference>(p);
+                     },
+                     "assets/enc_models/yolov11n_trt_fp16.enc.engine",
+                     DataType::FLOAT32, DataType::FLOAT32, DeviceType::GPU,
+                     "images",
+                     FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
+                     BufferLocation::GPU_DEVICE, true});
 #endif
   return configs;
 }

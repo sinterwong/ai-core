@@ -7,10 +7,6 @@ ENDIF()
 
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON) 
 
-# FIXME: write it as a macro for now. it would be more reasonable to change it to read from a certain file
-SET(COMMIT_CODE "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25")
-ADD_DEFINITIONS(-DSECURITY_KEY="${COMMIT_CODE}")
-
 LOAD_OPENCV()
 
 IF (TARGET_OS STREQUAL "Android")
