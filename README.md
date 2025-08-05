@@ -13,7 +13,118 @@ AI Core is a powerful and extensible C++ library for managing and executing AI i
 
 *   **Multiple Inference Engines:** Supports ONNX Runtime, NCNN, and TensorRT.
 *   **Modular Design:** Easily extend the library by adding new algorithms and pre/post-processing modules.
-*   **Configuration-based:** Use JSON files to define and configure your AI algorithms.
+*   **Configuration-based:** Easily use JSON files to define and configure your AI algorithms.
+
+## Core Components
+
+AI Core is built around three main components that form the foundation of the inference pipeline: `AlgoPreproc`, `AlgoInferEngine`, and `AlgoPostproc`. These components work together to handle the entire process, from data preparation to final output, allowing for a flexible and modular approach to building and running AI models.
+
+-   **`AlgoPreproc`**: Responsible for all data preprocessing tasks. This component takes raw input, such as images or other data, and transforms it into the format required by the inference engine. This can include resizing, normalization, and other transformations.
+
+-   **`AlgoInferEngine`**: The core of the inference process. This component takes the preprocessed data and runs it through the deep learning model using a specified backend, such as ONNX Runtime, NCNN, or TensorRT. It manages the model loading, execution, and data transfer between the host and the device.
+
+-   **`AlgoPostproc`**: Handles the post-processing of the model's output. This component takes the raw output from the inference engine and transforms it into a human-readable and usable format, such as bounding boxes for object detection or masks for segmentation.
+
+These components can be used individually for fine-grained control over the inference pipeline or orchestrated together to create a seamless end-to-end workflow. The following sections provide a more detailed look at each of these components.
+
+### `AlgoPreproc`: Data Preprocessing
+
+The `AlgoPreproc` class is responsible for preparing raw input data for the inference engine. It takes an `AlgoInput` object, which can contain various data types like images or sensor data, and applies a series of transformations defined in `AlgoPreprocParams`. The output is a `TensorData` object, which is ready to be consumed by the `AlgoInferEngine`.
+
+Here's how to use `AlgoPreproc` to preprocess an image for a typical computer vision model:
+
+```cpp
+#include "ai_core/algo_preproc.hpp"
+#include "ai_core/algo_data_types.hpp"
+#include <opencv2/opencv.hpp>
+
+// 1. Initialize the preprocessor with a specific module name
+auto preproc = std::make_shared<ai_core::dnn::AlgoPreproc>("FramePreprocess");
+preproc->initialize();
+
+// 2. Prepare the input data
+cv::Mat image = cv::imread("path/to/your/image.jpg");
+auto algo_input = std::make_shared<ai_core::dnn::AlgoInput>();
+algo_input->setParams(image);
+
+// 3. Set up preprocessing parameters
+ai_core::dnn::AlgoPreprocParams preproc_params;
+// ... configure parameters such as resize dimensions, normalization, etc.
+
+// 4. Create a TensorData object for the output
+ai_core::dnn::TensorData model_input;
+
+// 5. Run the preprocessing
+preproc->process(*algo_input, preproc_params, model_input);
+
+// 'model_input' now contains the preprocessed data ready for inference.
+```
+
+### `AlgoInferEngine`: Core Inference Execution
+
+The `AlgoInferEngine` is the heart of the AI Core library, responsible for executing the deep learning model. It abstracts the complexities of different inference backends, providing a unified interface for running inference. You can choose from various supported backends like ONNX Runtime, NCNN, or TensorRT by specifying the module name during initialization.
+
+Here’s an example of how to initialize and use the `AlgoInferEngine`:
+
+```cpp
+#include "ai_core/algo_infer_engine.hpp"
+#include "ai_core/infer_params_types.hpp"
+
+// 1. Define inference parameters, such as the model path and device type
+ai_core::dnn::AlgoInferParams infer_params;
+infer_params.modelPath = "path/to/your/model.onnx";
+infer_params.deviceType = ai_core::dnn::DeviceType::CPU;
+
+// 2. Create an AlgoInferEngine instance with a specific backend
+auto engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("OrtAlgoInference", infer_params);
+if (engine->initialize() != ai_core::dnn::InferErrorCode::SUCCESS) {
+    // Handle initialization failure
+    return -1;
+}
+
+// 3. Prepare the input tensor (e.g., from AlgoPreproc)
+ai_core::dnn::TensorData model_input;
+// ... populate model_input ...
+
+// 4. Create a TensorData object for the output
+ai_core::dnn::TensorData model_output;
+
+// 5. Run inference
+engine->infer(model_input, model_output);
+
+// 'model_output' now contains the raw output from the model.
+```
+
+### `AlgoPostproc`: Processing Model Output
+
+After the `AlgoInferEngine` produces the raw output, the `AlgoPostproc` class is used to transform this data into a structured and meaningful format. It takes the `TensorData` from the inference stage and applies post-processing logic, such as decoding bounding boxes, applying non-maximum suppression, or generating segmentation masks.
+
+Here's how to use `AlgoPostproc` to process the output of an object detection model:
+
+```cpp
+#include "ai_core/algo_postproc.hpp"
+#include "ai_core/algo_data_types.hpp"
+
+// 1. Initialize the post-processor with a specific module name
+auto postproc = std::make_shared<ai_core::dnn::AlgoPostproc>("CVGenericPostproc");
+postproc->initialize();
+
+// 2. Prepare the model output (from AlgoInferEngine)
+ai_core::dnn::TensorData model_output;
+// ... populate model_output ...
+
+// 3. Set up post-processing parameters
+ai_core::dnn::AlgoPostprocParams postproc_params;
+// ... configure parameters like confidence thresholds, NMS values, etc.
+
+// 4. Create an AlgoOutput object to store the final results
+ai_core::dnn::AlgoOutput algo_output;
+
+// 5. Run the post-processing
+postproc->process(model_output, algo_output, postproc_params);
+
+// 'algo_output' now contains the processed results, such as bounding boxes and labels.
+```
 
 ## Getting Started
 
@@ -70,63 +181,69 @@ To install the library, run the following command from the `build` directory:
 cmake --install .
 ```
 
-## Usage
+## Usage: End-to-End Inference Pipeline
 
-### `AlgoInference`: The Core of Execution
+While the `AlgoPreproc`, `AlgoInferEngine`, and `AlgoPostproc` components can be used individually, they are most powerful when combined to create a complete end-to-end inference pipeline. This approach allows you to build flexible and high-performance AI applications with clear separation of concerns.
 
-The `AlgoInference` class is the workhorse of AI Core. It encapsulates the entire inference pipeline for a single algorithm, including pre-processing, inference, and post-processing. You can use it directly for more fine-grained control over the inference process.
-
-Here's an example of how to use `AlgoInference` for a YOLOv11 object detection model:
+The following example demonstrates how to combine these three components to perform object detection on an image.
 
 ```cpp
-#include "ai_core/algo_infer.hpp"
+#include "ai_core/algo_preproc.hpp"
+#include "ai_core/algo_infer_engine.hpp"
+#include "ai_core/algo_postproc.hpp"
 #include "ai_core/algo_data_types.hpp"
 #include <opencv2/opencv.hpp>
 
 int main() {
-    // 1. Define the algorithm modules and parameters
-    ai_core::dnn::AlgoModuleTypes module_types;
-    module_types.preproc = "FramePreprocess";
-    module_types.infer = "OrtAlgoInference";
-    module_types.postproc = "Yolov11Det";
+    // 1. Initialize Preprocessing
+    auto preproc = std::make_shared<ai_core::dnn::AlgoPreproc>("FramePreprocess");
+    preproc->initialize();
 
+    // 2. Initialize Inference Engine
     ai_core::dnn::AlgoInferParams infer_params;
-    infer_params.modelPath = "models/yolov11n-fp16.onnx";
+    infer_params.modelPath = "path/to/your/model.onnx";
     infer_params.deviceType = ai_core::dnn::DeviceType::CPU;
+    auto engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("OrtAlgoInference", infer_params);
+    engine->initialize();
 
-    // 2. Create an AlgoInference instance
-    auto algo = std::make_shared<ai_core::dnn::AlgoInference>(module_types, infer_params);
-    if (algo->initialize() != ai_core::dnn::InferErrorCode::SUCCESS) {
-        return -1;
-    }
+    // 3. Initialize Post-processing
+    auto postproc = std::make_shared<ai_core::dnn::AlgoPostproc>("CVGenericPostproc");
+    postproc->initialize();
 
-    // 3. Create input data structures
-    ai_core::dnn::AlgoInput input;
-    // ... set input data ...
+    // 4. Load and Prepare Input Data
+    cv::Mat image = cv::imread("path/to/your/image.jpg");
+    auto algo_input = std::make_shared<ai_core::dnn::AlgoInput>();
+    algo_input->setParams(image);
 
-    // 4. Create output data structures
-    ai_core::dnn::AlgoOutput output;
-
-    // 5. Define pre-processing and post-processing parameters
+    // 5. Define Preprocessing and Post-processing Parameters
     ai_core::dnn::AlgoPreprocParams preproc_params;
-    // ... set pre-processing parameters ...
-
+    // ... configure preprocessing parameters ...
     ai_core::dnn::AlgoPostprocParams postproc_params;
-    // ... set post-processing parameters ...
+    // ... configure post-processing parameters ...
 
-    // 6. Run inference
-    algo->infer(input, preproc_params, output, postproc_params);
+    // 6. Run the Full Pipeline
+    ai_core::dnn::TensorData model_input;
+    preproc->process(*algo_input, preproc_params, model_input);
 
-    // 7. Process the output
-    // ...
+    ai_core::dnn::TensorData model_output;
+    engine->infer(model_input, model_output);
+
+    ai_core::dnn::AlgoOutput algo_output;
+    postproc->process(model_output, algo_output, postproc_params);
+
+    // 7. Use the Final Output
+    // ... process the results in 'algo_output' ...
 
     return 0;
 }
 ```
 
-### `AlgoManager`: Simplified Algorithm Management
+### Higher-Level Abstractions
 
-The `AlgoManager` class provides a higher-level interface for managing multiple algorithms. It loads algorithm configurations from a JSON file and provides a simple way to run inference by name.
+For convenience, AI Core also provides higher-level abstractions like `AlgoInference` and `AlgoManager`. These classes encapsulate the entire pipeline and are useful when you don't need fine-grained control over each step.
+
+-   **`AlgoInference`**: Wraps the three-stage pipeline (`AlgoPreproc`, `AlgoInferEngine`, `AlgoPostproc`) into a single class for easier use.
+-   **`AlgoManager`**: Manages multiple `AlgoInference` instances and allows you to run them by name, based on a JSON configuration file.
 
 ### Configuration
 
@@ -140,22 +257,52 @@ AI Core uses JSON files to configure algorithms. Here's an example configuration
             "types": {
                 "preproc": "FramePreprocess",
                 "infer": "OrtAlgoInference",
-                "postproc": "Yolov11Det"
+                "postproc": "AnchorDetPostproc"
             },
             "preprocParams": {
-                "inputShape": { "w": 640, "h": 640, "c": 3 },
-                "mean": [ 0.0, 0.0, 0.0 ],
-                "std": [ 255.0, 255.0, 255.0 ],
+                "inputShape": {
+                    "w": 640,
+                    "h": 640,
+                    "c": 3
+                },
+                "mean": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "std": [
+                    255.0,
+                    255.0,
+                    255.0
+                ],
+                "pad": [
+                    0,
+                    0,
+                    0
+                ],
                 "isEqualScale": true,
-                "hwc2chw": true
+                "needResize": true,
+                "dataType": 1,
+                "hwc2chw": true,
+                "inputNames": [
+                    "images"
+                ],
+                "preprocTaskType": 0
             },
             "inferParams": {
+                "name": "yolo-det-80c-001",
                 "modelPath": "models/yolov11n-fp16.onnx",
-                "deviceType": 0
+                "deviceType": 0,
+                "dataType": 1,
+                "needDecrypt": false
             },
             "postprocParams": {
+                "detAlogType": 0,
                 "condThre": 0.5,
-                "nmsThre": 0.45
+                "nmsThre": 0.45,
+                "outputNames": [
+                    "output0"
+                ]
             }
         }
     ]
