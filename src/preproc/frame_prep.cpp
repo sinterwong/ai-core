@@ -47,25 +47,25 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
   if (frameInput->image == nullptr) {
     LOG_ERRORS << "Input frame is null.";
     throw std::runtime_error("Input frame is null.");
-  } else {
-    paramsPtr->originShape = {frameInput->image->cols, frameInput->image->rows,
-                              frameInput->image->channels()};
   }
 
   if (frameInput->inputRoi == nullptr) {
-    paramsPtr->roi = std::make_shared<cv::Rect>(0, 0, frameInput->image->cols,
-                                                frameInput->image->rows);
-  } else {
-    paramsPtr->roi = frameInput->inputRoi;
-    const auto &roi = *paramsPtr->roi;
-    const auto &image = *frameInput->image;
-    if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
-        roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
-      LOG_ERRORS << "Invalid ROI: " << roi
-                 << " for image size: " << image.size();
-      throw std::runtime_error("Invalid ROI.");
-    }
+    frameInput->inputRoi = std::make_shared<cv::Rect>(
+        0, 0, frameInput->image->cols, frameInput->image->rows);
   }
+
+  const auto &image = *frameInput->image;
+  const auto &roi = *frameInput->inputRoi;
+  if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
+      roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
+    LOG_ERRORS << "Invalid ROI: " << roi << " for image size: " << image.size();
+    throw std::runtime_error("Invalid ROI.");
+  }
+
+  // update the parameters used in the pre-processing
+  paramsPtr->roi = frameInput->inputRoi;
+  paramsPtr->originShape = {frameInput->image->cols, frameInput->image->rows,
+                            frameInput->image->channels()};
 
   switch (paramsPtr->preprocTaskType) {
   case FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC: {
