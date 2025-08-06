@@ -9,9 +9,11 @@
  *
  */
 #include "cv_generic_postproc.hpp"
+#include "postproc/b_diag_spec.hpp"
 #include "postproc/fpr_cls.hpp"
 #include "postproc/fpr_feat.hpp"
 #include "postproc/softmax_cls.hpp"
+#include "postproc/t_diag_spec.hpp"
 #include "postproc/unet_daul_out_seg.hpp"
 #include <logger.hpp>
 #include <opencv2/core.hpp>
@@ -53,6 +55,14 @@ bool CVGenericPostproc::process(const TensorData &modelOutput,
   }
   case GenericPostParams::GenericAlgoType::UNET_DUAL_OUTPUT: {
     UNetDaulOutputSeg postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
+  case GenericPostParams::GenericAlgoType::B_DIAG_SPEC: {
+    BDiagSpecPostproc postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
+  case GenericPostParams::GenericAlgoType::T_DIAG_SPEC: {
+    TDiagSpecPostproc postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
 

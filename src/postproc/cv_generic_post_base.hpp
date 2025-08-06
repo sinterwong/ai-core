@@ -13,7 +13,6 @@
 #define __I_CV_GENERIC_POSTPROCESSOR_HPP__
 
 #include "ai_core/algo_data_types.hpp"
-#include "ai_core/algo_input_types.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core {

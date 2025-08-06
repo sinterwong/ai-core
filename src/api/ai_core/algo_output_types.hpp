@@ -12,6 +12,7 @@
 #ifndef __ALGO_OUTPUT_TYPES_HPP__
 #define __ALGO_OUTPUT_TYPES_HPP__
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -57,6 +58,32 @@ struct DaulRawSegRet {
   float ratio;
   int leftShift;
   int topShift;
+};
+
+struct BDiagSpecRet {
+  float malignantScore;
+  std::vector<float> feat;
+  // breast signs
+  float irregularShape;
+  float spiculation;
+  float blur;
+  std::array<float, 6> lesionCls;
+  float microlobulation;
+  float angularMargins;
+  float deeperThanwide;
+  float calcification;
+};
+
+struct TDiagSpecRet {
+  float tirads;
+  std::vector<float> feat;
+  // thyroid signs
+  std::array<float, 5> structure;
+  std::array<float, 2> eccentric;
+  std::array<float, 3> margin;
+  std::array<float, 2> aspectRatio;
+  std::array<float, 5> echo;
+  std::array<float, 5> focalEcho;
 };
 
 } // namespace ai_core

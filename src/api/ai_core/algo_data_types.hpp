@@ -14,8 +14,9 @@ using AlgoInput = common_utils::ParamCenter<
     std::variant<std::monostate, FrameInput, FrameInputWithMask>>;
 
 // Algo output
-using AlgoOutput = common_utils::ParamCenter<std::variant<
-    std::monostate, ClsRet, DetRet, FprClsRet, FeatureRet, DaulRawSegRet>>;
+using AlgoOutput = common_utils::ParamCenter<
+    std::variant<std::monostate, ClsRet, DetRet, FprClsRet, FeatureRet,
+                 DaulRawSegRet, BDiagSpecRet, TDiagSpecRet>>;
 
 // Algo preproc params
 using AlgoPreprocParams =

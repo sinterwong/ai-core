@@ -21,7 +21,9 @@ struct GenericPostParams {
     SOFTMAX_CLS = 0,
     FPR_CLS,
     FPR_FEAT,
-    UNET_DUAL_OUTPUT
+    UNET_DUAL_OUTPUT,
+    B_DIAG_SPEC,
+    T_DIAG_SPEC
   };
 
   GenericAlgoType postprocType;
