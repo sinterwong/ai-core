@@ -2,10 +2,6 @@
 	path = 3rdparty/logger
 	url = https://github.com/sinterwong/logger.git
   branch = master
-[submodule "3rdparty/cpp-common-utils"]
-	path = 3rdparty/cpp-common-utils
-	url = https://github.com/sinterwong/cpp-common-utils.git
-	branch = master
 [submodule "3rdparty/encryption-tool"]
 	path = 3rdparty/encryption-tool
 	url = https://github.com/sinterwong/encryption-tool.git

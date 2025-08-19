@@ -18,7 +18,6 @@ SET(DEPENDENCY_INCLUDES
 
 SET(DEPENDENCY_LIBS
     ai_core::ai_core
-    common_utils::common_utils
     logger::logger
     encrypt::encrypt
     ${OpenCV_LIBS}

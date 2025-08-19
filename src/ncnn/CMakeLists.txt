@@ -38,6 +38,5 @@ TARGET_INCLUDE_DIRECTORIES(ai_ncnn_module
 
 TARGET_LINK_LIBRARIES(ai_ncnn_module PRIVATE
     encrypt::encrypt
-    common_utils::common_utils
     logger::logger
 )

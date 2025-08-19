@@ -3,30 +3,31 @@
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/algo_output_types.hpp"
+#include "ai_core/data_packet.hpp"
+#include "ai_core/param_center.hpp"
 #include "ai_core/postproc_types.hpp"
 #include "ai_core/preproc_types.hpp"
-#include "data_packet.hpp"
-#include "param_center.hpp"
 
 namespace ai_core {
 // Algo input
-using AlgoInput = common_utils::ParamCenter<
-    std::variant<std::monostate, FrameInput, FrameInputWithMask>>;
+using AlgoInput =
+    ParamCenter<std::variant<std::monostate, FrameInput, FrameInputWithMask>>;
 
 // Algo output
-using AlgoOutput = common_utils::ParamCenter<std::variant<
-    std::monostate, ClsRet, DetRet, FprClsRet, FeatureRet, DaulRawSegRet>>;
+using AlgoOutput =
+    ParamCenter<std::variant<std::monostate, ClsRet, DetRet, FprClsRet,
+                             FeatureRet, DaulRawSegRet>>;
 
 // Algo preproc params
 using AlgoPreprocParams =
-    common_utils::ParamCenter<std::variant<std::monostate, FramePreprocessArg>>;
+    ParamCenter<std::variant<std::monostate, FramePreprocessArg>>;
 
 // Algo postproc params
-using AlgoPostprocParams = common_utils::ParamCenter<
+using AlgoPostprocParams = ParamCenter<
     std::variant<std::monostate, AnchorDetParams, GenericPostParams>>;
 
 // Algo construct params
-using AlgoConstructParams = common_utils::DataPacket;
+using AlgoConstructParams = DataPacket;
 
 // Algo module types
 struct AlgoModuleTypes {

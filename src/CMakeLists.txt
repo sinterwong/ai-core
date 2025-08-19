@@ -19,7 +19,6 @@ SET(DEPENDENCY_INCLUDES
 )
 
 SET(DEPENDENCY_LIBS
-	common_utils::common_utils
 	encrypt::encrypt
 	logger::logger
 	${OpenCV_LIBS}

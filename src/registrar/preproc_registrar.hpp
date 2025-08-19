@@ -16,7 +16,7 @@
 
 namespace ai_core::dnn {
 
-using PreprocFactory = common_utils::Factory<PreprocssBase>;
+using PreprocFactory = Factory<PreprocssBase>;
 
 class PreprocessRegistrar {
 public:

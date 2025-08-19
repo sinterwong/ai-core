@@ -53,7 +53,6 @@ TARGET_INCLUDE_DIRECTORIES(ai_trt_module
 
 TARGET_LINK_LIBRARIES(ai_trt_module PRIVATE
     encrypt::encrypt
-    common_utils::common_utils
     logger::logger
 )
 

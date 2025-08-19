@@ -16,7 +16,7 @@
 
 namespace ai_core::dnn {
 
-using InferEngineFactory = common_utils::Factory<InferBase>;
+using InferEngineFactory = Factory<InferBase>;
 
 class InferEngineRegistrar {
 public:

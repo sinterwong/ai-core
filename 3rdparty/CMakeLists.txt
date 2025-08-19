@@ -4,13 +4,6 @@ PROJECT(AICore3rdparty)
 SET(BUILD_TESTING OFF CACHE BOOL "Disable testing for 3rdparty libs")
 SET(WITH_GTEST OFF CACHE BOOL "Disable gtest for glog")
 
-IF(NOT TARGET common_utils)
-    MESSAGE(STATUS "common_utils target not found. Adding subdirectory...")
-    ADD_SUBDIRECTORY(cpp-common-utils EXCLUDE_FROM_ALL)
-ELSE()
-    MESSAGE(STATUS "common_utils target already exists. Skipping.")
-ENDIF()
-
 IF(NOT TARGET encrypt)
     MESSAGE(STATUS "encrypt target not found. Adding subdirectory...")
     ADD_SUBDIRECTORY(encryption-tool EXCLUDE_FROM_ALL)

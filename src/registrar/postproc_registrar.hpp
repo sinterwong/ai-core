@@ -16,7 +16,7 @@
 
 namespace ai_core::dnn {
 
-using PostprocFactory = common_utils::Factory<PostprocssBase>;
+using PostprocFactory = Factory<PostprocssBase>;
 
 class PostprocessRegistrar {
 public:
