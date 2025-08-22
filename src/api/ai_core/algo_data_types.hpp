@@ -16,15 +16,16 @@ using AlgoInput =
 // Algo output
 using AlgoOutput =
     ParamCenter<std::variant<std::monostate, ClsRet, DetRet, FprClsRet,
-                             FeatureRet, DaulRawSegRet>>;
+                             FeatureRet, SegRet, DaulRawSegRet>>;
 
 // Algo preproc params
 using AlgoPreprocParams =
     ParamCenter<std::variant<std::monostate, FramePreprocessArg>>;
 
 // Algo postproc params
-using AlgoPostprocParams = ParamCenter<
-    std::variant<std::monostate, AnchorDetParams, GenericPostParams>>;
+using AlgoPostprocParams =
+    ParamCenter<std::variant<std::monostate, AnchorDetParams, GenericPostParams,
+                             ConfidenceFilterParams>>;
 
 // Algo construct params
 using AlgoConstructParams = DataPacket;

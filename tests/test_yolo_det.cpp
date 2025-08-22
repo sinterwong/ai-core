@@ -126,8 +126,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
-  anchorDetParams.detAlogType =
-      AnchorDetParams::AnchorDetAlogType::YOLO_DET_V11;
+  anchorDetParams.algoType = AnchorDetParams::AlogType::YOLO_DET_V11;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.outputNames = {"output0"};

@@ -1,5 +1,5 @@
 /**
- * @file fpr_feat.hpp
+ * @file raw_feature.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -13,9 +13,9 @@
 
 #include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
-class FprFeature : public ICVGenericPostprocessor {
+class RawFeature : public ICVGenericPostprocessor {
 public:
-  explicit FprFeature() {}
+  explicit RawFeature() {}
 
   virtual bool process(const TensorData &, const FramePreprocessArg &,
                        AlgoOutput &, const GenericPostParams &) const override;

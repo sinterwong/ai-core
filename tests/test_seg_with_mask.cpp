@@ -103,8 +103,7 @@ TEST_P(SegWithMaskInferTest, Normal) {
 
   AlgoPostprocParams postprocParams;
   GenericPostParams genericParams;
-  genericParams.postprocType =
-      GenericPostParams::GenericAlgoType::UNET_DUAL_OUTPUT;
+  genericParams.algoType = GenericPostParams::AlogType::UNET_DUAL_OUTPUT;
   genericParams.outputNames = config.outputNames;
   postprocParams.setParams(genericParams);
 
