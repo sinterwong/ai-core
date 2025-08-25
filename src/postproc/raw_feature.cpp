@@ -1,5 +1,5 @@
 /**
- * @file fpr_feat.cpp
+ * @file raw_feature.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -9,12 +9,12 @@
  *
  */
 
-#include "fpr_feat.hpp"
-
+#include "raw_feature.hpp"
 #include <logger.hpp>
+#include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
-bool FprFeature::process(const TensorData &modelOutput,
+bool RawFeature::process(const TensorData &modelOutput,
                          const FramePreprocessArg &prepArgs,
                          AlgoOutput &algoOutput,
                          const GenericPostParams &postArgs) const {

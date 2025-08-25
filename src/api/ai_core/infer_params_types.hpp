@@ -13,6 +13,7 @@
 #define __INFER_PARAMS_TYPES_HPP__
 
 #include "ai_core/infer_common_types.hpp"
+#include <map>
 #include <string>
 
 namespace ai_core {
@@ -23,6 +24,7 @@ struct AlgoInferParams {
   std::string decryptkeyStr;
   DeviceType deviceType;
   DataType dataType;
+  std::map<std::string, size_t> maxOutputBufferSizes;
 };
 } // namespace ai_core
 

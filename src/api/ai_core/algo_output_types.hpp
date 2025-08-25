@@ -12,17 +12,12 @@
 #ifndef __ALGO_OUTPUT_TYPES_HPP__
 #define __ALGO_OUTPUT_TYPES_HPP__
 
+#include "ai_core/infer_common_types.hpp"
+#include <map>
 #include <memory>
 #include <vector>
 
-namespace cv {
-template <typename _Tp> class Rect_;
-using Rect = Rect_<int>;
-
-class Mat;
-} // namespace cv
 namespace ai_core {
-
 struct BBox {
   std::shared_ptr<cv::Rect> rect;
   float score;
@@ -50,6 +45,10 @@ struct DetRet {
   std::vector<BBox> bboxes;
 };
 
+struct SegRet {
+  std::map<int, std::vector<Contour>> clsToContours;
+};
+
 struct DaulRawSegRet {
   std::shared_ptr<cv::Mat> mask;
   std::shared_ptr<cv::Mat> prob;
@@ -57,6 +56,11 @@ struct DaulRawSegRet {
   float ratio;
   int leftShift;
   int topShift;
+};
+
+struct OCRRecoRet {
+  int64_t outputLengths;
+  std::vector<int64_t> outputs;
 };
 
 } // namespace ai_core

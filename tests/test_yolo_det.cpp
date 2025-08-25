@@ -9,6 +9,7 @@
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
+#include <logger.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 #include <thread>
@@ -53,6 +54,14 @@ struct TestConfig {
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
 protected:
   void SetUp() override {
+    Logger::LogConfig logConfig;
+    logConfig.appName = "Yolo-Unit-Test";
+    logConfig.logPath = "./logs";
+    logConfig.logLevel = LogLevel::INFO;
+    logConfig.enableConsole = true;
+    logConfig.enableColor = true;
+    Logger::instance()->initialize(logConfig);
+
     framePreproc = std::make_shared<FramePreprocess>();
     ASSERT_NE(framePreproc, nullptr);
 
@@ -126,8 +135,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
-  anchorDetParams.detAlogType =
-      AnchorDetParams::AnchorDetAlogType::YOLO_DET_V11;
+  anchorDetParams.algoType = AnchorDetParams::AlogType::YOLO_DET_V11;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.outputNames = {"output0"};
@@ -204,6 +212,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
+  anchorDetParams.algoType = AnchorDetParams::AlogType::YOLO_DET_V11;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.outputNames = {"output0"};

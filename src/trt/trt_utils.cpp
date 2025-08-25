@@ -18,6 +18,10 @@ nvinfer1::DataType aiCoreDataTypeToTrt(ai_core::DataType type) {
     return nvinfer1::DataType::kFLOAT;
   case ai_core::DataType::FLOAT16:
     return nvinfer1::DataType::kHALF;
+  case ai_core::DataType::INT32:
+    return nvinfer1::DataType::kINT32;
+  case ai_core::DataType::INT64:
+    return nvinfer1::DataType::kINT64;
   case ai_core::DataType::INT8:
     return nvinfer1::DataType::kINT8;
   default:
@@ -33,6 +37,10 @@ ai_core::DataType trtDataTypeToAiCore(nvinfer1::DataType trt_type) {
     return ai_core::DataType::FLOAT32;
   case nvinfer1::DataType::kHALF:
     return ai_core::DataType::FLOAT16;
+  case nvinfer1::DataType::kINT32:
+    return ai_core::DataType::INT32;
+  case nvinfer1::DataType::kINT64:
+    return ai_core::DataType::INT64;
   case nvinfer1::DataType::kINT8:
     return ai_core::DataType::INT8;
   default:
@@ -49,12 +57,12 @@ size_t getTrtElementSize(nvinfer1::DataType trt_type) {
     return sizeof(float);
   case nvinfer1::DataType::kHALF:
     return sizeof(uint16_t);
-  case nvinfer1::DataType::kINT8:
-    return sizeof(int8_t);
   case nvinfer1::DataType::kINT32:
     return sizeof(int32_t);
   case nvinfer1::DataType::kINT64:
     return sizeof(int64_t);
+  case nvinfer1::DataType::kINT8:
+    return sizeof(int8_t);
   case nvinfer1::DataType::kBOOL:
     return sizeof(bool);
   default:
