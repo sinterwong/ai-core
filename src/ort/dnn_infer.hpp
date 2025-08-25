@@ -23,7 +23,7 @@ namespace ai_core::dnn {
 class OrtAlgoInference : public InferBase {
 public:
   explicit OrtAlgoInference(const AlgoConstructParams &params)
-      : params_(std::move(params.getParam<AlgoInferParams>("params"))) {}
+      : mParams(std::move(params.getParam<AlgoInferParams>("params"))) {}
 
   virtual ~OrtAlgoInference() override {}
 
@@ -37,17 +37,17 @@ public:
   virtual InferErrorCode terminate() override;
 
 protected:
-  AlgoInferParams params_;
-  std::vector<std::string> inputNames;
-  std::vector<std::string> outputNames;
+  AlgoInferParams mParams;
+  std::vector<std::string> mInputNames;
+  std::vector<std::string> mOutputNames;
 
-  std::vector<std::vector<int64_t>> inputShapes;
-  std::vector<std::vector<int64_t>> outputShapes;
+  std::vector<std::vector<int64_t>> mInputShapes;
+  std::vector<std::vector<int64_t>> mOutputShapes;
 
   // infer engine
-  std::unique_ptr<Ort::Env> env;
-  std::unique_ptr<Ort::Session> session;
-  std::unique_ptr<Ort::MemoryInfo> memoryInfo;
+  std::unique_ptr<Ort::Env> mEnv;
+  std::unique_ptr<Ort::Session> mSession;
+  std::unique_ptr<Ort::MemoryInfo> mMemoryInfo;
 
   mutable std::mutex mtx_;
 };

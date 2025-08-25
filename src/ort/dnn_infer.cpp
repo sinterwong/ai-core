@@ -36,91 +36,91 @@ inline auto adaPlatformPath(const std::string &path) {
 InferErrorCode OrtAlgoInference::initialize() {
   std::lock_guard lk = std::lock_guard(mtx_);
 
-  inputNames.clear();
-  inputShapes.clear();
-  outputNames.clear();
-  outputShapes.clear();
+  mInputNames.clear();
+  mInputShapes.clear();
+  mOutputNames.clear();
+  mOutputShapes.clear();
   modelInfo.reset();
 
   try {
-    LOG_INFOS << "Initializing model: " << params_.name;
+    LOG_INFOS << "Initializing model: " << mParams.name;
 
     // create environment
-    env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
-                                     params_.name.c_str());
+    mEnv = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
+                                      mParams.name.c_str());
 
-    // session options
-    Ort::SessionOptions sessionOptions;
+    // mSession options
+    Ort::SessionOptions mSessionOptions;
     int threadNum = std::thread::hardware_concurrency();
-    sessionOptions.SetIntraOpNumThreads(threadNum);
-    sessionOptions.SetGraphOptimizationLevel(
+    mSessionOptions.SetIntraOpNumThreads(threadNum);
+    mSessionOptions.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
-    sessionOptions.SetDeterministicCompute(true);
+    mSessionOptions.SetDeterministicCompute(true);
 
-    LOG_INFOS << "Creating session options for model: " << params_.name;
-    // create session
+    LOG_INFOS << "Creating mSession options for model: " << mParams.name;
+    // create mSession
     std::vector<unsigned char> engineData;
-    if (params_.needDecrypt) {
+    if (mParams.needDecrypt) {
       auto cryptoConfig =
-          encrypt::Crypto::deriveKeyFromCommit(params_.decryptkeyStr);
+          encrypt::Crypto::deriveKeyFromCommit(mParams.decryptkeyStr);
       encrypt::Crypto crypto(cryptoConfig);
-      if (!crypto.decryptData(params_.modelPath, engineData)) {
-        LOG_ERRORS << "Failed to decrypt model data: " << params_.modelPath;
+      if (!crypto.decryptData(mParams.modelPath, engineData)) {
+        LOG_ERRORS << "Failed to decrypt model data: " << mParams.modelPath;
         return InferErrorCode::INIT_DECRYPTION_FAILED;
       }
       if (engineData.empty()) {
         LOG_ERRORS << "Decryption resulted in empty model data: "
-                   << params_.modelPath;
+                   << mParams.modelPath;
         return InferErrorCode::INIT_MODEL_LOAD_FAILED;
       }
     }
 
     if (engineData.empty()) {
-      session = std::make_unique<Ort::Session>(
-          *env, adaPlatformPath(params_.modelPath).c_str(), sessionOptions);
+      mSession = std::make_unique<Ort::Session>(
+          *mEnv, adaPlatformPath(mParams.modelPath).c_str(), mSessionOptions);
     } else {
-      session = std::make_unique<Ort::Session>(
-          *env, engineData.data(), engineData.size(), sessionOptions);
+      mSession = std::make_unique<Ort::Session>(
+          *mEnv, engineData.data(), engineData.size(), mSessionOptions);
     }
 
     // create memory info
-    memoryInfo = std::make_unique<Ort::MemoryInfo>(
+    mMemoryInfo = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault));
 
     // get input info
     Ort::AllocatorWithDefaultOptions allocator;
-    size_t numInputNodes = session->GetInputCount();
-    inputNames.resize(numInputNodes);
-    inputShapes.resize(numInputNodes);
+    size_t numInputNodes = mSession->GetInputCount();
+    mInputNames.resize(numInputNodes);
+    mInputShapes.resize(numInputNodes);
 
     for (size_t i = 0; i < numInputNodes; i++) {
       // get input name
-      auto inputName = session->GetInputNameAllocated(i, allocator);
-      inputNames[i] = inputName.get();
+      auto inputName = mSession->GetInputNameAllocated(i, allocator);
+      mInputNames[i] = inputName.get();
 
       // get input shape
-      auto typeInfo = session->GetInputTypeInfo(i);
+      auto typeInfo = mSession->GetInputTypeInfo(i);
       auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
-      inputShapes[i] = tensorInfo.GetShape();
+      mInputShapes[i] = tensorInfo.GetShape();
     }
 
     // get output info
-    size_t numOutputNodes = session->GetOutputCount();
-    outputNames.resize(numOutputNodes);
-    outputShapes.resize(numOutputNodes);
+    size_t numOutputNodes = mSession->GetOutputCount();
+    mOutputNames.resize(numOutputNodes);
+    mOutputShapes.resize(numOutputNodes);
 
     for (size_t i = 0; i < numOutputNodes; i++) {
       // get output name
-      auto outputName = session->GetOutputNameAllocated(i, allocator);
-      outputNames[i] = outputName.get();
+      auto outputName = mSession->GetOutputNameAllocated(i, allocator);
+      mOutputNames[i] = outputName.get();
 
       // get output shape
-      auto typeInfo = session->GetOutputTypeInfo(i);
+      auto typeInfo = mSession->GetOutputTypeInfo(i);
       auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
-      outputShapes[i] = tensorInfo.GetShape();
+      mOutputShapes[i] = tensorInfo.GetShape();
     }
-    LOG_INFOS << "Model " << params_.name << " initialized successfully";
+    LOG_INFOS << "Model " << mParams.name << " initialized successfully";
     return InferErrorCode::SUCCESS;
   } catch (const Ort::Exception &e) {
     LOG_ERRORS << "ONNX Runtime error during initialization: " << e.what();
@@ -133,7 +133,7 @@ InferErrorCode OrtAlgoInference::initialize() {
 
 InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
-  if (env == nullptr || session == nullptr || memoryInfo == nullptr) {
+  if (mEnv == nullptr || mSession == nullptr || mMemoryInfo == nullptr) {
     LOG_ERRORS << "Session is not initialized";
     return InferErrorCode::INFER_FAILED;
   }
@@ -149,52 +149,52 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
       return InferErrorCode::INFER_PREPROCESS_FAILED;
     }
 
-    std::vector<const char *> inputNamesPtr;
-    std::vector<const char *> outputNamesPtr;
+    std::vector<const char *> mInputNamesPtr;
+    std::vector<const char *> mOutputNamesPtr;
 
-    inputNamesPtr.reserve(inputNames.size());
-    outputNamesPtr.reserve(outputNames.size());
+    mInputNamesPtr.reserve(mInputNames.size());
+    mOutputNamesPtr.reserve(mOutputNames.size());
 
-    for (const auto &name : inputNames) {
-      inputNamesPtr.push_back(name.c_str());
+    for (const auto &name : mInputNames) {
+      mInputNamesPtr.push_back(name.c_str());
     }
-    for (const auto &name : outputNames) {
-      outputNamesPtr.push_back(name.c_str());
+    for (const auto &name : mOutputNames) {
+      mOutputNamesPtr.push_back(name.c_str());
     }
 
-    if (prepDatas.size() != inputShapes.size()) {
+    if (prepDatas.size() != mInputShapes.size()) {
       LOG_ERRORS << "Input data count (" << prepDatas.size()
-                 << ") doesn't match input shapes count (" << inputShapes.size()
-                 << ")";
+                 << ") doesn't match input shapes count ("
+                 << mInputShapes.size() << ")";
       return InferErrorCode::INFER_FAILED;
     }
 
     std::vector<Ort::Value> inputs;
     inputs.reserve(prepDatas.size());
-    for (size_t i = 0; i < inputShapes.size(); ++i) {
-      const std::string &inputName = inputNames.at(i);
+    for (size_t i = 0; i < mInputShapes.size(); ++i) {
+      const std::string &inputName = mInputNames.at(i);
       auto &prepData = prepDatas.at(inputName);
       switch (prepData.dataType()) {
       case DataType::FLOAT32: {
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
-            prepData.getSizeBytes(), inputShapes[i].data(),
-            inputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
+            *mMemoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
+            prepData.getSizeBytes(), mInputShapes[i].data(),
+            mInputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
         break;
       }
 
       case DataType::FLOAT16: {
 #if ORT_API_VERSION >= 12
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
-            prepData.getSizeBytes(), inputShapes[i].data(),
-            inputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
+            *mMemoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
+            prepData.getSizeBytes(), mInputShapes[i].data(),
+            mInputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
 #else
         size_t elemCount = prepData.getElementCount();
         auto typedPtr = prepData.getHostPtr<uint16_t>();
         inputs.emplace_back(Ort::Value::CreateTensor<uint16_t>(
-            *memoryInfo, const_cast<uint16_t *>(typedPtr), elemCount,
-            inputShapes[i].data(), inputShapes[i].size()));
+            *mMemoryInfo, const_cast<uint16_t *>(typedPtr), elemCount,
+            mInputShapes[i].data(), mInputShapes[i].size()));
 #endif
         break;
       }
@@ -208,10 +208,10 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
 
     std::vector<Ort::Value> modelOutputs;
     auto inferStart = std::chrono::steady_clock::now();
-    // session.Run itself is thread-safe
-    modelOutputs = session->Run(Ort::RunOptions{nullptr}, inputNamesPtr.data(),
-                                inputs.data(), inputs.size(),
-                                outputNamesPtr.data(), outputNames.size());
+    // mSession.Run itself is thread-safe
+    modelOutputs = mSession->Run(
+        Ort::RunOptions{nullptr}, mInputNamesPtr.data(), inputs.data(),
+        inputs.size(), mOutputNamesPtr.data(), mOutputNames.size());
     for (size_t i = 0; i < modelOutputs.size(); ++i) {
       auto &modelOutput = modelOutputs[i];
       auto typeInfo = modelOutput.GetTensorTypeAndShapeInfo();
@@ -247,14 +247,14 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
       }
 
       outputs.datas.insert(
-          std::make_pair(outputNames.at(i), std::move(outputData)));
+          std::make_pair(mOutputNames.at(i), std::move(outputData)));
       std::vector<int> outputShape;
       outputShape.reserve(
           modelOutput.GetTensorTypeAndShapeInfo().GetShape().size());
       for (int64_t dim : modelOutput.GetTensorTypeAndShapeInfo().GetShape()) {
         outputShape.push_back(static_cast<int>(dim));
       }
-      outputs.shapes.insert(std::make_pair(outputNames.at(i), outputShape));
+      outputs.shapes.insert(std::make_pair(mOutputNames.at(i), outputShape));
       auto inferEnd = std::chrono::steady_clock::now();
       auto durationInfer =
           std::chrono::duration_cast<std::chrono::milliseconds>(inferEnd -
@@ -273,14 +273,14 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
 InferErrorCode OrtAlgoInference::terminate() {
   std::lock_guard lk = std::lock_guard(mtx_);
   try {
-    session.reset();
-    env.reset();
-    memoryInfo.reset();
+    mSession.reset();
+    mEnv.reset();
+    mMemoryInfo.reset();
 
-    inputNames.clear();
-    inputShapes.clear();
-    outputNames.clear();
-    outputShapes.clear();
+    mInputNames.clear();
+    mInputShapes.clear();
+    mOutputNames.clear();
+    mOutputShapes.clear();
 
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
@@ -295,31 +295,31 @@ const ModelInfo &OrtAlgoInference::getModelInfo() {
 
   modelInfo = std::make_shared<ModelInfo>();
 
-  modelInfo->name = params_.name;
-  if (!session) {
+  modelInfo->name = mParams.name;
+  if (!mSession) {
     LOG_ERRORS << "Session is not initialized";
     return *modelInfo;
   }
   try {
     Ort::AllocatorWithDefaultOptions allocator;
-    size_t numInputNodes = session->GetInputCount();
+    size_t numInputNodes = mSession->GetInputCount();
     modelInfo->inputs.resize(numInputNodes);
     for (size_t i = 0; i < numInputNodes; i++) {
-      auto inputName = session->GetInputNameAllocated(i, allocator);
+      auto inputName = mSession->GetInputNameAllocated(i, allocator);
       modelInfo->inputs[i].name = inputName.get();
 
-      auto typeInfo = session->GetInputTypeInfo(i);
+      auto typeInfo = mSession->GetInputTypeInfo(i);
       auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
 
       modelInfo->inputs[i].shape = tensorInfo.GetShape();
 
-      size_t numOutputNodes = session->GetOutputCount();
+      size_t numOutputNodes = mSession->GetOutputCount();
       modelInfo->outputs.resize(numOutputNodes);
 
       for (size_t i = 0; i < numOutputNodes; i++) {
-        auto outputName = session->GetOutputNameAllocated(i, allocator);
+        auto outputName = mSession->GetOutputNameAllocated(i, allocator);
         modelInfo->outputs[i].name = outputName.get();
-        auto typeInfo = session->GetOutputTypeInfo(i);
+        auto typeInfo = mSession->GetOutputTypeInfo(i);
         auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
         modelInfo->outputs[i].shape = tensorInfo.GetShape();
       }
