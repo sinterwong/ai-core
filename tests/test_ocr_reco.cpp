@@ -174,6 +174,14 @@ TEST_P(OCRRecoInferTest, Normal) {
 std::vector<TestConfig> GetTestConfigs() {
   std::vector<TestConfig> configs;
 #ifdef WITH_ORT
+  configs.push_back({"ort",
+                     [](const AlgoConstructParams &p) {
+                       return std::make_shared<OrtAlgoInference>(p);
+                     },
+                     "assets/models/cnocr136fc.onnx", DataType::FLOAT32,
+                     DataType::FLOAT32, DeviceType::CPU,
+                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     BufferLocation::CPU, false});
 #endif
 #ifdef WITH_NCNN
 #endif

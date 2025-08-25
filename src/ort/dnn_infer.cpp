@@ -9,14 +9,12 @@
  *
  */
 
-#include <thread>
-
-#include "crypto.hpp"
 #include "dnn_infer.hpp"
-#include "logger.hpp"
-
+#include "crypto.hpp"
+#include <logger.hpp>
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/opencv.hpp>
+#include <thread>
 
 #ifdef _WIN32
 #include <codecvt>
@@ -33,33 +31,59 @@ inline auto adaPlatformPath(const std::string &path) {
 #endif
 }
 
+ONNXTensorElementDataType OrtAlgoInference::aiCoreDataTypeToOrt(DataType type) {
+  switch (type) {
+  case DataType::FLOAT32:
+    return ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
+  case DataType::FLOAT16:
+    return ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
+  case DataType::INT64:
+    return ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64;
+  case DataType::INT32:
+    return ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32;
+  case DataType::INT8:
+    return ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8;
+  default:
+    throw std::invalid_argument(
+        "Unsupported or unknown DataType for ONNX Runtime.");
+  }
+}
+
+DataType OrtAlgoInference::ortDataTypeToAiCore(ONNXTensorElementDataType type) {
+  switch (type) {
+  case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
+    return DataType::FLOAT32;
+  case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
+    return DataType::FLOAT16;
+  case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
+    return DataType::INT64;
+  case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
+    return DataType::INT32;
+  case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
+    return DataType::INT8;
+  default:
+    throw std::invalid_argument("Unsupported or unknown ONNX data type.");
+  }
+}
+
 InferErrorCode OrtAlgoInference::initialize() {
-  std::lock_guard lk = std::lock_guard(mtx_);
+  std::lock_guard lk(mMutex);
 
   mInputNames.clear();
-  mInputShapes.clear();
   mOutputNames.clear();
-  mOutputShapes.clear();
   modelInfo.reset();
 
   try {
     LOG_INFOS << "Initializing model: " << mParams.name;
 
-    // create environment
     mEnv = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
                                       mParams.name.c_str());
 
-    // mSession options
-    Ort::SessionOptions mSessionOptions;
-    int threadNum = std::thread::hardware_concurrency();
-    mSessionOptions.SetIntraOpNumThreads(threadNum);
-    mSessionOptions.SetGraphOptimizationLevel(
+    Ort::SessionOptions sessionOptions;
+    sessionOptions.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+    sessionOptions.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
-    mSessionOptions.SetDeterministicCompute(true);
-
-    LOG_INFOS << "Creating mSession options for model: " << mParams.name;
-    // create mSession
     std::vector<unsigned char> engineData;
     if (mParams.needDecrypt) {
       auto cryptoConfig =
@@ -78,50 +102,58 @@ InferErrorCode OrtAlgoInference::initialize() {
 
     if (engineData.empty()) {
       mSession = std::make_unique<Ort::Session>(
-          *mEnv, adaPlatformPath(mParams.modelPath).c_str(), mSessionOptions);
+          *mEnv, adaPlatformPath(mParams.modelPath).c_str(), sessionOptions);
     } else {
       mSession = std::make_unique<Ort::Session>(
-          *mEnv, engineData.data(), engineData.size(), mSessionOptions);
+          *mEnv, engineData.data(), engineData.size(), sessionOptions);
     }
 
-    // create memory info
     mMemoryInfo = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault));
 
-    // get input info
+    // Build ModelInfo and store names
     Ort::AllocatorWithDefaultOptions allocator;
+    modelInfo = std::make_shared<ModelInfo>();
+    modelInfo->name = mParams.name;
+
+    // Get input info
     size_t numInputNodes = mSession->GetInputCount();
-    mInputNames.resize(numInputNodes);
-    mInputShapes.resize(numInputNodes);
-
+    mInputNames.reserve(numInputNodes);
     for (size_t i = 0; i < numInputNodes; i++) {
-      // get input name
       auto inputName = mSession->GetInputNameAllocated(i, allocator);
-      mInputNames[i] = inputName.get();
+      mInputNames.emplace_back(inputName.get());
 
-      // get input shape
       auto typeInfo = mSession->GetInputTypeInfo(i);
       auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
-      mInputShapes[i] = tensorInfo.GetShape();
+
+      ModelInfo::TensorInfo ti;
+      ti.name = inputName.get();
+      // This will correctly have -1 for dynamic dims
+      ti.shape = tensorInfo.GetShape();
+      ti.dataType = ortDataTypeToAiCore(tensorInfo.GetElementType());
+      modelInfo->inputs.push_back(std::move(ti));
     }
 
-    // get output info
+    // Get output info
     size_t numOutputNodes = mSession->GetOutputCount();
-    mOutputNames.resize(numOutputNodes);
-    mOutputShapes.resize(numOutputNodes);
-
+    mOutputNames.reserve(numOutputNodes);
     for (size_t i = 0; i < numOutputNodes; i++) {
-      // get output name
       auto outputName = mSession->GetOutputNameAllocated(i, allocator);
-      mOutputNames[i] = outputName.get();
+      mOutputNames.emplace_back(outputName.get());
 
-      // get output shape
       auto typeInfo = mSession->GetOutputTypeInfo(i);
       auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
-      mOutputShapes[i] = tensorInfo.GetShape();
+
+      ModelInfo::TensorInfo ti;
+      ti.name = outputName.get();
+      ti.shape = tensorInfo.GetShape();
+      ti.dataType = ortDataTypeToAiCore(tensorInfo.GetElementType());
+      modelInfo->outputs.push_back(std::move(ti));
     }
+
     LOG_INFOS << "Model " << mParams.name << " initialized successfully";
     return InferErrorCode::SUCCESS;
+
   } catch (const Ort::Exception &e) {
     LOG_ERRORS << "ONNX Runtime error during initialization: " << e.what();
     return InferErrorCode::INIT_MODEL_LOAD_FAILED;
@@ -133,134 +165,116 @@ InferErrorCode OrtAlgoInference::initialize() {
 
 InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
-  if (mEnv == nullptr || mSession == nullptr || mMemoryInfo == nullptr) {
+  if (!mSession) {
     LOG_ERRORS << "Session is not initialized";
-    return InferErrorCode::INFER_FAILED;
+    return InferErrorCode::NOT_INITIALIZED;
   }
+
   try {
     outputs.datas.clear();
     outputs.shapes.clear();
 
-    const auto &prepDatas = inputs.datas;
-    const auto &prepDatasShapes = inputs.shapes;
-
-    if (prepDatas.empty()) {
-      LOG_ERRORS << "Empty input data after preprocessing";
-      return InferErrorCode::INFER_PREPROCESS_FAILED;
+    if (inputs.datas.size() != mInputNames.size()) {
+      LOG_ERRORS << "Input data count (" << inputs.datas.size()
+                 << ") doesn't match model's expected input count ("
+                 << mInputNames.size() << ")";
+      return InferErrorCode::INFER_INPUT_ERROR;
     }
 
-    std::vector<const char *> mInputNamesPtr;
-    std::vector<const char *> mOutputNamesPtr;
-
-    mInputNamesPtr.reserve(mInputNames.size());
-    mOutputNamesPtr.reserve(mOutputNames.size());
+    std::vector<Ort::Value> inputTensors;
+    inputTensors.reserve(mInputNames.size());
 
     for (const auto &name : mInputNames) {
-      mInputNamesPtr.push_back(name.c_str());
+      auto dataIt = inputs.datas.find(name);
+      if (dataIt == inputs.datas.end()) {
+        LOG_ERRORS << "Input tensor '" << name
+                   << "' not found in provided inputs.";
+        return InferErrorCode::INFER_INPUT_ERROR;
+      }
+      const auto &inputBuffer = dataIt->second;
+
+      auto shapeIt = inputs.shapes.find(name);
+      if (shapeIt == inputs.shapes.end()) {
+        LOG_ERRORS << "Shape for input tensor '" << name << "' not found.";
+        return InferErrorCode::INFER_INPUT_ERROR;
+      }
+
+      const auto &inputShapeVecInt = shapeIt->second;
+      std::vector<int64_t> inputShape(inputShapeVecInt.begin(),
+                                      inputShapeVecInt.end());
+
+      inputTensors.emplace_back(Ort::Value::CreateTensor(
+          *mMemoryInfo, const_cast<void *>(inputBuffer.getRawHostPtr()),
+          inputBuffer.getSizeBytes(), inputShape.data(), inputShape.size(),
+          aiCoreDataTypeToOrt(inputBuffer.dataType())));
     }
+
+    std::vector<const char *> inputNamesPtr;
+    inputNamesPtr.reserve(mInputNames.size());
+    for (const auto &name : mInputNames) {
+      inputNamesPtr.push_back(name.c_str());
+    }
+
+    std::vector<const char *> outputNamesPtr;
+    outputNamesPtr.reserve(mOutputNames.size());
     for (const auto &name : mOutputNames) {
-      mOutputNamesPtr.push_back(name.c_str());
+      outputNamesPtr.push_back(name.c_str());
     }
 
-    if (prepDatas.size() != mInputShapes.size()) {
-      LOG_ERRORS << "Input data count (" << prepDatas.size()
-                 << ") doesn't match input shapes count ("
-                 << mInputShapes.size() << ")";
-      return InferErrorCode::INFER_FAILED;
-    }
+    auto outputTensors = mSession->Run(
+        Ort::RunOptions{nullptr}, inputNamesPtr.data(), inputTensors.data(),
+        inputTensors.size(), outputNamesPtr.data(), outputNamesPtr.size());
 
-    std::vector<Ort::Value> inputs;
-    inputs.reserve(prepDatas.size());
-    for (size_t i = 0; i < mInputShapes.size(); ++i) {
-      const std::string &inputName = mInputNames.at(i);
-      auto &prepData = prepDatas.at(inputName);
-      switch (prepData.dataType()) {
-      case DataType::FLOAT32: {
-        inputs.emplace_back(Ort::Value::CreateTensor(
-            *mMemoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
-            prepData.getSizeBytes(), mInputShapes[i].data(),
-            mInputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
+    for (size_t i = 0; i < outputTensors.size(); ++i) {
+      const auto &outputTensor = outputTensors[i];
+      auto tensorInfo = outputTensor.GetTensorTypeAndShapeInfo();
+
+      // Get raw data and size
+      const void *rawData = outputTensor.GetTensorRawData();
+
+      size_t elementCount = tensorInfo.GetElementCount();
+      ONNXTensorElementDataType type = tensorInfo.GetElementType();
+      size_t elementSize = 0;
+      switch (type) {
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
+        elementSize = sizeof(float);
         break;
-      }
-
-      case DataType::FLOAT16: {
-#if ORT_API_VERSION >= 12
-        inputs.emplace_back(Ort::Value::CreateTensor(
-            *mMemoryInfo, const_cast<void *>(prepData.getRawHostPtr()),
-            prepData.getSizeBytes(), mInputShapes[i].data(),
-            mInputShapes[i].size(), ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
-#else
-        size_t elemCount = prepData.getElementCount();
-        auto typedPtr = prepData.getHostPtr<uint16_t>();
-        inputs.emplace_back(Ort::Value::CreateTensor<uint16_t>(
-            *mMemoryInfo, const_cast<uint16_t *>(typedPtr), elemCount,
-            mInputShapes[i].data(), mInputShapes[i].size()));
-#endif
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
+        elementSize = sizeof(uint16_t);
         break;
-      }
-
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
+        elementSize = sizeof(int64_t);
+        break;
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
+        elementSize = sizeof(int32_t);
+        break;
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
+        elementSize = sizeof(int8_t);
+        break;
       default:
-        LOG_ERRORS << "Unsupported data type: "
-                   << static_cast<int>(prepData.dataType());
+        LOG_ERRORS << "Unsupported data type for size calculation.";
         return InferErrorCode::INFER_FAILED;
       }
+      size_t byteSize = elementCount * elementSize;
+
+      // Create a copy of the output data
+      std::vector<uint8_t> byteData(static_cast<const uint8_t *>(rawData),
+                                    static_cast<const uint8_t *>(rawData) +
+                                        byteSize);
+
+      DataType outputType = ortDataTypeToAiCore(tensorInfo.GetElementType());
+      TypedBuffer outputBuffer =
+          TypedBuffer::createFromCpu(outputType, std::move(byteData));
+
+      outputs.datas[mOutputNames[i]] = std::move(outputBuffer);
+      auto outputShapeInt64 = tensorInfo.GetShape();
+      std::vector<int> outputShape(outputShapeInt64.begin(),
+                                   outputShapeInt64.end());
+      outputs.shapes[mOutputNames[i]] = std::move(outputShape);
     }
 
-    std::vector<Ort::Value> modelOutputs;
-    auto inferStart = std::chrono::steady_clock::now();
-    // mSession.Run itself is thread-safe
-    modelOutputs = mSession->Run(
-        Ort::RunOptions{nullptr}, mInputNamesPtr.data(), inputs.data(),
-        inputs.size(), mOutputNamesPtr.data(), mOutputNames.size());
-    for (size_t i = 0; i < modelOutputs.size(); ++i) {
-      auto &modelOutput = modelOutputs[i];
-      auto typeInfo = modelOutput.GetTensorTypeAndShapeInfo();
-      auto elemCount = typeInfo.GetElementCount();
-
-      TypedBuffer outputData;
-      auto elemType = typeInfo.GetElementType();
-      if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-        const auto *rawData = modelOutput.GetTensorData<uint8_t>();
-        const size_t byteSize = elemCount * sizeof(float);
-
-        std::vector<uint8_t> byteData(rawData, rawData + byteSize);
-        outputData =
-            TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(byteData));
-      } else if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
-        // FIXME: FP16 will be converted to FP32 right now
-        // FP16 -> FP32
-        const uint16_t *fp16Data = modelOutput.GetTensorData<uint16_t>();
-        cv::Mat halfMat(1, elemCount, CV_16F, (void *)fp16Data);
-        cv::Mat floatMat(1, elemCount, CV_32F);
-        halfMat.convertTo(floatMat, CV_32F);
-
-        const size_t byteSize = elemCount * sizeof(float);
-        const auto *floatMatData =
-            reinterpret_cast<const uint8_t *>(floatMat.data);
-        std::vector<uint8_t> byteData(floatMatData, floatMatData + byteSize);
-        outputData =
-            TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(byteData));
-      } else {
-        LOG_ERRORS << "Unsupported output tensor data type: "
-                   << static_cast<int>(elemType);
-        return InferErrorCode::INFER_FAILED;
-      }
-
-      outputs.datas.insert(
-          std::make_pair(mOutputNames.at(i), std::move(outputData)));
-      std::vector<int> outputShape;
-      outputShape.reserve(
-          modelOutput.GetTensorTypeAndShapeInfo().GetShape().size());
-      for (int64_t dim : modelOutput.GetTensorTypeAndShapeInfo().GetShape()) {
-        outputShape.push_back(static_cast<int>(dim));
-      }
-      outputs.shapes.insert(std::make_pair(mOutputNames.at(i), outputShape));
-      auto inferEnd = std::chrono::steady_clock::now();
-      auto durationInfer =
-          std::chrono::duration_cast<std::chrono::milliseconds>(inferEnd -
-                                                                inferStart);
-    }
     return InferErrorCode::SUCCESS;
+
   } catch (const Ort::Exception &e) {
     LOG_ERRORS << "ONNX Runtime error during inference: " << e.what();
     return InferErrorCode::INFER_FAILED;
@@ -271,63 +285,22 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
 }
 
 InferErrorCode OrtAlgoInference::terminate() {
-  std::lock_guard lk = std::lock_guard(mtx_);
-  try {
-    mSession.reset();
-    mEnv.reset();
-    mMemoryInfo.reset();
-
-    mInputNames.clear();
-    mInputShapes.clear();
-    mOutputNames.clear();
-    mOutputShapes.clear();
-
-    return InferErrorCode::SUCCESS;
-  } catch (const std::exception &e) {
-    LOG_ERRORS << "Error during termination: " << e.what();
-    return InferErrorCode::TERMINATE_FAILED;
-  }
+  std::lock_guard lk(mMutex);
+  mSession.reset();
+  mEnv.reset();
+  mMemoryInfo.reset();
+  mInputNames.clear();
+  mOutputNames.clear();
+  modelInfo.reset();
+  return InferErrorCode::SUCCESS;
 }
 
 const ModelInfo &OrtAlgoInference::getModelInfo() {
-  if (modelInfo)
-    return *modelInfo;
-
-  modelInfo = std::make_shared<ModelInfo>();
-
-  modelInfo->name = mParams.name;
-  if (!mSession) {
-    LOG_ERRORS << "Session is not initialized";
-    return *modelInfo;
-  }
-  try {
-    Ort::AllocatorWithDefaultOptions allocator;
-    size_t numInputNodes = mSession->GetInputCount();
-    modelInfo->inputs.resize(numInputNodes);
-    for (size_t i = 0; i < numInputNodes; i++) {
-      auto inputName = mSession->GetInputNameAllocated(i, allocator);
-      modelInfo->inputs[i].name = inputName.get();
-
-      auto typeInfo = mSession->GetInputTypeInfo(i);
-      auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
-
-      modelInfo->inputs[i].shape = tensorInfo.GetShape();
-
-      size_t numOutputNodes = mSession->GetOutputCount();
-      modelInfo->outputs.resize(numOutputNodes);
-
-      for (size_t i = 0; i < numOutputNodes; i++) {
-        auto outputName = mSession->GetOutputNameAllocated(i, allocator);
-        modelInfo->outputs[i].name = outputName.get();
-        auto typeInfo = mSession->GetOutputTypeInfo(i);
-        auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
-        modelInfo->outputs[i].shape = tensorInfo.GetShape();
-      }
-    }
-  } catch (const Ort::Exception &e) {
-    LOG_ERRORS << "ONNX Runtime error during getting model info: " << e.what();
-  } catch (const std::exception &e) {
-    LOG_ERRORS << "Error during getting model info: " << e.what();
+  if (!modelInfo) {
+    LOG_WARNINGS << "getModelInfo() called on uninitialized or failed model.";
+    // Return a static empty info to avoid null reference
+    static ModelInfo emptyInfo;
+    return emptyInfo;
   }
   return *modelInfo;
 }

@@ -10,6 +10,7 @@
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
+#include <logger.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
@@ -53,6 +54,14 @@ struct TestConfig {
 class SegWithMaskInferTest : public ::testing::TestWithParam<TestConfig> {
 protected:
   void SetUp() override {
+    Logger::LogConfig logConfig;
+    logConfig.appName = "SegWithMask-Unit-Test";
+    logConfig.logPath = "./logs";
+    logConfig.logLevel = LogLevel::INFO;
+    logConfig.enableConsole = true;
+    logConfig.enableColor = true;
+    Logger::instance()->initialize(logConfig);
+
     frameWithMaskPreproc = std::make_shared<FrameWithMaskPreprocess>();
     ASSERT_NE(frameWithMaskPreproc, nullptr);
 
@@ -122,6 +131,8 @@ TEST_P(SegWithMaskInferTest, Normal) {
 
   TensorData modelInput;
   frameWithMaskPreproc->process(algoInput, preprocParams, modelInput);
+  // FIXME: 前处理中提供是否需要 N 维度的参数
+  modelInput.shapes.at("argument_1.1") = {2, 320, 320};
 
   TensorData modelOutput;
   ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);

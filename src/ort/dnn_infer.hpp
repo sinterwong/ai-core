@@ -27,29 +27,27 @@ public:
 
   virtual ~OrtAlgoInference() override {}
 
-  virtual InferErrorCode initialize() override;
+  InferErrorCode initialize() override;
+  InferErrorCode infer(const TensorData &inputs, TensorData &outputs) override;
+  const ModelInfo &getModelInfo() override;
+  InferErrorCode terminate() override;
 
-  virtual InferErrorCode infer(const TensorData &inputs,
-                               TensorData &outputs) override;
+private:
+  static ONNXTensorElementDataType aiCoreDataTypeToOrt(DataType type);
+  static DataType ortDataTypeToAiCore(ONNXTensorElementDataType type);
 
-  virtual const ModelInfo &getModelInfo() override;
-
-  virtual InferErrorCode terminate() override;
-
-protected:
+private:
   AlgoInferParams mParams;
   std::vector<std::string> mInputNames;
   std::vector<std::string> mOutputNames;
 
-  std::vector<std::vector<int64_t>> mInputShapes;
-  std::vector<std::vector<int64_t>> mOutputShapes;
-
-  // infer engine
   std::unique_ptr<Ort::Env> mEnv;
   std::unique_ptr<Ort::Session> mSession;
   std::unique_ptr<Ort::MemoryInfo> mMemoryInfo;
 
-  mutable std::mutex mtx_;
+  std::shared_ptr<ModelInfo> modelInfo;
+
+  mutable std::mutex mMutex;
 };
 } // namespace ai_core::dnn
 #endif
