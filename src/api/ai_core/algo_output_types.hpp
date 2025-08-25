@@ -58,6 +58,11 @@ struct DaulRawSegRet {
   int topShift;
 };
 
+struct OCRRecoRet {
+  int64_t outputLengths;
+  std::vector<int64_t> outputs;
+};
+
 } // namespace ai_core
 
 #endif // __ALGO_OUTPUT_TYPES_HPP__

@@ -181,6 +181,10 @@ size_t TypedBuffer::getElementSize(DataType type) noexcept {
     return sizeof(float);
   case DataType::FLOAT16:
     return sizeof(uint16_t);
+  case DataType::INT32:
+    return sizeof(int32_t);
+  case DataType::INT64:
+    return sizeof(int64_t);
   case DataType::INT8:
     return sizeof(int8_t);
   default:

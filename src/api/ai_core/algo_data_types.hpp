@@ -16,7 +16,7 @@ using AlgoInput =
 // Algo output
 using AlgoOutput =
     ParamCenter<std::variant<std::monostate, ClsRet, DetRet, FprClsRet,
-                             FeatureRet, SegRet, DaulRawSegRet>>;
+                             FeatureRet, SegRet, DaulRawSegRet, OCRRecoRet>>;
 
 // Algo preproc params
 using AlgoPreprocParams =

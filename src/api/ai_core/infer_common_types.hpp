@@ -43,6 +43,8 @@ struct Shape {
 enum class DataType : u_char {
   FLOAT32 = 0,
   FLOAT16,
+  INT32,
+  INT64,
   INT8,
 };
 

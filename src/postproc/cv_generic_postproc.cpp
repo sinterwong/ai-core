@@ -10,6 +10,7 @@
  */
 #include "cv_generic_postproc.hpp"
 #include "postproc/fpr_cls.hpp"
+#include "postproc/ocr_reco.hpp"
 #include "postproc/raw_feature.hpp"
 #include "postproc/softmax_cls.hpp"
 #include "postproc/unet_daul_out_seg.hpp"
@@ -55,7 +56,10 @@ bool CVGenericPostproc::process(const TensorData &modelOutput,
     UNetDaulOutputSeg postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-
+  case GenericPostParams::AlogType::OCR_RECO: {
+    OCRReco postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
   default: {
     LOG_ERRORS << "Unknown generic algorithm type: "
                << static_cast<int>(params->algoType);
