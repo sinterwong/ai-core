@@ -12,6 +12,7 @@
 #include "dnn_infer.hpp"
 #include "crypto.hpp"
 #include <logger.hpp>
+#include <numeric>
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/opencv.hpp>
 #include <thread>
@@ -131,6 +132,16 @@ InferErrorCode OrtAlgoInference::initialize() {
       // This will correctly have -1 for dynamic dims
       ti.shape = tensorInfo.GetShape();
       ti.dataType = ortDataTypeToAiCore(tensorInfo.GetElementType());
+
+      for (const auto &dim : ti.shape) {
+        if (dim < 0) {
+          mDynamicInputTensorNames.insert(ti.name);
+          LOG_INFOS << "Input tensor '" << ti.name
+                    << "' is identified as dynamic.";
+          break;
+        }
+      }
+
       modelInfo->inputs.push_back(std::move(ti));
     }
 
@@ -193,15 +204,50 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
       }
       const auto &inputBuffer = dataIt->second;
 
-      auto shapeIt = inputs.shapes.find(name);
-      if (shapeIt == inputs.shapes.end()) {
-        LOG_ERRORS << "Shape for input tensor '" << name << "' not found.";
-        return InferErrorCode::INFER_INPUT_ERROR;
-      }
+      std::vector<int64_t> inputShape;
+      const bool isDynamic = mDynamicInputTensorNames.count(name);
 
-      const auto &inputShapeVecInt = shapeIt->second;
-      std::vector<int64_t> inputShape(inputShapeVecInt.begin(),
-                                      inputShapeVecInt.end());
+      if (isDynamic) {
+        auto shapeIt = inputs.shapes.find(name);
+        if (shapeIt == inputs.shapes.end()) {
+          LOG_ERRORS << "Shape info for dynamic input tensor '" << name
+                     << "' must be provided.";
+          return InferErrorCode::INFER_INPUT_ERROR;
+        }
+        const auto &inputShapeVecInt = shapeIt->second;
+        inputShape.assign(inputShapeVecInt.begin(), inputShapeVecInt.end());
+
+      } else {
+        const auto &modelInputInfo =
+            std::find_if(modelInfo->inputs.begin(), modelInfo->inputs.end(),
+                         [&](const ModelInfo::TensorInfo &info) {
+                           return info.name == name;
+                         });
+
+        if (modelInputInfo != modelInfo->inputs.end()) {
+          const auto &staticShapeVecInt = modelInputInfo->shape;
+          inputShape.assign(staticShapeVecInt.begin(), staticShapeVecInt.end());
+        } else {
+          LOG_ERRORS
+              << "Internal error: Could not find static shape info for input '"
+              << name << "'.";
+          return InferErrorCode::INFER_FAILED;
+        }
+
+        int64_t expectedVolume =
+            std::accumulate(inputShape.begin(), inputShape.end(), 1LL,
+                            std::multiplies<int64_t>());
+        size_t elementSize =
+            TypedBuffer::getElementSize(inputBuffer.dataType());
+        size_t expectedSizeBytes = expectedVolume * elementSize;
+        if (inputBuffer.getSizeBytes() != expectedSizeBytes) {
+          LOG_ERRORS << "Mismatched size for static input tensor '" << name
+                     << "'. Expected: " << expectedSizeBytes
+                     << " bytes, Got: " << inputBuffer.getSizeBytes()
+                     << " bytes.";
+          return InferErrorCode::INFER_SIZE_MISMATCH;
+        }
+      }
 
       inputTensors.emplace_back(Ort::Value::CreateTensor(
           *mMemoryInfo, const_cast<void *>(inputBuffer.getRawHostPtr()),

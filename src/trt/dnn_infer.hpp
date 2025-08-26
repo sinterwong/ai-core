@@ -23,6 +23,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace ai_core::dnn {
@@ -93,6 +94,8 @@ private:
 
   // Maps tensor names to their size in bytes.
   std::unordered_map<std::string, size_t> mTensorSizeMap;
+
+  std::unordered_set<std::string> mDynamicInputTensorNames;
 
   bool mIsInitialized{false};
   mutable std::mutex mMutex;
