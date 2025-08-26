@@ -38,9 +38,17 @@ TEST(AlgoInferenceTest, YoloDet) {
 
   AlgoModuleTypes moduleTypes;
   moduleTypes.preprocModule = "FramePreprocess";
-  moduleTypes.inferModule = "OrtAlgoInference";
   moduleTypes.postprocModule = "AnchorDetPostproc";
 
+#ifdef WITH_ORT
+  moduleTypes.inferModule = "OrtAlgoInference";
+#elif WITH_NCNN
+  moduleTypes.inferModule = "NCNNAlgoInference";
+#elif WITH_TRT
+  moduleTypes.inferModule = "TrtAlgoInference";
+#else
+  GTEST_SKIP() << "No inference backend enabled. Skipping test.";
+#endif
   AlgoInferParams inferParams;
   inferParams.dataType = DataType::FLOAT16;
   inferParams.modelPath = "assets/models/yolov11n-fp16.onnx";
@@ -54,7 +62,15 @@ TEST(AlgoInferenceTest, YoloDet) {
   AlgoPreprocParams preprocParams;
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
+
+#ifdef WITH_ORT
   framePreprocessArg.dataType = DataType::FLOAT16;
+#elif WITH_NCNN
+  framePreprocessArg.dataType = DataType::FLOAT32;
+#elif WITH_TRT
+  framePreprocessArg.dataType = DataType::FLOAT32;
+#endif
+
   framePreprocessArg.needResize = true;
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
@@ -69,8 +85,7 @@ TEST(AlgoInferenceTest, YoloDet) {
 
   AlgoPostprocParams postprocParams;
   AnchorDetParams anchorDetParams;
-  anchorDetParams.detAlogType =
-      AnchorDetParams::AnchorDetAlogType::YOLO_DET_V11;
+  anchorDetParams.algoType = AnchorDetParams::AlogType::YOLO_DET_V11;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.outputNames = {"output0"};
