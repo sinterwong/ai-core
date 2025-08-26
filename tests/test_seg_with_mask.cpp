@@ -131,8 +131,6 @@ TEST_P(SegWithMaskInferTest, Normal) {
 
   TensorData modelInput;
   frameWithMaskPreproc->process(algoInput, preprocParams, modelInput);
-  // FIXME: 前处理中提供是否需要 N 维度的参数
-  modelInput.shapes.at("argument_1.1") = {2, 320, 320};
 
   TensorData modelOutput;
   ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);

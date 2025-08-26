@@ -18,6 +18,7 @@
 #include "infer_base.hpp"
 
 #include <onnxruntime_cxx_api.h>
+#include <unordered_set>
 
 namespace ai_core::dnn {
 class OrtAlgoInference : public InferBase {
@@ -46,6 +47,8 @@ private:
   std::unique_ptr<Ort::MemoryInfo> mMemoryInfo;
 
   std::shared_ptr<ModelInfo> modelInfo;
+
+  std::unordered_set<std::string> mDynamicInputTensorNames;
 
   mutable std::mutex mMutex;
 };

@@ -219,9 +219,17 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     tensorInfo.dataType = trt_utils::trtDataTypeToAiCore(trtDtype);
 
     if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
-      modelInfo->inputs.push_back(std::move(tensorInfo));
+      for (const auto &dim : tensorInfo.shape) {
+        if (dim == -1) {
+          mDynamicInputTensorNames.insert(name);
+          LOG_INFOS << "Input tensor '" << name
+                    << "' is identified as dynamic.";
+          break;
+        }
+      }
+      modelInfo->inputs.emplace_back(std::move(tensorInfo));
     } else {
-      modelInfo->outputs.push_back(std::move(tensorInfo));
+      modelInfo->outputs.emplace_back(std::move(tensorInfo));
     }
   }
 
@@ -287,14 +295,6 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
       }
 
       const TypedBuffer &inputBuffer = dataIt->second;
-      const size_t expectedSizeBytes = mTensorSizeMap.at(name);
-      const size_t actualSizeBytes = inputBuffer.getSizeBytes();
-      if (actualSizeBytes > expectedSizeBytes) {
-        LOG_ERRORS << "Actual input size (" << actualSizeBytes
-                   << ") exceeds allocated buffer size (" << expectedSizeBytes
-                   << ") for tensor '" << name << "'.";
-        return InferErrorCode::INFER_SIZE_MISMATCH;
-      }
       if (inputBuffer.dataType() != inputInfo.dataType) {
         LOG_ERRORS << "Mismatched data type for input tensor '" << name
                    << "'. Expected: " << static_cast<int>(inputInfo.dataType)
@@ -302,21 +302,37 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
         return InferErrorCode::INFER_TYPE_MISMATCH;
       }
 
-      auto shapeIt = inputs.shapes.find(name);
-      if (shapeIt == inputs.shapes.end()) {
-        LOG_ERRORS << "Shape information for input tensor '" << name
-                   << "' not found.";
-        return InferErrorCode::INFER_INPUT_ERROR;
-      }
-      const auto &actualShapeVec = shapeIt->second;
-      nvinfer1::Dims actualDims;
-      actualDims.nbDims = actualShapeVec.size();
-      std::copy(actualShapeVec.begin(), actualShapeVec.end(), actualDims.d);
+      const size_t actualSizeBytes = inputBuffer.getSizeBytes();
+      const bool isDynamic = mDynamicInputTensorNames.count(name);
+      if (isDynamic) {
+        auto shapeIt = inputs.shapes.find(name);
+        if (shapeIt == inputs.shapes.end()) {
+          LOG_ERRORS << "Shape info for dynamic input tensor '" << name
+                     << "' must be provided.";
+          return InferErrorCode::INFER_INPUT_ERROR;
+        }
 
-      LOG_INFOS << "Setting input shape for '" << name << "'.";
-      if (!mContext->setInputShape(name.c_str(), actualDims)) {
-        LOG_ERRORS << "Failed to set input shape for tensor: " << name;
-        return InferErrorCode::INFER_EXECUTION_FAILED;
+        const auto &actualShapeVec = shapeIt->second;
+        nvinfer1::Dims actualDims;
+        actualDims.nbDims = actualShapeVec.size();
+        std::copy(actualShapeVec.begin(), actualShapeVec.end(), actualDims.d);
+
+        if (!mContext->setInputShape(name.c_str(), actualDims)) {
+          LOG_ERRORS << "Failed to set input shape for tensor: " << name;
+          return InferErrorCode::INFER_EXECUTION_FAILED;
+        }
+        if (actualSizeBytes > mTensorSizeMap.at(name)) {
+          LOG_ERRORS << "Actual size for dynamic input '" << name
+                     << "' exceeds max buffer size.";
+          return InferErrorCode::INFER_SIZE_MISMATCH;
+        }
+      } else {
+        if (actualSizeBytes != mTensorSizeMap.at(name)) {
+          LOG_ERRORS << "Mismatched size for static input tensor '" << name
+                     << "'. Expected: " << mTensorSizeMap.at(name)
+                     << " bytes, Got: " << actualSizeBytes << " bytes.";
+          return InferErrorCode::INFER_SIZE_MISMATCH;
+        }
       }
 
       // smart data coyping
