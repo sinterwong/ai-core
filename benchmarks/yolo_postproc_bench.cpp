@@ -104,7 +104,7 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
 
   ai_core::AlgoPostprocParams postprocParams;
   ai_core::AnchorDetParams anchorDetParams;
-  anchorDetParams.algoType = ai_core::AnchorDetParams::AlogType::YOLO_DET_V11;
+  anchorDetParams.algoType = ai_core::AnchorDetParams::AlgoType::YOLO_DET_V11;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.outputNames = {"output0"};

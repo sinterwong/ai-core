@@ -40,23 +40,23 @@ bool CVGenericPostproc::process(const TensorData &modelOutput,
   }
 
   switch (params->algoType) {
-  case GenericPostParams::AlogType::SOFTMAX_CLS: {
+  case GenericPostParams::AlgoType::SOFTMAX_CLS: {
     SoftmaxCls postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case GenericPostParams::AlogType::FPR_CLS: {
+  case GenericPostParams::AlgoType::FPR_CLS: {
     FprCls postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case GenericPostParams::AlogType::FPR_FEAT: {
+  case GenericPostParams::AlgoType::FPR_FEAT: {
     RawFeature postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case GenericPostParams::AlogType::UNET_DUAL_OUTPUT: {
+  case GenericPostParams::AlgoType::UNET_DUAL_OUTPUT: {
     UNetDaulOutputSeg postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case GenericPostParams::AlogType::OCR_RECO: {
+  case GenericPostParams::AlgoType::OCR_RECO: {
     OCRReco postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }

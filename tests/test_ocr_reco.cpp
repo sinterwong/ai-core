@@ -160,7 +160,7 @@ TEST_P(OCRRecoInferTest, Normal) {
 
   AlgoPostprocParams postprocParams;
   GenericPostParams genericPost;
-  genericPost.algoType = GenericPostParams::AlogType::OCR_RECO;
+  genericPost.algoType = GenericPostParams::AlgoType::OCR_RECO;
   genericPost.outputNames = {"output_lengths", "argmax_output"};
   postprocParams.setParams(genericPost);
   AlgoOutput algoOutput;

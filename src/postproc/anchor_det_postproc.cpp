@@ -39,15 +39,15 @@ bool AnchorDetPostproc::process(const TensorData &modelOutput,
   }
 
   switch (params->algoType) {
-  case AnchorDetParams::AlogType::YOLO_DET_V11: {
+  case AnchorDetParams::AlgoType::YOLO_DET_V11: {
     Yolov11Det postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case AnchorDetParams::AlogType::RTM_DET: {
+  case AnchorDetParams::AlgoType::RTM_DET: {
     RTMDet postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case AnchorDetParams::AlogType::NANO_DET: {
+  case AnchorDetParams::AlgoType::NANO_DET: {
     NanoDet postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }

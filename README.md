@@ -297,7 +297,7 @@ AI Core uses JSON files to configure algorithms. Here's an example configuration
                 "needDecrypt": false
             },
             "postprocParams": {
-                "detAlogType": 0,
+                "detAlgoType": 0,
                 "condThre": 0.5,
                 "nmsThre": 0.45,
                 "outputNames": [

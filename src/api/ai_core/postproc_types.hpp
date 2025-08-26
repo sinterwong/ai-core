@@ -17,7 +17,7 @@
 namespace ai_core {
 
 struct GenericPostParams {
-  enum class AlogType : int8_t {
+  enum class AlgoType : int8_t {
     SOFTMAX_CLS = 0,
     FPR_CLS,
     FPR_FEAT,
@@ -25,7 +25,7 @@ struct GenericPostParams {
     OCR_RECO
   };
 
-  AlogType algoType;
+  AlgoType algoType;
   std::vector<std::string> outputNames;
 };
 
@@ -37,7 +37,7 @@ struct ConfidenceFilterParams {
 };
 
 struct AnchorDetParams {
-  enum class AlogType : int8_t {
+  enum class AlgoType : int8_t {
     YOLO_DET_V11 = 0,
     RTM_DET,
     NANO_DET,
@@ -46,7 +46,7 @@ struct AnchorDetParams {
   float condThre;
   float nmsThre;
 
-  AlogType algoType;
+  AlgoType algoType;
   std::vector<std::string> outputNames;
 };
 } // namespace ai_core
