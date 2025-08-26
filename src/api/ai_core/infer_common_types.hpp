@@ -13,7 +13,24 @@
 
 #include <string>
 #include <vector>
+
+namespace cv {
+template <typename _Tp> class Rect_;
+using Rect = Rect_<int>;
+
+class Mat;
+
+template <typename _Tp> class Point_;
+using Point = Point_<int>;
+using Point2f = Point_<float>;
+} // namespace cv
 namespace ai_core {
+
+using PointList = std::vector<cv::Point>;
+using PointfList = std::vector<cv::Point2f>;
+
+using Contour = PointList;
+using Contourf = PointfList;
 
 enum class DeviceType { CPU = 0, GPU = 1 };
 
@@ -26,6 +43,8 @@ struct Shape {
 enum class DataType : u_char {
   FLOAT32 = 0,
   FLOAT16,
+  INT32,
+  INT64,
   INT8,
 };
 

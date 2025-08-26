@@ -137,17 +137,65 @@ InferErrorCode TrtAlgoInference::setupBindings() {
   modelInfo = std::make_shared<ModelInfo>();
   modelInfo->name = mParams.name;
 
+  const int profileIndex = 0;
+  if (mEngine->getNbOptimizationProfiles() <= profileIndex) {
+    LOG_ERRORS << "Engine does not have optimization profile at index "
+               << profileIndex;
+    return InferErrorCode::INIT_FAILED;
+  }
+  LOG_INFOS << "Using optimization profile 0.";
+
   const int32_t numIOTensors = mEngine->getNbIOTensors();
   mManagedBuffers.reserve(numIOTensors);
 
   for (int32_t i = 0; i < numIOTensors; ++i) {
     const char *name = mEngine->getIOTensorName(i);
 
-    auto dims = mEngine->getTensorShape(name);
+    auto dims = mEngine->getProfileShape(name, profileIndex,
+                                         nvinfer1::OptProfileSelector::kMAX);
     auto trtDtype = mEngine->getTensorDataType(name);
-    int64_t volume = calculateVolume(dims);
-    size_t bufferSize =
-        static_cast<size_t>(volume) * trt_utils::getTrtElementSize(trtDtype);
+    int64_t volume = -1;
+    size_t bufferSize = 0;
+
+    if (dims.nbDims >= 0) {
+      volume = calculateVolume(dims);
+    }
+
+    if (volume < 0) {
+      // 对输出的动态维度处理
+      if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT) {
+        LOG_WARNINGS << "Output tensor '" << name
+                     << "' has a data-dependent shape. "
+                     << "Looking for user-provided max buffer size.";
+
+        // 手动配置
+        auto it = mParams.maxOutputBufferSizes.find(name);
+        if (it != mParams.maxOutputBufferSizes.end()) {
+          bufferSize = it->second;
+          LOG_INFOS << "Using configured max buffer size for '" << name
+                    << "': " << bufferSize << " bytes.";
+        } else {
+          LOG_ERRORS
+              << "Could not determine max size for dynamic output tensor '"
+              << name
+              << "'. Please provide it in "
+                 "AlgoInferParams::maxOutputBufferSizes.";
+          return InferErrorCode::INIT_BINDING_FAILED;
+        }
+      } else {
+        LOG_ERRORS << "Input tensor '" << name
+                   << "' has an unexpected dynamic dimension (-1).";
+        return InferErrorCode::INIT_BINDING_FAILED;
+      }
+    } else {
+      // 更一般的情况（根据 max shape 算出）
+      bufferSize =
+          static_cast<size_t>(volume) * trt_utils::getTrtElementSize(trtDtype);
+    }
+
+    if (bufferSize == 0) {
+      LOG_WARNINGS << "Tensor '" << name << "' has a buffer size of 0.";
+    }
 
     // Allocate buffer and get pointer
     mManagedBuffers.emplace_back(trt_utils::TrtDeviceBuffer{bufferSize});
@@ -166,7 +214,8 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     // Populate ModelInfo
     ModelInfo::TensorInfo tensorInfo;
     tensorInfo.name = name;
-    tensorInfo.shape.assign(dims.d, dims.d + dims.nbDims);
+    auto bindingDims = mEngine->getTensorShape(name);
+    tensorInfo.shape.assign(bindingDims.d, bindingDims.d + bindingDims.nbDims);
     tensorInfo.dataType = trt_utils::trtDataTypeToAiCore(trtDtype);
 
     if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
@@ -230,22 +279,20 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
     // to the internal device buffers managed by this class.
     for (const auto &inputInfo : modelInfo->inputs) {
       const auto &name = inputInfo.name;
-      auto it = inputs.datas.find(name);
-      if (it == inputs.datas.end()) {
+      auto dataIt = inputs.datas.find(name);
+      if (dataIt == inputs.datas.end()) {
         LOG_ERRORS << "Input tensor '" << name
                    << "' not found in provided inputs.";
         return InferErrorCode::INFER_INPUT_ERROR;
       }
 
-      const TypedBuffer &inputBuffer = it->second;
-
+      const TypedBuffer &inputBuffer = dataIt->second;
       const size_t expectedSizeBytes = mTensorSizeMap.at(name);
       const size_t actualSizeBytes = inputBuffer.getSizeBytes();
-
-      if (actualSizeBytes != expectedSizeBytes) {
-        LOG_ERRORS << "Mismatched size for input tensor '" << name
-                   << "'. Expected: " << expectedSizeBytes
-                   << " bytes, Got: " << actualSizeBytes << " bytes.";
+      if (actualSizeBytes > expectedSizeBytes) {
+        LOG_ERRORS << "Actual input size (" << actualSizeBytes
+                   << ") exceeds allocated buffer size (" << expectedSizeBytes
+                   << ") for tensor '" << name << "'.";
         return InferErrorCode::INFER_SIZE_MISMATCH;
       }
       if (inputBuffer.dataType() != inputInfo.dataType) {
@@ -255,9 +302,25 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
         return InferErrorCode::INFER_TYPE_MISMATCH;
       }
 
+      auto shapeIt = inputs.shapes.find(name);
+      if (shapeIt == inputs.shapes.end()) {
+        LOG_ERRORS << "Shape information for input tensor '" << name
+                   << "' not found.";
+        return InferErrorCode::INFER_INPUT_ERROR;
+      }
+      const auto &actualShapeVec = shapeIt->second;
+      nvinfer1::Dims actualDims;
+      actualDims.nbDims = actualShapeVec.size();
+      std::copy(actualShapeVec.begin(), actualShapeVec.end(), actualDims.d);
+
+      LOG_INFOS << "Setting input shape for '" << name << "'.";
+      if (!mContext->setInputShape(name.c_str(), actualDims)) {
+        LOG_ERRORS << "Failed to set input shape for tensor: " << name;
+        return InferErrorCode::INFER_EXECUTION_FAILED;
+      }
+
       // smart data coyping
       void *destDevicePtr = mTensorAddressMap.at(name);
-
       if (inputBuffer.location() == BufferLocation::CPU) {
         LOG_INFOS << "Copying CPU input for tensor '" << name << "' (H2D).";
         const void *srcHostPtr = inputBuffer.getRawHostPtr();
@@ -270,7 +333,6 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
         // copy between device and device(pretty fast)
         CHECK_CUDA(cudaMemcpyAsync(destDevicePtr, srcDevicePtr, actualSizeBytes,
                                    cudaMemcpyDeviceToDevice, mStream));
-
         // For the sake of good portability, the cudaHostAllocMapped mechanism
         // will not be considered for the time being
       } else {
@@ -293,21 +355,35 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
     for (const auto &outputInfo : modelInfo->outputs) {
       const auto &name = outputInfo.name;
       void *srcDevicePtr = mTensorAddressMap.at(name);
-      size_t bufferSizeBytes = mTensorSizeMap.at(name);
+
+      nvinfer1::Dims actualOutputDims = mContext->getTensorShape(name.c_str());
+      int64_t actualVolume = calculateVolume(actualOutputDims);
+
+      if (actualVolume < 0) {
+        LOG_ERRORS
+            << "Inference resulted in invalid output dimensions for tensor: "
+            << name;
+        return InferErrorCode::INFER_EXECUTION_FAILED;
+      }
+
+      size_t actualOutputSizeBytes =
+          static_cast<size_t>(actualVolume) *
+          trt_utils::getTrtElementSize(
+              trt_utils::aiCoreDataTypeToTrt(outputInfo.dataType));
 
       // Create a CPU-based TypedBuffer for the output
-      std::vector<uint8_t> hostByteVec(bufferSizeBytes);
+      std::vector<uint8_t> hostByteVec(actualOutputSizeBytes);
       void *destinationHostPtr = hostByteVec.data();
 
       LOG_INFOS << "Copying output for tensor '" << name << "' to CPU (D2H).";
       CHECK_CUDA(cudaMemcpyAsync(destinationHostPtr, srcDevicePtr,
-                                 bufferSizeBytes, cudaMemcpyDeviceToHost,
+                                 actualOutputSizeBytes, cudaMemcpyDeviceToHost,
                                  mStream));
 
       outputs.datas[name] = TypedBuffer::createFromCpu(outputInfo.dataType,
                                                        std::move(hostByteVec));
-      outputs.shapes[name].assign(outputInfo.shape.begin(),
-                                  outputInfo.shape.end());
+      outputs.shapes[name].assign(actualOutputDims.d,
+                                  actualOutputDims.d + actualOutputDims.nbDims);
     }
 
     // Synchronize stream to ensure all async operations are complete

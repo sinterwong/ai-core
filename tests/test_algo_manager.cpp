@@ -163,9 +163,8 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
     if (params.getParam<std::string>("postprocType") == "AnchorDetPostproc") {
       AnchorDetParams anchorDetParams;
       if (postProcJson.contains("detAlogType")) {
-        anchorDetParams.detAlogType =
-            static_cast<AnchorDetParams::AnchorDetAlogType>(
-                postProcJson.at("detAlogType").get<int>());
+        anchorDetParams.algoType = static_cast<AnchorDetParams::AlogType>(
+            postProcJson.at("detAlogType").get<int>());
       }
       if (postProcJson.contains("condThre")) {
         anchorDetParams.condThre = postProcJson.at("condThre").get<float>();

@@ -23,33 +23,31 @@ namespace ai_core::dnn {
 class OrtAlgoInference : public InferBase {
 public:
   explicit OrtAlgoInference(const AlgoConstructParams &params)
-      : params_(std::move(params.getParam<AlgoInferParams>("params"))) {}
+      : mParams(std::move(params.getParam<AlgoInferParams>("params"))) {}
 
   virtual ~OrtAlgoInference() override {}
 
-  virtual InferErrorCode initialize() override;
+  InferErrorCode initialize() override;
+  InferErrorCode infer(const TensorData &inputs, TensorData &outputs) override;
+  const ModelInfo &getModelInfo() override;
+  InferErrorCode terminate() override;
 
-  virtual InferErrorCode infer(const TensorData &inputs,
-                               TensorData &outputs) override;
+private:
+  static ONNXTensorElementDataType aiCoreDataTypeToOrt(DataType type);
+  static DataType ortDataTypeToAiCore(ONNXTensorElementDataType type);
 
-  virtual const ModelInfo &getModelInfo() override;
+private:
+  AlgoInferParams mParams;
+  std::vector<std::string> mInputNames;
+  std::vector<std::string> mOutputNames;
 
-  virtual InferErrorCode terminate() override;
+  std::unique_ptr<Ort::Env> mEnv;
+  std::unique_ptr<Ort::Session> mSession;
+  std::unique_ptr<Ort::MemoryInfo> mMemoryInfo;
 
-protected:
-  AlgoInferParams params_;
-  std::vector<std::string> inputNames;
-  std::vector<std::string> outputNames;
+  std::shared_ptr<ModelInfo> modelInfo;
 
-  std::vector<std::vector<int64_t>> inputShapes;
-  std::vector<std::vector<int64_t>> outputShapes;
-
-  // infer engine
-  std::unique_ptr<Ort::Env> env;
-  std::unique_ptr<Ort::Session> session;
-  std::unique_ptr<Ort::MemoryInfo> memoryInfo;
-
-  mutable std::mutex mtx_;
+  mutable std::mutex mMutex;
 };
 } // namespace ai_core::dnn
 #endif

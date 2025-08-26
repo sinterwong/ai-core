@@ -27,10 +27,10 @@ namespace ai_core::dnn {
 class NCNNAlgoInference : public InferBase {
 public:
   explicit NCNNAlgoInference(const AlgoConstructParams &params)
-      : params_(std::move(params.getParam<AlgoInferParams>("params"))),
-        isInitialized(false) {
-    blobPoolAllocator.set_size_compare_ratio(0.f);
-    workspacePoolAllocator.set_size_compare_ratio(0.f);
+      : mParams(std::move(params.getParam<AlgoInferParams>("params"))),
+        mIsInitialized(false) {
+    mBlobPoolAllocator.set_size_compare_ratio(0.f);
+    mWorkspacePoolAllocator.set_size_compare_ratio(0.f);
   }
 
   virtual ~NCNNAlgoInference() override;
@@ -45,19 +45,19 @@ public:
   virtual InferErrorCode terminate() override;
 
 protected:
-  AlgoInferParams params_;
-  std::vector<std::string> inputNames;
-  std::vector<std::string> outputNames;
-  std::shared_ptr<ModelInfo> modelInfo;
+  AlgoInferParams mParams;
+  std::vector<std::string> mInputNames;
+  std::vector<std::string> mOutputNames;
+  std::shared_ptr<ModelInfo> mModelInfo;
 
-  ncnn::Net net;
-  ncnn::PoolAllocator blobPoolAllocator;
-  ncnn::PoolAllocator workspacePoolAllocator;
-  std::vector<void *>
-      m_aligned_buffers; // For manually managed memory if needed
+  ncnn::Net mNet;
+  ncnn::PoolAllocator mBlobPoolAllocator;
+  ncnn::PoolAllocator mWorkspacePoolAllocator;
+  // For manually managed memory if needed
+  std::vector<void *> pAlignedBuffers;
 
-  mutable std::mutex mtx_; // Mutex for thread safety
-  std::atomic_bool isInitialized;
+  mutable std::mutex mMtx;
+  std::atomic_bool mIsInitialized;
 };
 } // namespace ai_core::dnn
 #endif

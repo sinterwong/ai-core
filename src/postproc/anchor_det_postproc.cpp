@@ -38,22 +38,22 @@ bool AnchorDetPostproc::process(const TensorData &modelOutput,
     throw std::runtime_error("AnchorDetParams params is nullptr");
   }
 
-  switch (params->detAlogType) {
-  case AnchorDetParams::AnchorDetAlogType::YOLO_DET_V11: {
+  switch (params->algoType) {
+  case AnchorDetParams::AlogType::YOLO_DET_V11: {
     Yolov11Det postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case AnchorDetParams::AnchorDetAlogType::RTM_DET: {
+  case AnchorDetParams::AlogType::RTM_DET: {
     RTMDet postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case AnchorDetParams::AnchorDetAlogType::NANO_DET: {
+  case AnchorDetParams::AlogType::NANO_DET: {
     NanoDet postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
   default: {
     LOG_ERRORS << "Unknown detection algorithm type: "
-               << static_cast<int>(params->detAlogType);
+               << static_cast<int>(params->algoType);
     return false;
   }
   }

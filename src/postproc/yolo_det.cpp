@@ -35,10 +35,20 @@ bool Yolov11Det::process(const TensorData &modelOutput,
   int signalResultNum = outputShape.at(outputShape.size() - 2);
   int strideNum = outputShape.at(outputShape.size() - 1);
 
-  cv::Mat rawData(strideNum, signalResultNum, CV_32F);
-  cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F,
-                        const_cast<void *>(output.getRawHostPtr())),
-                rawData);
+  cv::Mat rawData = cv::Mat(strideNum, signalResultNum, CV_32F);
+  if (output.dataType() == DataType::FLOAT32) {
+    cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F,
+                          const_cast<void *>(output.getRawHostPtr())),
+                  rawData);
+  } else if (output.dataType() == DataType::FLOAT16) {
+    const uint16_t *fp16Data = output.getHostPtr<uint16_t>();
+    cv::Mat halfMat(1, output.getElementCount(), CV_16F, (void *)fp16Data);
+    cv::Mat floatMat(1, output.getElementCount(), CV_32F);
+    halfMat.convertTo(floatMat, CV_32F);
+    cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F, floatMat.data),
+                  rawData);
+  }
+
   std::vector<BBox> results = processRawOutput(rawData, inputShape, prepArgs,
                                                postArgs, signalResultNum - 4);
 

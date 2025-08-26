@@ -10,7 +10,8 @@
  */
 #include "cv_generic_postproc.hpp"
 #include "postproc/fpr_cls.hpp"
-#include "postproc/fpr_feat.hpp"
+#include "postproc/ocr_reco.hpp"
+#include "postproc/raw_feature.hpp"
 #include "postproc/softmax_cls.hpp"
 #include "postproc/unet_daul_out_seg.hpp"
 #include <logger.hpp>
@@ -38,27 +39,30 @@ bool CVGenericPostproc::process(const TensorData &modelOutput,
     throw std::runtime_error("GenericPostParams params is nullptr");
   }
 
-  switch (params->postprocType) {
-  case GenericPostParams::GenericAlgoType::SOFTMAX_CLS: {
+  switch (params->algoType) {
+  case GenericPostParams::AlogType::SOFTMAX_CLS: {
     SoftmaxCls postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case GenericPostParams::GenericAlgoType::FPR_CLS: {
+  case GenericPostParams::AlogType::FPR_CLS: {
     FprCls postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case GenericPostParams::GenericAlgoType::FPR_FEAT: {
-    FprFeature postproc;
+  case GenericPostParams::AlogType::FPR_FEAT: {
+    RawFeature postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-  case GenericPostParams::GenericAlgoType::UNET_DUAL_OUTPUT: {
+  case GenericPostParams::AlogType::UNET_DUAL_OUTPUT: {
     UNetDaulOutputSeg postproc;
     return postproc.process(modelOutput, *prepParams, algoOutput, *params);
   }
-
+  case GenericPostParams::AlogType::OCR_RECO: {
+    OCRReco postproc;
+    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+  }
   default: {
     LOG_ERRORS << "Unknown generic algorithm type: "
-               << static_cast<int>(params->postprocType);
+               << static_cast<int>(params->algoType);
     return false;
   }
   }

@@ -76,10 +76,10 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
                        processor_->process(*paramsPtr, *frameInput)));
     std::vector<int> shape;
     if (paramsPtr->hwc2chw) {
-      shape = {paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
+      shape = {1, paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
                paramsPtr->modelInputShape.w};
     } else {
-      shape = {paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
+      shape = {1, paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
                paramsPtr->modelInputShape.c};
     }
     output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
@@ -103,10 +103,10 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
                        processor_->process(*paramsPtr, *frameInput)));
     std::vector<int> shape;
     if (paramsPtr->hwc2chw) {
-      shape = {paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
+      shape = {1, paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
                paramsPtr->modelInputShape.w};
     } else {
-      shape = {paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
+      shape = {1, paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
                paramsPtr->modelInputShape.c};
     }
     output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
