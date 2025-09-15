@@ -13,8 +13,8 @@ INCLUDE(GNUInstallDirs)
 SET(CMAKE_CXX_STANDARD 20)
 
 OPTION(BUILD_AI_CORE_TESTS "Build with tests" OFF)
-
 OPTION(BUILD_AI_CORE_BENCHMARKS "Build with benchmarks" OFF)
+OPTION(BUILD_AI_CORE_EXAMPLES "Build with examples" OFF)
 
 OPTION(WITH_ORT_ENGINE "Build with onnxruntime" ON)
 OPTION(WITH_NCNN_ENGINE "Build with ncnn" OFF)
@@ -84,13 +84,18 @@ MESSAGE(INFO "--------------------------------")
 ADD_SUBDIRECTORY(src)
 
 IF(BUILD_AI_CORE_TESTS)
-    MESSAGE(INFO "--------------------------------")
+    MESSAGE(INFO "------------- Build tests --------------")
     ADD_SUBDIRECTORY(tests)
 ENDIF()
 
 IF(BUILD_AI_CORE_BENCHMARKS)
-    MESSAGE(INFO "--------------------------------")
+    MESSAGE(INFO "------------- Build benchmarks --------------")
     ADD_SUBDIRECTORY(benchmarks)
+ENDIF()
+
+IF(BUILD_AI_CORE_EXAMPLES)
+    MESSAGE(INFO "------------- Build examples --------------")
+    ADD_SUBDIRECTORY(examples)
 ENDIF()
 
 IF(BUILD_AI_CORE_TESTS OR BUILD_AI_CORE_BENCHMARKS)
