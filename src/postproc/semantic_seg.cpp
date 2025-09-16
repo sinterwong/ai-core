@@ -68,8 +68,17 @@ bool SemanticSeg::process(const TensorData &modelOutput,
   SegRet segRet;
   segRet.clsToContours.clear();
 
+  Shape originShape;
+  const auto &inputRoi = *prepArgs.roi;
+  if (inputRoi.area() > 0) {
+    originShape.w = inputRoi.width;
+    originShape.h = inputRoi.height;
+  } else {
+    originShape = prepArgs.originShape;
+  }
+
   auto [scaleX, scaleY] = utils::scaleRatio(
-      prepArgs.originShape, prepArgs.modelInputShape, prepArgs.isEqualScale);
+      originShape, prepArgs.modelInputShape, prepArgs.isEqualScale);
 
   if (scaleX <= 0.0f || scaleY <= 0.0f) {
     LOG_ERRORS << "Invalid scale factors detected: scaleX=" << scaleX
