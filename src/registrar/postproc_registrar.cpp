@@ -8,15 +8,14 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include <ostream>
-
+#include "postproc_registrar.hpp"
 #include "postproc/anchor_det_postproc.hpp"
+#include "postproc/confidence_filter_postproc.hpp"
 #include "postproc/cv_generic_postproc.hpp"
 #include "postproc_base.hpp"
-#include "postproc_registrar.hpp"
 #include "type_safe_factory.hpp"
-
 #include <logger.hpp>
+#include <ostream>
 
 namespace ai_core::dnn {
 #define REGISTER_POSTPROCESS_ALGO(AlgoName)                                    \
@@ -31,5 +30,6 @@ namespace ai_core::dnn {
 PostprocessRegistrar::PostprocessRegistrar() {
   REGISTER_POSTPROCESS_ALGO(AnchorDetPostproc);
   REGISTER_POSTPROCESS_ALGO(CVGenericPostproc);
+  REGISTER_POSTPROCESS_ALGO(ConfidenceFilterPostproc);
 }
 } // namespace ai_core::dnn
