@@ -22,10 +22,39 @@
 namespace ai_core::dnn::mncnn {
 
 TypedBuffer
-NcnnGenericPreprocessor::process(FramePreprocessArg &args,
-                                 const FrameInput &frameData) const {
-  const auto &cvImageOrig = *frameData.image;
-  const auto &inputRoi = *args.roi;
+NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
+                                 const FrameInput &input,
+                                 FrameTransformContext &runtimeArgs) const {
+
+  if (args.outputLocation != BufferLocation::CPU) {
+    LOG_WARNINGS
+        << "NCNN NcnnGenericPreprocessor requested to output to GPU_DEVICE. "
+           "This is not supported. Output will be on CPU.";
+  }
+  if (input.image == nullptr) {
+    LOG_ERRORS << "Input frame is null.";
+    throw std::runtime_error("Input frame is null.");
+  }
+
+  if (input.inputRoi == nullptr) {
+    runtimeArgs.roi =
+        std::make_shared<cv::Rect>(0, 0, input.image->cols, input.image->rows);
+  } else {
+    runtimeArgs.roi = input.inputRoi;
+  }
+  runtimeArgs.originShape = {input.image->cols, input.image->rows,
+                             input.image->channels()};
+
+  const auto &cvImageOrig = *input.image;
+  const auto &inputRoi = *runtimeArgs.roi;
+  if (inputRoi.x < 0 || inputRoi.y < 0 || inputRoi.width <= 0 ||
+      inputRoi.height <= 0 || inputRoi.x + inputRoi.width > cvImageOrig.cols ||
+      inputRoi.y + inputRoi.height > cvImageOrig.rows) {
+    LOG_ERRORS << "Invalid ROI: " << inputRoi
+               << " for image size: " << cvImageOrig.size();
+    throw std::runtime_error("Invalid ROI.");
+  }
+
   if (cvImageOrig.empty()) {
     LOG_ERRORS << "Input cv::Mat image is empty.";
     throw std::runtime_error("Input cv::Mat image is empty.");
@@ -97,14 +126,14 @@ NcnnGenericPreprocessor::process(FramePreprocessArg &args,
           currentCvMat.data, ncnnPixelType, currentCvMat.cols,
           currentCvMat.rows, scaledWidth, scaledHeight);
 
-      args.leftPad = (targetWidth - scaledWidth) / 2;
-      args.topPad = (targetHeight - scaledHeight) / 2;
-      int rightPad = targetWidth - scaledWidth - args.leftPad;
-      int bottomPad = targetHeight - scaledHeight - args.topPad;
+      runtimeArgs.leftPad = (targetWidth - scaledWidth) / 2;
+      runtimeArgs.topPad = (targetHeight - scaledHeight) / 2;
+      int rightPad = targetWidth - scaledWidth - runtimeArgs.leftPad;
+      int bottomPad = targetHeight - scaledHeight - runtimeArgs.topPad;
 
-      ncnn::copy_make_border(tempNcnnMat, ncnnIn, args.topPad, bottomPad,
-                             args.leftPad, rightPad, ncnn::BORDER_CONSTANT,
-                             (float)args.pad[0]);
+      ncnn::copy_make_border(tempNcnnMat, ncnnIn, runtimeArgs.topPad, bottomPad,
+                             runtimeArgs.leftPad, rightPad,
+                             ncnn::BORDER_CONSTANT, (float)args.pad[0]);
       if (ncnnIn.w != targetWidth || ncnnIn.h != targetHeight) {
         LOG_WARNINGS << "Padded NCNN Mat size (" << ncnnIn.w << "x" << ncnnIn.h
                      << ") mismatch target (" << targetWidth << "x"
@@ -188,4 +217,12 @@ NcnnGenericPreprocessor::process(FramePreprocessArg &args,
       TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(cpuDataVec));
   return outputBuffer;
 }
+
+TypedBuffer NcnnGenericPreprocessor::batchProcess(
+    const FramePreprocessArg &args, const std::vector<FrameInput> &input,
+    std::vector<FrameTransformContext> &runtimeContext) const {
+  LOG_ERRORS << "NCNN batch preprocessor not implemented.";
+  throw std::runtime_error("NCNN batch preprocessor not implemented.");
+}
+
 }; // namespace ai_core::dnn::mncnn

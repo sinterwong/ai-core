@@ -18,18 +18,18 @@
 
 namespace ai_core::dnn::gpu
 {
-
   class GpuGenericCudaPreprocessor : public IFramePreprocessor
   {
   public:
     explicit GpuGenericCudaPreprocessor() = default;
     ~GpuGenericCudaPreprocessor() override = default;
 
-    TypedBuffer process(FramePreprocessArg &args,
-                        const FrameInput &input) const override;
+    TypedBuffer process(const FramePreprocessArg &, const FrameInput &,
+                        FrameTransformContext &) const override;
 
-    TypedBuffer batchProcess(FramePreprocessArg &args,
-                             const std::vector<FrameInput> &inputs) const override;
+    TypedBuffer
+    batchProcess(const FramePreprocessArg &, const std::vector<FrameInput> &,
+                 std::vector<FrameTransformContext> &) const override;
   };
 
 } // namespace ai_core::dnn::gpu

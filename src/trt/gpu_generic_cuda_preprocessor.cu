@@ -20,11 +20,36 @@
 namespace ai_core::dnn::gpu
 {
 
-  TypedBuffer GpuGenericCudaPreprocessor::process(FramePreprocessArg &args,
-                                                  const FrameInput &input) const
+  TypedBuffer GpuGenericCudaPreprocessor::process(const FramePreprocessArg &args,
+                                                  const FrameInput &input,
+                                                  FrameTransformContext &runtimeArgs) const
   {
+    if (input.image == nullptr)
+    {
+      LOG_ERRORS << "Input frame is null.";
+      throw std::runtime_error("Input frame is null.");
+    }
+
+    if (input.inputRoi == nullptr)
+    {
+      runtimeArgs.roi = std::make_shared<cv::Rect>(0, 0, input.image->cols,
+                                                   input.image->rows);
+    }
+    else
+    {
+      runtimeArgs.roi = input.inputRoi;
+    }
+    runtimeArgs.originShape = {input.image->cols, input.image->rows,
+                               input.image->channels()};
+
     const auto &image = *input.image;
-    const auto &roi = *args.roi;
+    const auto &roi = *runtimeArgs.roi;
+    if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
+        roi.x + roi.width > image.cols || roi.y + roi.height > image.rows)
+    {
+      LOG_ERRORS << "Invalid ROI: " << roi << " for image size: " << image.size();
+      throw std::runtime_error("Invalid ROI.");
+    }
 
     const uint8_t *pSrcData = image.data;
     int src_h = image.rows;
@@ -64,8 +89,8 @@ namespace ai_core::dnn::gpu
       int new_w = static_cast<int>(src_w * scale);
       int new_h = static_cast<int>(src_h * scale);
 
-      args.leftPad = (args.modelInputShape.w - new_w) / 2;
-      args.topPad = (args.modelInputShape.h - new_h) / 2;
+      runtimeArgs.leftPad = (args.modelInputShape.w - new_w) / 2;
+      runtimeArgs.topPad = (args.modelInputShape.h - new_h) / 2;
 
       trt_utils::TrtDeviceBuffer d_pad(args.pad.size() * sizeof(float));
       CHECK_CUDA(cudaMemcpy(d_pad.get(), args.pad.data(),
@@ -148,8 +173,9 @@ namespace ai_core::dnn::gpu
     }
   }
 
-  TypedBuffer GpuGenericCudaPreprocessor::batchProcess(FramePreprocessArg &args,
-                                                       const std::vector<FrameInput> &inputs) const
+  TypedBuffer GpuGenericCudaPreprocessor::batchProcess(const FramePreprocessArg &args,
+                                                       const std::vector<FrameInput> &input,
+                                                       std::vector<FrameTransformContext> &runtimeArgs) const
   {
     LOG_ERRORS << "Batch processing not implemented for GpuGenericCudaPreprocessor";
     return TypedBuffer();

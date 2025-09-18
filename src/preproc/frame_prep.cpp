@@ -113,7 +113,7 @@ FramePreprocess::singleProcess(const FramePreprocessArg &args,
 #ifdef WITH_TRT
     std::unique_ptr<IFramePreprocessor> processor =
         std::make_unique<gpu::GpuGenericCudaPreprocessor>();
-    return processor->process(args, input);
+    return processor->process(args, input, runtimeContext);
 #else
     LOG_ERRORS << "CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT is "
                   "not enabled.";
