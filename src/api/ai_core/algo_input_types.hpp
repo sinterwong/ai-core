@@ -27,6 +27,10 @@ struct FrameInput {
   std::shared_ptr<cv::Rect> inputRoi;
 };
 
+struct BatchFrameInput {
+  std::vector<FrameInput> frames;
+};
+
 struct FrameInputWithMask {
   FrameInput frameInput;
   std::vector<cv::Rect> maskRegions;

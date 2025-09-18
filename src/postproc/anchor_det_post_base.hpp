@@ -23,8 +23,8 @@ class IAnchorDetPostprocessor {
 public:
   virtual ~IAnchorDetPostprocessor() = default;
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const AnchorDetParams &) const = 0;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const AnchorDetParams &, AlgoOutput &) const = 0;
 };
 
 } // namespace ai_core

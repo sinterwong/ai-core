@@ -18,7 +18,6 @@ namespace ai_core {
 template <typename P> class ParamCenter {
 public:
   using Params = P;
-
   template <typename T> void setParams(T params) {
     params_ = std::move(params);
   }
@@ -27,7 +26,17 @@ public:
     std::visit([&](auto &&params) { std::forward<Func>(func)(params); },
                params_);
   }
+
+  template <typename Func> void visitParams(Func &&func) const {
+    std::visit([&](auto &&params) { std::forward<Func>(func)(params); },
+               params_);
+  }
+
   template <typename T> T *getParams() { return std::get_if<T>(&params_); }
+
+  template <typename T> const T *getParams() const {
+    return std::get_if<T>(&params_);
+  }
 
 private:
   Params params_;

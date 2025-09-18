@@ -16,62 +16,177 @@
 #include <opencv2/imgproc.hpp>
 
 namespace ai_core::dnn::cpu {
-TypedBuffer
-CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
-                                  const FrameInput &frameInput) const {
 
-  if (params_.outputLocation != BufferLocation::CPU) {
+TypedBuffer
+CpuGenericCvPreprocessor::process(const FramePreprocessArg &params,
+                                  const FrameInput &frameInput,
+                                  FrameTransformContext &runtimeArgs) const {
+
+  if (params.outputLocation != BufferLocation::CPU) {
     LOG_WARNINGS
         << "CPU CpuGenericCvPreprocessor requested to output to GPU_DEVICE. "
            "This is not supported. Output will be on CPU.";
   }
+
+  cv::Mat normalizedImage =
+      preprocessSingleFrame(params, frameInput, runtimeArgs);
+
+  const int inputChannels = normalizedImage.channels();
+
+  switch (params.dataType) {
+  case DataType::FLOAT32:
+    return preprocessFP32(normalizedImage, inputChannels,
+                          params.modelInputShape.h, params.modelInputShape.w,
+                          params.hwc2chw);
+  case DataType::FLOAT16:
+    return preprocessFP16(normalizedImage, inputChannels,
+                          params.modelInputShape.h, params.modelInputShape.w,
+                          params.hwc2chw);
+  default:
+    LOG_ERRORS << "Unsupported data type: "
+               << static_cast<int>(params.dataType);
+    throw std::runtime_error("Unsupported data type");
+  }
+}
+
+TypedBuffer CpuGenericCvPreprocessor::batchProcess(
+    const FramePreprocessArg &args, const std::vector<FrameInput> &frames,
+    std::vector<FrameTransformContext> &runtimeArgs) const {
+  if (args.outputLocation != BufferLocation::CPU) {
+    LOG_WARNINGS
+        << "CPU CpuGenericCvPreprocessor requested to output to GPU_DEVICE. "
+           "This is not supported. Output will be on CPU.";
+  }
+
+  if (frames.empty()) {
+    return TypedBuffer();
+  }
+
+  const size_t batchSize = frames.size();
+  runtimeArgs.resize(batchSize);
+
+  std::vector<cv::Mat> processedImages;
+  processedImages.reserve(batchSize);
+  for (size_t i = 0; i < batchSize; ++i) {
+    runtimeArgs[i].modelInputShape = args.modelInputShape;
+    runtimeArgs[i].isEqualScale = args.isEqualScale;
+    processedImages.push_back(
+        preprocessSingleFrame(args, frames[i], runtimeArgs[i]));
+  }
+
+  const int inputChannels = args.modelInputShape.c;
+  const int inputHeight = args.modelInputShape.h;
+  const int inputWidth = args.modelInputShape.w;
+  const size_t singleImageSize =
+      static_cast<size_t>(inputChannels) * inputHeight * inputWidth;
+  const size_t totalElements = singleImageSize * batchSize;
+
+  // 合并所有处理后的图像到一个缓冲区中
+  switch (args.dataType) {
+  case DataType::FLOAT32: {
+    TypedBuffer result;
+    result.resize(totalElements);
+    float *dstPtr = result.getHostPtr<float>();
+
+    for (const auto &image : processedImages) {
+      convertLayout(image, dstPtr, args.hwc2chw);
+      dstPtr += singleImageSize; // 移动指针到下一个图像的位置
+    }
+    return result;
+  }
+  case DataType::FLOAT16: {
+    std::vector<float> batchDataFP32(totalElements);
+    float *dstPtr = batchDataFP32.data();
+
+    for (const auto &image : processedImages) {
+      convertLayout(image, dstPtr, args.hwc2chw);
+      dstPtr += singleImageSize;
+    }
+
+    const float fp16MaxValue = 65504.0f;
+    for (float &val : batchDataFP32) {
+      val = std::clamp(val, -fp16MaxValue, fp16MaxValue);
+    }
+
+    cv::Mat floatMat(1, static_cast<int>(totalElements), CV_32F,
+                     batchDataFP32.data());
+    cv::Mat halfMat;
+    floatMat.convertTo(halfMat, CV_16F);
+
+    const size_t byteSize = totalElements * sizeof(uint16_t);
+    const uint8_t *startPtr = halfMat.data;
+    std::vector<uint8_t> finalData(startPtr, startPtr + byteSize);
+
+    return TypedBuffer::createFromCpu(DataType::FLOAT16, std::move(finalData));
+  }
+  default:
+    LOG_ERRORS << "Unsupported data type: " << static_cast<int>(args.dataType);
+    throw std::runtime_error("Unsupported data type");
+  }
+}
+
+cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
+    const FramePreprocessArg &params, const FrameInput &frameInput,
+    FrameTransformContext &runtimeArgs) const {
+  if (frameInput.image == nullptr) {
+    LOG_ERRORS << "Input frame is null.";
+    throw std::runtime_error("Input frame is null.");
+  }
+
+  if (frameInput.inputRoi == nullptr) {
+    runtimeArgs.roi = std::make_shared<cv::Rect>(0, 0, frameInput.image->cols,
+                                                 frameInput.image->rows);
+  } else {
+    runtimeArgs.roi = frameInput.inputRoi;
+  }
+  runtimeArgs.originShape = {frameInput.image->cols, frameInput.image->rows,
+                             frameInput.image->channels()};
+
   const auto &image = *frameInput.image;
-  const auto &roi = *frameInput.inputRoi;
+  const auto &roi = *runtimeArgs.roi;
+  if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
+      roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
+    LOG_ERRORS << "Invalid ROI: " << roi << " for image size: " << image.size();
+    throw std::runtime_error("Invalid ROI.");
+  }
 
-  int inputChannels = image.channels();
-
-  // Crop ROI
   cv::Mat croppedImage;
   if (roi.area() > 0) {
     croppedImage = image(roi).clone();
   } else {
-    croppedImage = image;
+    croppedImage = image.clone();
   }
 
-  // Resize
   cv::Mat resizedImage;
-  if (params_.needResize) {
-    if (params_.isEqualScale) {
-      if (params_.pad.size() > 4) {
+  if (params.needResize) {
+    if (params.isEqualScale) {
+      if (params.pad.size() > 4) {
         LOG_WARNINGS << "Padding vector has more than 4 elements. Only the "
                         "first 4 will be used.";
       }
-
-      cv::Scalar pad = utils::createScalarFromVector(params_.pad);
+      cv::Scalar pad = utils::createScalarFromVector(params.pad);
       auto padRet = utils::escaleResizeWithPad(croppedImage, resizedImage,
-                                               params_.modelInputShape.h,
-                                               params_.modelInputShape.w, pad);
-      params_.topPad = padRet.h;
-      params_.leftPad = padRet.w;
+                                               params.modelInputShape.h,
+                                               params.modelInputShape.w, pad);
+      runtimeArgs.topPad = padRet.h;
+      runtimeArgs.leftPad = padRet.w;
     } else {
       cv::resize(croppedImage, resizedImage,
-                 cv::Size(params_.modelInputShape.w, params_.modelInputShape.h),
+                 cv::Size(params.modelInputShape.w, params.modelInputShape.h),
                  0, 0, cv::INTER_LINEAR);
     }
   } else {
     resizedImage = croppedImage;
   }
 
-  // Convert to float
   cv::Mat floatImage;
   resizedImage.convertTo(floatImage, CV_32F);
 
-  // Normalization
   cv::Mat normalizedImage = floatImage;
-  if (!params_.meanVals.empty() && !params_.normVals.empty()) {
-    // Validate normalization parameters
-    if (params_.meanVals.size() != inputChannels ||
-        params_.normVals.size() != inputChannels) {
+  if (!params.meanVals.empty() && !params.normVals.empty()) {
+    const int inputChannels = normalizedImage.channels();
+    if (params.meanVals.size() != inputChannels ||
+        params.normVals.size() != inputChannels) {
       throw std::runtime_error(
           "meanVals and normVals size must match input channels");
     }
@@ -79,27 +194,13 @@ CpuGenericCvPreprocessor::process(FramePreprocessArg &params_,
     std::vector<cv::Mat> channels(inputChannels);
     cv::split(normalizedImage, channels);
 
-    // Apply normalization per channel
     for (int i = 0; i < inputChannels; ++i) {
-      channels[i] = (channels[i] - params_.meanVals[i]) / params_.normVals[i];
+      channels[i] = (channels[i] - params.meanVals[i]) / params.normVals[i];
     }
     cv::merge(channels, normalizedImage);
   }
 
-  switch (params_.dataType) {
-  case DataType::FLOAT32:
-    return preprocessFP32(normalizedImage, inputChannels,
-                          params_.modelInputShape.h, params_.modelInputShape.w,
-                          params_.hwc2chw);
-  case DataType::FLOAT16:
-    return preprocessFP16(normalizedImage, inputChannels,
-                          params_.modelInputShape.h, params_.modelInputShape.w,
-                          params_.hwc2chw);
-  default:
-    LOG_ERRORS << "Unsupported data type: "
-               << static_cast<int>(params_.dataType);
-    throw std::runtime_error("Unsupported data type");
-  }
+  return normalizedImage;
 }
 
 void CpuGenericCvPreprocessor::convertLayout(const cv::Mat &image, float *dst,

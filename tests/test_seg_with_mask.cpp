@@ -97,6 +97,9 @@ TEST_P(SegWithMaskInferTest, Normal) {
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
   engine->prettyPrintModelInfos();
 
+  std::shared_ptr<RuntimeContext> runtimeContext =
+      std::make_shared<RuntimeContext>();
+
   AlgoPreprocParams preprocParams;
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {320, 320, 2};
@@ -130,14 +133,15 @@ TEST_P(SegWithMaskInferTest, Normal) {
   algoInput.setParams(frameInputWithMask);
 
   TensorData modelInput;
-  frameWithMaskPreproc->process(algoInput, preprocParams, modelInput);
+  frameWithMaskPreproc->process(algoInput, preprocParams, modelInput,
+                                runtimeContext);
 
   TensorData modelOutput;
   ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);
 
   AlgoOutput algoOutput;
-  ASSERT_TRUE(segPostproc->process(modelOutput, preprocParams, algoOutput,
-                                   postprocParams));
+  ASSERT_TRUE(segPostproc->process(modelOutput, postprocParams, algoOutput,
+                                   runtimeContext));
 
   auto *segRet = algoOutput.getParams<DaulRawSegRet>();
   ASSERT_NE(segRet, nullptr);

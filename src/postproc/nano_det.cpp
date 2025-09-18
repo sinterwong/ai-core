@@ -15,9 +15,9 @@
 
 namespace ai_core::dnn {
 bool NanoDet::process(const TensorData &modelOutput,
-                      const FramePreprocessArg &prepArgs,
-                      AlgoOutput &algoOutput,
-                      const AnchorDetParams &postArgs) const {
+                      const FrameTransformContext &prepArgs,
+                      const AnchorDetParams &postArgs,
+                      AlgoOutput &algoOutput) const {
   if (modelOutput.datas.empty()) {
     return false;
   }

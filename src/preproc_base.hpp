@@ -20,8 +20,9 @@ class PreprocssBase {
 public:
   virtual ~PreprocssBase(){};
 
-  virtual bool process(AlgoInput &, AlgoPreprocParams &params,
-                       TensorData &) const = 0;
+  virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
+                       TensorData &,
+                       std::shared_ptr<RuntimeContext> &) const = 0;
 };
 } // namespace ai_core::dnn
 

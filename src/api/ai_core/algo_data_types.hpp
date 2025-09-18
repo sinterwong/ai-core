@@ -11,7 +11,8 @@
 namespace ai_core {
 // Algo input
 using AlgoInput =
-    ParamCenter<std::variant<std::monostate, FrameInput, FrameInputWithMask>>;
+    ParamCenter<std::variant<std::monostate, FrameInput, BatchFrameInput,
+                             FrameInputWithMask>>;
 
 // Algo output
 using AlgoOutput =
@@ -29,6 +30,9 @@ using AlgoPostprocParams =
 
 // Algo construct params
 using AlgoConstructParams = DataPacket;
+
+// Runtime Context
+using RuntimeContext = DataPacket;
 
 // Algo module types
 struct AlgoModuleTypes {

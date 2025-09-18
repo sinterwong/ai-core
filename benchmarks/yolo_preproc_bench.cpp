@@ -55,16 +55,19 @@ static void BM_CPU_FramePreproc_Yolo(benchmark::State &state) {
       std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   input.setParams(frameInput);
 
+  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+      std::make_shared<ai_core::RuntimeContext>();
+
   ai_core::TensorData modelInput;
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
   // =================================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
 }
 BENCHMARK(BM_CPU_FramePreproc_Yolo)

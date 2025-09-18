@@ -17,8 +17,8 @@ class OCRReco : public ICVGenericPostprocessor {
 public:
   explicit OCRReco() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const GenericPostParams &) const override;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const GenericPostParams &, AlgoOutput &) const override;
 
 private:
   std::vector<int64_t> ctcProcess(const std::vector<int64_t> &outputs) const;

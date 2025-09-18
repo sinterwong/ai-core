@@ -24,9 +24,10 @@
 
 namespace ai_core::dnn {
 
-bool FrameWithMaskPreprocess::process(AlgoInput &input,
-                                      AlgoPreprocParams &params,
-                                      TensorData &output) const {
+bool FrameWithMaskPreprocess::process(
+    const AlgoInput &input, const AlgoPreprocParams &params, TensorData &output,
+    std::shared_ptr<RuntimeContext> &runtimeContext) const {
+
   auto paramsPtr = params.getParams<FramePreprocessArg>();
   if (paramsPtr == nullptr) {
     LOG_ERRORS
@@ -50,31 +51,20 @@ bool FrameWithMaskPreprocess::process(AlgoInput &input,
   if (frameInput.image == nullptr) {
     LOG_ERRORS << "Input frame is null.";
     throw std::runtime_error("Input frame is null.");
-  } else {
-    paramsPtr->originShape = {frameInput.image->cols, frameInput.image->rows,
-                              frameInput.image->channels()};
-  }
-
-  if (frameInput.inputRoi == nullptr) {
-    paramsPtr->roi = std::make_shared<cv::Rect>(0, 0, frameInput.image->cols,
-                                                frameInput.image->rows);
-  } else {
-    paramsPtr->roi = frameInput.inputRoi;
-    const auto &roi = *paramsPtr->roi;
-    const auto &image = *frameInput.image;
-    if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
-        roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
-      LOG_ERRORS << "Invalid ROI: " << roi
-                 << " for image size: " << image.size();
-      throw std::runtime_error("Invalid ROI.");
-    }
   }
 
   switch (paramsPtr->preprocTaskType) {
   case FramePreprocessArg::FramePreprocType::OPENCV_CPU_CONCAT_MASK: {
-    std::unique_ptr<IFramePreprocessor> processor_ =
+    FramePreprocessArg newParams = *paramsPtr;
+    std::unique_ptr<IFramePreprocessor> processor =
         std::make_unique<cpu::CpuGenericCvPreprocessor>();
-    const auto &roi = *paramsPtr->roi;
+    cv::Rect roi;
+    if (frameInput.inputRoi == nullptr) {
+      roi = cv::Rect(0, 0, frameInput.image->cols, frameInput.image->rows);
+    } else {
+      roi = *frameInput.inputRoi;
+    }
+
     cv::Mat roiImage = (*frameInput.image)(roi);
     cv::Mat mask = cv::Mat::zeros(roiImage.size(), CV_8UC1);
 
@@ -98,8 +88,8 @@ bool FrameWithMaskPreprocess::process(AlgoInput &input,
     cv::merge(channels, imageWithMask);
 
     // append mean and std if need
-    auto &meanVals = paramsPtr->meanVals;
-    auto &normVals = paramsPtr->normVals;
+    auto &meanVals = newParams.meanVals;
+    auto &normVals = newParams.normVals;
 
     if (!meanVals.empty()) {
       // mean for the new mask channel
@@ -113,10 +103,25 @@ bool FrameWithMaskPreprocess::process(AlgoInput &input,
     FrameInput maskedFrameInput;
     maskedFrameInput.image = std::make_shared<cv::Mat>(imageWithMask);
     // empty roi(not use)
-    maskedFrameInput.inputRoi = std::make_shared<cv::Rect>(0, 0, 0, 0);
+    maskedFrameInput.inputRoi = nullptr;
 
+    // // FIXME: draw the mask to roiImage and vis
+    // cv::Mat debugImage;
+    // cv::cvtColor(roiImage, debugImage, cv::COLOR_BGR2BGRA);
+    // for (int y = 0; y < mask.rows; ++y) {
+    //   for (int x = 0; x < mask.cols; ++x) {
+    //     if (mask.at<uchar>(y, x) > 0) {
+    //       // Set alpha channel to 128 for masked regions
+    //       debugImage.at<cv::Vec4b>(y, x)[3] = 128;
+    //     }
+    //   }
+    // }
+    // cv::imwrite("debug_masked_image.png", debugImage);
+
+    FrameTransformContext singleRuntimeArgs;
     TypedBuffer processedFrame =
-        processor_->process(*paramsPtr, maskedFrameInput);
+        processor->process(newParams, maskedFrameInput, singleRuntimeArgs);
+    runtimeContext->setParam("preproc_runtime_args", singleRuntimeArgs);
 
     output.datas.insert(
         std::make_pair(paramsPtr->inputNames[0], processedFrame));

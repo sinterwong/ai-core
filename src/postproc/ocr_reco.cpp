@@ -14,9 +14,9 @@
 
 namespace ai_core::dnn {
 bool OCRReco::process(const TensorData &modelOutput,
-                      const FramePreprocessArg &prepArgs,
-                      AlgoOutput &algoOutput,
-                      const GenericPostParams &postArgs) const {
+                      const FrameTransformContext &prepArgs,
+                      const GenericPostParams &postArgs,
+                      AlgoOutput &algoOutput) const {
   const auto &outputLengthsName = postArgs.outputNames.at(0);
   const auto &argmaxOutputName = postArgs.outputNames.at(1);
 

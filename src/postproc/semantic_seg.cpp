@@ -16,9 +16,9 @@
 
 namespace ai_core::dnn {
 bool SemanticSeg::process(const TensorData &modelOutput,
-                          const FramePreprocessArg &prepArgs,
-                          AlgoOutput &algoOutput,
-                          const ConfidenceFilterParams &postArgs) const {
+                          const FrameTransformContext &prepArgs,
+                          const ConfidenceFilterParams &postArgs,
+                          AlgoOutput &algoOutput) const {
   const auto &featMapOutputName = postArgs.outputNames.at(0);
   const auto &featMapOutput = modelOutput.datas.at(featMapOutputName);
   const auto &featMapShape = modelOutput.shapes.at(featMapOutputName);

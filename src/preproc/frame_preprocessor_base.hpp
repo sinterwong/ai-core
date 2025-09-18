@@ -25,8 +25,14 @@ class IFramePreprocessor {
 public:
   virtual ~IFramePreprocessor() = default;
 
-  virtual TypedBuffer process(FramePreprocessArg &args,
-                              const FrameInput &input) const = 0;
+  virtual TypedBuffer process(const FramePreprocessArg &args,
+                              const FrameInput &input,
+                              FrameTransformContext &runtimeArgs) const = 0;
+
+  virtual TypedBuffer
+  batchProcess(const FramePreprocessArg &args,
+               const std::vector<FrameInput> &input,
+               std::vector<FrameTransformContext> &runtimeArgs) const = 0;
 };
 
 } // namespace ai_core

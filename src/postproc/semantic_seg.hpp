@@ -17,9 +17,10 @@ class SemanticSeg : public IConfidencePostprocessor {
 public:
   explicit SemanticSeg() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &,
-                       const ConfidenceFilterParams &) const override;
+  virtual bool process(const TensorData &modelOutput,
+                       const FrameTransformContext &prepArgs,
+                       const ConfidenceFilterParams &params,
+                       AlgoOutput &algoOutput) const override;
 };
 } // namespace ai_core::dnn
 

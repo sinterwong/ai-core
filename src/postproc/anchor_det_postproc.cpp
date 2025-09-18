@@ -17,20 +17,22 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool AnchorDetPostproc::process(const TensorData &modelOutput,
-                                AlgoPreprocParams &prepArgs,
-                                AlgoOutput &algoOutput,
-                                AlgoPostprocParams &postArgs) const {
+bool AnchorDetPostproc::process(
+    const TensorData &modelOutput, const AlgoPostprocParams &postArgs,
+    AlgoOutput &algoOutput,
+    std::shared_ptr<RuntimeContext> &runtimeContext) const {
   if (modelOutput.datas.empty()) {
     LOG_ERRORS << "modelOutput.outputs is empty";
     return false;
   }
 
-  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
-  if (prepParams == nullptr) {
+  if (!runtimeContext->has<FrameTransformContext>("preproc_runtime_args")) {
     LOG_ERRORS << "FramePreprocessArg is nullptr";
     throw std::runtime_error("FramePreprocessArg is nullptr");
   }
+
+  const auto &prepRuntimeArgs =
+      runtimeContext->getParam<FrameTransformContext>("preproc_runtime_args");
 
   auto params = postArgs.getParams<AnchorDetParams>();
   if (params == nullptr) {
@@ -41,15 +43,15 @@ bool AnchorDetPostproc::process(const TensorData &modelOutput,
   switch (params->algoType) {
   case AnchorDetParams::AlgoType::YOLO_DET_V11: {
     Yolov11Det postproc;
-    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+    return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   case AnchorDetParams::AlgoType::RTM_DET: {
     RTMDet postproc;
-    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+    return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   case AnchorDetParams::AlgoType::NANO_DET: {
     NanoDet postproc;
-    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+    return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   default: {
     LOG_ERRORS << "Unknown detection algorithm type: "

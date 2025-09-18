@@ -15,8 +15,9 @@
 
 namespace ai_core::dnn {
 bool FprCls::process(const TensorData &modelOutput,
-                     const FramePreprocessArg &prepArgs, AlgoOutput &algoOutput,
-                     const GenericPostParams &postArgs) const {
+                     const FrameTransformContext &prepArgs,
+                     const GenericPostParams &postArgs,
+                     AlgoOutput &algoOutput) const {
   const auto &scoreOutputName = postArgs.outputNames.at(0);
   const auto &biradOutputName = postArgs.outputNames.at(1);
 

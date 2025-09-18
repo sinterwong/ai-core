@@ -21,8 +21,19 @@ public:
   FramePreprocess() = default;
   ~FramePreprocess() = default;
 
-  virtual bool process(AlgoInput &input, AlgoPreprocParams &params,
-                       TensorData &output) const override;
+  virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
+                       TensorData &,
+                       std::shared_ptr<RuntimeContext> &) const override;
+
+private:
+  TypedBuffer singleProcess(const FramePreprocessArg &args,
+                            const FrameInput &input,
+                            FrameTransformContext &runtimeArgs) const;
+
+  TypedBuffer
+  batchProcess(const FramePreprocessArg &args,
+               const std::vector<FrameInput> &input,
+               std::vector<FrameTransformContext> &runtimeArgs) const;
 };
 } // namespace ai_core::dnn
 

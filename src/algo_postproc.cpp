@@ -22,11 +22,10 @@ AlgoPostproc::~AlgoPostproc() = default;
 
 InferErrorCode AlgoPostproc::initialize() { return pImpl->initialize(); }
 
-InferErrorCode AlgoPostproc::process(const TensorData &modelOutput,
-                                     AlgoPreprocParams &preprocParams,
-                                     AlgoOutput &output,
-                                     AlgoPostprocParams &postprocParams) {
-  return pImpl->process(modelOutput, preprocParams, output, postprocParams);
+InferErrorCode AlgoPostproc::process(
+    const TensorData &modelOutput, const AlgoPostprocParams &postprocParams,
+    AlgoOutput &output, std::shared_ptr<RuntimeContext> &runtimeContext) {
+  return pImpl->process(modelOutput, output, postprocParams, runtimeContext);
 }
 
 InferErrorCode AlgoPostproc::terminate() { return pImpl->terminate(); }

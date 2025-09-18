@@ -22,10 +22,10 @@ AlgoPreproc::~AlgoPreproc() = default;
 
 InferErrorCode AlgoPreproc::initialize() { return pImpl->initialize(); }
 
-InferErrorCode AlgoPreproc::process(AlgoInput &input,
-                                    AlgoPreprocParams &preprocParams,
-                                    TensorData &modelInput) {
-  return pImpl->process(input, preprocParams, modelInput);
+InferErrorCode AlgoPreproc::process(
+    const AlgoInput &input, const AlgoPreprocParams &preprocParams,
+    TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
+  return pImpl->process(input, preprocParams, modelInput, runtimeContext);
 }
 
 InferErrorCode AlgoPreproc::terminate() { return pImpl->terminate(); }

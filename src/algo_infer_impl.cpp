@@ -42,21 +42,24 @@ InferErrorCode AlgoInference::Impl::initialize() {
   return InferErrorCode::SUCCESS;
 }
 
-InferErrorCode AlgoInference::Impl::infer(AlgoInput &input,
-                                          AlgoPreprocParams &preprocParams,
-                                          AlgoOutput &output,
-                                          AlgoPostprocParams &postprocParams) {
+InferErrorCode AlgoInference::Impl::infer(
+    const AlgoInput &input, const AlgoPreprocParams &preprocParams,
+    const AlgoPostprocParams &postprocParams, AlgoOutput &output) {
+
   if (engine_ == nullptr || preprocessor_ == nullptr ||
       postprocessor_ == nullptr) {
     LOG_ERRORS << "Please initialize first";
     return InferErrorCode::INIT_FAILED;
   }
 
+  std::shared_ptr<RuntimeContext> runtimeContext =
+      std::make_shared<RuntimeContext>();
+
   // prep const time
   auto startPre = std::chrono::steady_clock::now();
   TensorData modelInput;
-  if (preprocessor_->process(input, preprocParams, modelInput) !=
-      InferErrorCode::SUCCESS) {
+  if (preprocessor_->process(input, preprocParams, modelInput,
+                             runtimeContext) != InferErrorCode::SUCCESS) {
     LOG_ERRORS << "Failed to preprocess input.";
     return InferErrorCode::INFER_PREPROCESS_FAILED;
   }
@@ -77,8 +80,8 @@ InferErrorCode AlgoInference::Impl::infer(AlgoInput &input,
 
   // post cost time
   auto startPost = std::chrono::steady_clock::now();
-  if (postprocessor_->process(modelOutput, preprocParams, output,
-                              postprocParams) != InferErrorCode::SUCCESS) {
+  if (postprocessor_->process(modelOutput, postprocParams, output,
+                              runtimeContext) != InferErrorCode::SUCCESS) {
     LOG_ERRORS << "Failed to postprocess output.";
     return InferErrorCode::INFER_OUTPUT_ERROR;
   }

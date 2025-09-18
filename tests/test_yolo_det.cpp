@@ -148,15 +148,17 @@ TEST_P(YoloDetInferenceTest, Normal) {
       std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   algoInput.setParams(frameInput);
 
+  std::shared_ptr<RuntimeContext> runtimeContext =
+      std::make_shared<RuntimeContext>();
   TensorData modelInput;
-  framePreproc->process(algoInput, preprocParams, modelInput);
+  framePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
 
   TensorData modelOutput;
   ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);
 
   AlgoOutput algoOutput;
-  ASSERT_TRUE(yoloDetPostproc->process(modelOutput, preprocParams, algoOutput,
-                                       postprocParams));
+  ASSERT_TRUE(yoloDetPostproc->process(modelOutput, postprocParams, algoOutput,
+                                       runtimeContext));
 
   auto *detRet = algoOutput.getParams<DetRet>();
   CheckResults(detRet);
@@ -228,16 +230,20 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   std::vector<std::thread> threads;
   for (int i = 0; i < 50; ++i) {
     threads.emplace_back([&]() {
+      std::shared_ptr<RuntimeContext> runtimeContext =
+          std::make_shared<RuntimeContext>();
+
       TensorData modelInput;
-      framePreproc->process(algoInput, preprocParams, modelInput);
+      framePreproc->process(algoInput, preprocParams, modelInput,
+                            runtimeContext);
 
       TensorData modelOutput;
       ASSERT_EQ(engine->infer(modelInput, modelOutput),
                 InferErrorCode::SUCCESS);
 
       AlgoOutput algoOutput;
-      ASSERT_TRUE(yoloDetPostproc->process(modelOutput, preprocParams,
-                                           algoOutput, postprocParams));
+      ASSERT_TRUE(yoloDetPostproc->process(modelOutput, postprocParams,
+                                           algoOutput, runtimeContext));
 
       auto *detRet = algoOutput.getParams<DetRet>();
       CheckResults(detRet);

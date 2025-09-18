@@ -28,8 +28,10 @@ public:
 
   InferErrorCode initialize();
 
-  InferErrorCode infer(AlgoInput &input, AlgoPreprocParams &preprocParams,
-                       AlgoOutput &output, AlgoPostprocParams &postprocParams);
+  InferErrorCode infer(const AlgoInput &input,
+                       const AlgoPreprocParams &preprocParams,
+                       const AlgoPostprocParams &postprocParams,
+                       AlgoOutput &output);
 
   InferErrorCode terminate();
 

@@ -93,8 +93,11 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
       std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
   input.setParams(frameInput);
 
+  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+      std::make_shared<ai_core::RuntimeContext>();
+
   ai_core::TensorData modelInput;
-  preproc.process(input, preprocParams, modelInput);
+  preproc.process(input, preprocParams, modelInput, runtimeContext);
 
   ai_core::TensorData modelOutput;
   engine->infer(modelInput, modelOutput);
@@ -114,12 +117,12 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    postproc.process(modelOutput, preprocParams, algoOutput, postprocParams);
+    postproc.process(modelOutput, postprocParams, algoOutput, runtimeContext);
   }
   // =================================================
 
   for (auto _ : state) {
-    postproc.process(modelOutput, preprocParams, algoOutput, postprocParams);
+    postproc.process(modelOutput, postprocParams, algoOutput, runtimeContext);
   }
 }
 BENCHMARK(BM_CPU_YoloDetPostproc)

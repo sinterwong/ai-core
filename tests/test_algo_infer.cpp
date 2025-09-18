@@ -99,7 +99,7 @@ TEST(AlgoInferenceTest, YoloDet) {
   algoInput.setParams(frameInput);
 
   AlgoOutput algoOutput;
-  ASSERT_EQ(algoInf.infer(algoInput, preprocParams, algoOutput, postprocParams),
+  ASSERT_EQ(algoInf.infer(algoInput, preprocParams, postprocParams, algoOutput),
             InferErrorCode::SUCCESS);
 
   auto *detRet = algoOutput.getParams<DetRet>();

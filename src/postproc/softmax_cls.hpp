@@ -17,8 +17,8 @@ class SoftmaxCls : public ICVGenericPostprocessor {
 public:
   explicit SoftmaxCls() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const GenericPostParams &) const override;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const GenericPostParams &, AlgoOutput &) const override;
 
 private:
   AlgoPostprocParams mParams;

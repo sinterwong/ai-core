@@ -115,6 +115,9 @@ TEST_P(OCRRecoInferTest, Normal) {
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
   engine->prettyPrintModelInfos();
 
+  std::shared_ptr<RuntimeContext> runtimeContext =
+      std::make_shared<RuntimeContext>();
+
   AlgoPreprocParams preprocParams;
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {128, 32, 1};
@@ -142,7 +145,7 @@ TEST_P(OCRRecoInferTest, Normal) {
   algoInput.setParams(frameInput);
 
   TensorData modelInput;
-  framePreproc->process(algoInput, preprocParams, modelInput);
+  framePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
 
   std::vector<int64_t> inputLengths = {1};
   TypedBuffer inputLengthsTensor;
@@ -164,8 +167,8 @@ TEST_P(OCRRecoInferTest, Normal) {
   genericPost.outputNames = {"output_lengths", "argmax_output"};
   postprocParams.setParams(genericPost);
   AlgoOutput algoOutput;
-  ASSERT_TRUE(ocrPostproc->process(modelOutput, preprocParams, algoOutput,
-                                   postprocParams));
+  ASSERT_TRUE(ocrPostproc->process(modelOutput, postprocParams, algoOutput,
+                                   runtimeContext));
   OCRRecoRet *ocrRet = algoOutput.getParams<OCRRecoRet>();
   ASSERT_NE(ocrRet, nullptr);
   ASSERT_EQ(ocrRet->outputs.size(), 9);

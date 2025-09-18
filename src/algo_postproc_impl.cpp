@@ -33,12 +33,12 @@ InferErrorCode AlgoPostproc::Impl::initialize() {
   return InferErrorCode::SUCCESS;
 }
 
-InferErrorCode AlgoPostproc::Impl::process(const TensorData &modelOutput,
-                                           AlgoPreprocParams &preprocParams,
-                                           AlgoOutput &output,
-                                           AlgoPostprocParams &postprocParams) {
-  if (!postprocessor_->process(modelOutput, preprocParams, output,
-                               postprocParams)) {
+InferErrorCode
+AlgoPostproc::Impl::process(const TensorData &modelOutput, AlgoOutput &output,
+                            const AlgoPostprocParams &postprocParams,
+                            std::shared_ptr<RuntimeContext> &runtimeContext) {
+  if (!postprocessor_->process(modelOutput, postprocParams, output,
+                               runtimeContext)) {
     LOG_ERRORS << "Failed to postprocess output.";
     return InferErrorCode::INFER_OUTPUT_ERROR;
   }

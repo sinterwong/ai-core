@@ -14,9 +14,9 @@
 
 namespace ai_core::dnn {
 bool SoftmaxCls::process(const TensorData &modelOutput,
-                         const FramePreprocessArg &prepArgs,
-                         AlgoOutput &algoOutput,
-                         const GenericPostParams &postArgs) const {
+                         const FrameTransformContext &prepArgs,
+                         const GenericPostParams &postArgs,
+                         AlgoOutput &algoOutput) const {
   if (modelOutput.datas.empty()) {
     LOG_ERRORS << "modelOutput.outputs is empty";
     return false;

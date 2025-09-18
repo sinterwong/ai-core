@@ -21,8 +21,9 @@ class CVGenericPostproc : public PostprocssBase {
 public:
   explicit CVGenericPostproc() = default;
 
-  virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
-                       AlgoPostprocParams &) const override;
+  virtual bool process(const TensorData &, const AlgoPostprocParams &,
+                       AlgoOutput &,
+                       std::shared_ptr<RuntimeContext> &) const override;
 };
 } // namespace ai_core::dnn
 

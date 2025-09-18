@@ -16,16 +16,21 @@
 #include "ai_core/typed_buffer.hpp"
 #include "preproc/frame_preprocessor_base.hpp"
 
-namespace ai_core::dnn::gpu {
+namespace ai_core::dnn::gpu
+{
 
-class GpuGenericCudaPreprocessor : public IFramePreprocessor {
-public:
-  explicit GpuGenericCudaPreprocessor() = default;
-  ~GpuGenericCudaPreprocessor() override = default;
+  class GpuGenericCudaPreprocessor : public IFramePreprocessor
+  {
+  public:
+    explicit GpuGenericCudaPreprocessor() = default;
+    ~GpuGenericCudaPreprocessor() override = default;
 
-  TypedBuffer process(FramePreprocessArg &args,
-                      const FrameInput &input) const override;
-};
+    TypedBuffer process(FramePreprocessArg &args,
+                        const FrameInput &input) const override;
+
+    TypedBuffer batchProcess(FramePreprocessArg &args,
+                             const std::vector<FrameInput> &inputs) const override;
+  };
 
 } // namespace ai_core::dnn::gpu
 

@@ -21,8 +21,9 @@ public:
   FrameWithMaskPreprocess() = default;
   ~FrameWithMaskPreprocess() = default;
 
-  virtual bool process(AlgoInput &input, AlgoPreprocParams &params,
-                       TensorData &output) const override;
+  virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
+                       TensorData &,
+                       std::shared_ptr<RuntimeContext> &) const override;
 };
 } // namespace ai_core::dnn
 

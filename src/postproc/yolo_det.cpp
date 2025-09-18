@@ -15,9 +15,9 @@
 
 namespace ai_core::dnn {
 bool Yolov11Det::process(const TensorData &modelOutput,
-                         const FramePreprocessArg &prepArgs,
-                         AlgoOutput &algoOutput,
-                         const AnchorDetParams &postArgs) const {
+                         const FrameTransformContext &prepArgs,
+                         const AnchorDetParams &postArgs,
+                         AlgoOutput &algoOutput) const {
   const auto &outputShapes = modelOutput.shapes;
   const auto &inputShape = prepArgs.modelInputShape;
   const auto &outputs = modelOutput.datas;
@@ -60,7 +60,7 @@ bool Yolov11Det::process(const TensorData &modelOutput,
 
 std::vector<BBox> Yolov11Det::processRawOutput(
     const cv::Mat &transposedOutput, const Shape &inputShape,
-    const FramePreprocessArg &prepArgs, const AnchorDetParams &postArgs,
+    const FrameTransformContext &prepArgs, const AnchorDetParams &postArgs,
     int numClasses) const {
   std::vector<BBox> results;
   Shape originShape;

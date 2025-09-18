@@ -15,9 +15,9 @@
 
 namespace ai_core::dnn {
 bool UNetDaulOutputSeg::process(const TensorData &modelOutput,
-                                const FramePreprocessArg &prepArgs,
-                                AlgoOutput &algoOutput,
-                                const GenericPostParams &postArgs) const {
+                                const FrameTransformContext &prepArgs,
+                                const GenericPostParams &postArgs,
+                                AlgoOutput &algoOutput) const {
 
   if (postArgs.outputNames.size() != 2) {
     LOG_ERRORS

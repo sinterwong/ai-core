@@ -25,10 +25,18 @@ class CpuGenericCvPreprocessor : public IFramePreprocessor {
 public:
   explicit CpuGenericCvPreprocessor() {}
 
-  TypedBuffer process(FramePreprocessArg &args,
-                      const FrameInput &input) const override;
+  TypedBuffer process(const FramePreprocessArg &, const FrameInput &,
+                      FrameTransformContext &) const override;
+
+  TypedBuffer batchProcess(const FramePreprocessArg &,
+                           const std::vector<FrameInput> &,
+                           std::vector<FrameTransformContext> &) const override;
 
 private:
+  cv::Mat preprocessSingleFrame(const FramePreprocessArg &params,
+                                const FrameInput &frameInput,
+                                FrameTransformContext &runtimeArgs) const;
+
   TypedBuffer preprocessFP32(const cv::Mat &normalizedImage, int inputChannels,
                              int inputHeight, int inputWidth,
                              bool hwc2chw) const;

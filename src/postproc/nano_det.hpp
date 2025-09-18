@@ -17,8 +17,8 @@ class NanoDet : public IAnchorDetPostprocessor {
 public:
   explicit NanoDet() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const AnchorDetParams &) const override;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const AnchorDetParams &, AlgoOutput &) const override;
 };
 } // namespace ai_core::dnn
 

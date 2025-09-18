@@ -68,6 +68,9 @@ TEST_F(TaskflowTest, YoloAlgoProcess) {
   auto postproc = std::make_shared<AlgoPostproc>("AnchorDetPostproc");
   ASSERT_EQ(postproc->initialize(), InferErrorCode::SUCCESS);
 
+  std::shared_ptr<RuntimeContext> runtimeContext =
+      std::make_shared<RuntimeContext>();
+
   AlgoPreprocParams preprocParams;
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
@@ -125,7 +128,8 @@ TEST_F(TaskflowTest, YoloAlgoProcess) {
       taskflow
           .emplace([&]() {
             std::cout << "--- Stage: Preprocessing ---\n";
-            ASSERT_EQ(preproc->process(algoInput, preprocParams, modelInput),
+            ASSERT_EQ(preproc->process(algoInput, preprocParams, modelInput,
+                                       runtimeContext),
                       InferErrorCode::SUCCESS);
           })
           .name("Preprocess");
@@ -142,8 +146,8 @@ TEST_F(TaskflowTest, YoloAlgoProcess) {
       taskflow
           .emplace([&]() {
             std::cout << "--- Stage: Postprocessing ---\n";
-            ASSERT_EQ(postproc->process(modelOutput, preprocParams, algoOutput,
-                                        postprocParams),
+            ASSERT_EQ(postproc->process(modelOutput, postprocParams, algoOutput,
+                                        runtimeContext),
                       InferErrorCode::SUCCESS);
           })
           .name("Postprocess");

@@ -17,8 +17,8 @@ class RTMDet : public IAnchorDetPostprocessor {
 public:
   explicit RTMDet() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const AnchorDetParams &) const override;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const AnchorDetParams &, AlgoOutput &) const override;
 };
 } // namespace ai_core::dnn
 

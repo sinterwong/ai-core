@@ -25,8 +25,10 @@ public:
 
   InferErrorCode initialize();
 
-  InferErrorCode process(AlgoInput &input, AlgoPreprocParams &preprocParams,
-                         TensorData &modelInput);
+  InferErrorCode process(const AlgoInput &input,
+                         const AlgoPreprocParams &preprocParams,
+                         TensorData &modelInput,
+                         std::shared_ptr<RuntimeContext> &runtimeContext);
 
   InferErrorCode terminate();
 
