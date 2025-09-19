@@ -36,6 +36,11 @@ public:
                        const AlgoPostprocParams &postprocParams,
                        AlgoOutput &output);
 
+  InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs,
+                            const AlgoPreprocParams &preprocParams,
+                            const AlgoPostprocParams &postprocParams,
+                            std::vector<AlgoOutput> &outputs);
+
   InferErrorCode terminate();
 
   const ModelInfo &getModelInfo() const noexcept;

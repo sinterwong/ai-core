@@ -304,11 +304,12 @@ namespace ai_core::dnn::gpu
     size_t finalByteSize = totalElements * TypedBuffer::getElementSize(args.dataType);
     TypedBuffer finalDeviceBuffer = TypedBuffer::createFromGpu(args.dataType, finalByteSize);
 
+    TypedBuffer chwBatchBuffer;
     TypedBuffer *sourceBufferForConversion = &hwcBatchBuffer;
 
     if (args.hwc2chw)
     {
-      TypedBuffer chwBatchBuffer = TypedBuffer::createFromGpu(DataType::FLOAT32, byteSizeFP32);
+      chwBatchBuffer = TypedBuffer::createFromGpu(DataType::FLOAT32, byteSizeFP32);
       cuda_op::batch_hwc_to_chw_gpu((const float *)hwcBatchBuffer.getRawDevicePtr(),
                                     (float *)chwBatchBuffer.getRawDevicePtr(),
                                     args.modelInputShape.h, args.modelInputShape.w,
@@ -325,14 +326,13 @@ namespace ai_core::dnn::gpu
     else
     { // FLOAT32
       if (sourceBufferForConversion != &finalDeviceBuffer)
-      { // only copy if necessary
+      {
         CHECK_CUDA(cudaMemcpy(finalDeviceBuffer.getRawDevicePtr(),
                               sourceBufferForConversion->getRawDevicePtr(),
                               finalByteSize, cudaMemcpyDeviceToDevice));
       }
     }
 
-    // --- 5. 根据输出位置决定是否拷回CPU ---
     if (args.outputLocation == BufferLocation::GPU_DEVICE)
     {
       return finalDeviceBuffer;

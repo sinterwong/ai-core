@@ -29,6 +29,14 @@ InferErrorCode AlgoInference::infer(const AlgoInput &input,
   return pImpl->infer(input, preprocParams, postprocParams, output);
 }
 
+InferErrorCode
+AlgoInference::batchInfer(const std::vector<AlgoInput> &inputs,
+                          const AlgoPreprocParams &preprocParams,
+                          const AlgoPostprocParams &postprocParams,
+                          std::vector<AlgoOutput> &outputs) {
+  return pImpl->batchInfer(inputs, preprocParams, postprocParams, outputs);
+}
+
 InferErrorCode AlgoInference::terminate() { return pImpl->terminate(); }
 
 const ModelInfo &AlgoInference::getModelInfo() const noexcept {
