@@ -26,6 +26,11 @@ public:
 
   virtual bool process(const TensorData &, const FrameTransformContext &,
                        const GenericPostParams &, AlgoOutput &) const = 0;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const GenericPostParams &,
+                            std::vector<AlgoOutput> &) const = 0;
 };
 
 } // namespace ai_core

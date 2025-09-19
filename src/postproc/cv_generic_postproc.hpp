@@ -24,6 +24,10 @@ public:
   virtual bool process(const TensorData &, const AlgoPostprocParams &,
                        AlgoOutput &,
                        std::shared_ptr<RuntimeContext> &) const override;
+
+  virtual bool batchProcess(const TensorData &, const AlgoPostprocParams &,
+                            std::vector<AlgoOutput> &,
+                            std::shared_ptr<RuntimeContext> &) const override;
 };
 } // namespace ai_core::dnn
 

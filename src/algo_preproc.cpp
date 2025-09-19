@@ -28,6 +28,12 @@ InferErrorCode AlgoPreproc::process(
   return pImpl->process(input, preprocParams, modelInput, runtimeContext);
 }
 
+InferErrorCode AlgoPreproc::batchProcess(
+    const std::vector<AlgoInput> &input, const AlgoPreprocParams &preprocParams,
+    TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
+  return pImpl->batchProcess(input, preprocParams, modelInput, runtimeContext);
+}
+
 InferErrorCode AlgoPreproc::terminate() { return pImpl->terminate(); }
 
 } // namespace ai_core::dnn

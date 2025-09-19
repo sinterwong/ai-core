@@ -35,11 +35,9 @@ struct FramePreprocessArg {
     OPENCV_CPU_GENERIC = 0,
     NCNN_GENERIC,
     CUDA_GPU_GENERIC,
-    BATCH_OPENCV_CPU_GENERIC,
-    BATCH_CUDA_GPU_GENERIC,
 
     // ROI -> Concat -> Resize -> Normalize -> Layout convert
-    OPENCV_CPU_CONCAT_MASK,
+    OPENCV_CPU_CONCAT_MASK
   };
   FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
   Shape modelInputShape;

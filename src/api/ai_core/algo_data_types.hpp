@@ -11,8 +11,7 @@
 namespace ai_core {
 // Algo input
 using AlgoInput =
-    ParamCenter<std::variant<std::monostate, FrameInput, BatchFrameInput,
-                             FrameInputWithMask>>;
+    ParamCenter<std::variant<std::monostate, FrameInput, FrameInputWithMask>>;
 
 // Algo output
 using AlgoOutput =

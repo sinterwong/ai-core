@@ -19,6 +19,15 @@ public:
 
   virtual bool process(const TensorData &, const FrameTransformContext &,
                        const GenericPostParams &, AlgoOutput &) const override;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const GenericPostParams &,
+                            std::vector<AlgoOutput> &) const override;
+
+private:
+  FprClsRet processSingleItem(const float *scoresData, int numClasses,
+                              const float *biradsData, int numBirads) const;
 };
 } // namespace ai_core::dnn
 

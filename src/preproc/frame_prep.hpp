@@ -25,6 +25,10 @@ public:
                        TensorData &,
                        std::shared_ptr<RuntimeContext> &) const override;
 
+  virtual bool batchProcess(const std::vector<AlgoInput> &,
+                            const AlgoPreprocParams &, TensorData &,
+                            std::shared_ptr<RuntimeContext> &) const override;
+
 private:
   TypedBuffer singleProcess(const FramePreprocessArg &args,
                             const FrameInput &input,

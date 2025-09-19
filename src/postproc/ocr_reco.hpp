@@ -20,7 +20,15 @@ public:
   virtual bool process(const TensorData &, const FrameTransformContext &,
                        const GenericPostParams &, AlgoOutput &) const override;
 
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const GenericPostParams &,
+                            std::vector<AlgoOutput> &) const override;
+
 private:
+  OCRRecoRet processSingleItem(const int64_t *argmaxData, size_t sequenceLength,
+                               int64_t outputLength) const;
+
   std::vector<int64_t> ctcProcess(const std::vector<int64_t> &outputs) const;
 };
 } // namespace ai_core::dnn

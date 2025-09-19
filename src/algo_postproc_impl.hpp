@@ -29,6 +29,11 @@ public:
                          const AlgoPostprocParams &postprocParams,
                          std::shared_ptr<RuntimeContext> &runtimeContext);
 
+  InferErrorCode batchProcess(const TensorData &modelOutput,
+                              std::vector<AlgoOutput> &output,
+                              const AlgoPostprocParams &postprocParams,
+                              std::shared_ptr<RuntimeContext> &runtimeContext);
+
   InferErrorCode terminate();
 
 private:

@@ -58,6 +58,80 @@ bool Yolov11Det::process(const TensorData &modelOutput,
   return true;
 }
 
+bool Yolov11Det::batchProcess(
+    const TensorData &modelOutput,
+    const std::vector<FrameTransformContext> &prepArgs,
+    const AnchorDetParams &postArgs,
+    std::vector<AlgoOutput> &algoOutput) const {
+  const auto &outputs = modelOutput.datas;
+  if (outputs.size() != 1) {
+    LOG_ERRORS << "Yolov11Det::batchProcess unexpected size of outputs: "
+               << outputs.size();
+    throw std::runtime_error(
+        "Yolov11Det::batchProcess expects only 1 output tensor.");
+  }
+  const auto &outputTensor = outputs.at(postArgs.outputNames.at(0));
+  const auto &outputShape = modelOutput.shapes.at(postArgs.outputNames.at(0));
+
+  if (outputShape.size() != 3) {
+    LOG_ERRORS << "Yolov11Det::batchProcess unexpected output dimensions: "
+               << outputShape.size();
+    throw std::runtime_error("Yolov11Det::batchProcess expects a 3D output "
+                             "tensor [batch, stride, num_results].");
+  }
+  const int batchSize = outputShape.at(0);
+  const int strideNum = outputShape.at(1);
+  const int signalResultNum = outputShape.at(2);
+  const int numClasses = strideNum - 4;
+
+  if (batchSize != prepArgs.size()) {
+    LOG_ERRORS
+        << "Yolov11Det::batchProcess mismatch between model output batch size ("
+        << batchSize << ") and prepArgs size (" << prepArgs.size() << ").";
+    throw std::runtime_error(
+        "Batch size mismatch in Yolov11Det::batchProcess.");
+  }
+
+  algoOutput.resize(batchSize);
+  const size_t elementsPerSample =
+      static_cast<size_t>(strideNum) * signalResultNum;
+
+  const float *batchedFloatData = nullptr;
+  cv::Mat fullFloatMat;
+  if (outputTensor.dataType() == DataType::FLOAT32) {
+    batchedFloatData = outputTensor.getHostPtr<float>();
+  } else if (outputTensor.dataType() == DataType::FLOAT16) {
+    const uint16_t *fp16Data = outputTensor.getHostPtr<uint16_t>();
+    cv::Mat halfMat(1, outputTensor.getElementCount(), CV_16F,
+                    const_cast<uint16_t *>(fp16Data));
+    halfMat.convertTo(fullFloatMat, CV_32F);
+    batchedFloatData = fullFloatMat.ptr<float>();
+  } else {
+    throw std::runtime_error(
+        "Unsupported data type in Yolov11Det::batchProcess.");
+  }
+
+  for (int i = 0; i < batchSize; ++i) {
+    const float *currentSampleData = batchedFloatData + i * elementsPerSample;
+
+    cv::Mat singleOutputMat(strideNum, signalResultNum, CV_32F,
+                            const_cast<float *>(currentSampleData));
+    cv::Mat transposedOutput;
+    cv::transpose(singleOutputMat, transposedOutput);
+
+    const auto &currentPrepArgs = prepArgs[i];
+    const auto &inputShape = currentPrepArgs.modelInputShape;
+
+    std::vector<BBox> results = processRawOutput(
+        transposedOutput, inputShape, currentPrepArgs, postArgs, numClasses);
+
+    DetRet detRet;
+    detRet.bboxes = utils::NMS(results, postArgs.nmsThre, postArgs.condThre);
+    algoOutput[i].setParams(detRet);
+  }
+  return true;
+}
+
 std::vector<BBox> Yolov11Det::processRawOutput(
     const cv::Mat &transposedOutput, const Shape &inputShape,
     const FrameTransformContext &prepArgs, const AnchorDetParams &postArgs,

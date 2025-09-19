@@ -19,6 +19,17 @@ public:
 
   virtual bool process(const TensorData &, const FrameTransformContext &,
                        const AnchorDetParams &, AlgoOutput &) const override;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const AnchorDetParams &,
+                            std::vector<AlgoOutput> &) const override;
+
+private:
+  DetRet processSingle(const float *detDataPtr, const float *clsDataPtr,
+                       int anchorNum, int numClasses,
+                       const FrameTransformContext &prepArgs,
+                       const AnchorDetParams &postArgs) const;
 };
 } // namespace ai_core::dnn
 

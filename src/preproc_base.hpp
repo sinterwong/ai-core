@@ -23,6 +23,10 @@ public:
   virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
                        TensorData &,
                        std::shared_ptr<RuntimeContext> &) const = 0;
+
+  virtual bool batchProcess(const std::vector<AlgoInput> &,
+                            const AlgoPreprocParams &, TensorData &,
+                            std::shared_ptr<RuntimeContext> &) const = 0;
 };
 } // namespace ai_core::dnn
 

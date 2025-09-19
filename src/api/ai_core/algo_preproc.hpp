@@ -31,6 +31,11 @@ public:
                          TensorData &modelInput,
                          std::shared_ptr<RuntimeContext> &runtimeContext);
 
+  InferErrorCode batchProcess(const std::vector<AlgoInput> &input,
+                              const AlgoPreprocParams &preprocParams,
+                              TensorData &modelInput,
+                              std::shared_ptr<RuntimeContext> &runtimeContext);
+
   InferErrorCode terminate();
 
 private:

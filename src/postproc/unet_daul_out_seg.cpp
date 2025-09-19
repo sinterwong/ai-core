@@ -18,32 +18,89 @@ bool UNetDaulOutputSeg::process(const TensorData &modelOutput,
                                 const FrameTransformContext &prepArgs,
                                 const GenericPostParams &postArgs,
                                 AlgoOutput &algoOutput) const {
+  if (postArgs.outputNames.size() != 2) {
+    LOG_ERRORS
+        << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
+    return false;
+  }
+  const auto &probOutputName = postArgs.outputNames.at(0);
+  const auto &maskOutputName = postArgs.outputNames.at(1);
+
+  auto probOutput = modelOutput.datas.at(probOutputName);
+  auto maskOutput = modelOutput.datas.at(maskOutputName);
+  const auto &probShape = modelOutput.shapes.at(probOutputName);
+  const auto &maskShape = modelOutput.shapes.at(maskOutputName);
+
+  DaulRawSegRet ret =
+      processSingleItem(probOutput.getHostPtr<float>(), probShape,
+                        maskOutput.getHostPtr<float>(), maskShape, prepArgs);
+
+  algoOutput.setParams(ret);
+  return true;
+}
+
+bool UNetDaulOutputSeg::batchProcess(
+    const TensorData &modelOutput,
+    const std::vector<FrameTransformContext> &prepArgs,
+    const GenericPostParams &postArgs,
+    std::vector<AlgoOutput> &algoOutput) const {
 
   if (postArgs.outputNames.size() != 2) {
     LOG_ERRORS
         << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
     return false;
   }
-
   const auto &probOutputName = postArgs.outputNames.at(0);
   const auto &maskOutputName = postArgs.outputNames.at(1);
 
-  const auto &outputShapes = modelOutput.shapes;
-  const auto &outputs = modelOutput.datas;
+  auto probOutput = modelOutput.datas.at(probOutputName);
+  auto maskOutput = modelOutput.datas.at(maskOutputName);
+  const auto &probShape = modelOutput.shapes.at(probOutputName);
+  const auto &maskShape = modelOutput.shapes.at(maskOutputName);
+
+  int batchSize = probShape.at(0);
+  if (batchSize != prepArgs.size()) {
+    LOG_ERRORS << "Batch size from model output (" << batchSize
+               << ") does not match prepArgs size (" << prepArgs.size() << ").";
+    return false;
+  }
+
+  // 计算单个样本的元素数量
+  size_t probItemSize = probOutput.getElementCount() / batchSize;
+  size_t maskItemSize = maskOutput.getElementCount() / batchSize;
+
+  const float *probDataPtr = probOutput.getHostPtr<float>();
+  const float *maskDataPtr = maskOutput.getHostPtr<float>();
+
+  algoOutput.resize(batchSize);
+
+  for (int i = 0; i < batchSize; ++i) {
+    const float *currentProbData = probDataPtr + i * probItemSize;
+    const float *currentMaskData = maskDataPtr + i * maskItemSize;
+
+    // 在循环中调用辅助函数
+    DaulRawSegRet ret = processSingleItem(
+        currentProbData, probShape, currentMaskData, maskShape, prepArgs[i]);
+    algoOutput[i].setParams(ret);
+  }
+
+  return true;
+}
+
+DaulRawSegRet UNetDaulOutputSeg::processSingleItem(
+    const float *probData, const std::vector<int> &probShape,
+    const float *maskData, const std::vector<int> &maskShape,
+    const FrameTransformContext &prepArgs) const {
+
+  int height = probShape[2];
+  int width = probShape[1];
+  cv::Mat probCvMat(height, width, CV_32FC1, const_cast<float *>(probData));
+
+  height = maskShape[2];
+  width = maskShape[1];
+  cv::Mat maskCvMat(height, width, CV_32FC1, const_cast<float *>(maskData));
 
   DaulRawSegRet ret;
-
-  auto probOutput = outputs.at(probOutputName);
-  auto maskOutput = outputs.at(maskOutputName);
-
-  std::vector<int> probShape = outputShapes.at(probOutputName);
-  std::vector<int> maskShape = outputShapes.at(maskOutputName);
-
-  cv::Mat probCvMat(probShape[2], probShape[1], CV_32FC1,
-                    const_cast<void *>(probOutput.getRawHostPtr()));
-  cv::Mat maskCvMat(maskShape[2], maskShape[1], CV_32FC1,
-                    const_cast<void *>(maskOutput.getRawHostPtr()));
-
   ret.prob = std::make_shared<cv::Mat>(probCvMat);
   ret.mask = std::make_shared<cv::Mat>(maskCvMat);
 
@@ -52,8 +109,6 @@ bool UNetDaulOutputSeg::process(const TensorData &modelOutput,
       static_cast<float>(prepArgs.modelInputShape.w) / prepArgs.originShape.w;
   ret.leftShift = prepArgs.leftPad;
   ret.topShift = prepArgs.topPad;
-
-  algoOutput.setParams(ret);
-  return true;
+  return ret;
 }
 } // namespace ai_core::dnn

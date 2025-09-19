@@ -45,6 +45,18 @@ AlgoPostproc::Impl::process(const TensorData &modelOutput, AlgoOutput &output,
   return InferErrorCode::SUCCESS;
 }
 
+InferErrorCode AlgoPostproc::Impl::batchProcess(
+    const TensorData &modelOutput, std::vector<AlgoOutput> &output,
+    const AlgoPostprocParams &postprocParams,
+    std::shared_ptr<RuntimeContext> &runtimeContext) {
+  if (!postprocessor_->batchProcess(modelOutput, postprocParams, output,
+                                    runtimeContext)) {
+    LOG_ERRORS << "Failed to batch postprocess output.";
+    return InferErrorCode::INFER_OUTPUT_ERROR;
+  }
+  return InferErrorCode::SUCCESS;
+}
+
 InferErrorCode AlgoPostproc::Impl::terminate() {
   // No-op
   return InferErrorCode::SUCCESS;

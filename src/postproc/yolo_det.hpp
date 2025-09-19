@@ -21,6 +21,11 @@ public:
   virtual bool process(const TensorData &, const FrameTransformContext &,
                        const AnchorDetParams &, AlgoOutput &) const override;
 
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const AnchorDetParams &,
+                            std::vector<AlgoOutput> &) const override;
+
 private:
   std::vector<BBox> processRawOutput(const cv::Mat &transposedOutput,
                                      const Shape &inputShape,
