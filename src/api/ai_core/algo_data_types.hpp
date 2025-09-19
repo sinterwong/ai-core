@@ -30,6 +30,9 @@ using AlgoPostprocParams =
 // Algo construct params
 using AlgoConstructParams = DataPacket;
 
+// Runtime Context
+using RuntimeContext = DataPacket;
+
 // Algo module types
 struct AlgoModuleTypes {
   std::string preprocModule;

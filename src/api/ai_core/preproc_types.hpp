@@ -23,6 +23,12 @@ using Rect = Rect_<int>;
 
 namespace ai_core {
 
+struct Shape {
+  int w;
+  int h;
+  int c;
+};
+
 struct FramePreprocessArg {
   enum class FramePreprocType : int8_t {
     // ROI -> Resize -> Normalize -> Layout convert
@@ -33,28 +39,28 @@ struct FramePreprocessArg {
     // ROI -> Concat -> Resize -> Normalize -> Layout convert
     OPENCV_CPU_CONCAT_MASK
   };
-
   FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
-
-  std::shared_ptr<cv::Rect> roi;
-  Shape originShape;
   Shape modelInputShape;
-
   bool needResize;
   bool isEqualScale;
   std::vector<int> pad;
-  int topPad = 0;
-  int leftPad = 0;
-
   std::vector<float> meanVals;
   std::vector<float> normVals;
-
   bool hwc2chw;
-
   DataType dataType;
   BufferLocation outputLocation = BufferLocation::CPU;
   std::vector<std::string> inputNames;
 };
+
+struct FrameTransformContext {
+  bool isEqualScale;
+  Shape originShape;
+  Shape modelInputShape;
+  std::shared_ptr<cv::Rect> roi;
+  int topPad;
+  int leftPad;
+};
+
 } // namespace ai_core
 
 #endif // __PREPROCESS_TYPES_HPP__

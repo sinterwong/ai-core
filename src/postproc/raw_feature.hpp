@@ -17,8 +17,16 @@ class RawFeature : public ICVGenericPostprocessor {
 public:
   explicit RawFeature() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const GenericPostParams &) const override;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const GenericPostParams &, AlgoOutput &) const override;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const GenericPostParams &,
+                            std::vector<AlgoOutput> &) const override;
+
+private:
+  FeatureRet processSingleItem(const float *featureData, int numFeatures) const;
 };
 } // namespace ai_core::dnn
 

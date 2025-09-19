@@ -22,11 +22,19 @@ AlgoInference::~AlgoInference() = default;
 
 InferErrorCode AlgoInference::initialize() { return pImpl->initialize(); }
 
-InferErrorCode AlgoInference::infer(AlgoInput &input,
-                                    AlgoPreprocParams &preprocParams,
-                                    AlgoOutput &output,
-                                    AlgoPostprocParams &postprocParams) {
-  return pImpl->infer(input, preprocParams, output, postprocParams);
+InferErrorCode AlgoInference::infer(const AlgoInput &input,
+                                    const AlgoPreprocParams &preprocParams,
+                                    const AlgoPostprocParams &postprocParams,
+                                    AlgoOutput &output) {
+  return pImpl->infer(input, preprocParams, postprocParams, output);
+}
+
+InferErrorCode
+AlgoInference::batchInfer(const std::vector<AlgoInput> &inputs,
+                          const AlgoPreprocParams &preprocParams,
+                          const AlgoPostprocParams &postprocParams,
+                          std::vector<AlgoOutput> &outputs) {
+  return pImpl->batchInfer(inputs, preprocParams, postprocParams, outputs);
 }
 
 InferErrorCode AlgoInference::terminate() { return pImpl->terminate(); }

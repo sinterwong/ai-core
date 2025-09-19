@@ -26,8 +26,10 @@
 
 namespace ai_core::dnn {
 
-bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
-                              TensorData &output) const {
+bool FramePreprocess::process(
+    const AlgoInput &input, const AlgoPreprocParams &params, TensorData &output,
+    std::shared_ptr<RuntimeContext> &runtimeContext) const {
+
   auto paramsPtr = params.getParams<FramePreprocessArg>();
   if (paramsPtr == nullptr) {
     LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
@@ -40,89 +42,152 @@ bool FramePreprocess::process(AlgoInput &input, AlgoPreprocParams &params,
   }
 
   auto frameInput = input.getParams<FrameInput>();
+
   if (!frameInput) {
+    LOG_ERRORS << "Unsupported AlgoInput type for FramePreprocess.";
+    return false;
+  }
+  FrameTransformContext singleRuntimeArgs;
+  auto data = singleProcess(*paramsPtr, *frameInput, singleRuntimeArgs);
+  runtimeContext->setParam("preproc_runtime_args", singleRuntimeArgs);
+  output.datas.insert(std::make_pair(paramsPtr->inputNames[0], data));
+
+  std::vector<int> shape;
+  if (paramsPtr->hwc2chw) {
+    shape = {1, paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
+             paramsPtr->modelInputShape.w};
+  } else {
+    shape = {1, paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
+             paramsPtr->modelInputShape.c};
+  }
+  output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
+  return true;
+}
+
+bool FramePreprocess::batchProcess(
+    const std::vector<AlgoInput> &input, const AlgoPreprocParams &params,
+    TensorData &output, std::shared_ptr<RuntimeContext> &runtimeContext) const {
+  auto paramsPtr = params.getParams<FramePreprocessArg>();
+  if (paramsPtr == nullptr) {
+    LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
     return false;
   }
 
-  if (frameInput->image == nullptr) {
-    LOG_ERRORS << "Input frame is null.";
-    throw std::runtime_error("Input frame is null.");
+  if (paramsPtr->inputNames.size() != 1) {
+    LOG_ERRORS << "FramePreprocess expects exactly one input name.";
+    return false;
   }
 
-  if (frameInput->inputRoi == nullptr) {
-    frameInput->inputRoi = std::make_shared<cv::Rect>(
-        0, 0, frameInput->image->cols, frameInput->image->rows);
-  }
-
-  const auto &image = *frameInput->image;
-  const auto &roi = *frameInput->inputRoi;
-  if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
-      roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
-    LOG_ERRORS << "Invalid ROI: " << roi << " for image size: " << image.size();
-    throw std::runtime_error("Invalid ROI.");
-  }
-
-  // update the parameters used in the pre-processing
-  paramsPtr->roi = frameInput->inputRoi;
-  paramsPtr->originShape = {frameInput->image->cols, frameInput->image->rows,
-                            frameInput->image->channels()};
-
-  switch (paramsPtr->preprocTaskType) {
-  case FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC: {
-    std::unique_ptr<IFramePreprocessor> processor_ =
-        std::make_unique<cpu::CpuGenericCvPreprocessor>();
-    output.datas.insert(
-        std::make_pair(paramsPtr->inputNames[0],
-                       processor_->process(*paramsPtr, *frameInput)));
-    std::vector<int> shape;
-    if (paramsPtr->hwc2chw) {
-      shape = {1, paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
-               paramsPtr->modelInputShape.w};
-    } else {
-      shape = {1, paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
-               paramsPtr->modelInputShape.c};
+  std::vector<FrameInput> frameInputs;
+  frameInputs.reserve(input.size());
+  for (const auto &algoInput : input) {
+    auto frameInput = algoInput.getParams<FrameInput>();
+    if (!frameInput) {
+      LOG_ERRORS << "Unsupported AlgoInput type for FramePreprocess.";
+      return false;
     }
-    output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
-    break;
+    frameInputs.push_back(*frameInput);
+  }
+
+  std::vector<FrameTransformContext> batchRuntimeArgs(input.size());
+  auto data = batchProcess(*paramsPtr, frameInputs, batchRuntimeArgs);
+  runtimeContext->setParam("preproc_runtime_args_batch", batchRuntimeArgs);
+  output.datas.insert(std::make_pair(paramsPtr->inputNames[0], data));
+
+  std::vector<int> shape;
+  if (paramsPtr->hwc2chw) {
+    shape = {static_cast<int>(input.size()), paramsPtr->modelInputShape.c,
+             paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w};
+  } else {
+    shape = {static_cast<int>(input.size()), paramsPtr->modelInputShape.h,
+             paramsPtr->modelInputShape.w, paramsPtr->modelInputShape.c};
+  }
+  output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
+  return true;
+}
+
+TypedBuffer
+FramePreprocess::singleProcess(const FramePreprocessArg &args,
+                               const FrameInput &input,
+                               FrameTransformContext &runtimeContext) const {
+  runtimeContext.modelInputShape = args.modelInputShape;
+  runtimeContext.isEqualScale = args.isEqualScale;
+  switch (args.preprocTaskType) {
+  case FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC: {
+    std::unique_ptr<IFramePreprocessor> processor =
+        std::make_unique<cpu::CpuGenericCvPreprocessor>();
+    return processor->process(args, input, runtimeContext);
   }
   case FramePreprocessArg::FramePreprocType::NCNN_GENERIC: {
 #ifdef WITH_NCNN
+    LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but not implemented.";
+    throw std::runtime_error("NCNN_GENERIC preprocessor not implemented.");
 #else
     LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
                   "not enabled.";
+    throw std::runtime_error(
+        "NCNN_GENERIC preprocessor requested, but WITH_NCNN is not enabled.");
 #endif
-    return false;
-    break;
   }
   case FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC: {
 #ifdef WITH_TRT
-    std::unique_ptr<IFramePreprocessor> processor_ =
+    std::unique_ptr<IFramePreprocessor> processor =
         std::make_unique<gpu::GpuGenericCudaPreprocessor>();
-    output.datas.insert(
-        std::make_pair(paramsPtr->inputNames[0],
-                       processor_->process(*paramsPtr, *frameInput)));
-    std::vector<int> shape;
-    if (paramsPtr->hwc2chw) {
-      shape = {1, paramsPtr->modelInputShape.c, paramsPtr->modelInputShape.h,
-               paramsPtr->modelInputShape.w};
-    } else {
-      shape = {1, paramsPtr->modelInputShape.h, paramsPtr->modelInputShape.w,
-               paramsPtr->modelInputShape.c};
-    }
-    output.shapes.insert(std::make_pair(paramsPtr->inputNames[0], shape));
+    return processor->process(args, input, runtimeContext);
 #else
     LOG_ERRORS << "CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT is "
                   "not enabled.";
-    return false;
+    throw std::runtime_error("CUDA_GPU_GENERIC preprocessor requested, but "
+                             "WITH_TRT is not enabled.");
 #endif
-    break;
   }
   default: {
     LOG_ERRORS << "Unknown preprocessor type: "
-               << static_cast<int>(paramsPtr->preprocTaskType);
-    return false;
+               << static_cast<int>(args.preprocTaskType);
+    throw std::runtime_error("Unknown preprocessor type.");
   }
   }
-  return true;
+}
+
+TypedBuffer FramePreprocess::batchProcess(
+    const FramePreprocessArg &args, const std::vector<FrameInput> &input,
+    std::vector<FrameTransformContext> &runtimeContext) const {
+  switch (args.preprocTaskType) {
+  case FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC: {
+    std::unique_ptr<IFramePreprocessor> processor =
+        std::make_unique<cpu::CpuGenericCvPreprocessor>();
+    return processor->batchProcess(args, input, runtimeContext);
+  }
+  case FramePreprocessArg::FramePreprocType::NCNN_GENERIC: {
+#ifdef WITH_NCNN
+    LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but not "
+                  "implemented.";
+    throw std::runtime_error(
+        "BATCH_NCNN_GENERIC preprocessor not implemented.");
+#else
+    LOG_ERRORS << "BATCH_NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
+                  "not enabled.";
+    throw std::runtime_error("BATCH_NCNN_GENERIC preprocessor requested, but "
+                             "WITH_NCNN is not enabled.");
+#endif
+  }
+  case FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC: {
+#ifdef WITH_TRT
+    std::unique_ptr<IFramePreprocessor> processor =
+        std::make_unique<gpu::GpuGenericCudaPreprocessor>();
+    return processor->batchProcess(args, input, runtimeContext);
+#else
+    LOG_ERRORS << "BATCH_CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT "
+                  "is not enabled.";
+    throw std::runtime_error("BATCH_CUDA_GPU_GENERIC preprocessor requested, "
+                             "but WITH_TRT is not enabled.");
+#endif
+  }
+  default: {
+    LOG_ERRORS << "Unknown batch preprocessor type: "
+               << static_cast<int>(args.preprocTaskType);
+    throw std::runtime_error("Unknown batch preprocessor type.");
+  }
+  }
 }
 } // namespace ai_core::dnn

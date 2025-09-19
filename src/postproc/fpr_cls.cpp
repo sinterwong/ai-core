@@ -15,25 +15,68 @@
 
 namespace ai_core::dnn {
 bool FprCls::process(const TensorData &modelOutput,
-                     const FramePreprocessArg &prepArgs, AlgoOutput &algoOutput,
-                     const GenericPostParams &postArgs) const {
+                     const FrameTransformContext &prepArgs,
+                     const GenericPostParams &postArgs,
+                     AlgoOutput &algoOutput) const {
   const auto &scoreOutputName = postArgs.outputNames.at(0);
   const auto &biradOutputName = postArgs.outputNames.at(1);
 
-  const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;
-
   auto pScores = outputs.at(scoreOutputName);
   auto pBirads = outputs.at(biradOutputName);
 
-  std::vector<int> pScoresShape = outputShapes.at(scoreOutputName);
+  std::vector<int> pScoresShape = modelOutput.shapes.at(scoreOutputName);
   int numClasses = pScoresShape.at(pScoresShape.size() - 1);
 
-  std::vector<int> pBiradsShape = outputShapes.at(biradOutputName);
+  std::vector<int> pBiradsShape = modelOutput.shapes.at(biradOutputName);
   int numBirads = pBiradsShape.at(pBiradsShape.size() - 1);
 
-  cv::Mat scores(1, numClasses, CV_32F, pScores.getRawHostPtr());
-  cv::Mat birads(1, numBirads, CV_32F, pBirads.getRawHostPtr());
+  FprClsRet fprRet = processSingleItem(pScores.getHostPtr<float>(), numClasses,
+                                       pBirads.getHostPtr<float>(), numBirads);
+
+  algoOutput.setParams(fprRet);
+  return true;
+}
+
+bool FprCls::batchProcess(const TensorData &modelOutput,
+                          const std::vector<FrameTransformContext> &prepArgs,
+                          const GenericPostParams &postArgs,
+                          std::vector<AlgoOutput> &algoOutput) const {
+  const auto &scoreOutputName = postArgs.outputNames.at(0);
+  const auto &biradOutputName = postArgs.outputNames.at(1);
+
+  const auto &outputs = modelOutput.datas;
+  auto pScores = outputs.at(scoreOutputName);
+  auto pBirads = outputs.at(biradOutputName);
+
+  std::vector<int> pScoresShape = modelOutput.shapes.at(scoreOutputName);
+  int batchSize = pScoresShape.at(0);
+  int numClasses = pScoresShape.at(pScoresShape.size() - 1);
+
+  std::vector<int> pBiradsShape = modelOutput.shapes.at(biradOutputName);
+  int numBirads = pBiradsShape.at(pBiradsShape.size() - 1);
+
+  const float *scoresData = pScores.getHostPtr<float>();
+  const float *biradsData = pBirads.getHostPtr<float>();
+
+  algoOutput.resize(batchSize);
+
+  for (int i = 0; i < batchSize; ++i) {
+    const float *currentScores = scoresData + i * numClasses;
+    const float *currentBirads = biradsData + i * numBirads;
+
+    FprClsRet fprRet =
+        processSingleItem(currentScores, numClasses, currentBirads, numBirads);
+    algoOutput[i].setParams(fprRet);
+  }
+  return true;
+}
+
+FprClsRet FprCls::processSingleItem(const float *scoresData, int numClasses,
+                                    const float *biradsData,
+                                    int numBirads) const {
+  cv::Mat scores(1, numClasses, CV_32F, const_cast<float *>(scoresData));
+  cv::Mat birads(1, numBirads, CV_32F, const_cast<float *>(biradsData));
 
   cv::Point classIdPoint;
   double score;
@@ -46,11 +89,9 @@ bool FprCls::process(const TensorData &modelOutput,
   FprClsRet fprRet;
   fprRet.score = score;
   fprRet.label = classIdPoint.x;
-  fprRet.scoreProbs.assign(pScores.getHostPtr<float>(),
-                           pScores.getHostPtr<float>() +
-                               pScores.getElementCount());
+  fprRet.scoreProbs.assign(scoresData, scoresData + numClasses);
   fprRet.birad = biradsIdPoint.x;
-  algoOutput.setParams(fprRet);
-  return true;
+
+  return fprRet;
 }
 } // namespace ai_core::dnn

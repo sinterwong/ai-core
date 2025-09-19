@@ -22,8 +22,12 @@ public:
   NcnnGenericPreprocessor() = default;
   ~NcnnGenericPreprocessor() = default;
 
-  TypedBuffer process(FramePreprocessArg &params,
-                      const FrameInput &frameInput) const override;
+  TypedBuffer process(const FramePreprocessArg &, const FrameInput &,
+                      FrameTransformContext &) const override;
+
+  TypedBuffer batchProcess(const FramePreprocessArg &,
+                           const std::vector<FrameInput> &,
+                           std::vector<FrameTransformContext> &) const override;
 };
 } // namespace ai_core::dnn::mncnn
 #endif

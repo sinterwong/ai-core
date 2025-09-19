@@ -31,11 +31,23 @@ InferErrorCode AlgoPreproc::Impl::initialize() {
   return InferErrorCode::SUCCESS;
 }
 
-InferErrorCode AlgoPreproc::Impl::process(AlgoInput &input,
-                                          AlgoPreprocParams &preprocParams,
-                                          TensorData &modelInput) {
-  if (!preprocessor_->process(input, preprocParams, modelInput)) {
+InferErrorCode AlgoPreproc::Impl::process(
+    const AlgoInput &input, const AlgoPreprocParams &preprocParams,
+    TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
+  if (!preprocessor_->process(input, preprocParams, modelInput,
+                              runtimeContext)) {
     LOG_ERRORS << "Failed to preprocess input.";
+    return InferErrorCode::INFER_PREPROCESS_FAILED;
+  }
+  return InferErrorCode::SUCCESS;
+}
+
+InferErrorCode AlgoPreproc::Impl::batchProcess(
+    const std::vector<AlgoInput> &input, const AlgoPreprocParams &preprocParams,
+    TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
+  if (!preprocessor_->batchProcess(input, preprocParams, modelInput,
+                                   runtimeContext)) {
+    LOG_ERRORS << "Failed to batch preprocess input.";
     return InferErrorCode::INFER_PREPROCESS_FAILED;
   }
   return InferErrorCode::SUCCESS;

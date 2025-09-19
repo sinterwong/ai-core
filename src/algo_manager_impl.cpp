@@ -62,7 +62,7 @@ InferErrorCode AlgoManager::Impl::infer(const std::string &name,
     LOG_ERRORS << "Algo with name " << name << " is registered but null.";
     return InferErrorCode::ALGO_NOT_FOUND;
   }
-  return it->second->infer(input, preprocParams, output, postprocParams);
+  return it->second->infer(input, preprocParams, postprocParams, output);
 }
 
 std::shared_ptr<AlgoInference>

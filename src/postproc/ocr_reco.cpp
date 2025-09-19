@@ -14,28 +14,76 @@
 
 namespace ai_core::dnn {
 bool OCRReco::process(const TensorData &modelOutput,
-                      const FramePreprocessArg &prepArgs,
-                      AlgoOutput &algoOutput,
-                      const GenericPostParams &postArgs) const {
+                      const FrameTransformContext &prepArgs,
+                      const GenericPostParams &postArgs,
+                      AlgoOutput &algoOutput) const {
+  const auto &outputLengthsName = postArgs.outputNames.at(0);
+  const auto &argmaxOutputName = postArgs.outputNames.at(1);
+
+  const auto &outputs = modelOutput.datas;
+  auto pOutputLengths = outputs.at(outputLengthsName);
+  auto pArgmaxOutputs = outputs.at(argmaxOutputName);
+
+  const int64_t *lengthData = pOutputLengths.getHostPtr<int64_t>();
+  const int64_t *argmaxData = pArgmaxOutputs.getHostPtr<int64_t>();
+  const size_t sequenceLength = pArgmaxOutputs.getElementCount();
+
+  OCRRecoRet ocrRet =
+      processSingleItem(argmaxData, sequenceLength, *lengthData);
+
+  algoOutput.setParams(ocrRet);
+  return true;
+}
+
+bool OCRReco::batchProcess(const TensorData &modelOutput,
+                           const std::vector<FrameTransformContext> &prepArgs,
+                           const GenericPostParams &postArgs,
+                           std::vector<AlgoOutput> &algoOutput) const {
   const auto &outputLengthsName = postArgs.outputNames.at(0);
   const auto &argmaxOutputName = postArgs.outputNames.at(1);
 
   const auto &outputShapes = modelOutput.shapes;
   const auto &outputs = modelOutput.datas;
 
-  OCRRecoRet ocrRet;
   auto pOutputLengths = outputs.at(outputLengthsName);
   auto pArgmaxOutputs = outputs.at(argmaxOutputName);
 
-  ocrRet.outputLengths = *pOutputLengths.getHostPtr<int64_t>();
+  const std::vector<int> &argmaxShape = outputShapes.at(argmaxOutputName);
+  if (argmaxShape.size() != 2) {
+    // Handle error: shape is not as expected for a batch
+    return false;
+  }
+  const int batchSize = argmaxShape.at(0);
+  const int sequenceLength = argmaxShape.at(1);
 
-  std::vector<int64_t> argmaxOutputsVec(pArgmaxOutputs.getHostPtr<int64_t>(),
-                                        pArgmaxOutputs.getHostPtr<int64_t>() +
-                                            pArgmaxOutputs.getElementCount());
-  ocrRet.outputs = ctcProcess(argmaxOutputsVec);
+  const int64_t *lengthsData = pOutputLengths.getHostPtr<int64_t>();
+  const int64_t *argmaxData = pArgmaxOutputs.getHostPtr<int64_t>();
 
-  algoOutput.setParams(ocrRet);
+  algoOutput.resize(batchSize);
+
+  for (int i = 0; i < batchSize; ++i) {
+    // 计算当前样本在内存块中的起始位置
+    const int64_t *currentArgmaxData = argmaxData + (size_t)i * sequenceLength;
+    const int64_t currentOutputLength = lengthsData[i];
+
+    OCRRecoRet ocrRet = processSingleItem(currentArgmaxData, sequenceLength,
+                                          currentOutputLength);
+
+    algoOutput[i].setParams(ocrRet);
+  }
+
   return true;
+}
+
+OCRRecoRet OCRReco::processSingleItem(const int64_t *argmaxData,
+                                      size_t sequenceLength,
+                                      int64_t outputLength) const {
+  OCRRecoRet ocrRet;
+  ocrRet.outputLengths = outputLength;
+  std::vector<int64_t> argmaxOutputsVec(argmaxData,
+                                        argmaxData + sequenceLength);
+  ocrRet.outputs = ctcProcess(argmaxOutputsVec);
+  return ocrRet;
 }
 
 std::vector<int64_t>

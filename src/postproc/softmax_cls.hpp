@@ -17,11 +17,16 @@ class SoftmaxCls : public ICVGenericPostprocessor {
 public:
   explicit SoftmaxCls() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const GenericPostParams &) const override;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const GenericPostParams &, AlgoOutput &) const override;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const GenericPostParams &,
+                            std::vector<AlgoOutput> &) const override;
 
 private:
-  AlgoPostprocParams mParams;
+  ClsRet processSingleItem(const float *logits, int numClasses) const;
 };
 } // namespace ai_core::dnn
 

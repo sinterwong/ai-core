@@ -106,6 +106,9 @@ TEST_P(OCRDetInferenceTest, Normal) {
   cv::Mat image = cv::imread(imagePath);
   ASSERT_FALSE(image.empty());
 
+  std::shared_ptr<RuntimeContext> runtimeContext =
+      std::make_shared<RuntimeContext>();
+
   AlgoPreprocParams preprocParams;
   FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {512, 512, 3};
@@ -137,14 +140,14 @@ TEST_P(OCRDetInferenceTest, Normal) {
   algoInput.setParams(frameInput);
 
   TensorData modelInput;
-  framePreproc->process(algoInput, preprocParams, modelInput);
+  framePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
 
   TensorData modelOutput;
   ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);
 
   AlgoOutput algoOutput;
-  ASSERT_TRUE(confidenceFilterPostproc->process(modelOutput, preprocParams,
-                                                algoOutput, postprocParams));
+  ASSERT_TRUE(confidenceFilterPostproc->process(modelOutput, postprocParams,
+                                                algoOutput, runtimeContext));
 
   auto *segRet = algoOutput.getParams<SegRet>();
   CheckResults(segRet);

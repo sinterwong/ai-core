@@ -15,20 +15,22 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool ConfidenceFilterPostproc::process(const TensorData &modelOutput,
-                                       AlgoPreprocParams &prepArgs,
-                                       AlgoOutput &algoOutput,
-                                       AlgoPostprocParams &postArgs) const {
+bool ConfidenceFilterPostproc::process(
+    const TensorData &modelOutput, const AlgoPostprocParams &postArgs,
+    AlgoOutput &algoOutput,
+    std::shared_ptr<RuntimeContext> &runtimeContext) const {
   if (modelOutput.datas.empty()) {
     LOG_ERRORS << "modelOutput.outputs is empty";
     return false;
   }
 
-  const auto &prepParams = prepArgs.getParams<FramePreprocessArg>();
-  if (prepParams == nullptr) {
+  if (!runtimeContext->has<FrameTransformContext>("preproc_runtime_args")) {
     LOG_ERRORS << "FramePreprocessArg is nullptr";
     throw std::runtime_error("FramePreprocessArg is nullptr");
   }
+
+  const auto &prepRuntimeArgs =
+      runtimeContext->getParam<FrameTransformContext>("preproc_runtime_args");
 
   auto params = postArgs.getParams<ConfidenceFilterParams>();
   if (params == nullptr) {
@@ -39,7 +41,47 @@ bool ConfidenceFilterPostproc::process(const TensorData &modelOutput,
   switch (params->algoType) {
   case ConfidenceFilterParams::AlgoType::SEMANTIC_SEG: {
     SemanticSeg postproc;
-    return postproc.process(modelOutput, *prepParams, algoOutput, *params);
+    return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
+  }
+  default: {
+    LOG_ERRORS << "Unknown generic algorithm type: "
+               << static_cast<int>(params->algoType);
+    return false;
+  }
+  }
+  return true;
+}
+
+bool ConfidenceFilterPostproc::batchProcess(
+    const TensorData &modelOutput, const AlgoPostprocParams &postArgs,
+    std::vector<AlgoOutput> &output,
+    std::shared_ptr<RuntimeContext> &runtimeContext) const {
+  if (modelOutput.datas.empty()) {
+    LOG_ERRORS << "modelOutput.outputs is empty";
+    return false;
+  }
+
+  if (!runtimeContext->has<std::vector<FrameTransformContext>>(
+          "preproc_runtime_args_batch")) {
+    LOG_ERRORS << "preproc_runtime_args_batch is nullptr";
+    throw std::runtime_error("preproc_runtime_args_batch is nullptr");
+  }
+
+  const auto &prepRuntimeArgsBatch =
+      runtimeContext->getParam<std::vector<FrameTransformContext>>(
+          "preproc_runtime_args_batch");
+
+  auto params = postArgs.getParams<ConfidenceFilterParams>();
+  if (params == nullptr) {
+    LOG_ERRORS << "GenericPostParams params is nullptr";
+    throw std::runtime_error("GenericPostParams params is nullptr");
+  }
+
+  switch (params->algoType) {
+  case ConfidenceFilterParams::AlgoType::SEMANTIC_SEG: {
+    SemanticSeg postproc;
+    return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
+                                 output);
   }
   default: {
     LOG_ERRORS << "Unknown generic algorithm type: "

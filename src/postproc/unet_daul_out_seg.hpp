@@ -17,8 +17,20 @@ class UNetDaulOutputSeg : public ICVGenericPostprocessor {
 public:
   explicit UNetDaulOutputSeg() {}
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const GenericPostParams &) const override;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const GenericPostParams &, AlgoOutput &) const override;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const GenericPostParams &,
+                            std::vector<AlgoOutput> &) const override;
+
+private:
+  DaulRawSegRet processSingleItem(const float *probData,
+                                  const std::vector<int> &probShape,
+                                  const float *maskData,
+                                  const std::vector<int> &maskShape,
+                                  const FrameTransformContext &prepArgs) const;
 };
 } // namespace ai_core::dnn
 

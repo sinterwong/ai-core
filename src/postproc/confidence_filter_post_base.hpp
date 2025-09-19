@@ -24,8 +24,13 @@ class IConfidencePostprocessor {
 public:
   virtual ~IConfidencePostprocessor() = default;
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const ConfidenceFilterParams &) const = 0;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const ConfidenceFilterParams &, AlgoOutput &) const = 0;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const ConfidenceFilterParams &,
+                            std::vector<AlgoOutput> &) const = 0;
 };
 
 } // namespace ai_core

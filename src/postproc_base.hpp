@@ -20,8 +20,13 @@ class PostprocssBase {
 public:
   virtual ~PostprocssBase(){};
 
-  virtual bool process(const TensorData &, AlgoPreprocParams &, AlgoOutput &,
-                       AlgoPostprocParams &) const = 0;
+  virtual bool process(const TensorData &, const AlgoPostprocParams &,
+                       AlgoOutput &,
+                       std::shared_ptr<RuntimeContext> &) const = 0;
+
+  virtual bool batchProcess(const TensorData &, const AlgoPostprocParams &,
+                            std::vector<AlgoOutput> &,
+                            std::shared_ptr<RuntimeContext> &) const = 0;
 };
 } // namespace ai_core::dnn
 

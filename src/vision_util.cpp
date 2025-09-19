@@ -11,12 +11,10 @@
 #ifndef __INFERENCE_VISION_UTILS_HPP_
 #define __INFERENCE_VISION_UTILS_HPP_
 
-#include <unordered_map>
-
 #include "ai_core/algo_output_types.hpp"
-#include "ai_core/infer_common_types.hpp"
-
+#include "ai_core/preproc_types.hpp"
 #include <opencv2/opencv.hpp>
+#include <unordered_map>
 
 namespace ai_core::utils {
 

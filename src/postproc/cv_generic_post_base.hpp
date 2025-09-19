@@ -13,7 +13,6 @@
 #define __I_CV_GENERIC_POSTPROCESSOR_HPP__
 
 #include "ai_core/algo_data_types.hpp"
-#include "ai_core/algo_input_types.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core {
@@ -25,8 +24,13 @@ class ICVGenericPostprocessor {
 public:
   virtual ~ICVGenericPostprocessor() = default;
 
-  virtual bool process(const TensorData &, const FramePreprocessArg &,
-                       AlgoOutput &, const GenericPostParams &) const = 0;
+  virtual bool process(const TensorData &, const FrameTransformContext &,
+                       const GenericPostParams &, AlgoOutput &) const = 0;
+
+  virtual bool batchProcess(const TensorData &,
+                            const std::vector<FrameTransformContext> &,
+                            const GenericPostParams &,
+                            std::vector<AlgoOutput> &) const = 0;
 };
 
 } // namespace ai_core
