@@ -13,7 +13,6 @@ AI Core is a powerful and extensible C++ library for managing and executing AI i
 
 *   **Multiple Inference Engines:** Supports ONNX Runtime, NCNN, and TensorRT.
 *   **Modular Design:** Easily extend the library by adding new algorithms and pre/post-processing modules.
-*   **Configuration-based:** Easily use JSON files to define and configure your AI algorithms.
 
 ## Core Components
 
@@ -82,9 +81,13 @@ cmake --install .
 
 ### Higher-Level Abstractions
 
-For convenience, AI Core also provides higher-level abstractions like `AlgoInference` and `AlgoManager`. These classes encapsulate the entire pipeline and are useful when you don't need fine-grained control over each step.
+For convenience, AI Core also provides higher-level abstractions like `AlgoInference`. These classes encapsulate the entire pipeline and are useful when you don't need fine-grained control over each step.
 
 -   **`AlgoInference`**: Wraps the three-stage pipeline (`AlgoPreproc`, `AlgoInferEngine`, `AlgoPostproc`) into a single class for easier use.
+
+## API Documentation
+
+For a detailed description of the public API, including classes, methods, and data structures, please see the [API Documentation](doc/API.md).
 
 ## License
 
