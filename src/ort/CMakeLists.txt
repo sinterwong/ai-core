@@ -6,15 +6,13 @@ SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 SET(ORT_MODULE_PRIVATE_INCLUDES
     ${OpenCV_INCLUDE_DIRS}
-    ${ONNXRUNTIME_INCLUDE_DIR}
-    ${ONNXRUNTIME_INCLUDE_DIR}/onnxruntime
 )
 
 SET(ORT_MODULE_LINK_LIBS
+    onnxruntime::onnxruntime
+    ${OpenCV_LIBS}
     encrypt::encrypt
     logger::logger
-    ${ONNXRUNTIME_LIBS}
-    ${OpenCV_LIBS}
 )
 
 SET(ORT_MODULE_LIBS ${ORT_MODULE_LINK_LIBS} PARENT_SCOPE)
@@ -37,6 +35,7 @@ TARGET_INCLUDE_DIRECTORIES(ai_ort_module
 )
 
 TARGET_LINK_LIBRARIES(ai_ort_module PRIVATE
+    onnxruntime::onnxruntime
     encrypt::encrypt
     logger::logger
 )
