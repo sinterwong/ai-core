@@ -5,7 +5,7 @@
 #include <logger.hpp>
 #include <map>
 
-namespace us_pipe::utils {
+namespace ai_core::example::utils {
 void AlgoConfigParser::loadAndValidateJson() {
   std::ifstream file(mConfigPath);
   if (!file.is_open()) {
@@ -30,18 +30,20 @@ void AlgoConfigParser::loadAndValidateJson() {
 
 void AlgoConfigParser::parseCommonParams(const nlohmann::json &algoConfig,
                                          ai_core::AlgoConstructParams &params) {
-  params.setParam("moduleName", algoConfig.at("name").get<std::string>());
+  params.setParam("moduleName",
+                  getOptional<std::string>(algoConfig, "name", ""));
+
   const auto &types = algoConfig.at("types");
-  params.setParam("preprocType", types.at("preproc").get<std::string>());
-  params.setParam("inferType", types.at("infer").get<std::string>());
-  params.setParam("postprocType", types.at("postproc").get<std::string>());
+  params.setParam("preprocType",
+                  getOptional<std::string>(types, "preproc", ""));
+  params.setParam("inferType", getOptional<std::string>(types, "infer", ""));
+  params.setParam("postprocType",
+                  getOptional<std::string>(types, "postproc", ""));
 }
 
-void AlgoConfigParser::parseInferParams(const nlohmann::json &algoConfig,
+void AlgoConfigParser::parseInferParams(const nlohmann::json &inferJson,
                                         ai_core::AlgoConstructParams &params) {
   ai_core::AlgoInferParams inferParams;
-  const auto &inferJson = algoConfig.at("inferParams");
-
   std::string modelRelPath = inferJson.at("modelPath").get<std::string>();
   // 这里的路径拼接逻辑需要关注
   inferParams.modelPath =
@@ -62,9 +64,7 @@ void AlgoConfigParser::parseInferParams(const nlohmann::json &algoConfig,
 }
 
 void AlgoConfigParser::parsePreprocParams(
-    const nlohmann::json &algoConfig, ai_core::AlgoConstructParams &params) {
-
-  const auto &preprocJson = algoConfig.at("preprocParams");
+    const nlohmann::json &preprocJson, ai_core::AlgoConstructParams &params) {
   const std::string preprocType = params.getParam<std::string>("preprocType");
 
   if (preprocType == "FramePreprocess") {
@@ -77,8 +77,8 @@ void AlgoConfigParser::parsePreprocParams(
 }
 
 void AlgoConfigParser::parsePostprocParams(
-    const nlohmann::json &algoConfig, ai_core::AlgoConstructParams &params) {
-  const auto &postProcJson = algoConfig.at("postprocParams");
+    const nlohmann::json &postProcJson, ai_core::AlgoConstructParams &params) {
+
   const auto outputNames =
       postProcJson.at("outputNames").get<std::vector<std::string>>();
   const std::string postprocType = params.getParam<std::string>("postprocType");
@@ -88,8 +88,8 @@ void AlgoConfigParser::parsePostprocParams(
     anchorDetParams.algoType = static_cast<ai_core::AnchorDetParams::AlgoType>(
         getOptional<int>(postProcJson, "algoType", 0));
     anchorDetParams.condThre =
-        getOptional<float>(postProcJson, "condThre", 0.5f);
-    anchorDetParams.nmsThre = getOptional<float>(postProcJson, "nmsThre", 0.5f);
+        getOptional<float>(postProcJson, "condThre", 0.f);
+    anchorDetParams.nmsThre = getOptional<float>(postProcJson, "nmsThre", 0.f);
     anchorDetParams.outputNames = outputNames;
     params.setParam("postprocParams", anchorDetParams);
   } else if (postprocType == "CVGenericPostproc") {
@@ -99,6 +99,15 @@ void AlgoConfigParser::parsePostprocParams(
             postProcJson.at("algoType").get<int>());
     genericPostParams.outputNames = outputNames;
     params.setParam("postprocParams", genericPostParams);
+  } else if (postprocType == "ConfidenceFilterPostproc") {
+    ai_core::ConfidenceFilterParams confidenceFilterParams;
+    confidenceFilterParams.algoType =
+        static_cast<ai_core::ConfidenceFilterParams::AlgoType>(
+            getOptional<int>(postProcJson, "algoType", 0));
+    confidenceFilterParams.condThre =
+        getOptional<float>(postProcJson, "condThre", 0.f);
+    confidenceFilterParams.outputNames = outputNames;
+    params.setParam("postprocParams", confidenceFilterParams);
   } else {
     LOG_ERRORS << "Unsupported postprocType: " << postprocType;
     throw std::runtime_error("Unsupported postprocType");
@@ -189,9 +198,19 @@ ai_core::AlgoConstructParams AlgoConfigParser::parse() {
     // 分块解析
     ai_core::AlgoConstructParams params;
     parseCommonParams(algoConfig, params);
-    parsePreprocParams(algoConfig, params);
-    parseInferParams(algoConfig, params);
-    parsePostprocParams(algoConfig, params);
+
+    if (algoConfig.contains("preprocParams")) {
+      const auto &preprocJson = algoConfig.at("preprocParams");
+      parsePreprocParams(preprocJson, params);
+    }
+    if (algoConfig.contains("inferParams")) {
+      const auto &inferJson = algoConfig.at("inferParams");
+      parseInferParams(inferJson, params);
+    }
+    if (algoConfig.contains("postprocParams")) {
+      const auto &postprocJson = algoConfig.at("postprocParams");
+      parsePostprocParams(postprocJson, params);
+    }
 
     return params;
 
@@ -203,5 +222,4 @@ ai_core::AlgoConstructParams AlgoConfigParser::parse() {
     throw;
   }
 }
-
-} // namespace us_pipe::utils
+} // namespace ai_core::example::utils

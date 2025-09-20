@@ -4,7 +4,7 @@
 #include <ai_core/algo_data_types.hpp>
 #include <string>
 
-namespace us_pipe::utils {
+namespace ai_core::example::utils {
 class AlgoConfigParser {
 public:
   explicit AlgoConfigParser(const std::string &configPath);
@@ -49,4 +49,4 @@ private:
   nlohmann::json mRootJson;
 };
 
-} // namespace us_pipe::utils
+} // namespace ai_core::example::utils
