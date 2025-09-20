@@ -80,8 +80,6 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
       mParams.getParam<ai_core::FramePreprocessArg>("preprocParams");
 
   auto inputNames = framePreprocessArg.inputNames;
-  framePreprocessArg.originShape = {imageGray.cols, imageGray.rows,
-                                    imageGray.channels()};
   framePreprocessArg.inputNames = {inputNames.at(0)};
   preprocParams.setParams(framePreprocessArg);
 
@@ -92,8 +90,9 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
       std::make_shared<cv::Rect>(0, 0, imageGray.cols, imageGray.rows);
   algoInput.setParams(frameInput);
 
+  auto runtimeContext = std::make_shared<ai_core::RuntimeContext>();
   ai_core::TensorData modelInput;
-  mFramePreproc->process(algoInput, preprocParams, modelInput);
+  mFramePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
 
   std::vector<int64_t> inputLengths = {1};
   ai_core::TypedBuffer inputLengthsTensor;
@@ -119,8 +118,8 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
   postprocParams.setParams(genericPostParams);
 
   ai_core::AlgoOutput algoOutput;
-  if (mOcrPostproc->process(modelOutput, preprocParams, algoOutput,
-                            postprocParams) !=
+  if (mOcrPostproc->process(modelOutput, postprocParams, algoOutput,
+                            runtimeContext) !=
       ai_core::InferErrorCode::SUCCESS) {
     LOG_ERRORS << "OCRRec postprocess failed";
     return {};
@@ -146,6 +145,11 @@ std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
     if (index >= 0 && index < mDict.size()) {
       wRet += mDict[index];
     }
+
+    if (index > static_cast<int64_t>(mDict.size())) {
+      LOG_ERRORS << "Index out of dictionary bounds: " << index;
+      throw std::runtime_error("Index out of dictionary bounds");
+    }
   }
 
   std::string ret;
@@ -158,5 +162,4 @@ std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
   }
   return ret;
 }
-
 } // namespace us_pipe

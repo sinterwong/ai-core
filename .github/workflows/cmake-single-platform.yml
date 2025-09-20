@@ -61,6 +61,7 @@ jobs:
         -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
         -DBUILD_AI_CORE_TESTS=ON
         -DBUILD_AI_CORE_BENCHMARKS=ON
+        -DBUILD_AI_CORE_EXAMPLES=OFF,
         -DWITH_ORT_ENGINE=ON
         -DWITH_NCNN_ENGINE=ON
         -DWITH_TRT_ENGINE=OFF
