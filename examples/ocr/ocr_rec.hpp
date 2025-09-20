@@ -5,7 +5,7 @@
 #include <ai_core/algo_preproc.hpp>
 #include <vector>
 
-namespace us_pipe {
+namespace ai_core::example {
 class OCRRec {
 
 public:
@@ -26,4 +26,4 @@ private:
   int batch;
 };
 
-} // namespace us_pipe
+} // namespace ai_core::example

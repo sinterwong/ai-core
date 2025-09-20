@@ -7,7 +7,7 @@
 #include <memory>
 #include <opencv2/opencv.hpp>
 
-namespace us_pipe {
+namespace ai_core::example {
 namespace fs = std::filesystem;
 
 OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
@@ -36,7 +36,7 @@ OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
   }
 
   try {
-    mParams = us_pipe::utils::AlgoConfigParser(configPath).parse();
+    mParams = ai_core::example::utils::AlgoConfigParser(configPath).parse();
   } catch (const std::exception &e) {
     throw std::runtime_error("Failed to load OCR config: " +
                              std::string(e.what()));
@@ -162,4 +162,4 @@ std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
   }
   return ret;
 }
-} // namespace us_pipe
+} // namespace ai_core::example
