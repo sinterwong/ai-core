@@ -57,8 +57,8 @@ struct FrameTransformContext {
   Shape originShape;
   Shape modelInputShape;
   std::shared_ptr<cv::Rect> roi;
-  int topPad;
-  int leftPad;
+  int topPad = 0;
+  int leftPad = 0;
 };
 
 } // namespace ai_core
