@@ -1,0 +1,53 @@
+{
+    "algorithm": {
+        "name": "chinese-ocr-det",
+        "types": {
+            "preproc": "FramePreprocess",
+            "infer": "OrtAlgoInference",
+            "postproc": "ConfidenceFilterPostproc"
+        },
+        "preprocParams": {
+            "inputShape": {
+                "w": 512,
+                "h": 512,
+                "c": 3
+            },
+            "mean": [
+                123.675,
+                116.28,
+                103.53
+            ],
+            "std": [
+                58.395,
+                57.12,
+                57.375
+            ],
+            "pad": [
+                0,
+                0,
+                0
+            ],
+            "isEqualScale": true,
+            "needResize": true,
+            "dataType": 0,
+            "hwc2chw": true,
+            "inputNames": [
+                "x"
+            ],
+            "preprocTaskType": 0
+        },
+        "inferParams": {
+            "modelPath": "models/ch_PP_ocr_det.onnx",
+            "deviceType": 0,
+            "dataType": 0,
+            "needDecrypt": false
+        },
+        "postprocParams": {
+            "algoType": 0,
+            "condThre": 0.3,
+            "outputNames": [
+                "sigmoid_0.tmp_0"
+            ]
+        }
+    }
+}
