@@ -60,12 +60,6 @@ bool SoftmaxCls::batchProcess(
   const int batchSize = outputShape.at(0);
   const int numClasses = outputShape.at(1);
 
-  if (batchSize != prepArgs.size()) {
-    LOG_ERRORS << "Batch size mismatch between model output (" << batchSize
-               << ") and preprocessing arguments (" << prepArgs.size() << ").";
-    return false;
-  }
-
   const float *baseLogits = output.getHostPtr<float>();
 
   algoOutput.resize(batchSize);

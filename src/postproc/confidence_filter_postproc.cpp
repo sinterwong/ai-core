@@ -24,14 +24,6 @@ bool ConfidenceFilterPostproc::process(
     return false;
   }
 
-  if (!runtimeContext->has<FrameTransformContext>("preproc_runtime_args")) {
-    LOG_ERRORS << "FramePreprocessArg is nullptr";
-    throw std::runtime_error("FramePreprocessArg is nullptr");
-  }
-
-  const auto &prepRuntimeArgs =
-      runtimeContext->getParam<FrameTransformContext>("preproc_runtime_args");
-
   auto params = postArgs.getParams<ConfidenceFilterParams>();
   if (params == nullptr) {
     LOG_ERRORS << "GenericPostParams params is nullptr";
@@ -40,6 +32,13 @@ bool ConfidenceFilterPostproc::process(
 
   switch (params->algoType) {
   case ConfidenceFilterParams::AlgoType::SEMANTIC_SEG: {
+    if (!runtimeContext->has<FrameTransformContext>("preproc_runtime_args")) {
+      LOG_ERRORS << "FramePreprocessArg is nullptr";
+      throw std::runtime_error("FramePreprocessArg is nullptr");
+    }
+    const auto &prepRuntimeArgs =
+        runtimeContext->getParam<FrameTransformContext>("preproc_runtime_args");
+
     SemanticSeg postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
@@ -61,16 +60,6 @@ bool ConfidenceFilterPostproc::batchProcess(
     return false;
   }
 
-  if (!runtimeContext->has<std::vector<FrameTransformContext>>(
-          "preproc_runtime_args_batch")) {
-    LOG_ERRORS << "preproc_runtime_args_batch is nullptr";
-    throw std::runtime_error("preproc_runtime_args_batch is nullptr");
-  }
-
-  const auto &prepRuntimeArgsBatch =
-      runtimeContext->getParam<std::vector<FrameTransformContext>>(
-          "preproc_runtime_args_batch");
-
   auto params = postArgs.getParams<ConfidenceFilterParams>();
   if (params == nullptr) {
     LOG_ERRORS << "GenericPostParams params is nullptr";
@@ -79,9 +68,16 @@ bool ConfidenceFilterPostproc::batchProcess(
 
   switch (params->algoType) {
   case ConfidenceFilterParams::AlgoType::SEMANTIC_SEG: {
+    if (!runtimeContext->has<std::vector<FrameTransformContext>>(
+            "preproc_runtime_args_batch")) {
+      LOG_ERRORS << "FramePreprocessArg is nullptr";
+      throw std::runtime_error("FramePreprocessArg is nullptr");
+    }
+    const auto &prepRuntimeArgsBatch =
+        runtimeContext->getParam<std::vector<FrameTransformContext>>(
+            "preproc_runtime_args_batch");
     SemanticSeg postproc;
-    return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
-                                 output);
+    return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params, output);
   }
   default: {
     LOG_ERRORS << "Unknown generic algorithm type: "

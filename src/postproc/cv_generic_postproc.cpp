@@ -28,13 +28,6 @@ bool CVGenericPostproc::process(
     return false;
   }
 
-  if (!runtimeContext->has<FrameTransformContext>("preproc_runtime_args")) {
-    LOG_ERRORS << "FramePreprocessArg is nullptr";
-    throw std::runtime_error("FramePreprocessArg is nullptr");
-  }
-  const auto &prepRuntimeArgs =
-      runtimeContext->getParam<FrameTransformContext>("preproc_runtime_args");
-
   auto params = postArgs.getParams<GenericPostParams>();
   if (params == nullptr) {
     LOG_ERRORS << "GenericPostParams params is nullptr";
@@ -43,22 +36,32 @@ bool CVGenericPostproc::process(
 
   switch (params->algoType) {
   case GenericPostParams::AlgoType::SOFTMAX_CLS: {
+    FrameTransformContext prepRuntimeArgs;
     SoftmaxCls postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   case GenericPostParams::AlgoType::FPR_CLS: {
+    FrameTransformContext prepRuntimeArgs;
     FprCls postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   case GenericPostParams::AlgoType::RAW_FEATURE: {
+    FrameTransformContext prepRuntimeArgs;
     RawFeature postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   case GenericPostParams::AlgoType::UNET_DUAL_OUTPUT: {
+    if (!runtimeContext->has<FrameTransformContext>("preproc_runtime_args")) {
+      LOG_ERRORS << "FramePreprocessArg is nullptr";
+      throw std::runtime_error("FramePreprocessArg is nullptr");
+    }
+    const auto &prepRuntimeArgs =
+        runtimeContext->getParam<FrameTransformContext>("preproc_runtime_args");
     UNetDaulOutputSeg postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   case GenericPostParams::AlgoType::OCR_RECO: {
+    FrameTransformContext prepRuntimeArgs;
     OCRReco postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
@@ -80,16 +83,6 @@ bool CVGenericPostproc::batchProcess(
     return false;
   }
 
-  if (!runtimeContext->has<std::vector<FrameTransformContext>>(
-          "preproc_runtime_args_batch")) {
-    LOG_ERRORS << "preproc_runtime_args_batch is nullptr";
-    throw std::runtime_error("preproc_runtime_args_batch is nullptr");
-  }
-
-  const auto &prepRuntimeArgsBatch =
-      runtimeContext->getParam<std::vector<FrameTransformContext>>(
-          "preproc_runtime_args_batch");
-
   auto params = postArgs.getParams<GenericPostParams>();
   if (params == nullptr) {
     LOG_ERRORS << "GenericPostParams params is nullptr";
@@ -98,26 +91,38 @@ bool CVGenericPostproc::batchProcess(
 
   switch (params->algoType) {
   case GenericPostParams::AlgoType::SOFTMAX_CLS: {
+    std::vector<FrameTransformContext> prepRuntimeArgsBatch;
     SoftmaxCls postproc;
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
   }
   case GenericPostParams::AlgoType::FPR_CLS: {
+    std::vector<FrameTransformContext> prepRuntimeArgsBatch;
     FprCls postproc;
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
   }
   case GenericPostParams::AlgoType::RAW_FEATURE: {
+    std::vector<FrameTransformContext> prepRuntimeArgsBatch;
     RawFeature postproc;
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
   }
   case GenericPostParams::AlgoType::UNET_DUAL_OUTPUT: {
+    if (!runtimeContext->has<std::vector<FrameTransformContext>>(
+            "preproc_runtime_args_batch")) {
+      LOG_ERRORS << "preproc_runtime_args_batch is nullptr";
+      throw std::runtime_error("preproc_runtime_args_batch is nullptr");
+    }
+    const auto &prepRuntimeArgsBatch =
+        runtimeContext->getParam<std::vector<FrameTransformContext>>(
+            "preproc_runtime_args_batch");
     UNetDaulOutputSeg postproc;
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
   }
   case GenericPostParams::AlgoType::OCR_RECO: {
+    std::vector<FrameTransformContext> prepRuntimeArgsBatch;
     OCRReco postproc;
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
