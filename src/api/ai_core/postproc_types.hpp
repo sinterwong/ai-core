@@ -20,7 +20,7 @@ struct GenericPostParams {
   enum class AlgoType : int8_t {
     SOFTMAX_CLS = 0,
     FPR_CLS,
-    FPR_FEAT,
+    RAW_FEATURE,
     UNET_DUAL_OUTPUT,
     OCR_RECO
   };

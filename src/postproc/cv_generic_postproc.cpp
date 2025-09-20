@@ -50,7 +50,7 @@ bool CVGenericPostproc::process(
     FprCls postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
-  case GenericPostParams::AlgoType::FPR_FEAT: {
+  case GenericPostParams::AlgoType::RAW_FEATURE: {
     RawFeature postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
@@ -107,7 +107,7 @@ bool CVGenericPostproc::batchProcess(
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
   }
-  case GenericPostParams::AlgoType::FPR_FEAT: {
+  case GenericPostParams::AlgoType::RAW_FEATURE: {
     RawFeature postproc;
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);

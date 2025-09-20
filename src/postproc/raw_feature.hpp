@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_FPR_FEATURE_HPP_
-#define __INFERENCE_VISION_FPR_FEATURE_HPP_
+#ifndef __INFERENCE_VISION_RAW_FEATURE_HPP_
+#define __INFERENCE_VISION_RAW_FEATURE_HPP_
 
 #include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
