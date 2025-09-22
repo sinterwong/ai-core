@@ -17,7 +17,7 @@
 
 namespace ai_core::dnn {
 
-class CVGenericPostproc : public PostprocssBase {
+class CVGenericPostproc : public IPostprocssPlugin {
 public:
   explicit CVGenericPostproc() = default;
 

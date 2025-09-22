@@ -17,7 +17,7 @@
 
 namespace ai_core::dnn {
 
-class ConfidenceFilterPostproc : public PostprocssBase {
+class ConfidenceFilterPostproc : public IPostprocssPlugin {
 public:
   explicit ConfidenceFilterPostproc() = default;
 

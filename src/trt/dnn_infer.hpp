@@ -55,7 +55,7 @@ public:
   }
 };
 
-class TrtAlgoInference : public InferBase {
+class TrtAlgoInference : public IInferEnginePlugin {
 public:
   explicit TrtAlgoInference(const AlgoConstructParams &params);
   ~TrtAlgoInference() override;

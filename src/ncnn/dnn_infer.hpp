@@ -24,7 +24,7 @@
 #include <ncnn/net.h>
 
 namespace ai_core::dnn {
-class NCNNAlgoInference : public InferBase {
+class NCNNAlgoInference : public IInferEnginePlugin {
 public:
   explicit NCNNAlgoInference(const AlgoConstructParams &params)
       : mParams(std::move(params.getParam<AlgoInferParams>("params"))),

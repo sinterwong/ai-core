@@ -18,24 +18,25 @@
 
 namespace ai_core::dnn {
 
-using PreprocFactory = Factory<PreprocssBase>;
+using PreprocFactory = Factory<IPreprocssPlugin>;
 
-using InferEngineFactory = Factory<InferBase>;
+using InferEngineFactory = Factory<IInferEnginePlugin>;
 
-using PostprocFactory = Factory<PostprocssBase>;
+using PostprocFactory = Factory<IPostprocssPlugin>;
 
 #define REGISTER_PREPROCESS_ALGO(AlgoName)                                     \
   PreprocFactory::instance().registerCreator(                                  \
       #AlgoName,                                                               \
       [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<PreprocssBase> {                                  \
+          -> std::shared_ptr<IPreprocssPlugin> {                               \
         return std::make_shared<AlgoName>();                                   \
       });
 
 #define REGISTER_INFER_ENGINE(EngineName)                                      \
   InferEngineFactory::instance().registerCreator(                              \
       #EngineName,                                                             \
-      [](const AlgoConstructParams &cparams) -> std::shared_ptr<InferBase> {   \
+      [](const AlgoConstructParams &cparams)                                   \
+          -> std::shared_ptr<IInferEnginePlugin> {                             \
         return std::make_shared<EngineName>(cparams);                          \
       });
 
@@ -43,7 +44,7 @@ using PostprocFactory = Factory<PostprocssBase>;
   PostprocFactory::instance().registerCreator(                                 \
       #AlgoName,                                                               \
       [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<PostprocssBase> {                                 \
+          -> std::shared_ptr<IPostprocssPlugin> {                              \
         return std::make_shared<AlgoName>();                                   \
       });
 

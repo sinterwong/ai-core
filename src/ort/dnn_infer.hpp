@@ -21,7 +21,7 @@
 #include <unordered_set>
 
 namespace ai_core::dnn {
-class OrtAlgoInference : public InferBase {
+class OrtAlgoInference : public IInferEnginePlugin {
 public:
   explicit OrtAlgoInference(const AlgoConstructParams &params)
       : mParams(std::move(params.getParam<AlgoInferParams>("params"))) {}

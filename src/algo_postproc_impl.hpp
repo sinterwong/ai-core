@@ -38,7 +38,7 @@ public:
 
 private:
   std::string moduleName_;
-  std::shared_ptr<PostprocssBase> postprocessor_;
+  std::shared_ptr<IPostprocssPlugin> postprocessor_;
 };
 } // namespace ai_core::dnn
 #endif

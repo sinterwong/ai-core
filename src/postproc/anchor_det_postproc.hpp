@@ -18,7 +18,7 @@
 
 namespace ai_core::dnn {
 
-class AnchorDetPostproc : public PostprocssBase {
+class AnchorDetPostproc : public IPostprocssPlugin {
 public:
   explicit AnchorDetPostproc() = default;
 

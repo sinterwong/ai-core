@@ -13,7 +13,7 @@
 #include "ai_core/infer_base.hpp"
 namespace ai_core::dnn {
 
-void InferBase::prettyPrintModelInfos() {
+void IInferEnginePlugin::prettyPrintModelInfos() {
   if (!modelInfo) {
     getModelInfo();
     if (!modelInfo) {

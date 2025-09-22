@@ -16,7 +16,7 @@
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {
-class FramePreprocess : public PreprocssBase {
+class FramePreprocess : public IPreprocssPlugin {
 public:
   FramePreprocess() = default;
   ~FramePreprocess() = default;

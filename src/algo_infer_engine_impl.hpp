@@ -36,7 +36,7 @@ public:
 private:
   std::string moduleName_;
   AlgoInferParams inferParams_;
-  std::shared_ptr<InferBase> engine_;
+  std::shared_ptr<IInferEnginePlugin> engine_;
 };
 } // namespace ai_core::dnn
 #endif

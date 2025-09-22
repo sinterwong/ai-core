@@ -17,11 +17,11 @@
 #include <memory>
 
 namespace ai_core::dnn {
-class InferBase {
+class IInferEnginePlugin {
 public:
-  InferBase() = default;
+  IInferEnginePlugin() = default;
 
-  virtual ~InferBase() {}
+  virtual ~IInferEnginePlugin() {}
 
   virtual InferErrorCode initialize() = 0;
 
