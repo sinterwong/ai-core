@@ -1,5 +1,6 @@
 #pragma once
 
+#include "algo_config_parser.hpp"
 #include <ai_core/algo_infer_engine.hpp>
 #include <ai_core/algo_postproc.hpp>
 #include <ai_core/algo_preproc.hpp>
@@ -17,7 +18,7 @@ public:
   std::string mapToString(const std::vector<int64_t> &recResult);
 
 private:
-  ai_core::AlgoConstructParams mParams;
+  utils::AlgoConfigData mParams;
   std::shared_ptr<ai_core::dnn::AlgoPreproc> mFramePreproc;
   std::shared_ptr<ai_core::dnn::AlgoInferEngine> mEngine;
   std::shared_ptr<ai_core::dnn::AlgoPostproc> mOcrPostproc;

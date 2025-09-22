@@ -2,29 +2,39 @@
 
 #include "nlohmann/json.hpp"
 #include <ai_core/algo_data_types.hpp>
+#include <ai_core/infer_params_types.hpp>
 #include <string>
 
 namespace ai_core::example::utils {
+
+struct AlgoConfigData {
+  std::string moduleName;
+  ai_core::AlgoModuleTypes modelTypes;
+  ai_core::AlgoPreprocParams preprocParams;
+  ai_core::AlgoInferParams inferParams;
+  ai_core::AlgoPostprocParams postprocParams;
+};
+
 class AlgoConfigParser {
 public:
   explicit AlgoConfigParser(const std::string &configPath);
 
-  ai_core::AlgoConstructParams parse();
+  AlgoConfigData parse();
 
 private:
   void loadAndValidateJson();
 
-  void parseCommonParams(const nlohmann::json &algoConfig,
-                         ai_core::AlgoConstructParams &params);
+  ai_core::AlgoModuleTypes parseModuleTypes(const nlohmann::json &algoConfig);
 
-  void parsePreprocParams(const nlohmann::json &algoConfig,
-                          ai_core::AlgoConstructParams &params);
+  ai_core::AlgoPreprocParams
+  parsePreprocParams(const nlohmann::json &algoConfig,
+                     const std::string &preprocType);
 
-  void parseInferParams(const nlohmann::json &algoConfig,
-                        ai_core::AlgoConstructParams &params);
+  ai_core::AlgoInferParams parseInferParams(const nlohmann::json &algoConfig);
 
-  void parsePostprocParams(const nlohmann::json &algoConfig,
-                           ai_core::AlgoConstructParams &params);
+  ai_core::AlgoPostprocParams
+  parsePostprocParams(const nlohmann::json &algoConfig,
+                      const std::string &postprocType);
 
   ai_core::FramePreprocessArg
   parsePreprocFramePreprocessParams(const nlohmann::json &preprocJson);

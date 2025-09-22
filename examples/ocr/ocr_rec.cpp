@@ -1,4 +1,5 @@
 #include "ocr_rec.hpp"
+#include "ai_core/preproc_types.hpp"
 #include "algo_config_parser.hpp"
 #include <cstdint>
 #include <filesystem>
@@ -42,19 +43,13 @@ OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
                              std::string(e.what()));
   }
 
-  const auto &preprocModule = mParams.getParam<std::string>("preprocType");
-  const auto &inferModule = mParams.getParam<std::string>("inferType");
-  const auto &postprocModule = mParams.getParam<std::string>("postprocType");
+  mFramePreproc = std::make_shared<ai_core::dnn::AlgoPreproc>(
+      mParams.modelTypes.preprocModule);
+  mOcrPostproc = std::make_shared<ai_core::dnn::AlgoPostproc>(
+      mParams.modelTypes.postprocModule);
 
-  mFramePreproc = std::make_shared<ai_core::dnn::AlgoPreproc>(preprocModule);
-  mOcrPostproc = std::make_shared<ai_core::dnn::AlgoPostproc>(postprocModule);
-
-  ai_core::AlgoInferParams inferParams =
-      mParams.getParam<ai_core::AlgoInferParams>("inferParams");
-  inferParams.decryptkeyStr = SECURITY_KEY;
-
-  mEngine =
-      std::make_shared<ai_core::dnn::AlgoInferEngine>(inferModule, inferParams);
+  mEngine = std::make_shared<ai_core::dnn::AlgoInferEngine>(
+      mParams.modelTypes.inferModule, mParams.inferParams);
 
   if (mEngine->initialize() != ai_core::InferErrorCode::SUCCESS) {
     LOG_ERRORS << "OCRRec engine initialize failed";
@@ -76,8 +71,16 @@ OCRRec::~OCRRec() {}
 
 ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
   ai_core::AlgoPreprocParams preprocParams;
-  ai_core::FramePreprocessArg framePreprocessArg =
-      mParams.getParam<ai_core::FramePreprocessArg>("preprocParams");
+
+  auto framePreprocessArgPtr =
+      mParams.preprocParams.getParams<ai_core::FramePreprocessArg>();
+
+  if (framePreprocessArgPtr == nullptr) {
+    LOG_ERRORS << "FramePreprocessArg is nullptr";
+    throw std::runtime_error("FramePreprocessArg is nullptr");
+  }
+
+  auto framePreprocessArg = *framePreprocessArgPtr;
 
   auto inputNames = framePreprocessArg.inputNames;
   framePreprocessArg.inputNames = {inputNames.at(0)};
@@ -112,13 +115,8 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
     return {};
   }
 
-  ai_core::AlgoPostprocParams postprocParams;
-  const ai_core::GenericPostParams &genericPostParams =
-      mParams.getParam<ai_core::GenericPostParams>("postprocParams");
-  postprocParams.setParams(genericPostParams);
-
   ai_core::AlgoOutput algoOutput;
-  if (mOcrPostproc->process(modelOutput, postprocParams, algoOutput,
+  if (mOcrPostproc->process(modelOutput, mParams.postprocParams, algoOutput,
                             runtimeContext) !=
       ai_core::InferErrorCode::SUCCESS) {
     LOG_ERRORS << "OCRRec postprocess failed";
