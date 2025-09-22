@@ -7,6 +7,10 @@
   一个高可扩展的 AI 算法库。
 </p>
 
+---
+[English](README_EN.md) | [简体中文](README.md)
+---
+
 ![Version](https://img.shields.io/badge/version-1.1.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![C++ Standard](https://img.shields.io/badge/C++-17-blue.svg)
@@ -41,13 +45,12 @@ AI Core 的核心是一个清晰的数据流管道。数据从输入 (`AlgoInput
                                            | (e.g., TensorRT)|
                                            +-----------------+
                                                     |
-                                                    v       
+                                                    v
 +-----------+     +------------------+     +------------------+
 |           |     |                  |     |                  |
 | AlgoOutput|<----| Postproc Plugin  |<----| TensorData (out) |
 |           |     | (e.g. YOLO_DET ) |     |                  |
-+-----------+     +------------------+     +------------------+                                         
-                                         
++-----------+     +------------------+     +------------------+
 ```
 - **数据容器:** `TensorData` 是流水线内部的核心数据结构，用于在各个阶段之间传递张量数据。
 - **插件:** 每个处理阶段（预处理、推理、后处理）都是一个可插拔的插件，通过字符串名称在运行时动态加载。
