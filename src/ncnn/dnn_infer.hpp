@@ -18,8 +18,8 @@
 #include <vector>
 
 #include "ai_core/algo_data_types.hpp"
+#include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
-#include "infer_base.hpp"
 #include <ncnn/allocator.h>
 #include <ncnn/net.h>
 

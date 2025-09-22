@@ -9,8 +9,8 @@
  *
  */
 #include "algo_infer_engine_impl.hpp"
+#include "ai_core/ai_core_registrar.hpp"
 #include "ai_core/algo_data_types.hpp"
-#include "registrar/infer_engine_registrar.hpp"
 #include <logger.hpp>
 
 namespace ai_core::dnn {

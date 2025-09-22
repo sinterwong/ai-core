@@ -8,27 +8,19 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include <ostream>
-
+#include "preproc_registrar.hpp"
+#include "ai_core/ai_core_registrar.hpp"
 #include "preproc/frame_prep.hpp"
 #include "preproc/frame_with_mask_prep.hpp"
-
-#include "preproc_registrar.hpp"
-
 #include <logger.hpp>
 
 namespace ai_core::dnn {
-#define REGISTER_PREPROCESS_ALGO(AlgoName)                                     \
-  PreprocFactory::instance().registerCreator(                                  \
-      #AlgoName,                                                               \
-      [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<PreprocssBase> {                                  \
-        return std::make_shared<AlgoName>();                                   \
-      });                                                                      \
-  LOG_INFOS << "Registered " #AlgoName " creator."
 
-PreprocessRegistrar::PreprocessRegistrar() {
+DefaultPreprocPluginRegistrar::DefaultPreprocPluginRegistrar() {
   REGISTER_PREPROCESS_ALGO(FramePreprocess);
+  LOG_INFOS << "FramePreprocess registered." << std::endl;
+
   REGISTER_PREPROCESS_ALGO(FrameWithMaskPreprocess);
+  LOG_INFOS << "FrameWithMaskPreprocess registered." << std::endl;
 }
 } // namespace ai_core::dnn

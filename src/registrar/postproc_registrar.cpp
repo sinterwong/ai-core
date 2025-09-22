@@ -9,27 +9,22 @@
  *
  */
 #include "postproc_registrar.hpp"
+#include "ai_core/ai_core_registrar.hpp"
 #include "postproc/anchor_det_postproc.hpp"
 #include "postproc/confidence_filter_postproc.hpp"
 #include "postproc/cv_generic_postproc.hpp"
-#include "postproc_base.hpp"
-#include "type_safe_factory.hpp"
 #include <logger.hpp>
-#include <ostream>
 
 namespace ai_core::dnn {
-#define REGISTER_POSTPROCESS_ALGO(AlgoName)                                    \
-  PostprocFactory::instance().registerCreator(                                 \
-      #AlgoName,                                                               \
-      [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<PostprocssBase> {                                 \
-        return std::make_shared<AlgoName>();                                   \
-      });                                                                      \
-  LOG_INFOS << "Registered " #AlgoName " creator."
 
-PostprocessRegistrar::PostprocessRegistrar() {
+DefaultPostprocPluginRegistrar::DefaultPostprocPluginRegistrar() {
   REGISTER_POSTPROCESS_ALGO(AnchorDetPostproc);
+  LOG_INFOS << "AnchorDetPostproc registered." << std::endl;
+
   REGISTER_POSTPROCESS_ALGO(CVGenericPostproc);
+  LOG_INFOS << "CVGenericPostproc registered." << std::endl;
+
   REGISTER_POSTPROCESS_ALGO(ConfidenceFilterPostproc);
+  LOG_INFOS << "ConfidenceFilterPostproc registered." << std::endl;
 }
 } // namespace ai_core::dnn

@@ -12,8 +12,8 @@
 #define AI_CORE_CONFIDENCE_FILTER_POSTPROC_HPP
 
 #include "ai_core/algo_data_types.hpp"
+#include "ai_core/postproc_base.hpp"
 #include "ai_core/tensor_data.hpp"
-#include "postproc_base.hpp"
 
 namespace ai_core::dnn {
 

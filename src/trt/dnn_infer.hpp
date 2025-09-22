@@ -12,8 +12,8 @@
 #define M_TENSORRT_INFERENCE_H_
 
 #include "ai_core/algo_data_types.hpp"
+#include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
-#include "infer_base.hpp"
 #include "trt_device_buffer.hpp"
 
 #include <NvInfer.h>

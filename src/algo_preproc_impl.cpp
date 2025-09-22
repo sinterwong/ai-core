@@ -9,7 +9,7 @@
  *
  */
 #include "algo_preproc_impl.hpp"
-#include "registrar/preproc_registrar.hpp"
+#include "ai_core/ai_core_registrar.hpp"
 #include <logger.hpp>
 
 namespace ai_core::dnn {

@@ -12,7 +12,7 @@
 #define __ALGO_PREPROC_IMPL_HPP__
 
 #include "ai_core/algo_preproc.hpp"
-#include "preproc_base.hpp"
+#include "ai_core/preproc_base.hpp"
 #include <memory>
 
 namespace ai_core::dnn {

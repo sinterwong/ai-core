@@ -8,34 +8,31 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __PREPROC_REGISTRAR_HPP__
-#define __PREPROC_REGISTRAR_HPP__
-
-#include "preproc_base.hpp"
-#include "type_safe_factory.hpp"
+#ifndef AI_CORE_PREPROC_REGISTRAR_HPP
+#define AI_CORE_PREPROC_REGISTRAR_HPP
 
 namespace ai_core::dnn {
 
-using PreprocFactory = Factory<PreprocssBase>;
-
-class PreprocessRegistrar {
+class DefaultPreprocPluginRegistrar {
 public:
-  static PreprocessRegistrar &getInstance() {
-    static PreprocessRegistrar instance;
+  static DefaultPreprocPluginRegistrar &getInstance() {
+    static DefaultPreprocPluginRegistrar instance;
     return instance;
   }
 
-  PreprocessRegistrar(const PreprocessRegistrar &) = delete;
-  PreprocessRegistrar &operator=(const PreprocessRegistrar &) = delete;
-  PreprocessRegistrar(PreprocessRegistrar &&) = delete;
-  PreprocessRegistrar &operator=(PreprocessRegistrar &&) = delete;
+  DefaultPreprocPluginRegistrar(const DefaultPreprocPluginRegistrar &) = delete;
+  DefaultPreprocPluginRegistrar &
+  operator=(const DefaultPreprocPluginRegistrar &) = delete;
+  DefaultPreprocPluginRegistrar(DefaultPreprocPluginRegistrar &&) = delete;
+  DefaultPreprocPluginRegistrar &
+  operator=(DefaultPreprocPluginRegistrar &&) = delete;
 
 private:
-  PreprocessRegistrar();
+  DefaultPreprocPluginRegistrar();
 };
 
-[[maybe_unused]] inline const static PreprocessRegistrar &preproc_registrar =
-    PreprocessRegistrar::getInstance();
+[[maybe_unused]] inline const static DefaultPreprocPluginRegistrar
+    &__temp_preproc_registrar_ = DefaultPreprocPluginRegistrar::getInstance();
 } // namespace ai_core::dnn
 
 #endif

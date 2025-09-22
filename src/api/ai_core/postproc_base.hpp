@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __POSTPROCESS_BASE_HPP_
-#define __POSTPROCESS_BASE_HPP_
+#ifndef AI_CORE_POSTPROC_BASE_HPP
+#define AI_CORE_POSTPROC_BASE_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/tensor_data.hpp"

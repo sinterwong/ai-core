@@ -2,7 +2,6 @@
 #include "algo_config_parser.hpp"
 #include <logger.hpp>
 #include <nlohmann/json.hpp>
-#include <type_safe_factory.hpp>
 
 namespace ai_core::example {
 GenericImageInfer::GenericImageInfer(const std::string &configPath) {

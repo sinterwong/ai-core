@@ -9,13 +9,13 @@
  *
  */
 #include "ai_core/algo_input_types.hpp"
+#include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
+#include "ai_core/postproc_base.hpp"
+#include "ai_core/preproc_base.hpp"
 #include "ai_core/typed_buffer.hpp"
-#include "infer_base.hpp"
 #include "postproc/confidence_filter_postproc.hpp"
-#include "postproc_base.hpp"
 #include "preproc/frame_prep.hpp"
-#include "preproc_base.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
