@@ -1,31 +1,31 @@
 /**
- * @file postproc_base.hpp
+ * @file preproc_base.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
- * @date 2025-01-18
+ * @date 2025-06-27
  *
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __POSTPROCESS_BASE_HPP_
-#define __POSTPROCESS_BASE_HPP_
+#ifndef AI_CORE_PREPROC_BASE_HPP
+#define AI_CORE_PREPROC_BASE_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {
 
-class PostprocssBase {
+class IPreprocssPlugin {
 public:
-  virtual ~PostprocssBase(){};
+  virtual ~IPreprocssPlugin(){};
 
-  virtual bool process(const TensorData &, const AlgoPostprocParams &,
-                       AlgoOutput &,
+  virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
+                       TensorData &,
                        std::shared_ptr<RuntimeContext> &) const = 0;
 
-  virtual bool batchProcess(const TensorData &, const AlgoPostprocParams &,
-                            std::vector<AlgoOutput> &,
+  virtual bool batchProcess(const std::vector<AlgoInput> &,
+                            const AlgoPreprocParams &, TensorData &,
                             std::shared_ptr<RuntimeContext> &) const = 0;
 };
 } // namespace ai_core::dnn

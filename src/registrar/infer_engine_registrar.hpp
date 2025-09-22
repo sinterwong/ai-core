@@ -8,34 +8,34 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFER_ENGINE_REGISTRAR_HPP__
-#define __INFER_ENGINE_REGISTRAR_HPP__
-
-#include "infer_base.hpp"
-#include "type_safe_factory.hpp"
+#ifndef AI_CORE_INFER_ENGINE_REGISTRAR_HPP
+#define AI_CORE_INFER_ENGINE_REGISTRAR_HPP
 
 namespace ai_core::dnn {
 
-using InferEngineFactory = Factory<InferBase>;
-
-class InferEngineRegistrar {
+class DefaultInferEnginePluginRegistrar {
 public:
-  static InferEngineRegistrar &getInstance() {
-    static InferEngineRegistrar instance;
+  static DefaultInferEnginePluginRegistrar &getInstance() {
+    static DefaultInferEnginePluginRegistrar instance;
     return instance;
   }
 
-  InferEngineRegistrar(const InferEngineRegistrar &) = delete;
-  InferEngineRegistrar &operator=(const InferEngineRegistrar &) = delete;
-  InferEngineRegistrar(InferEngineRegistrar &&) = delete;
-  InferEngineRegistrar &operator=(InferEngineRegistrar &&) = delete;
+  DefaultInferEnginePluginRegistrar(const DefaultInferEnginePluginRegistrar &) =
+      delete;
+  DefaultInferEnginePluginRegistrar &
+  operator=(const DefaultInferEnginePluginRegistrar &) = delete;
+  DefaultInferEnginePluginRegistrar(DefaultInferEnginePluginRegistrar &&) =
+      delete;
+  DefaultInferEnginePluginRegistrar &
+  operator=(DefaultInferEnginePluginRegistrar &&) = delete;
 
 private:
-  InferEngineRegistrar();
+  DefaultInferEnginePluginRegistrar();
 };
 
-[[maybe_unused]] inline const static InferEngineRegistrar
-    &infer_engine_registrar = InferEngineRegistrar::getInstance();
+[[maybe_unused]] inline const static DefaultInferEnginePluginRegistrar
+    &__temp_infer_engine_registrar_ =
+        DefaultInferEnginePluginRegistrar::getInstance();
 
 } // namespace ai_core::dnn
 

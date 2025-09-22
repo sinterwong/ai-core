@@ -9,7 +9,7 @@
  *
  */
 #include "algo_postproc_impl.hpp"
-#include "registrar/postproc_registrar.hpp"
+#include "ai_core/ai_core_registrar.hpp"
 #include <logger.hpp>
 
 namespace ai_core::dnn {

@@ -8,34 +8,31 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __POSTPROC_REGISTRAR_HPP__
-#define __POSTPROC_REGISTRAR_HPP__
-
-#include "postproc_base.hpp"
-#include "type_safe_factory.hpp"
+#ifndef AI_CORE_POSTPROC_REGISTRAR_HPP
+#define AI_CORE_POSTPROC_REGISTRAR_HPP
 
 namespace ai_core::dnn {
-
-using PostprocFactory = Factory<PostprocssBase>;
-
-class PostprocessRegistrar {
+class DefaultPostprocPluginRegistrar {
 public:
-  static PostprocessRegistrar &getInstance() {
-    static PostprocessRegistrar instance;
+  static DefaultPostprocPluginRegistrar &getInstance() {
+    static DefaultPostprocPluginRegistrar instance;
     return instance;
   }
 
-  PostprocessRegistrar(const PostprocessRegistrar &) = delete;
-  PostprocessRegistrar &operator=(const PostprocessRegistrar &) = delete;
-  PostprocessRegistrar(PostprocessRegistrar &&) = delete;
-  PostprocessRegistrar &operator=(PostprocessRegistrar &&) = delete;
+  DefaultPostprocPluginRegistrar(const DefaultPostprocPluginRegistrar &) =
+      delete;
+  DefaultPostprocPluginRegistrar &
+  operator=(const DefaultPostprocPluginRegistrar &) = delete;
+  DefaultPostprocPluginRegistrar(DefaultPostprocPluginRegistrar &&) = delete;
+  DefaultPostprocPluginRegistrar &
+  operator=(DefaultPostprocPluginRegistrar &&) = delete;
 
 private:
-  PostprocessRegistrar();
+  DefaultPostprocPluginRegistrar();
 };
 
-[[maybe_unused]] inline const static PostprocessRegistrar &postproc_registrar =
-    PostprocessRegistrar::getInstance();
+[[maybe_unused]] inline const static DefaultPostprocPluginRegistrar
+    &__temp_postproc_registrar_ = DefaultPostprocPluginRegistrar::getInstance();
 } // namespace ai_core::dnn
 
 #endif

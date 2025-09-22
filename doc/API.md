@@ -114,7 +114,7 @@ There are three main factories:
 
 To add a new component (e.g., a new post-processing algorithm named `MyPostproc`):
 
-1.  Inherit from the corresponding base class (e.g., `PostprocssBase`).
+1.  Inherit from the corresponding base class (e.g., `IPostprocssPlugin`).
 2.  Implement the required virtual methods.
 3.  In a `.cpp` file, register your new class using the provided macro:
 

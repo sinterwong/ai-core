@@ -12,11 +12,11 @@
 #define __PREPROCESS_SINGLE_FRAME_WITH_MASK_INPUT_HPP_
 
 #include "ai_core/algo_data_types.hpp"
+#include "ai_core/preproc_base.hpp"
 #include "ai_core/tensor_data.hpp"
-#include "preproc_base.hpp"
 
 namespace ai_core::dnn {
-class FrameWithMaskPreprocess : public PreprocssBase {
+class FrameWithMaskPreprocess : public IPreprocssPlugin {
 public:
   FrameWithMaskPreprocess() = default;
   ~FrameWithMaskPreprocess() = default;

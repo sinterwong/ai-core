@@ -12,8 +12,8 @@
 #define __ALGO_INFER_ENGINE_IMPL_HPP__
 
 #include "ai_core/algo_infer_engine.hpp"
+#include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
-#include "infer_base.hpp"
 #include <memory>
 #include <string>
 
@@ -36,7 +36,7 @@ public:
 private:
   std::string moduleName_;
   AlgoInferParams inferParams_;
-  std::shared_ptr<InferBase> engine_;
+  std::shared_ptr<IInferEnginePlugin> engine_;
 };
 } // namespace ai_core::dnn
 #endif

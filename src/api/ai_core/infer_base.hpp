@@ -8,21 +8,20 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_HPP_
-#define __INFERENCE_HPP_
-
-#include <memory>
+#ifndef AI_CORE_INFER_BASE_HPP
+#define AI_CORE_INFER_BASE_HPP
 
 #include "ai_core/infer_common_types.hpp"
 #include "ai_core/infer_error_code.hpp"
 #include "ai_core/tensor_data.hpp"
+#include <memory>
 
 namespace ai_core::dnn {
-class InferBase {
+class IInferEnginePlugin {
 public:
-  InferBase() = default;
+  IInferEnginePlugin() = default;
 
-  virtual ~InferBase() {}
+  virtual ~IInferEnginePlugin() {}
 
   virtual InferErrorCode initialize() = 0;
 

@@ -1,11 +1,11 @@
 #include "ai_core/algo_input_types.hpp"
+#include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
+#include "ai_core/postproc_base.hpp"
+#include "ai_core/preproc_base.hpp"
 #include "ai_core/typed_buffer.hpp"
-#include "infer_base.hpp"
 #include "postproc/anchor_det_postproc.hpp"
-#include "postproc_base.hpp"
 #include "preproc/frame_prep.hpp"
-#include "preproc_base.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
@@ -36,7 +36,8 @@ using namespace ai_core::dnn;
 struct TestConfig {
   std::string testName;
 
-  std::function<std::shared_ptr<InferBase>(const AlgoConstructParams &)>
+  std::function<std::shared_ptr<IInferEnginePlugin>(
+      const AlgoConstructParams &)>
       engineFactory;
 
   std::string modelPath;
@@ -91,8 +92,8 @@ protected:
 
   std::string imagePath = (dataDir / "yolov11/image.png").string();
 
-  std::shared_ptr<PreprocssBase> framePreproc;
-  std::shared_ptr<PostprocssBase> yoloDetPostproc;
+  std::shared_ptr<IPreprocssPlugin> framePreproc;
+  std::shared_ptr<IPostprocssPlugin> yoloDetPostproc;
 };
 
 TEST_P(YoloDetInferenceTest, Normal) {
@@ -108,7 +109,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
   inferParams.decryptkeyStr = config.decryptkeyStr;
   tempInferParams.setParam("params", inferParams);
 
-  std::shared_ptr<InferBase> engine = config.engineFactory(tempInferParams);
+  std::shared_ptr<IInferEnginePlugin> engine =
+      config.engineFactory(tempInferParams);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
   engine->prettyPrintModelInfos();
@@ -188,7 +190,8 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   inferParams.decryptkeyStr = config.decryptkeyStr;
   tempInferParams.setParam("params", inferParams);
 
-  std::shared_ptr<InferBase> engine = config.engineFactory(tempInferParams);
+  std::shared_ptr<IInferEnginePlugin> engine =
+      config.engineFactory(tempInferParams);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 

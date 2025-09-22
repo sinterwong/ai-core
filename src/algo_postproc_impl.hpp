@@ -12,7 +12,7 @@
 #define __ALGO_POSTPROC_IMPL_HPP__
 
 #include "ai_core/algo_postproc.hpp"
-#include "postproc_base.hpp"
+#include "ai_core/postproc_base.hpp"
 #include <memory>
 
 namespace ai_core::dnn {
@@ -38,7 +38,7 @@ public:
 
 private:
   std::string moduleName_;
-  std::shared_ptr<PostprocssBase> postprocessor_;
+  std::shared_ptr<IPostprocssPlugin> postprocessor_;
 };
 } // namespace ai_core::dnn
 #endif
