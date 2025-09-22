@@ -4,65 +4,79 @@
 </p>
 
 <p align="center">
-  A highly scalable deep learning algorithm computing library.
+  一个高可扩展的 AI 算法库。
 </p>
 
-AI Core is a powerful and extensible C++ library for managing and executing AI inference algorithms. Designed with a modular architecture, it allows developers to seamlessly integrate and switch between different inference engines like ONNX Runtime, NCNN, and TensorRT.
+![Version](https://img.shields.io/badge/version-1.1.2-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![C++ Standard](https://img.shields.io/badge/C++-17-blue.svg)
 
-## Features
+**AI Core** 是一个现代化、高性能、可扩展的 C++ AI 推理框架。旨在简化 AI 模型在多种硬件后端上的部署流程，提供从数据预处理、模型推理到结果后处理的端到端解决方案。
 
-*   **Multiple Inference Engines:** Supports ONNX Runtime, NCNN, and TensorRT.
-*   **Modular Design:** Easily extend the library by adding new algorithms and pre/post-processing modules.
+## 核心特性
 
-## Core Components
+*   **📦 模块化流程 (Modular Pipeline):** 采用 **预处理 -> 推理 -> 后处理** 三段式流水线设计，每个阶段都可以独立实现和替换。
+*   **🔌 可扩展插件系统 (Extensible Plugin System):** 基于工厂模式，您可以轻松地自定义预处理、推理引擎和后处理插件，并注册到框架中。
+*   **🔒 类型安全的数据处理 (Type-Safe Data Handling):** 使用 `std::variant` 和自定义的 `TypedBuffer` 来管理不同类型的数据和参数，极大地提高了代码的健壮性和可维护性。
+*   **🚀 硬件抽象与加速 (Hardware Abstraction & Acceleration):** 通过 `TypedBuffer` 统一管理 CPU 和 GPU 内存，无缝支持在不同设备间的数据流转与计算。
+*   **✨ 简洁易用的高级 API (High-Level, Easy-to-Use API):** 提供了 `AlgoInference` 类作为统一入口，封装了复杂的底层调用，让开发者可以专注于业务逻辑。
+*   **🔧 现代 C++ 设计 (Modern C++ Design):** 广泛采用 C++17/20 特性，保证了代码的高性能、高质量和安全性。
 
-AI Core is built around three main components that form the foundation of the inference pipeline: `AlgoPreproc`, `AlgoInferEngine`, and `AlgoPostproc`. These components work together to handle the entire process, from data preparation to final output, allowing for a flexible and modular approach to building and running AI models.
 
--   **`AlgoPreproc`**: Responsible for all data preprocessing tasks. This component takes raw input, such as images or other data, and transforms it into the format required by the inference engine. This can include resizing, normalization, and other transformations.
+## 核心架构
 
--   **`AlgoInferEngine`**: The core of the inference process. This component takes the preprocessed data and runs it through the deep learning model using a specified backend, such as ONNX Runtime, NCNN, or TensorRT. It manages the model loading, execution, and data transfer between the host and the device.
+AI Core 的核心是一个清晰的数据流管道。数据从输入 (`AlgoInput`) 开始，经过一系列处理模块，最终生成算法输出 (`AlgoOutput`)。
 
--   **`AlgoPostproc`**: Handles the post-processing of the model's output. This component takes the raw output from the inference engine and transforms it into a human-readable and usable format, such as bounding boxes for object detection or masks for segmentation.
+```
++-----------+     +-----------------+     +-----------------+
+|           |     |                 |     |                 |
+| AlgoInput |---->| Preproc Plugin  |---->|  TensorData (in)|
+|           |     | (e.g. FrameProc)|     |                 |
++-----------+     +-----------------+     +-----------------+
+                                                   |
+                                                   v
+                                           +-----------------+
+                                           |                 |
+                                           | Inference Engine|
+                                           | (e.g., TensorRT)|
+                                           +-----------------+
+                                                    |
+                                                    v       
++-----------+     +------------------+     +------------------+
+|           |     |                  |     |                  |
+| AlgoOutput|<----| Postproc Plugin  |<----| TensorData (out) |
+|           |     | (e.g. YOLO_DET ) |     |                  |
++-----------+     +------------------+     +------------------+                                         
+                                         
+```
+- **数据容器:** `TensorData` 是流水线内部的核心数据结构，用于在各个阶段之间传递张量数据。
+- **插件:** 每个处理阶段（预处理、推理、后处理）都是一个可插拔的插件，通过字符串名称在运行时动态加载。
 
-These components can be used individually for fine-grained control over the inference pipeline or orchestrated together to create a seamless end-to-end workflow. The following sections provide a more detailed look at each of these components.
+## 快速开始
 
-## Getting Started
+### 环境要求
 
-### Prerequisites
+- C++20 兼容的编译器 (GCC 11+)
+- CMake 3.15+
+- (可选) CUDA Toolkit 11.x+
+- (可选) OpenCV 4.x+
 
-*   C++20 compliant compiler (e.g., GCC 9+, Clang 9+).
-*   CMake (3.16 or higher).
 
-### Dependencies
-
-AI Core requires the following dependencies:
-
-*   **ONNX Runtime:** For running ONNX models if you use.
-*   **NCNN:** For running NCNN models if you use.
-*   **TensorRT:** For running TensorRT engines if you use.
-*   **OpenCV:** For image pre-processing.
-*   **[logger](https://github.com/sinterwong/logger.git):** For logging.
-*   **[encryption-tool](https://github.com/sinterwong/encryption-tool.git):** For encryption file.
-*   **nlohmann-json:** For parsing JSON configuration files.
-
-The project uses CMake to manage dependencies. You can either install them on your system or use a dependency manager like vcpkg or Conan.
-
-### Building
+### 编译与安装
 
 1.  **Clone the repository:**
     ```bash
     git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
     cd ai-core
-    ```
-    If you have already cloned the repository without the submodules, you can initialize them:
-    ```bash
-    git submodule update --init --recursive
+    mkdir -p 3rdparty/target/
+    curl -L https://github.com/sinterwong/ai-core/releases/download/v1.1.1-alpha/dependency-Linux_x86_64.tgz -o dependency.tgz
+    tar -xzf dependency.tgz -C 3rdparty/target/
     ```
 
 2.  **Configure with CMake:**
     ```bash
     mkdir build && cd build
-    cmake .. -DBUILD_AI_CORE_TESTS=ON -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
+    cmake .. -DBUILD_AI_CORE_TESTS=ON -DBUILD_AI_CORE_EXAMPLES=ON -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
     ```
     *   Use `-DWITH_ORT_ENGINE=ON`, `-DWITH_NCNN_ENGINE=ON`, and `-DWITH_TRT_ENGINE=ON` to enable the respective inference engines.
 
@@ -70,25 +84,18 @@ The project uses CMake to manage dependencies. You can either install them on yo
     ```bash
     cmake --build .
     ```
+    
+4. **Install:**
+    ```bash
+    cmake --install .
+    ```
 
-### Installation
+### 使用示例
 
-To install the library, run the following command from the `build` directory:
+暂时可以参考**tests**和**examples**目录中的内容。
 
-```bash
-cmake --install .
-```
+## 文档
 
-### Higher-Level Abstractions
-
-For convenience, AI Core also provides higher-level abstractions like `AlgoInference`. These classes encapsulate the entire pipeline and are useful when you don't need fine-grained control over each step.
-
--   **`AlgoInference`**: Wraps the three-stage pipeline (`AlgoPreproc`, `AlgoInferEngine`, `AlgoPostproc`) into a single class for easier use.
-
-## API Documentation
-
-For a detailed description of the public API, including classes, methods, and data structures, please see the [API Documentation](doc/API.md).
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+- **[框架设计与核心概念](./doc/Framework.md):** 解析 AI Core 的架构设计、核心组件和设计哲学。
+- **[API 参考手册](./doc/API.md):** 详细介绍所有公开的类、函数和数据类型，并提供使用示例。
+- **[快速入门](./doc/Quickstart.md):** (即将推出) 手把手教您如何使用 AI Core 完整地构建一个 AI 应用。
