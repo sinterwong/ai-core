@@ -14,6 +14,10 @@ public:
 
   ai_core::AlgoOutput operator()(const cv::Mat &image, const cv::Rect &roi);
 
+  std::vector<ai_core::AlgoOutput>
+  operator()(const std::vector<cv::Mat> &images,
+             const std::vector<cv::Rect> &rois);
+
 private:
   std::shared_ptr<ai_core::dnn::AlgoInference> mEngine;
   utils::AlgoConfigData mParams;
