@@ -23,8 +23,6 @@ private:
   std::shared_ptr<ai_core::dnn::AlgoInferEngine> mEngine;
   std::shared_ptr<ai_core::dnn::AlgoPostproc> mOcrPostproc;
   std::vector<wchar_t> mDict;
-
-  int batch;
 };
 
 } // namespace ai_core::example

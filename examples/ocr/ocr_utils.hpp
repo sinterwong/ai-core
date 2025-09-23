@@ -28,7 +28,7 @@ public:
   std::vector<cv::Rect> detect(const cv::Mat &frame,
                                const cv::Rect &roi = cv::Rect{});
 
-  std::string recognize(const cv::Mat &imageGray);
+  std::vector<std::string> recognize(const cv::Mat &imageGray);
 
   cv::Rect expandBox(const cv::Rect &box, float expandRatioX,
                      float expandRatioY, const cv::Size &frameSize);
@@ -37,6 +37,10 @@ private:
   std::vector<cv::Rect> mergeRowBoxes(std::vector<cv::Rect> boxes);
 
   bool hasKeyword(const std::string &ocrRet, const std::string &keyword);
+
+  cv::Mat convertToBlackWords(const cv::Mat &grayImage);
+
+  std::vector<cv::Mat> lineSplit(const cv::Mat &image);
 
 private:
   std::unique_ptr<GenericImageInfer> m_ocrDetector;

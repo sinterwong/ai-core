@@ -8,7 +8,6 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_output_types.hpp"
 #include "ocr_utils.hpp"
 #include <iostream>
 #include <logger.hpp>
@@ -68,11 +67,15 @@ int main(int argc, char *argv[]) {
       cv::Mat textImage = image(bbox);
       cv::Mat grayImage;
       if (textImage.channels() == 3) {
-        cv::cvtColor(textImage, grayImage, cv::COLOR_RGB2GRAY);
+        cv::cvtColor(textImage, grayImage, cv::COLOR_BGR2GRAY);
       } else {
         grayImage = textImage;
       }
-      std::string text = ocr->recognize(grayImage);
+      std::vector<std::string> texts = ocr->recognize(grayImage);
+      std::string text;
+      for (const auto &t : texts) {
+        text += "-" + t;
+      }
       if (!text.empty()) {
         LOG_INFOS << "Rect: " << bbox.x << ", " << bbox.y << ", " << bbox.width
                   << ", " << bbox.height << "> "
