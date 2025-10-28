@@ -30,8 +30,10 @@ namespace ai_core::dnn::gpu::cuda_op
                                    int crop_h, int crop_w, int dst_h, int dst_w,
                                    const float *mean, const float *std);
 
-    void escale_resize_normalize_gpu(const uint8_t *src, float *dst, int src_h,
-                                     int src_w, int src_c, int dst_h, int dst_w,
+    void escale_resize_normalize_gpu(const uint8_t *src, float *dst,
+                                     int full_image_w, int src_c,
+                                     const ROIData &roi,
+                                     int dst_h, int dst_w,
                                      const float *mean, const float *std,
                                      const float *pad_val);
 

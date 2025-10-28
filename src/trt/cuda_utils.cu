@@ -98,57 +98,66 @@ namespace ai_core::dnn::gpu::cuda_op
 
     // crop + escale resize + normal
     __global__ void escale_resize_normalize_bilinear_kernel(
-        const uint8_t *src, float *dst, int src_h, int src_w, int src_c, int dst_h,
-        int dst_w, const float *mean, const float *std, const float *pad_val,
-        int new_h, int new_w, int pad_y, int pad_x)
+        const uint8_t *src, float *dst,
+        int full_image_w, int src_c, const ROIData roi,
+        int dst_h, int dst_w, const float *mean, const float *std,
+        const float *pad_val, int new_h, int new_w, int pad_y, int pad_x)
     {
-
       int x = blockIdx.x * blockDim.x + threadIdx.x;
       int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-      if (x < dst_w && y < dst_h)
+      if (x >= dst_w || y >= dst_h)
+        return;
+
+      if (x >= pad_x && x < pad_x + new_w && y >= pad_y && y < pad_y + new_h)
       {
-        if (x >= pad_x && x < pad_x + new_w && y >= pad_y && y < pad_y + new_h)
+        int scaled_x = x - pad_x;
+        int scaled_y = y - pad_y;
+
+        // 缩放坐标映射回 ROI 内部的坐标
+        float src_x_f = (scaled_x + 0.5f) * (float)roi.w / (float)new_w - 0.5f;
+        float src_y_f = (scaled_y + 0.5f) * (float)roi.h / (float)new_h - 0.5f;
+
+        int x1 = floorf(src_x_f);
+        int y1 = floorf(src_y_f);
+        int x2 = x1 + 1;
+        int y2 = y1 + 1;
+
+        float x_diff = src_x_f - x1;
+        float y_diff = src_y_f - y1;
+
+        // 坐标钳位在 ROI 尺寸内
+        x1 = max(0, x1);
+        y1 = max(0, y1);
+        x2 = min(roi.w - 1, x2);
+        y2 = min(roi.h - 1, y2);
+
+        // 将 ROI 内部坐标转换为完整图像的绝对坐标
+        int abs_x1 = roi.x + x1;
+        int abs_y1 = roi.y + y1;
+        int abs_x2 = roi.x + x2;
+        int abs_y2 = roi.y + y2;
+
+        for (int c = 0; c < src_c; c++)
         {
-          int scaled_x = x - pad_x;
-          int scaled_y = y - pad_y;
+          // 使用 full_image_w 作为 stride 进行寻址
+          float p11 = src[(abs_y1 * full_image_w + abs_x1) * src_c + c];
+          float p12 = src[(abs_y2 * full_image_w + abs_x1) * src_c + c];
+          float p21 = src[(abs_y1 * full_image_w + abs_x2) * src_c + c];
+          float p22 = src[(abs_y2 * full_image_w + abs_x2) * src_c + c];
 
-          float src_x = (scaled_x + 0.5f) * (float)src_w / (float)new_w - 0.5f;
-          float src_y = (scaled_y + 0.5f) * (float)src_h / (float)new_h - 0.5f;
+          float val = p11 * (1.0f - x_diff) * (1.0f - y_diff) +
+                      p21 * x_diff * (1.0f - y_diff) +
+                      p12 * (1.0f - x_diff) * y_diff + p22 * x_diff * y_diff;
 
-          int x1 = floorf(src_x);
-          int y1 = floorf(src_y);
-          int x2 = x1 + 1;
-          int y2 = y1 + 1;
-
-          float x_diff = src_x - x1;
-          float y_diff = src_y - y1;
-
-          x1 = max(0, x1);
-          y1 = max(0, y1);
-          x2 = min(src_w - 1, x2);
-          y2 = min(src_h - 1, y2);
-
-          for (int c = 0; c < src_c; c++)
-          {
-            float p11 = src[(y1 * src_w + x1) * src_c + c];
-            float p12 = src[(y2 * src_w + x1) * src_c + c];
-            float p21 = src[(y1 * src_w + x2) * src_c + c];
-            float p22 = src[(y2 * src_w + x2) * src_c + c];
-
-            float val = p11 * (1.0f - x_diff) * (1.0f - y_diff) +
-                        p21 * x_diff * (1.0f - y_diff) +
-                        p12 * (1.0f - x_diff) * y_diff + p22 * x_diff * y_diff;
-
-            dst[(y * dst_w + x) * src_c + c] = (val - mean[c]) / std[c];
-          }
+          dst[(y * dst_w + x) * src_c + c] = (val - mean[c]) / std[c];
         }
-        else
+      }
+      else
+      {
+        for (int c = 0; c < src_c; c++)
         {
-          for (int c = 0; c < src_c; c++)
-          {
-            dst[(y * dst_w + x) * src_c + c] = (pad_val[c] - mean[c]) / std[c];
-          }
+          dst[(y * dst_w + x) * src_c + c] = (pad_val[c] - mean[c]) / std[c];
         }
       }
     }
@@ -350,22 +359,25 @@ namespace ai_core::dnn::gpu::cuda_op
         dst_w, mean, std);
   }
 
-  void escale_resize_normalize_gpu(const uint8_t *src, float *dst, int src_h,
-                                   int src_w, int src_c, int dst_h, int dst_w,
+  void escale_resize_normalize_gpu(const uint8_t *src, float *dst,
+                                   int full_image_w, int src_c,
+                                   const ROIData &roi,
+                                   int dst_h, int dst_w,
                                    const float *mean, const float *std,
                                    const float *pad_val)
   {
-    float scale = fminf((float)dst_w / src_w, (float)dst_h / src_h);
-    int new_w = (int)(src_w * scale);
-    int new_h = (int)(src_h * scale);
+    float scale = fminf((float)dst_w / roi.w, (float)dst_h / roi.h);
+    int new_w = (int)(roi.w * scale);
+    int new_h = (int)(roi.h * scale);
     int pad_w = (dst_w - new_w) / 2;
     int pad_h = (dst_h - new_h) / 2;
 
     dim3 block(32, 32);
     dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y);
+
     kernel::escale_resize_normalize_bilinear_kernel<<<grid, block>>>(
-        src, dst, src_h, src_w, src_c, dst_h, dst_w, mean, std, pad_val, new_h,
-        new_w, pad_h, pad_w);
+        src, dst, full_image_w, src_c, roi, dst_h, dst_w, mean, std, pad_val,
+        new_h, new_w, pad_h, pad_w);
   }
 
   void batch_hwc_to_chw_gpu(const float *src, float *dst, int height, int width,

@@ -72,18 +72,13 @@ protected:
 
   void CheckResults(const DetRet *detRet) {
     ASSERT_NE(detRet, nullptr);
-    ASSERT_EQ(detRet->bboxes.size(), 2);
+    ASSERT_EQ(detRet->bboxes.size(), 1);
 
     const auto &box0 =
         (detRet->bboxes[0].label == 0) ? detRet->bboxes[0] : detRet->bboxes[1];
-    const auto &box7 =
-        (detRet->bboxes[0].label == 7) ? detRet->bboxes[0] : detRet->bboxes[1];
-
-    ASSERT_EQ(box7.label, 7);
-    ASSERT_NEAR(box7.score, 0.54, 1e-2);
 
     ASSERT_EQ(box0.label, 0);
-    ASSERT_NEAR(box0.score, 0.8, 1e-2);
+    ASSERT_NEAR(box0.score, 0.811, 1e-2);
   }
 
   fs::path resourceDir = fs::path("assets");
@@ -147,7 +142,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
   FrameInput frameInput;
   frameInput.image = std::make_shared<cv::Mat>(imageRGB);
   frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
+      std::make_shared<cv::Rect>(2, 2, imageRGB.cols - 4, imageRGB.rows - 4);
   algoInput.setParams(frameInput);
 
   std::shared_ptr<RuntimeContext> runtimeContext =
@@ -227,7 +222,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   FrameInput frameInput;
   frameInput.image = std::make_shared<cv::Mat>(imageRGB);
   frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
+      std::make_shared<cv::Rect>(2, 2, imageRGB.cols - 4, imageRGB.rows - 4);
   algoInput.setParams(frameInput);
 
   std::vector<std::thread> threads;

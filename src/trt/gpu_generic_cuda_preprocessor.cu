@@ -84,11 +84,12 @@ namespace ai_core::dnn::gpu
 
     if (args.isEqualScale)
     {
+      // ... (scale, new_w, new_h, padding 的计算移到了 .cu 文件中, 这里可以移除)
+      // runtimeArgs.leftPad 和 topPad 仍然需要在Host端计算和保存
       float scale = std::min(static_cast<float>(args.modelInputShape.w) / src_w,
                              static_cast<float>(args.modelInputShape.h) / src_h);
       int new_w = static_cast<int>(src_w * scale);
       int new_h = static_cast<int>(src_h * scale);
-
       runtimeArgs.leftPad = (args.modelInputShape.w - new_w) / 2;
       runtimeArgs.topPad = (args.modelInputShape.h - new_h) / 2;
 
@@ -97,14 +98,18 @@ namespace ai_core::dnn::gpu
                             args.pad.size() * sizeof(float),
                             cudaMemcpyHostToDevice));
 
-      const uint8_t *d_roiImage_ptr =
-          (const uint8_t *)d_inputImage.get() +
-          ((size_t)roi.y * image.cols + roi.x) * src_c;
+      cuda_op::ROIData roi_data = {roi.x, roi.y, roi.height, roi.width};
 
       cuda_op::escale_resize_normalize_gpu(
-          d_roiImage_ptr, (float *)hwcBuffer.getRawDevicePtr(), src_h, src_w,
-          src_c, args.modelInputShape.h, args.modelInputShape.w,
-          (const float *)d_mean.get(), (const float *)d_std.get(),
+          (const uint8_t *)d_inputImage.get(),
+          (float *)hwcBuffer.getRawDevicePtr(),
+          image.cols,
+          src_c,
+          roi_data,
+          args.modelInputShape.h,
+          args.modelInputShape.w,
+          (const float *)d_mean.get(),
+          (const float *)d_std.get(),
           (const float *)d_pad.get());
     }
     else
