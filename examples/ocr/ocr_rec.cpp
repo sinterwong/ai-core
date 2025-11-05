@@ -24,14 +24,30 @@ OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
       throw std::runtime_error("Dictionary file not found: " + dictPath);
     }
 
-    std::wifstream dictFile(dictPath);
-    dictFile.imbue(std::locale(
-        dictFile.getloc(),
-        new std::codecvt_utf8_utf16<wchar_t, 0x10ffff, std::consume_header>));
+    std::ifstream dictFile(dictPath);
+    if (!dictFile.is_open()) {
+      LOG_ERRORS << "Failed to open dictionary file: " << dictPath;
+      throw std::runtime_error("Failed to open dictionary file: " + dictPath);
+    }
 
-    std::wstring lineTemp;
-    while (std::getline(dictFile, lineTemp)) {
-      mDict.push_back(lineTemp[0]);
+    std::string line;
+    while (std::getline(dictFile, line)) {
+      if (!line.empty()) {
+        size_t charLen = 1; // 默认 ASCII
+        // 获取第一个 UTF-8 字符
+        unsigned char firstByte = static_cast<unsigned char>(line[0]);
+        // UTF-8是变长编码，一个字符占1~4 byte。用首字符判断该字符占用多少byte
+        if (firstByte >= 0xF0)
+          charLen = 4;
+        else if (firstByte >= 0xE0)
+          charLen = 3;
+        else if (firstByte >= 0xC0)
+          charLen = 2;
+
+        if (charLen <= line.length()) {
+          mDict.push_back(line.substr(0, charLen));
+        }
+      }
     }
     dictFile.close();
   }
@@ -138,25 +154,14 @@ std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
     return "";
   }
 
-  std::wstring wRet;
+  std::string ret;
   for (int64_t index : recResult) {
-    if (index >= 0 && index < mDict.size()) {
-      wRet += mDict[index];
-    }
-
-    if (index > static_cast<int64_t>(mDict.size())) {
+    if (index >= 0 && index < static_cast<int64_t>(mDict.size())) {
+      ret += mDict[index];
+    } else if (index > static_cast<int64_t>(mDict.size())) {
       LOG_ERRORS << "Index out of dictionary bounds: " << index;
       throw std::runtime_error("Index out of dictionary bounds");
     }
-  }
-
-  std::string ret;
-  try {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-    ret = converter.to_bytes(wRet);
-  } catch (const std::range_error &e) {
-    LOG_ERRORS << "Failed to convert wstring to string: " << e.what();
-    return "";
   }
   return ret;
 }
