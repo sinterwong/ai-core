@@ -1,14 +1,14 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
-PROJECT(Benchmarks)
+cmake_minimum_required(VERSION 3.18)
+project(Benchmarks)
 
-LOAD_OPENCV()
+load_opencv()
 
-IF (TARGET_OS STREQUAL "Android")
-    LOAD_ANDROID_ENV()
-    LIST(APPEND ANDROID_JIN_LIBS mediandk)
-ENDIF()
+if(TARGET_OS STREQUAL "Android")
+    load_android_env()
+    list(APPEND ANDROID_JIN_LIBS mediandk)
+endif()
 
-SET(DEPENDENCY_INCLUDES
+set(DEPENDENCY_INCLUDES
     ${OpenCV_INCLUDE_DIRS}
     ${PROJECT_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ort
@@ -16,58 +16,69 @@ SET(DEPENDENCY_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/trt
 )
 
-SET(DEPENDENCY_LIBS
+set(DEPENDENCY_LIBS
     ai_core::ai_core
     logger::logger
     encrypt::encrypt
-    benchmark::benchmark 
+    benchmark::benchmark
     ${OpenCV_LIBS}
     ${ANDROID_JIN_LIBS}
 )
 
-IF(WITH_ORT_ENGINE)
-	LOAD_ONNXRUNTIME()
-	LIST(APPEND DEPENDENCY_INCLUDES  
-		${ONNXRUNTIME_INCLUDE_DIR}
-    	${ONNXRUNTIME_INCLUDE_DIR}/onnxruntime
-	)
-	LIST(APPEND DEPENDENCY_LIBS ${ONNXRUNTIME_LIBS})
-	ADD_DEFINITIONS(-DWITH_ORT)
-ENDIF()
+if(WITH_ORT_ENGINE)
+    load_onnxruntime()
+    list(APPEND DEPENDENCY_INCLUDES
+        ${ONNXRUNTIME_INCLUDE_DIR}
+        ${ONNXRUNTIME_INCLUDE_DIR}/onnxruntime
+    )
+    list(APPEND DEPENDENCY_LIBS ${ONNXRUNTIME_LIBS})
+endif()
 
-IF(WITH_NCNN_ENGINE)
-	LOAD_OPENMP()
-	LOAD_NCNN()
+if(WITH_NCNN_ENGINE)
+    load_openmp()
+    load_ncnn()
 
-	LIST(APPEND DEPENDENCY_INCLUDES  
-		${NCNN_INCLUDE_DIR}
-	)
-	LIST(APPEND DEPENDENCY_LIBS ${NCNN_LIBS} ${OpenMP_CXX_FLAGS})
-	ADD_DEFINITIONS(-DWITH_NCNN)
-ENDIF()
+    list(APPEND DEPENDENCY_INCLUDES
+        ${NCNN_INCLUDE_DIR}
+    )
+    list(APPEND DEPENDENCY_LIBS ${NCNN_LIBS} ${OpenMP_CXX_FLAGS})
+endif()
 
-IF(WITH_TRT_ENGINE)
-	LOAD_CUDA()
-	LOAD_TENSORRT()
+if(WITH_TRT_ENGINE)
+    load_cuda()
+    load_tensorrt()
 
-	LIST(APPEND DEPENDENCY_INCLUDES  
-		${TensorRT_INCLUDE_DIR}
-		${CUDAToolkit_INCLUDE_DIRS}
-		${CMAKE_CURRENT_SOURCE_DIR}/trt
-	)
+    list(APPEND DEPENDENCY_INCLUDES
+        ${TensorRT_INCLUDE_DIR}
+        ${CUDAToolkit_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/trt
+    )
 
-	LIST(APPEND DEPENDENCY_LIBS TensorRT::nvinfer)
-	ADD_DEFINITIONS(-DWITH_TRT)
-ENDIF()
+    list(APPEND DEPENDENCY_LIBS TensorRT::nvinfer)
+endif()
 
-FILE(GLOB CURRENT_DIR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cc)
+file(GLOB CURRENT_DIR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cc)
 
-MESSAGE(STATUS "Benchmark SOURCES: ${CURRENT_DIR_SRCS}")
+message(STATUS "Benchmark sources: ${CURRENT_DIR_SRCS}")
 
-FILE(MAKE_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin/benchmarks)
-SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin/benchmarks)
+file(MAKE_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin/benchmarks)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin/benchmarks)
 
-ADD_EXECUTABLE(ai_core_benchmarks ${CURRENT_DIR_SRCS})
-TARGET_INCLUDE_DIRECTORIES(ai_core_benchmarks PRIVATE ${DEPENDENCY_INCLUDES})
-TARGET_LINK_LIBRARIES(ai_core_benchmarks PRIVATE ${DEPENDENCY_LIBS})
-INSTALL(TARGETS ai_core_benchmarks DESTINATION benchmarks)
+add_executable(ai_core_benchmarks ${CURRENT_DIR_SRCS})
+target_include_directories(ai_core_benchmarks PRIVATE ${DEPENDENCY_INCLUDES})
+target_link_libraries(ai_core_benchmarks PRIVATE ${DEPENDENCY_LIBS})
+
+# Add compile definitions
+if(WITH_ORT_ENGINE)
+    target_compile_definitions(ai_core_benchmarks PRIVATE WITH_ORT)
+endif()
+
+if(WITH_NCNN_ENGINE)
+    target_compile_definitions(ai_core_benchmarks PRIVATE WITH_NCNN)
+endif()
+
+if(WITH_TRT_ENGINE)
+    target_compile_definitions(ai_core_benchmarks PRIVATE WITH_TRT)
+endif()
+
+install(TARGETS ai_core_benchmarks DESTINATION benchmarks)

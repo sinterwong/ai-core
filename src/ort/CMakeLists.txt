@@ -1,40 +1,40 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
-PROJECT(OrtEngineModule)
+project(OrtEngineModule)
 
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON) 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-SET(ORT_MODULE_PRIVATE_INCLUDES
+set(ORT_MODULE_PRIVATE_INCLUDES
     ${OpenCV_INCLUDE_DIRS}
 )
 
-SET(ORT_MODULE_LINK_LIBS
+set(ORT_MODULE_LINK_LIBS
     onnxruntime::onnxruntime
     ${OpenCV_LIBS}
     encrypt::encrypt
     logger::logger
 )
 
-SET(ORT_MODULE_LIBS ${ORT_MODULE_LINK_LIBS} PARENT_SCOPE)
+set(ORT_MODULE_LIBS ${ORT_MODULE_LINK_LIBS} PARENT_SCOPE)
 
-FILE(GLOB_RECURSE CURRENT_DIR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE CURRENT_DIR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
-MESSAGE(STATUS "Inference engine type is ONNXRuntime, preparing object files.")
+message(STATUS "Inference engine type is ONNXRuntime, preparing object files.")
 
-ADD_LIBRARY(ai_ort_module OBJECT
+add_library(ai_ort_module OBJECT
     ${CURRENT_DIR_SRCS}
 )
 
-TARGET_INCLUDE_DIRECTORIES(ai_ort_module
+target_include_directories(ai_ort_module
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> 
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..> 
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../api> 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../api>
     PRIVATE
         ${ORT_MODULE_PRIVATE_INCLUDES}
 )
 
-TARGET_LINK_LIBRARIES(ai_ort_module PRIVATE
+target_link_libraries(ai_ort_module PRIVATE
     onnxruntime::onnxruntime
     encrypt::encrypt
     logger::logger
