@@ -1,52 +1,53 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 
-PROJECT(AICoreExamples VERSION ${AI_CORE_VERSION})
+project(AICoreExamples VERSION ${AI_CORE_VERSION})
 
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-SET(COMMIT_CODE "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25")
-ADD_DEFINITIONS(-DSECURITY_KEY="${COMMIT_CODE}")
+set(COMMIT_CODE "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25")
 
-LOAD_OPENCV()
+load_opencv()
 
-IF (TARGET_OS STREQUAL "Android")
-    LOAD_ANDROID_ENV()
-    LIST(APPEND ANDROID_JIN_LIBS mediandk)
-ENDIF()
+if(TARGET_OS STREQUAL "Android")
+    load_android_env()
+    list(APPEND ANDROID_JIN_LIBS mediandk)
+endif()
 
-FILE(GLOB CURRENT_DIR_SRCS 
-	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp 
+file(GLOB CURRENT_DIR_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 )
 
-SET(DEPENDENCY_INCLUDES
-	${PROJECT_INCLUDE_DIR}
-	${OpenCV_INCLUDE_DIRS}
+set(DEPENDENCY_INCLUDES
+    ${PROJECT_INCLUDE_DIR}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
-SET(DEPENDENCY_LIBS
-	ai_core::ai_core
-	logger::logger
-	${OpenCV_LIBS}
-	${ANDROID_JIN_LIBS}
+set(DEPENDENCY_LIBS
+    ai_core::ai_core
+    logger::logger
+    ${OpenCV_LIBS}
+    ${ANDROID_JIN_LIBS}
 )
 
-ADD_LIBRARY(ai_core_examples STATIC ${CURRENT_DIR_SRCS})
+add_library(ai_core_examples STATIC ${CURRENT_DIR_SRCS})
 
-ADD_LIBRARY(ai_core::ai_core_examples ALIAS ai_core_examples)
+add_library(ai_core::ai_core_examples ALIAS ai_core_examples)
 
-TARGET_INCLUDE_DIRECTORIES(ai_core_examples 
-	PRIVATE
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-		${DEPENDENCY_INCLUDES}
+target_include_directories(ai_core_examples
+    PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        ${DEPENDENCY_INCLUDES}
 )
 
-TARGET_LINK_LIBRARIES(ai_core_examples PRIVATE ${DEPENDENCY_LIBS})
+target_link_libraries(ai_core_examples PRIVATE ${DEPENDENCY_LIBS})
 
-INSTALL(TARGETS ai_core_examples
+target_compile_definitions(ai_core_examples PRIVATE SECURITY_KEY="${COMMIT_CODE}")
+
+install(TARGETS ai_core_examples
     EXPORT ai_export_set
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
 )
 
-ADD_SUBDIRECTORY(ocr)
+add_subdirectory(ocr)

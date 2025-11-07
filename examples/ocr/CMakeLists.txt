@@ -1,36 +1,36 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 
-PROJECT(AICoreExamplesOCRReco VERSION ${AI_CORE_VERSION})
+project(AICoreExamplesOCRReco VERSION ${AI_CORE_VERSION})
 
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-LOAD_OPENCV()
+load_opencv()
 
-FILE(GLOB_RECURSE CURRENT_DIR_SRCS 
-		${CMAKE_CURRENT_SOURCE_DIR}/*.cpp 
-		${CMAKE_CURRENT_SOURCE_DIR}/*.cc
+file(GLOB_RECURSE CURRENT_DIR_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cc
 )
 
-SET(DEPENDENCY_INCLUDES
-	${CMAKE_CURRENT_SOURCE_DIR}/..
-	${PROJECT_INCLUDE_DIR}
-	${OpenCV_INCLUDE_DIRS}
+set(DEPENDENCY_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${PROJECT_INCLUDE_DIR}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
-SET(DEPENDENCY_LIBS
-	ai_core::ai_core_examples
-	ai_core::ai_core
-	logger::logger
-	${OpenCV_LIBS}
+set(DEPENDENCY_LIBS
+    ai_core::ai_core_examples
+    ai_core::ai_core
+    logger::logger
+    ${OpenCV_LIBS}
 )
 
-ADD_EXECUTABLE(ai_core_example_ocr ${CURRENT_DIR_SRCS})
+add_executable(ai_core_example_ocr ${CURRENT_DIR_SRCS})
 
-TARGET_INCLUDE_DIRECTORIES(ai_core_example_ocr PRIVATE ${DEPENDENCY_INCLUDES})
+target_include_directories(ai_core_example_ocr PRIVATE ${DEPENDENCY_INCLUDES})
 
-TARGET_LINK_LIBRARIES(ai_core_example_ocr PRIVATE ${DEPENDENCY_LIBS})
+target_link_libraries(ai_core_example_ocr PRIVATE ${DEPENDENCY_LIBS})
 
-INSTALL(TARGETS ai_core_example_ocr
+install(TARGETS ai_core_example_ocr
     EXPORT ai_export_set
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib

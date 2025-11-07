@@ -1,142 +1,173 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.18)
+cmake_minimum_required(VERSION 3.18)
 
-# Specialized libraries can be compiled separately, softinked to the 3RDPARTY_DIR, and then handled independently.
-SET(3RDPARTY_ROOT ${PROJECT_SOURCE_DIR}/3rdparty)
-SET(3RDPARTY_DIR ${PROJECT_SOURCE_DIR}/3rdparty/target/${TARGET_OS}_${TARGET_ARCH})
-MESSAGE(STATUS "3RDPARTY_DIR: ${3RDPARTY_DIR}")
+# Specialized libraries can be compiled separately, soft-linked to the 3RDPARTY_DIR, and then handled independently.
+set(3RDPARTY_ROOT ${PROJECT_SOURCE_DIR}/3rdparty)
+set(3RDPARTY_DIR ${PROJECT_SOURCE_DIR}/3rdparty/target/${TARGET_OS}_${TARGET_ARCH})
+message(STATUS "3RDPARTY_DIR: ${3RDPARTY_DIR}")
 
-MACRO(LOAD_OPENCV)
-    SET(OPENCV_HOME ${3RDPARTY_DIR}/opencv)
-    
-    IF (TARGET_OS STREQUAL "Android")
-        SET(OpenCV_INCLUDE_DIRS ${OPENCV_HOME}/jni/include)
-        SET(OpenCV_LIBRARY_DIRS ${OPENCV_HOME}/staticlibs/${ANDROID_ABI})
-        SET(OpenCV_3RDPARTY_LIBRARY_DIRS ${OPENCV_HOME}/3rdparty/libs/${ANDROID_ABI})
+# Load OpenCV library
+function(load_opencv)
+    set(OPENCV_HOME ${3RDPARTY_DIR}/opencv)
 
-        FILE(GLOB OpenCV_LIBS
+    if(TARGET_OS STREQUAL "Android")
+        set(OpenCV_INCLUDE_DIRS ${OPENCV_HOME}/jni/include)
+        set(OpenCV_LIBRARY_DIRS ${OPENCV_HOME}/staticlibs/${ANDROID_ABI})
+        set(OpenCV_3RDPARTY_LIBRARY_DIRS ${OPENCV_HOME}/3rdparty/libs/${ANDROID_ABI})
+
+        file(GLOB OpenCV_LIBS
             "${OpenCV_LIBRARY_DIRS}/*.a"
             "${OpenCV_3RDPARTY_LIBRARY_DIRS}/*.a"
         )
-        MESSAGE(STATUS "Opencv libraries: ${OpenCV_LIBS}")
-    ELSEIF(TARGET_OS STREQUAL "Windows")
-        SET(OpenCV_LIBRARY_DIR ${OPENCV_HOME}/build)
-        LIST(APPEND CMAKE_PREFIX_PATH ${OpenCV_LIBRARY_DIR})
-        FIND_PACKAGE(OpenCV)
+        message(STATUS "OpenCV libraries: ${OpenCV_LIBS}")
 
-        IF(OpenCV_INCLUDE_DIRS)
-            MESSAGE(STATUS "Opencv library status:")
-            MESSAGE(STATUS "Opencv include path: ${OpenCV_INCLUDE_DIRS}")
-            MESSAGE(STATUS "Opencv libraries dir: ${OpenCV_LIBRARY_DIR}")
-            MESSAGE(STATUS "Opencv libraries: ${OpenCV_LIBS}")
-        ELSE()
-            MESSAGE(FATAL_ERROR "OpenCV not found!")
-        ENDIF()
-    
-        LINK_DIRECTORIES(
-            ${OpenCV_LIBRARY_DIR}
-        )
+        # Export to parent scope
+        set(OpenCV_INCLUDE_DIRS ${OpenCV_INCLUDE_DIRS} PARENT_SCOPE)
+        set(OpenCV_LIBS ${OpenCV_LIBS} PARENT_SCOPE)
 
-    ELSE()
-        SET(OpenCV_LIBRARY_DIR ${OPENCV_HOME}/lib)
-        LIST(APPEND CMAKE_PREFIX_PATH ${OpenCV_LIBRARY_DIR}/cmake)
-        FIND_PACKAGE(OpenCV CONFIG REQUIRED COMPONENTS core imgproc highgui video videoio imgcodecs calib3d)
-        
-        IF(OpenCV_INCLUDE_DIRS)
-            MESSAGE(STATUS "Opencv library status:")
-            MESSAGE(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
-            MESSAGE(STATUS "    libraries dir: ${OpenCV_LIBRARY_DIR}")
-            MESSAGE(STATUS "    libraries: ${OpenCV_LIBS}")
-        ELSE()
-            MESSAGE(FATAL_ERROR "OpenCV not found!")
-        ENDIF()
-    
-        LINK_DIRECTORIES(
-            ${OpenCV_LIBRARY_DIR}
-        )
-    ENDIF()
-ENDMACRO()
+    elseif(TARGET_OS STREQUAL "Windows")
+        set(OpenCV_LIBRARY_DIR ${OPENCV_HOME}/build)
+        list(APPEND CMAKE_PREFIX_PATH ${OpenCV_LIBRARY_DIR})
+        find_package(OpenCV REQUIRED)
 
-MACRO(LOAD_ONNXRUNTIME)
-    SET(ONNXRUNTIME_HOME ${3RDPARTY_DIR}/onnxruntime)
-    IF(TARGET_OS STREQUAL "Android")
-        SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${ONNXRUNTIME_HOME}/lib/cmake)
-    ELSE()
-        LIST(APPEND CMAKE_PREFIX_PATH ${ONNXRUNTIME_HOME}/lib/cmake)
-    ENDIF()
-    FIND_PACKAGE(onnxruntime)
-    IF(onnxruntime_FOUND)
-        MESSAGE(STATUS "Successfully found onnxruntime ${onnxruntime_VERSION}")
-    ENDIF()
-ENDMACRO()
+        if(OpenCV_INCLUDE_DIRS)
+            message(STATUS "OpenCV library status:")
+            message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
+            message(STATUS "    libraries dir: ${OpenCV_LIBRARY_DIR}")
+            message(STATUS "    libraries: ${OpenCV_LIBS}")
+        else()
+            message(FATAL_ERROR "OpenCV not found!")
+        endif()
 
-MACRO(LOAD_NCNN)
-    SET(NCNN_LOADED TRUE)
-    SET(NCNN_HOME ${3RDPARTY_DIR}/ncnn)
-    
-    MESSAGE(STATUS "NCNN_HOME: ${NCNN_HOME}")
-    
-    IF(TARGET_OS STREQUAL "Android")
-        SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${NCNN_HOME}/lib/cmake)
-    ELSE()
-        LIST(APPEND CMAKE_PREFIX_PATH ${NCNN_HOME})
-    ENDIF()
+        # Export to parent scope
+        set(OpenCV_INCLUDE_DIRS ${OpenCV_INCLUDE_DIRS} PARENT_SCOPE)
+        set(OpenCV_LIBS ${OpenCV_LIBS} PARENT_SCOPE)
+        set(OpenCV_LIBRARY_DIR ${OpenCV_LIBRARY_DIR} PARENT_SCOPE)
 
-    FIND_PACKAGE(ncnn REQUIRED)
+    else()
+        set(OpenCV_LIBRARY_DIR ${OPENCV_HOME}/lib)
+        list(APPEND CMAKE_PREFIX_PATH ${OpenCV_LIBRARY_DIR}/cmake)
+        find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgproc highgui video videoio imgcodecs calib3d)
 
-    IF(ncnn_FOUND)
-        GET_TARGET_PROPERTY(NCNN_INCLUDE_DIR ncnn INTERFACE_INCLUDE_DIRECTORIES)
-        SET(NCNN_LIBS ncnn)
-        MESSAGE(STATUS "NCNN library status:")
-        MESSAGE(STATUS "    include path: ${NCNN_INCLUDE_DIR}")
-        MESSAGE(STATUS "    libraries: ${NCNN_LIBS}")
-    ELSE()
-        MESSAGE(FATAL_ERROR "NCNN not found after calling find_package(ncnn)!")
-    ENDIF()
-ENDMACRO()
+        if(OpenCV_INCLUDE_DIRS)
+            message(STATUS "OpenCV library status:")
+            message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
+            message(STATUS "    libraries dir: ${OpenCV_LIBRARY_DIR}")
+            message(STATUS "    libraries: ${OpenCV_LIBS}")
+        else()
+            message(FATAL_ERROR "OpenCV not found!")
+        endif()
 
-MACRO(LOAD_OPENMP)
-    FIND_PACKAGE(OpenMP REQUIRED)
-ENDMACRO()
+        # Export to parent scope
+        set(OpenCV_INCLUDE_DIRS ${OpenCV_INCLUDE_DIRS} PARENT_SCOPE)
+        set(OpenCV_LIBS ${OpenCV_LIBS} PARENT_SCOPE)
+        set(OpenCV_LIBRARY_DIR ${OpenCV_LIBRARY_DIR} PARENT_SCOPE)
+    endif()
+endfunction()
 
-MACRO(LOAD_CUDA)
-    FIND_PACKAGE(CUDAToolkit REQUIRED)
+# Load ONNX Runtime library
+function(load_onnxruntime)
+    set(ONNXRUNTIME_HOME ${3RDPARTY_DIR}/onnxruntime)
+    if(TARGET_OS STREQUAL "Android")
+        set(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${ONNXRUNTIME_HOME}/lib/cmake PARENT_SCOPE)
+    else()
+        list(APPEND CMAKE_PREFIX_PATH ${ONNXRUNTIME_HOME}/lib/cmake)
+        set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} PARENT_SCOPE)
+    endif()
 
-    MESSAGE("-- CUDA version: ${CUDA_VERSION} ${CUDA_NVCC_FLAGS}")
-    MESSAGE("-- CUDAToolkit_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS}")
-    MESSAGE("-- CUDAToolkit_LIBRARY_DIR ${CUDAToolkit_LIBRARY_DIR}")
+    find_package(onnxruntime REQUIRED)
+    if(onnxruntime_FOUND)
+        message(STATUS "Successfully found ONNX Runtime ${onnxruntime_VERSION}")
+    endif()
+endfunction()
 
-    FIND_LIBRARY(CUDART_LIB cudart_static HINTS ${CUDAToolkit_LIBRARY_DIR} PATH_SUFFIXES lib lib/x64 lib64)
-    SET(CUDA_LIBRARIES ${CUDART_LIB})
+# Load NCNN library
+function(load_ncnn)
+    set(NCNN_LOADED TRUE PARENT_SCOPE)
+    set(NCNN_HOME ${3RDPARTY_DIR}/ncnn)
 
-    MESSAGE("-- CUDA_LIBRARIES ${CUDA_LIBRARIES}")
-    MESSAGE("-- CUDA_cublas_LIBRARY ${CUDA_cublas_LIBRARY}")
-    MESSAGE("-- CUDA_cusparse_LIBRARY ${CUDA_cusparse_LIBRARY}")
+    message(STATUS "NCNN_HOME: ${NCNN_HOME}")
 
-    LINK_DIRECTORIES(
-        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-    )
-ENDMACRO()
+    if(TARGET_OS STREQUAL "Android")
+        set(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${NCNN_HOME}/lib/cmake PARENT_SCOPE)
+    else()
+        list(APPEND CMAKE_PREFIX_PATH ${NCNN_HOME})
+        set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} PARENT_SCOPE)
+    endif()
 
-MACRO(LOAD_TENSORRT)
-    SET(TRT_ROOT ${3RDPARTY_DIR}/tensorrt)
-    SET(TRT_LIB_DIR ${TRT_ROOT}/lib)
+    find_package(ncnn REQUIRED)
 
-    LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/nvidia_modules")
+    if(ncnn_FOUND)
+        get_target_property(NCNN_INCLUDE_DIR ncnn INTERFACE_INCLUDE_DIRECTORIES)
+        set(NCNN_LIBS ncnn)
+        message(STATUS "NCNN library status:")
+        message(STATUS "    include path: ${NCNN_INCLUDE_DIR}")
+        message(STATUS "    libraries: ${NCNN_LIBS}")
 
-    FIND_PACKAGE(TensorRT REQUIRED)
+        # Export to parent scope
+        set(NCNN_INCLUDE_DIR ${NCNN_INCLUDE_DIR} PARENT_SCOPE)
+        set(NCNN_LIBS ${NCNN_LIBS} PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "NCNN not found after calling find_package(ncnn)!")
+    endif()
+endfunction()
 
-    MESSAGE(STATUS "Successfully found TensorRT ${TensorRT_VERSION}")
+# Load OpenMP library
+function(load_openmp)
+    find_package(OpenMP REQUIRED)
+    if(OpenMP_FOUND)
+        message(STATUS "OpenMP found:")
+        message(STATUS "    OpenMP_CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
+        message(STATUS "    OpenMP_CXX_LIBRARIES: ${OpenMP_CXX_LIBRARIES}")
+    endif()
+endfunction()
 
-ENDMACRO()
+# Load CUDA toolkit
+function(load_cuda)
+    find_package(CUDAToolkit REQUIRED)
 
-MACRO(LOAD_ANDROID_ENV)
-    SET(ANDROID_JIN_INCLUDE_DIR "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include")
-    SET(ANDROID_JIN_LIBS_DIR "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/${TARGET_ARCH}-linux-android/24")
-    SET(ANDROID_JIN_LIBS 
+    message(STATUS "CUDA version: ${CUDAToolkit_VERSION}")
+    message(STATUS "CUDAToolkit_INCLUDE_DIRS: ${CUDAToolkit_INCLUDE_DIRS}")
+    message(STATUS "CUDAToolkit_LIBRARY_DIR: ${CUDAToolkit_LIBRARY_DIR}")
+
+    find_library(CUDART_LIB cudart_static HINTS ${CUDAToolkit_LIBRARY_DIR} PATH_SUFFIXES lib lib/x64 lib64)
+    set(CUDA_LIBRARIES ${CUDART_LIB})
+
+    message(STATUS "CUDA_LIBRARIES: ${CUDA_LIBRARIES}")
+
+    # Export to parent scope
+    set(CUDA_LIBRARIES ${CUDA_LIBRARIES} PARENT_SCOPE)
+    set(CUDAToolkit_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS} PARENT_SCOPE)
+    set(CUDAToolkit_LIBRARY_DIR ${CUDAToolkit_LIBRARY_DIR} PARENT_SCOPE)
+endfunction()
+
+# Load TensorRT library
+function(load_tensorrt)
+    set(TRT_ROOT ${3RDPARTY_DIR}/tensorrt)
+    set(TRT_LIB_DIR ${TRT_ROOT}/lib)
+
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/nvidia_modules")
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} PARENT_SCOPE)
+
+    find_package(TensorRT REQUIRED)
+
+    message(STATUS "Successfully found TensorRT ${TensorRT_VERSION}")
+endfunction()
+
+# Load Android environment
+function(load_android_env)
+    set(ANDROID_JIN_INCLUDE_DIR "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include")
+    set(ANDROID_JIN_LIBS_DIR "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/${TARGET_ARCH}-linux-android/24")
+    set(ANDROID_JIN_LIBS
         android
         log
         z
         dl
     )
-    LINK_DIRECTORIES(${ANDROID_JIN_LIBS_DIR})
-ENDMACRO()
+
+    # Export to parent scope
+    set(ANDROID_JIN_INCLUDE_DIR ${ANDROID_JIN_INCLUDE_DIR} PARENT_SCOPE)
+    set(ANDROID_JIN_LIBS_DIR ${ANDROID_JIN_LIBS_DIR} PARENT_SCOPE)
+    set(ANDROID_JIN_LIBS ${ANDROID_JIN_LIBS} PARENT_SCOPE)
+
+    link_directories(${ANDROID_JIN_LIBS_DIR})
+endfunction()
