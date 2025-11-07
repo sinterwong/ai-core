@@ -11,12 +11,10 @@
 #ifndef __ONNXRUNTIME_INFERENCE_H_
 #define __ONNXRUNTIME_INFERENCE_H_
 
-#include <memory>
-
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
-
+#include <memory>
 #include <onnxruntime_cxx_api.h>
 #include <unordered_set>
 

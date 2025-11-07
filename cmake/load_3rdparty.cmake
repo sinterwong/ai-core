@@ -58,7 +58,11 @@ ENDMACRO()
 
 MACRO(LOAD_ONNXRUNTIME)
     SET(ONNXRUNTIME_HOME ${3RDPARTY_DIR}/onnxruntime)
-    LIST(APPEND CMAKE_PREFIX_PATH ${ONNXRUNTIME_HOME}/lib/cmake)
+    IF(TARGET_OS STREQUAL "Android")
+        SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${ONNXRUNTIME_HOME}/lib/cmake)
+    ELSE()
+        LIST(APPEND CMAKE_PREFIX_PATH ${ONNXRUNTIME_HOME}/lib/cmake)
+    ENDIF()
     FIND_PACKAGE(onnxruntime)
     IF(onnxruntime_FOUND)
         MESSAGE(STATUS "Successfully found onnxruntime ${onnxruntime_VERSION}")
@@ -66,23 +70,28 @@ MACRO(LOAD_ONNXRUNTIME)
 ENDMACRO()
 
 MACRO(LOAD_NCNN)
+    SET(NCNN_LOADED TRUE)
     SET(NCNN_HOME ${3RDPARTY_DIR}/ncnn)
+    
     MESSAGE(STATUS "NCNN_HOME: ${NCNN_HOME}")
+    
+    IF(TARGET_OS STREQUAL "Android")
+        SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${NCNN_HOME}/lib/cmake)
+    ELSE()
+        LIST(APPEND CMAKE_PREFIX_PATH ${NCNN_HOME})
+    ENDIF()
 
-    SET(NCNN_INCLUDE_DIR "${NCNN_HOME}/include")
-    SET(NCNN_LIB_DIR "${NCNN_HOME}/lib")
+    FIND_PACKAGE(ncnn REQUIRED)
 
-    SET(NCNN_LIBS
-        ncnn
-        MachineIndependent
-        glslang
-        glslang-default-resource-limits
-        SPIRV
-        GenericCodeGen
-        OSDependent
-        OGLCompiler
-    )
-    LINK_DIRECTORIES(${NCNN_LIB_DIR})
+    IF(ncnn_FOUND)
+        GET_TARGET_PROPERTY(NCNN_INCLUDE_DIR ncnn INTERFACE_INCLUDE_DIRECTORIES)
+        SET(NCNN_LIBS ncnn)
+        MESSAGE(STATUS "NCNN library status:")
+        MESSAGE(STATUS "    include path: ${NCNN_INCLUDE_DIR}")
+        MESSAGE(STATUS "    libraries: ${NCNN_LIBS}")
+    ELSE()
+        MESSAGE(FATAL_ERROR "NCNN not found after calling find_package(ncnn)!")
+    ENDIF()
 ENDMACRO()
 
 MACRO(LOAD_OPENMP)

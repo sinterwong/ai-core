@@ -13,7 +13,6 @@
 #include "crypto.hpp"
 #include <logger.hpp>
 #include <numeric>
-#include <onnxruntime_cxx_api.h>
 #include <opencv2/opencv.hpp>
 #include <thread>
 
