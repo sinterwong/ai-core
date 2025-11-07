@@ -13,6 +13,7 @@
 #define __ALGO_OUTPUT_TYPES_HPP__
 
 #include "ai_core/infer_common_types.hpp"
+#include "ai_core/tensor_data.hpp"
 #include <map>
 #include <memory>
 #include <vector>
@@ -29,10 +30,7 @@ struct ClsRet {
   int label;
 };
 
-struct FeatureRet {
-  std::vector<float> feature;
-  int featSize;
-};
+using RawModelOutput = TensorData;
 
 struct FprClsRet {
   float score;

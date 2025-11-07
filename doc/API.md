@@ -160,7 +160,7 @@ input.setParams(ai_core::FrameInput{image, nullptr});
 - **可包含类型:**
   - `ClsRet`: 分类结果。
   - `DetRet`: 检测结果。
-  - `FeatureRet`: 特征向量结果。
+  - `RawModelOutput`: 原始模型输出。
   - `SegRet`: 分割结果。
   - ... (更多请参见 [4.2. 输出数据结构](#42-输出数据结构))
 
@@ -293,12 +293,9 @@ struct TensorData {
     int label;   // 类别标签
   };
   ```
-- **`FeatureRet`** (`algo_output_types.hpp`)
+- **`RawModelOutput`** (`algo_output_types.hpp`)
   ```cpp
-  struct FeatureRet {
-    std::vector<float> feature; // 特征向量
-    int featSize;               // 特征维度
-  };
+  using RawModelOutput = TensorData 
   ```
 - ... 更多请参考 `ai_core/algo_output_types.hpp`。
 

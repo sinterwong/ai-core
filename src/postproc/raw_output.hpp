@@ -1,5 +1,5 @@
 /**
- * @file raw_feature.hpp
+ * @file raw_output.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,14 +8,14 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_RAW_FEATURE_HPP_
-#define __INFERENCE_VISION_RAW_FEATURE_HPP_
+#ifndef __INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP_
+#define __INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP_
 
 #include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
-class RawFeature : public ICVGenericPostprocessor {
+class RawModelOutput : public ICVGenericPostprocessor {
 public:
-  explicit RawFeature() {}
+  explicit RawModelOutput() {}
 
   virtual bool process(const TensorData &, const FrameTransformContext &,
                        const GenericPostParams &, AlgoOutput &) const override;
@@ -24,9 +24,6 @@ public:
                             const std::vector<FrameTransformContext> &,
                             const GenericPostParams &,
                             std::vector<AlgoOutput> &) const override;
-
-private:
-  FeatureRet processSingleItem(const float *featureData, int numFeatures) const;
 };
 } // namespace ai_core::dnn
 

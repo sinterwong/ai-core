@@ -11,7 +11,7 @@
 #include "cv_generic_postproc.hpp"
 #include "postproc/fpr_cls.hpp"
 #include "postproc/ocr_reco.hpp"
-#include "postproc/raw_feature.hpp"
+#include "postproc/raw_output.hpp"
 #include "postproc/softmax_cls.hpp"
 #include "postproc/unet_daul_out_seg.hpp"
 #include <logger.hpp>
@@ -45,9 +45,9 @@ bool CVGenericPostproc::process(
     FprCls postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
-  case GenericPostParams::AlgoType::RAW_FEATURE: {
+  case GenericPostParams::AlgoType::RAW_MODEL_OUTPUT: {
     FrameTransformContext prepRuntimeArgs;
-    RawFeature postproc;
+    RawModelOutput postproc;
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   case GenericPostParams::AlgoType::UNET_DUAL_OUTPUT: {
@@ -102,9 +102,9 @@ bool CVGenericPostproc::batchProcess(
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
   }
-  case GenericPostParams::AlgoType::RAW_FEATURE: {
+  case GenericPostParams::AlgoType::RAW_MODEL_OUTPUT: {
     std::vector<FrameTransformContext> prepRuntimeArgsBatch;
-    RawFeature postproc;
+    RawModelOutput postproc;
     return postproc.batchProcess(modelOutput, prepRuntimeArgsBatch, *params,
                                  output);
   }
