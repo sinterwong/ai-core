@@ -2,15 +2,26 @@ cmake_minimum_required(VERSION 3.18)
 
 project(AICoreExamplesOCRReco VERSION ${AI_CORE_VERSION})
 
+# Enable position independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# ============================================================================
+# Load Dependencies
+# ============================================================================
 load_opencv()
 
-file(GLOB_RECURSE CURRENT_DIR_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/*.cc
+# ============================================================================
+# Source Files
+# ============================================================================
+set(OCR_EXAMPLE_SOURCES
+    ocr_main.cc
+    ocr_rec.cpp
+    ocr_utils.cpp
 )
 
+# ============================================================================
+# Dependencies Configuration
+# ============================================================================
 set(DEPENDENCY_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${PROJECT_INCLUDE_DIR}
@@ -24,13 +35,25 @@ set(DEPENDENCY_LIBS
     ${OpenCV_LIBS}
 )
 
-add_executable(ai_core_example_ocr ${CURRENT_DIR_SRCS})
+# ============================================================================
+# OCR Example Executable
+# ============================================================================
+add_executable(ai_core_example_ocr ${OCR_EXAMPLE_SOURCES})
 
+# Set C++ standard
+target_compile_features(ai_core_example_ocr PRIVATE cxx_std_20)
+
+# Configure include directories
 target_include_directories(ai_core_example_ocr PRIVATE ${DEPENDENCY_INCLUDES})
 
+# Link dependencies
 target_link_libraries(ai_core_example_ocr PRIVATE ${DEPENDENCY_LIBS})
 
-install(TARGETS ai_core_example_ocr
+# ============================================================================
+# Installation
+# ============================================================================
+install(
+    TARGETS ai_core_example_ocr
     EXPORT ai_export_set
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
