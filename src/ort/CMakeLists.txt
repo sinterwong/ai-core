@@ -2,8 +2,23 @@ cmake_minimum_required(VERSION 3.18)
 
 project(OrtEngineModule)
 
+# Enable position independent code for object library
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# ============================================================================
+# Source Files
+# ============================================================================
+set(ORT_MODULE_SOURCES
+    dnn_infer.cpp
+)
+
+set(ORT_MODULE_HEADERS
+    dnn_infer.hpp
+)
+
+# ============================================================================
+# Dependencies
+# ============================================================================
 set(ORT_MODULE_PRIVATE_INCLUDES
     ${OpenCV_INCLUDE_DIRS}
 )
@@ -15,16 +30,23 @@ set(ORT_MODULE_LINK_LIBS
     logger::logger
 )
 
+# Export link libraries to parent scope
 set(ORT_MODULE_LIBS ${ORT_MODULE_LINK_LIBS} PARENT_SCOPE)
 
-file(GLOB_RECURSE CURRENT_DIR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-
-message(STATUS "Inference engine type is ONNXRuntime, preparing object files.")
+# ============================================================================
+# ONNX Runtime Engine Module (Object Library)
+# ============================================================================
+message(STATUS "Building ONNX Runtime engine module as OBJECT library")
 
 add_library(ai_ort_module OBJECT
-    ${CURRENT_DIR_SRCS}
+    ${ORT_MODULE_SOURCES}
+    ${ORT_MODULE_HEADERS}
 )
 
+# Set C++ standard
+target_compile_features(ai_ort_module PUBLIC cxx_std_20)
+
+# Configure include directories
 target_include_directories(ai_ort_module
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -34,6 +56,7 @@ target_include_directories(ai_ort_module
         ${ORT_MODULE_PRIVATE_INCLUDES}
 )
 
+# Link dependencies
 target_link_libraries(ai_ort_module PRIVATE
     onnxruntime::onnxruntime
     encrypt::encrypt

@@ -1,13 +1,32 @@
 cmake_minimum_required(VERSION 3.18)
+
 project(Benchmarks)
 
+# ============================================================================
+# Load Dependencies
+# ============================================================================
 load_opencv()
 
+# Android-specific configuration
 if(TARGET_OS STREQUAL "Android")
     load_android_env()
     list(APPEND ANDROID_JIN_LIBS mediandk)
 endif()
 
+# ============================================================================
+# Source Files
+# ============================================================================
+set(BENCHMARK_SOURCES
+    main.cc
+    yolo_infer_bench.cpp
+    yolo_postproc_bench.cpp
+    yolo_preproc_bench.cpp
+)
+
+# ============================================================================
+# Dependencies Configuration
+# ============================================================================
+# Base dependencies
 set(DEPENDENCY_INCLUDES
     ${OpenCV_INCLUDE_DIRS}
     ${PROJECT_INCLUDE_DIR}
@@ -25,6 +44,7 @@ set(DEPENDENCY_LIBS
     ${ANDROID_JIN_LIBS}
 )
 
+# Engine-specific dependencies
 if(WITH_ORT_ENGINE)
     load_onnxruntime()
     list(APPEND DEPENDENCY_INCLUDES
@@ -37,38 +57,43 @@ endif()
 if(WITH_NCNN_ENGINE)
     load_openmp()
     load_ncnn()
-
-    list(APPEND DEPENDENCY_INCLUDES
-        ${NCNN_INCLUDE_DIR}
-    )
+    list(APPEND DEPENDENCY_INCLUDES ${NCNN_INCLUDE_DIR})
     list(APPEND DEPENDENCY_LIBS ${NCNN_LIBS} ${OpenMP_CXX_FLAGS})
 endif()
 
 if(WITH_TRT_ENGINE)
     load_cuda()
     load_tensorrt()
-
     list(APPEND DEPENDENCY_INCLUDES
         ${TensorRT_INCLUDE_DIR}
         ${CUDAToolkit_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/trt
     )
-
     list(APPEND DEPENDENCY_LIBS TensorRT::nvinfer)
 endif()
 
-file(GLOB CURRENT_DIR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cc)
-
-message(STATUS "Benchmark sources: ${CURRENT_DIR_SRCS}")
-
+# ============================================================================
+# Benchmark Executable
+# ============================================================================
+# Set output directory
 file(MAKE_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin/benchmarks)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin/benchmarks)
 
-add_executable(ai_core_benchmarks ${CURRENT_DIR_SRCS})
+# Create benchmark executable
+add_executable(ai_core_benchmarks ${BENCHMARK_SOURCES})
+
+# Set C++ standard
+target_compile_features(ai_core_benchmarks PRIVATE cxx_std_20)
+
+# Configure include directories
 target_include_directories(ai_core_benchmarks PRIVATE ${DEPENDENCY_INCLUDES})
+
+# Link dependencies
 target_link_libraries(ai_core_benchmarks PRIVATE ${DEPENDENCY_LIBS})
 
-# Add compile definitions
+# ============================================================================
+# Compile Definitions
+# ============================================================================
 if(WITH_ORT_ENGINE)
     target_compile_definitions(ai_core_benchmarks PRIVATE WITH_ORT)
 endif()
@@ -81,4 +106,7 @@ if(WITH_TRT_ENGINE)
     target_compile_definitions(ai_core_benchmarks PRIVATE WITH_TRT)
 endif()
 
+# ============================================================================
+# Installation
+# ============================================================================
 install(TARGETS ai_core_benchmarks DESTINATION benchmarks)
