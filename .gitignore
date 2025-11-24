@@ -11,7 +11,7 @@
 
 build/
 build*/
-3rdparty/target/*
+3rdparty/target
 install/
 conf/nginx
 scripts/log*
