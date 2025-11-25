@@ -16,20 +16,112 @@
 
 #include <logger.hpp>
 #include <opencv2/core.hpp>
+#include <cmath>
 
 namespace ai_core::dnn::gpu
 {
+
+  /**
+   * @brief 验证预处理参数的有效性
+   * @param args 预处理参数
+   * @param srcChannels 输入图像的通道数
+   * @throws std::invalid_argument 如果参数无效
+   */
+  static void validatePreprocessArgs(const FramePreprocessArg &args, int srcChannels)
+  {
+    // 检查模型输入形状
+    if (args.modelInputShape.c <= 0 || args.modelInputShape.h <= 0 ||
+        args.modelInputShape.w <= 0)
+    {
+      LOG_ERRORS << "Invalid modelInputShape: c=" << args.modelInputShape.c
+                 << ", h=" << args.modelInputShape.h
+                 << ", w=" << args.modelInputShape.w;
+      throw std::invalid_argument("modelInputShape dimensions must be positive.");
+    }
+
+    // 检查 mean 向量
+    if (args.meanVals.empty())
+    {
+      throw std::invalid_argument("meanVals cannot be empty.");
+    }
+
+    // 检查 std/norm 向量
+    if (args.normVals.empty())
+    {
+      throw std::invalid_argument("normVals (std) cannot be empty.");
+    }
+
+    // 验证 mean 大小与模型通道数匹配
+    if (args.meanVals.size() != static_cast<size_t>(args.modelInputShape.c))
+    {
+      LOG_ERRORS << "meanVals size (" << args.meanVals.size()
+                 << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+      throw std::invalid_argument("meanVals size must match model input channels.");
+    }
+
+    // 验证 std 大小与模型通道数匹配
+    if (args.normVals.size() != static_cast<size_t>(args.modelInputShape.c))
+    {
+      LOG_ERRORS << "normVals size (" << args.normVals.size()
+                 << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+      throw std::invalid_argument("normVals size must match model input channels.");
+    }
+
+    // 检查 normVals 中是否有零值（避免除零）
+    for (size_t i = 0; i < args.normVals.size(); ++i)
+    {
+      if (std::abs(args.normVals[i]) < 1e-10f)
+      {
+        LOG_ERRORS << "normVals[" << i << "] is zero or near-zero, will cause division by zero.";
+        throw std::invalid_argument("normVals cannot contain zero values.");
+      }
+    }
+
+    // 检查输入图像通道数与模型期望是否一致
+    if (srcChannels != args.modelInputShape.c)
+    {
+      LOG_ERRORS << "Input image channels (" << srcChannels
+                 << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+      throw std::invalid_argument("Input image channels must match model input channels.");
+    }
+
+    // 等比缩放时检查 pad 向量
+    if (args.isEqualScale)
+    {
+      if (args.pad.empty())
+      {
+        throw std::invalid_argument("pad cannot be empty when isEqualScale is true.");
+      }
+      if (args.pad.size() != static_cast<size_t>(args.modelInputShape.c))
+      {
+        LOG_ERRORS << "pad size (" << args.pad.size()
+                   << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+        throw std::invalid_argument("pad size must match model input channels.");
+      }
+    }
+
+    // 检查数据类型是否支持
+    if (args.dataType != DataType::FLOAT32 && args.dataType != DataType::FLOAT16)
+    {
+      throw std::invalid_argument("Unsupported dataType. Only FLOAT32 and FLOAT16 are supported.");
+    }
+  }
 
   TypedBuffer GpuGenericCudaPreprocessor::process(const FramePreprocessArg &args,
                                                   const FrameInput &input,
                                                   FrameTransformContext &runtimeArgs) const
   {
+    // 检查输入图像是否为空
     if (input.image == nullptr)
     {
       LOG_ERRORS << "Input frame is null.";
       throw std::runtime_error("Input frame is null.");
     }
 
+    // 参数安全性校验
+    validatePreprocessArgs(args, input.image->channels());
+
+    // 设置 ROI
     if (input.inputRoi == nullptr)
     {
       runtimeArgs.roi = std::make_shared<cv::Rect>(0, 0, input.image->cols,
@@ -44,6 +136,8 @@ namespace ai_core::dnn::gpu
 
     const auto &image = *input.image;
     const auto &roi = *runtimeArgs.roi;
+
+    // 验证 ROI 有效性
     if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
         roi.x + roi.width > image.cols || roi.y + roi.height > image.rows)
     {
@@ -62,11 +156,13 @@ namespace ai_core::dnn::gpu
       src_w = roi.width;
     }
 
+    // 上传输入图像到 GPU
     trt_utils::TrtDeviceBuffer d_inputImage(image.total() * image.elemSize());
     CHECK_CUDA(cudaMemcpy(d_inputImage.get(), pSrcData,
                           image.total() * image.elemSize(),
                           cudaMemcpyHostToDevice));
 
+    // 上传 mean 和 std 到 GPU
     trt_utils::TrtDeviceBuffer d_mean(args.meanVals.size() * sizeof(float));
     trt_utils::TrtDeviceBuffer d_std(args.normVals.size() * sizeof(float));
     CHECK_CUDA(cudaMemcpy(d_mean.get(), args.meanVals.data(),
@@ -76,6 +172,7 @@ namespace ai_core::dnn::gpu
                           args.normVals.size() * sizeof(float),
                           cudaMemcpyHostToDevice));
 
+    // 分配 HWC 输出缓冲区
     size_t totalElements = (size_t)args.modelInputShape.c *
                            args.modelInputShape.h * args.modelInputShape.w;
     size_t byteSizeFP32 = totalElements * sizeof(float);
@@ -84,8 +181,7 @@ namespace ai_core::dnn::gpu
 
     if (args.isEqualScale)
     {
-      // ... (scale, new_w, new_h, padding 的计算移到了 .cu 文件中, 这里可以移除)
-      // runtimeArgs.leftPad 和 topPad 仍然需要在Host端计算和保存
+      // 计算等比缩放参数
       float scale = std::min(static_cast<float>(args.modelInputShape.w) / src_w,
                              static_cast<float>(args.modelInputShape.h) / src_h);
       int new_w = static_cast<int>(src_w * scale);
@@ -93,6 +189,7 @@ namespace ai_core::dnn::gpu
       runtimeArgs.leftPad = (args.modelInputShape.w - new_w) / 2;
       runtimeArgs.topPad = (args.modelInputShape.h - new_h) / 2;
 
+      // 上传 pad 到 GPU
       trt_utils::TrtDeviceBuffer d_pad(args.pad.size() * sizeof(float));
       CHECK_CUDA(cudaMemcpy(d_pad.get(), args.pad.data(),
                             args.pad.size() * sizeof(float),
@@ -122,6 +219,7 @@ namespace ai_core::dnn::gpu
           (const float *)d_std.get());
     }
 
+    // 分配最终输出缓冲区
     size_t finalByteSize =
         totalElements * TypedBuffer::getElementSize(args.dataType);
     TypedBuffer finalDeviceBuffer =
@@ -129,6 +227,7 @@ namespace ai_core::dnn::gpu
 
     if (args.hwc2chw)
     {
+      // HWC -> CHW 转换
       TypedBuffer chwBuffer =
           TypedBuffer::createFromGpu(DataType::FLOAT32, byteSizeFP32);
       cuda_op::hwc_to_chw_gpu((const float *)hwcBuffer.getRawDevicePtr(),
@@ -165,6 +264,7 @@ namespace ai_core::dnn::gpu
       }
     }
 
+    // 根据输出位置返回结果
     if (args.outputLocation == BufferLocation::GPU_DEVICE)
     {
       return finalDeviceBuffer;
@@ -188,9 +288,31 @@ namespace ai_core::dnn::gpu
     }
 
     const size_t batchSize = frames.size();
+
+    // 检查第一张图像有效性并进行参数校验
+    if (frames[0].image == nullptr)
+    {
+      throw std::runtime_error("First input frame is null.");
+    }
+    validatePreprocessArgs(args, frames[0].image->channels());
+
+    // 验证批次中所有图像通道数一致
+    const int expectedChannels = frames[0].image->channels();
+    for (size_t i = 1; i < batchSize; ++i)
+    {
+      if (frames[i].image != nullptr &&
+          frames[i].image->channels() != expectedChannels)
+      {
+        LOG_ERRORS << "Channel mismatch at batch index " << i
+                   << ": expected " << expectedChannels
+                   << ", got " << frames[i].image->channels();
+        throw std::invalid_argument("All images in batch must have the same number of channels.");
+      }
+    }
+
     runtimeArgs.resize(batchSize);
 
-    // --- 1. 准备和上传每帧的数据和元数据 ---
+    // 准备和上传每帧的数据和元数据
     std::vector<trt_utils::TrtDeviceBuffer> d_input_images;
     d_input_images.reserve(batchSize);
 
@@ -237,7 +359,7 @@ namespace ai_core::dnn::gpu
       runtimeArgs[i].originShape = {input.image->cols, input.image->rows, input.image->channels()};
     }
 
-    // --- 2. 上传公共参数和元数据数组 ---
+    // 上传公共参数和元数据数组
     trt_utils::TrtDeviceBuffer d_mean(args.meanVals.size() * sizeof(float));
     trt_utils::TrtDeviceBuffer d_std(args.normVals.size() * sizeof(float));
     CHECK_CUDA(cudaMemcpy(d_mean.get(), args.meanVals.data(), d_mean.getSizeBytes(), cudaMemcpyHostToDevice));
@@ -253,7 +375,7 @@ namespace ai_core::dnn::gpu
     CHECK_CUDA(cudaMemcpy(d_src_ws.get(), h_src_ws.data(), d_src_ws.getSizeBytes(), cudaMemcpyHostToDevice));
     CHECK_CUDA(cudaMemcpy(d_rois.get(), h_rois.data(), d_rois.getSizeBytes(), cudaMemcpyHostToDevice));
 
-    // --- 3. 分配批处理输出缓冲区并调用核心处理Kernel ---
+    // 分配批处理输出缓冲区并调用核心处理Kernel
     size_t singleImageElements = (size_t)args.modelInputShape.c * args.modelInputShape.h * args.modelInputShape.w;
     size_t totalElements = singleImageElements * batchSize;
     size_t byteSizeFP32 = totalElements * sizeof(float);
@@ -305,7 +427,7 @@ namespace ai_core::dnn::gpu
           (const float *)d_mean.get(), (const float *)d_std.get(), batchSize);
     }
 
-    // --- 4. 处理布局和类型转换 ---
+    // 处理布局和类型转换
     size_t finalByteSize = totalElements * TypedBuffer::getElementSize(args.dataType);
     TypedBuffer finalDeviceBuffer = TypedBuffer::createFromGpu(args.dataType, finalByteSize);
 
