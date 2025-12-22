@@ -147,14 +147,33 @@ InferErrorCode TrtAlgoInference::setupBindings() {
   LOG_INFO_S << "Using optimization profile 0.";
 
   const int32_t numIOTensors = mEngine->getNbIOTensors();
+
+  // Set Input Shapes to MAX to allow automatic output size deduction
+  for (int32_t i = 0; i < numIOTensors; ++i) {
+    const char *name = mEngine->getIOTensorName(i);
+    if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
+      // 获取该 Profile 下定义的最大输入尺寸
+      auto maxDims = mEngine->getProfileShape(
+          name, profileIndex, nvinfer1::OptProfileSelector::kMAX);
+      // 将 Context 的输入维度设置为最大，以便后续推导最大输出维度
+      if (!mContext->setInputShape(name, maxDims)) {
+        LOG_WARNING_S
+            << "Failed to set max input shape for auto-sizing tensor: " << name;
+      }
+    }
+  }
+
+  // Allocate Buffers
   mManagedBuffers.reserve(numIOTensors);
 
   for (int32_t i = 0; i < numIOTensors; ++i) {
     const char *name = mEngine->getIOTensorName(i);
+    auto trtDtype = mEngine->getTensorDataType(name);
 
+    // 默认尝试从 Profile 获取 Max Shape
     auto dims = mEngine->getProfileShape(name, profileIndex,
                                          nvinfer1::OptProfileSelector::kMAX);
-    auto trtDtype = mEngine->getTensorDataType(name);
+
     int64_t volume = -1;
     size_t bufferSize = 0;
 
@@ -163,33 +182,51 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     }
 
     if (volume < 0) {
-      // 对输出的动态维度处理
+      // 处理动态维度
       if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT) {
-        LOG_WARNING_S << "Output tensor '" << name
-                      << "' has a data-dependent shape. "
-                      << "Looking for user-provided max buffer size.";
-
-        // 手动配置
+        // 优先检查用户是否提供了最大 Buffer 配置
         auto it = mParams.maxOutputBufferSizes.find(name);
         if (it != mParams.maxOutputBufferSizes.end()) {
           bufferSize = it->second;
-          LOG_INFO_S << "Using configured max buffer size for '" << name
-                     << "': " << bufferSize << " bytes.";
-        } else {
-          LOG_ERROR_S
-              << "Could not determine max size for dynamic output tensor '"
-              << name
-              << "'. Please provide it in "
-                 "AlgoInferParams::maxOutputBufferSizes.";
-          return InferErrorCode::INIT_BINDING_FAILED;
+          LOG_INFO_S << "Output tensor '" << name
+                     << "' is dynamic. Using user-configured max buffer size: "
+                     << bufferSize << " bytes.";
+        }
+        // 用户未配置，尝试根据 Context (已设为 Max Input) 推导
+        else {
+          LOG_INFO_S << "Output tensor '" << name
+                     << "' is dynamic and no user config found. "
+                     << "Attempting to deduce max shape from context...";
+
+          // 获取由 Max Input 推导出的当前 Output Shape
+          nvinfer1::Dims deducedDims = mContext->getTensorShape(name);
+          int64_t deducedVolume = calculateVolume(deducedDims);
+
+          if (deducedVolume > 0) {
+            bufferSize = static_cast<size_t>(deducedVolume) *
+                         trt_utils::getTrtElementSize(trtDtype);
+            LOG_INFO_S << "Auto-deduced max buffer size for '" << name
+                       << "': " << bufferSize << " bytes (" << deducedVolume
+                       << " elements).";
+          } else {
+            // 或许会因为输出取决于数据的值，而非仅仅取决于输入的维度，依然无法推导（例如NonZero）
+            LOG_ERROR_S
+                << "Could not deduce max size for dynamic output tensor '"
+                << name
+                << "'. The shape might be data-dependent (value-dependent). "
+                << "Please provide it in "
+                   "AlgoInferParams::maxOutputBufferSizes.";
+            return InferErrorCode::INIT_BINDING_FAILED;
+          }
         }
       } else {
+        // Input tensor 必须有有效的 Profile Max Shape
         LOG_ERROR_S << "Input tensor '" << name
-                    << "' has an unexpected dynamic dimension (-1).";
+                    << "' has an unexpected dynamic dimension (-1) in Profile.";
         return InferErrorCode::INIT_BINDING_FAILED;
       }
     } else {
-      // 更一般的情况（根据 max shape 算出）
+      // 静态维度或 Profile 中明确定义的 Max 维度
       bufferSize =
           static_cast<size_t>(volume) * trt_utils::getTrtElementSize(trtDtype);
     }
@@ -215,6 +252,9 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     // Populate ModelInfo
     ModelInfo::TensorInfo tensorInfo;
     tensorInfo.name = name;
+
+    // 这里获取的是 Binding 的原始 Shape (可能包含 -1)
+    // 用于告知上层应用哪些维度是动态的
     auto bindingDims = mEngine->getTensorShape(name);
     tensorInfo.shape.assign(bindingDims.d, bindingDims.d + bindingDims.nbDims);
     tensorInfo.dataType = trt_utils::trtDataTypeToAiCore(trtDtype);
@@ -223,8 +263,8 @@ InferErrorCode TrtAlgoInference::setupBindings() {
       for (const auto &dim : tensorInfo.shape) {
         if (dim == -1) {
           mDynamicInputTensorNames.insert(name);
-          LOG_INFO_S << "Input tensor '" << name
-                     << "' is identified as dynamic.";
+          LOG_DEBUG_S << "Input tensor '" << name
+                      << "' is identified as dynamic.";
           break;
         }
       }

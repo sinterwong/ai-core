@@ -65,10 +65,11 @@ class OCRRecoInferTest : public ::testing::TestWithParam<TestConfig> {
 protected:
   void SetUp() override {
     ai_core::logging::Logger::instance().setLevel(
-        ai_core::logging::LogLevel::Info);
+        ai_core::logging::LogLevel::Trace);
     ai_core::logging::Logger::instance().enableConsole(true);
     ai_core::logging::Logger::instance().enableFile(false);
     ai_core::logging::Logger::instance().enableColor(true);
+    ai_core::logging::Logger::instance().enableAsync(false);
 
     framePreproc = std::make_shared<FramePreprocess>();
     ASSERT_NE(framePreproc, nullptr);
@@ -105,8 +106,9 @@ TEST_P(OCRRecoInferTest, Normal) {
   inferParams.needDecrypt = config.needDecrypt;
   inferParams.decryptkeyStr = config.decryptkeyStr;
   inferParams.maxOutputBufferSizes = {
-      {"output_lengths", 1 * sizeof(int64_t)},
-      {"argmax_output", 1 * 128 * sizeof(int32_t) * 1}};
+      // 这里不设置output_lengths的最大尺寸用来测试自动分配
+      // {"output_lengths", 1 * sizeof(int64_t)},
+      {"argmax_output", 1 * 32 * sizeof(int32_t) * 1}};
   tempInferParams.setParam("params", inferParams);
 
   std::shared_ptr<IInferEnginePlugin> engine =
