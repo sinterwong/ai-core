@@ -31,7 +31,6 @@ set(DEPENDENCY_INCLUDES
 set(DEPENDENCY_LIBS
     ai_core::ai_core_examples
     ai_core::ai_core
-    logger::logger
     ${OpenCV_LIBS}
 )
 

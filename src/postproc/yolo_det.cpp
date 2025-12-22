@@ -9,7 +9,7 @@
  *
  */
 #include "yolo_det.hpp"
-#include "logger.hpp"
+#include "ai_core/logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core.hpp>
 
@@ -24,8 +24,8 @@ bool Yolov11Det::process(const TensorData &modelOutput,
 
   // just one output
   if (outputs.size() != 1) {
-    LOG_ERRORS << "AnchorDetParams(Yolov11Det) unexpected size of outputs "
-               << outputs.size();
+    LOG_ERROR_S << "AnchorDetParams(Yolov11Det) unexpected size of outputs "
+                << outputs.size();
     throw std::runtime_error(
         "AnchorDetParams(Yolov11Det)  unexpected size of outputs");
   }
@@ -65,8 +65,8 @@ bool Yolov11Det::batchProcess(
     std::vector<AlgoOutput> &algoOutput) const {
   const auto &outputs = modelOutput.datas;
   if (outputs.size() != 1) {
-    LOG_ERRORS << "Yolov11Det::batchProcess unexpected size of outputs: "
-               << outputs.size();
+    LOG_ERROR_S << "Yolov11Det::batchProcess unexpected size of outputs: "
+                << outputs.size();
     throw std::runtime_error(
         "Yolov11Det::batchProcess expects only 1 output tensor.");
   }
@@ -74,8 +74,8 @@ bool Yolov11Det::batchProcess(
   const auto &outputShape = modelOutput.shapes.at(postArgs.outputNames.at(0));
 
   if (outputShape.size() != 3) {
-    LOG_ERRORS << "Yolov11Det::batchProcess unexpected output dimensions: "
-               << outputShape.size();
+    LOG_ERROR_S << "Yolov11Det::batchProcess unexpected output dimensions: "
+                << outputShape.size();
     throw std::runtime_error("Yolov11Det::batchProcess expects a 3D output "
                              "tensor [batch, stride, num_results].");
   }
@@ -85,7 +85,7 @@ bool Yolov11Det::batchProcess(
   const int numClasses = strideNum - 4;
 
   if (batchSize != prepArgs.size()) {
-    LOG_ERRORS
+    LOG_ERROR_S
         << "Yolov11Det::batchProcess mismatch between model output batch size ("
         << batchSize << ") and prepArgs size (" << prepArgs.size() << ").";
     throw std::runtime_error(

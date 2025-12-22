@@ -9,7 +9,7 @@
  *
  */
 #include "rtm_det.hpp"
-#include "logger.hpp"
+#include "ai_core/logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core.hpp>
 
@@ -68,8 +68,8 @@ bool RTMDet::batchProcess(const TensorData &modelOutput,
   int numClasses = clsOutShape.at(2);
 
   if (prepArgs.size() != batchSize) {
-    LOG_ERRORS << "Batch size mismatch between model output (" << batchSize
-               << ") and prepArgs (" << prepArgs.size() << ").";
+    LOG_ERROR_S << "Batch size mismatch between model output (" << batchSize
+                << ") and prepArgs (" << prepArgs.size() << ").";
     return false;
   }
 

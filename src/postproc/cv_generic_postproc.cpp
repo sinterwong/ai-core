@@ -9,12 +9,12 @@
  *
  */
 #include "cv_generic_postproc.hpp"
+#include "ai_core/logger.hpp"
 #include "postproc/fpr_cls.hpp"
 #include "postproc/ocr_reco.hpp"
 #include "postproc/raw_output.hpp"
 #include "postproc/softmax_cls.hpp"
 #include "postproc/unet_daul_out_seg.hpp"
-#include <logger.hpp>
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
@@ -24,13 +24,13 @@ bool CVGenericPostproc::process(
     std::shared_ptr<RuntimeContext> &runtimeContext) const {
 
   if (modelOutput.datas.empty()) {
-    LOG_ERRORS << "modelOutput.outputs is empty";
+    LOG_ERROR_S << "modelOutput.outputs is empty";
     return false;
   }
 
   auto params = postArgs.getParams<GenericPostParams>();
   if (params == nullptr) {
-    LOG_ERRORS << "GenericPostParams params is nullptr";
+    LOG_ERROR_S << "GenericPostParams params is nullptr";
     throw std::runtime_error("GenericPostParams params is nullptr");
   }
 
@@ -52,7 +52,7 @@ bool CVGenericPostproc::process(
   }
   case GenericPostParams::AlgoType::UNET_DUAL_OUTPUT: {
     if (!runtimeContext->has<FrameTransformContext>("preproc_runtime_args")) {
-      LOG_ERRORS << "FramePreprocessArg is nullptr";
+      LOG_ERROR_S << "FramePreprocessArg is nullptr";
       throw std::runtime_error("FramePreprocessArg is nullptr");
     }
     const auto &prepRuntimeArgs =
@@ -66,8 +66,8 @@ bool CVGenericPostproc::process(
     return postproc.process(modelOutput, prepRuntimeArgs, *params, algoOutput);
   }
   default: {
-    LOG_ERRORS << "Unknown generic algorithm type: "
-               << static_cast<int>(params->algoType);
+    LOG_ERROR_S << "Unknown generic algorithm type: "
+                << static_cast<int>(params->algoType);
     return false;
   }
   }
@@ -79,13 +79,13 @@ bool CVGenericPostproc::batchProcess(
     std::vector<AlgoOutput> &output,
     std::shared_ptr<RuntimeContext> &runtimeContext) const {
   if (modelOutput.datas.empty()) {
-    LOG_ERRORS << "modelOutput.outputs is empty";
+    LOG_ERROR_S << "modelOutput.outputs is empty";
     return false;
   }
 
   auto params = postArgs.getParams<GenericPostParams>();
   if (params == nullptr) {
-    LOG_ERRORS << "GenericPostParams params is nullptr";
+    LOG_ERROR_S << "GenericPostParams params is nullptr";
     throw std::runtime_error("GenericPostParams params is nullptr");
   }
 
@@ -111,7 +111,7 @@ bool CVGenericPostproc::batchProcess(
   case GenericPostParams::AlgoType::UNET_DUAL_OUTPUT: {
     if (!runtimeContext->has<std::vector<FrameTransformContext>>(
             "preproc_runtime_args_batch")) {
-      LOG_ERRORS << "preproc_runtime_args_batch is nullptr";
+      LOG_ERROR_S << "preproc_runtime_args_batch is nullptr";
       throw std::runtime_error("preproc_runtime_args_batch is nullptr");
     }
     const auto &prepRuntimeArgsBatch =
@@ -128,8 +128,8 @@ bool CVGenericPostproc::batchProcess(
                                  output);
   }
   default: {
-    LOG_ERRORS << "Unknown generic algorithm type: "
-               << static_cast<int>(params->algoType);
+    LOG_ERROR_S << "Unknown generic algorithm type: "
+                << static_cast<int>(params->algoType);
     return false;
   }
   }

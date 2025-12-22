@@ -9,7 +9,7 @@
  *
  */
 #include "softmax_cls.hpp"
-#include "logger.hpp"
+#include "ai_core/logger.hpp"
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
@@ -18,7 +18,7 @@ bool SoftmaxCls::process(const TensorData &modelOutput,
                          const GenericPostParams &postArgs,
                          AlgoOutput &algoOutput) const {
   if (modelOutput.datas.empty()) {
-    LOG_ERRORS << "modelOutput.datas is empty";
+    LOG_ERROR_S << "modelOutput.datas is empty";
     return false;
   }
 
@@ -42,7 +42,7 @@ bool SoftmaxCls::batchProcess(
     const GenericPostParams &postArgs,
     std::vector<AlgoOutput> &algoOutput) const {
   if (modelOutput.datas.empty()) {
-    LOG_ERRORS << "modelOutput.datas is empty";
+    LOG_ERROR_S << "modelOutput.datas is empty";
     return false;
   }
 
@@ -51,7 +51,7 @@ bool SoftmaxCls::batchProcess(
   const auto &outputShape = modelOutput.shapes.at(scoreOutputName);
 
   if (outputShape.size() != 2) {
-    LOG_ERRORS
+    LOG_ERROR_S
         << "Expected a 2D tensor for batch classification (N, C), but got "
         << outputShape.size() << " dimensions.";
     return false;

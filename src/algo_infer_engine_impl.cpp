@@ -11,7 +11,7 @@
 #include "algo_infer_engine_impl.hpp"
 #include "ai_core/ai_core_registrar.hpp"
 #include "ai_core/algo_data_types.hpp"
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 
 namespace ai_core::dnn {
 AlgoInferEngine::Impl::Impl(const std::string &moduleName,
@@ -26,17 +26,17 @@ InferErrorCode AlgoInferEngine::Impl::initialize() {
         InferEngineFactory::instance().create(moduleName_, tempInferParams);
 
     if (engine_ == nullptr) {
-      LOG_ERRORS << "Failed to create inference engine for name: "
-                 << inferParams_.name;
+      LOG_ERROR_S << "Failed to create inference engine for name: "
+                  << inferParams_.name;
       return InferErrorCode::INIT_FAILED;
     }
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Failed to create inference engine: " << e.what();
+    LOG_ERROR_S << "Failed to create inference engine: " << e.what();
     return InferErrorCode::INIT_FAILED;
   }
 
   if (engine_->initialize() != InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "Failed to initialize inference engine.";
+    LOG_ERROR_S << "Failed to initialize inference engine.";
     return InferErrorCode::INIT_FAILED;
   }
   return InferErrorCode::SUCCESS;
@@ -53,7 +53,7 @@ InferErrorCode AlgoInferEngine::Impl::terminate() {
 
 const ModelInfo &AlgoInferEngine::Impl::getModelInfo() const noexcept {
   if (engine_ == nullptr) {
-    LOG_ERRORS << "Please initialize first";
+    LOG_ERROR_S << "Please initialize first";
     static ModelInfo modelInfo;
     return modelInfo;
   }

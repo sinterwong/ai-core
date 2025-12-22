@@ -11,13 +11,6 @@ else()
     message(STATUS "encrypt target already exists. Skipping.")
 endif()
 
-if(NOT TARGET logger)
-    message(STATUS "logger target not found. Adding subdirectory...")
-    add_subdirectory(logger EXCLUDE_FROM_ALL)
-else()
-    message(STATUS "logger target already exists. Skipping.")
-endif()
-
 if(BUILD_AI_CORE_TESTS)
     if(NOT TARGET gtest)
         message(STATUS "gtest target not found. Adding subdirectory...")

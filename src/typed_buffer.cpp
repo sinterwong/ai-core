@@ -10,7 +10,7 @@
  */
 #include "ai_core/typed_buffer.hpp"
 #include "ai_core/device_buffer_impl.hpp"
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 
 namespace ai_core {
 

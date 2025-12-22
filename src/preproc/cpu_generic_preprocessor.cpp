@@ -9,8 +9,8 @@
  *
  */
 #include "cpu_generic_preprocessor.hpp"
+#include "ai_core/logger.hpp"
 #include "vision_util.hpp"
-#include <logger.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc.hpp>
@@ -23,7 +23,7 @@ CpuGenericCvPreprocessor::process(const FramePreprocessArg &params,
                                   FrameTransformContext &runtimeArgs) const {
 
   if (params.outputLocation != BufferLocation::CPU) {
-    LOG_WARNINGS
+    LOG_WARNING_S
         << "CPU CpuGenericCvPreprocessor requested to output to GPU_DEVICE. "
            "This is not supported. Output will be on CPU.";
   }
@@ -43,8 +43,8 @@ CpuGenericCvPreprocessor::process(const FramePreprocessArg &params,
                           params.modelInputShape.h, params.modelInputShape.w,
                           params.hwc2chw);
   default:
-    LOG_ERRORS << "Unsupported data type: "
-               << static_cast<int>(params.dataType);
+    LOG_ERROR_S << "Unsupported data type: "
+                << static_cast<int>(params.dataType);
     throw std::runtime_error("Unsupported data type");
   }
 }
@@ -53,7 +53,7 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
     const FramePreprocessArg &args, const std::vector<FrameInput> &frames,
     std::vector<FrameTransformContext> &runtimeArgs) const {
   if (args.outputLocation != BufferLocation::CPU) {
-    LOG_WARNINGS
+    LOG_WARNING_S
         << "CPU CpuGenericCvPreprocessor requested to output to GPU_DEVICE. "
            "This is not supported. Output will be on CPU.";
   }
@@ -120,7 +120,7 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
     return TypedBuffer::createFromCpu(DataType::FLOAT16, std::move(finalData));
   }
   default:
-    LOG_ERRORS << "Unsupported data type: " << static_cast<int>(args.dataType);
+    LOG_ERROR_S << "Unsupported data type: " << static_cast<int>(args.dataType);
     throw std::runtime_error("Unsupported data type");
   }
 }
@@ -129,7 +129,7 @@ cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
     const FramePreprocessArg &params, const FrameInput &frameInput,
     FrameTransformContext &runtimeArgs) const {
   if (frameInput.image == nullptr) {
-    LOG_ERRORS << "Input frame is null.";
+    LOG_ERROR_S << "Input frame is null.";
     throw std::runtime_error("Input frame is null.");
   }
 
@@ -146,7 +146,8 @@ cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
   const auto &roi = *runtimeArgs.roi;
   if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
       roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
-    LOG_ERRORS << "Invalid ROI: " << roi << " for image size: " << image.size();
+    LOG_ERROR_S << "Invalid ROI: " << roi
+                << " for image size: " << image.size();
     throw std::runtime_error("Invalid ROI.");
   }
 
@@ -161,8 +162,8 @@ cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
   if (params.needResize) {
     if (params.isEqualScale) {
       if (params.pad.size() > 4) {
-        LOG_WARNINGS << "Padding vector has more than 4 elements. Only the "
-                        "first 4 will be used.";
+        LOG_WARNING_S << "Padding vector has more than 4 elements. Only the "
+                         "first 4 will be used.";
       }
       cv::Scalar pad = utils::createScalarFromVector(params.pad);
       auto padRet = utils::escaleResizeWithPad(croppedImage, resizedImage,

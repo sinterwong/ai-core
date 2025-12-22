@@ -16,9 +16,9 @@
 #include "ai_core/infer_params_types.hpp"
 #include "trt_device_buffer.hpp"
 
+#include "ai_core/logger.hpp"
 #include <NvInfer.h>
 #include <NvInferRuntime.h>
-#include <logger.hpp>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -37,19 +37,19 @@ public:
       LOG_FATALS << "[TRT] " << msg;
       break;
     case Severity::kERROR:
-      LOG_ERRORS << "[TRT] " << msg;
+      LOG_ERROR_S << "[TRT] " << msg;
       break;
     case Severity::kWARNING:
-      LOG_WARNINGS << "[TRT] " << msg;
+      LOG_WARNING_S << "[TRT] " << msg;
       break;
     case Severity::kINFO:
-      LOG_INFOS << "[TRT] " << msg;
+      LOG_INFO_S << "[TRT] " << msg;
       break;
     case Severity::kVERBOSE:
-      LOG_INFOS << "[TRT] " << msg;
+      LOG_INFO_S << "[TRT] " << msg;
       break;
     default:
-      LOG_INFOS << "[TRT] " << msg;
+      LOG_INFO_S << "[TRT] " << msg;
       break;
     }
   }

@@ -9,8 +9,8 @@
  *
  */
 #include "nano_det.hpp"
+#include "ai_core/logger.hpp"
 #include "vision_util.hpp"
-#include <logger.hpp>
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
@@ -24,8 +24,8 @@ bool NanoDet::process(const TensorData &modelOutput,
 
   const auto &outputName = postArgs.outputNames.at(0);
   if (modelOutput.datas.find(outputName) == modelOutput.datas.end()) {
-    LOG_ERRORS << "Cannot find output name " << outputName
-               << " in modelOutput.";
+    LOG_ERROR_S << "Cannot find output name " << outputName
+                << " in modelOutput.";
     return false;
   }
 
@@ -53,8 +53,8 @@ bool NanoDet::batchProcess(const TensorData &modelOutput,
 
   const auto &outputName = postArgs.outputNames.at(0);
   if (modelOutput.datas.find(outputName) == modelOutput.datas.end()) {
-    LOG_ERRORS << "Cannot find output name " << outputName
-               << " in modelOutput.";
+    LOG_ERROR_S << "Cannot find output name " << outputName
+                << " in modelOutput.";
     return false;
   }
 
@@ -62,7 +62,7 @@ bool NanoDet::batchProcess(const TensorData &modelOutput,
   std::vector<int> outputShape = modelOutput.shapes.at(outputName);
 
   if (outputShape.size() != 3) {
-    LOG_ERRORS
+    LOG_ERROR_S
         << "Batch process expects output tensor with 3 dimensions, but got "
         << outputShape.size();
     return false;
@@ -73,8 +73,8 @@ bool NanoDet::batchProcess(const TensorData &modelOutput,
   int stride = outputShape.at(2);
 
   if (prepArgs.size() != batchSize) {
-    LOG_ERRORS << "Batch size mismatch between model output (" << batchSize
-               << ") and prepArgs (" << prepArgs.size() << ").";
+    LOG_ERROR_S << "Batch size mismatch between model output (" << batchSize
+                << ") and prepArgs (" << prepArgs.size() << ").";
     return false;
   }
 

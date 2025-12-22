@@ -27,7 +27,6 @@ set(ORT_MODULE_LINK_LIBS
     onnxruntime::onnxruntime
     ${OpenCV_LIBS}
     encrypt::encrypt
-    logger::logger
 )
 
 # Export link libraries to parent scope
@@ -60,5 +59,4 @@ target_include_directories(ai_ort_module
 target_link_libraries(ai_ort_module PRIVATE
     onnxruntime::onnxruntime
     encrypt::encrypt
-    logger::logger
 )

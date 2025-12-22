@@ -28,7 +28,6 @@ set(DEPENDENCY_INCLUDES
 
 set(DEPENDENCY_LIBS
     encrypt::encrypt
-    logger::logger
     ${OpenCV_LIBS}
     ${ANDROID_JIN_LIBS}
 )
@@ -62,6 +61,7 @@ set(AI_CORE_PUBLIC_HEADERS
     api/ai_core/tensor_data.hpp
     api/ai_core/type_safe_factory.hpp
     api/ai_core/typed_buffer.hpp
+    api/ai_core/logger.hpp
 )
 
 # Private implementation headers
@@ -120,6 +120,7 @@ set(AI_CORE_SOURCES
     infer_base.cpp
     typed_buffer.cpp
     vision_util.cpp
+    logger.cpp
 
     # Preprocessing implementation
     preproc/cpu_generic_preprocessor.cpp

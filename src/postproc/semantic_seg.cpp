@@ -9,8 +9,8 @@
  *
  */
 #include "semantic_seg.hpp"
+#include "ai_core/logger.hpp"
 #include "ai_core/postproc_types.hpp"
-#include "logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/opencv.hpp>
 
@@ -28,7 +28,7 @@ bool SemanticSeg::process(const TensorData &modelOutput,
   const int width = featMapShape.at(featMapShape.size() - 1);
 
   if (numClasses > 256) {
-    LOG_ERRORS << "Too many classes for CV_8UC1 mask.";
+    LOG_ERROR_S << "Too many classes for CV_8UC1 mask.";
     return false;
   }
 
@@ -50,8 +50,8 @@ bool SemanticSeg::batchProcess(
   const auto &featMapShape = modelOutput.shapes.at(featMapOutputName);
 
   if (featMapShape.size() != 4) {
-    LOG_ERRORS << "Expected a 4D tensor for batch processing (NCHW), but got "
-               << featMapShape.size() << " dimensions.";
+    LOG_ERROR_S << "Expected a 4D tensor for batch processing (NCHW), but got "
+                << featMapShape.size() << " dimensions.";
     return false;
   }
 
@@ -61,13 +61,13 @@ bool SemanticSeg::batchProcess(
   const int width = featMapShape.at(3);
 
   if (numClasses > 256) {
-    LOG_ERRORS << "Too many classes for CV_8UC1 mask.";
+    LOG_ERROR_S << "Too many classes for CV_8UC1 mask.";
     return false;
   }
 
   if (batchSize != prepArgs.size()) {
-    LOG_ERRORS << "Batch size mismatch between model output (" << batchSize
-               << ") and preprocessing arguments (" << prepArgs.size() << ").";
+    LOG_ERROR_S << "Batch size mismatch between model output (" << batchSize
+                << ") and preprocessing arguments (" << prepArgs.size() << ").";
     return false;
   }
 
@@ -138,8 +138,8 @@ SemanticSeg::processSingleItem(const float *data, int numClasses, int height,
       originShape, prepArgs.modelInputShape, prepArgs.isEqualScale);
 
   if (scaleX <= 0.0f || scaleY <= 0.0f) {
-    LOG_ERRORS << "Invalid scale factors detected: scaleX=" << scaleX
-               << ", scaleY=" << scaleY;
+    LOG_ERROR_S << "Invalid scale factors detected: scaleX=" << scaleX
+                << ", scaleY=" << scaleY;
     return segRet;
   }
 

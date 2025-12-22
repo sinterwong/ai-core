@@ -10,7 +10,7 @@
  */
 #include "unet_daul_out_seg.hpp"
 
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 #include <opencv2/core/mat.hpp>
 
 namespace ai_core::dnn {
@@ -19,7 +19,7 @@ bool UNetDaulOutputSeg::process(const TensorData &modelOutput,
                                 const GenericPostParams &postArgs,
                                 AlgoOutput &algoOutput) const {
   if (postArgs.outputNames.size() != 2) {
-    LOG_ERRORS
+    LOG_ERROR_S
         << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
     return false;
   }
@@ -46,7 +46,7 @@ bool UNetDaulOutputSeg::batchProcess(
     std::vector<AlgoOutput> &algoOutput) const {
 
   if (postArgs.outputNames.size() != 2) {
-    LOG_ERRORS
+    LOG_ERROR_S
         << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
     return false;
   }
@@ -60,8 +60,9 @@ bool UNetDaulOutputSeg::batchProcess(
 
   int batchSize = probShape.at(0);
   if (batchSize != prepArgs.size()) {
-    LOG_ERRORS << "Batch size from model output (" << batchSize
-               << ") does not match prepArgs size (" << prepArgs.size() << ").";
+    LOG_ERROR_S << "Batch size from model output (" << batchSize
+                << ") does not match prepArgs size (" << prepArgs.size()
+                << ").";
     return false;
   }
 

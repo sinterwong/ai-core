@@ -14,7 +14,7 @@
 #include "trt_device_buffer.hpp"
 #include "trt_utils.hpp"
 
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 #include <opencv2/core.hpp>
 #include <cmath>
 
@@ -33,9 +33,9 @@ namespace ai_core::dnn::gpu
     if (args.modelInputShape.c <= 0 || args.modelInputShape.h <= 0 ||
         args.modelInputShape.w <= 0)
     {
-      LOG_ERRORS << "Invalid modelInputShape: c=" << args.modelInputShape.c
-                 << ", h=" << args.modelInputShape.h
-                 << ", w=" << args.modelInputShape.w;
+      LOG_ERROR_S << "Invalid modelInputShape: c=" << args.modelInputShape.c
+                  << ", h=" << args.modelInputShape.h
+                  << ", w=" << args.modelInputShape.w;
       throw std::invalid_argument("modelInputShape dimensions must be positive.");
     }
 
@@ -54,16 +54,16 @@ namespace ai_core::dnn::gpu
     // 验证 mean 大小与模型通道数匹配
     if (args.meanVals.size() != static_cast<size_t>(args.modelInputShape.c))
     {
-      LOG_ERRORS << "meanVals size (" << args.meanVals.size()
-                 << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+      LOG_ERROR_S << "meanVals size (" << args.meanVals.size()
+                  << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
       throw std::invalid_argument("meanVals size must match model input channels.");
     }
 
     // 验证 std 大小与模型通道数匹配
     if (args.normVals.size() != static_cast<size_t>(args.modelInputShape.c))
     {
-      LOG_ERRORS << "normVals size (" << args.normVals.size()
-                 << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+      LOG_ERROR_S << "normVals size (" << args.normVals.size()
+                  << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
       throw std::invalid_argument("normVals size must match model input channels.");
     }
 
@@ -72,7 +72,7 @@ namespace ai_core::dnn::gpu
     {
       if (std::abs(args.normVals[i]) < 1e-10f)
       {
-        LOG_ERRORS << "normVals[" << i << "] is zero or near-zero, will cause division by zero.";
+        LOG_ERROR_S << "normVals[" << i << "] is zero or near-zero, will cause division by zero.";
         throw std::invalid_argument("normVals cannot contain zero values.");
       }
     }
@@ -80,8 +80,8 @@ namespace ai_core::dnn::gpu
     // 检查输入图像通道数与模型期望是否一致
     if (srcChannels != args.modelInputShape.c)
     {
-      LOG_ERRORS << "Input image channels (" << srcChannels
-                 << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+      LOG_ERROR_S << "Input image channels (" << srcChannels
+                  << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
       throw std::invalid_argument("Input image channels must match model input channels.");
     }
 
@@ -94,8 +94,8 @@ namespace ai_core::dnn::gpu
       }
       if (args.pad.size() != static_cast<size_t>(args.modelInputShape.c))
       {
-        LOG_ERRORS << "pad size (" << args.pad.size()
-                   << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
+        LOG_ERROR_S << "pad size (" << args.pad.size()
+                    << ") != modelInputShape.c (" << args.modelInputShape.c << ")";
         throw std::invalid_argument("pad size must match model input channels.");
       }
     }
@@ -114,7 +114,7 @@ namespace ai_core::dnn::gpu
     // 检查输入图像是否为空
     if (input.image == nullptr)
     {
-      LOG_ERRORS << "Input frame is null.";
+      LOG_ERROR_S << "Input frame is null.";
       throw std::runtime_error("Input frame is null.");
     }
 
@@ -141,7 +141,7 @@ namespace ai_core::dnn::gpu
     if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
         roi.x + roi.width > image.cols || roi.y + roi.height > image.rows)
     {
-      LOG_ERRORS << "Invalid ROI: " << roi << " for image size: " << image.size();
+      LOG_ERROR_S << "Invalid ROI: " << roi << " for image size: " << image.size();
       throw std::runtime_error("Invalid ROI.");
     }
 
@@ -303,9 +303,9 @@ namespace ai_core::dnn::gpu
       if (frames[i].image != nullptr &&
           frames[i].image->channels() != expectedChannels)
       {
-        LOG_ERRORS << "Channel mismatch at batch index " << i
-                   << ": expected " << expectedChannels
-                   << ", got " << frames[i].image->channels();
+        LOG_ERROR_S << "Channel mismatch at batch index " << i
+                    << ": expected " << expectedChannels
+                    << ", got " << frames[i].image->channels();
         throw std::invalid_argument("All images in batch must have the same number of channels.");
       }
     }

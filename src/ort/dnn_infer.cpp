@@ -10,8 +10,8 @@
  */
 
 #include "dnn_infer.hpp"
+#include "ai_core/logger.hpp"
 #include "crypto.hpp"
-#include <logger.hpp>
 #include <numeric>
 #include <opencv2/opencv.hpp>
 #include <thread>
@@ -74,7 +74,7 @@ InferErrorCode OrtAlgoInference::initialize() {
   modelInfo.reset();
 
   try {
-    LOG_INFOS << "Initializing model: " << mParams.name;
+    LOG_INFO_S << "Initializing model: " << mParams.name;
 
     mEnv = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
                                       mParams.name.c_str());
@@ -90,12 +90,12 @@ InferErrorCode OrtAlgoInference::initialize() {
           encrypt::Crypto::deriveKeyFromCommit(mParams.decryptkeyStr);
       encrypt::Crypto crypto(cryptoConfig);
       if (!crypto.decryptData(mParams.modelPath, engineData)) {
-        LOG_ERRORS << "Failed to decrypt model data: " << mParams.modelPath;
+        LOG_ERROR_S << "Failed to decrypt model data: " << mParams.modelPath;
         return InferErrorCode::INIT_DECRYPTION_FAILED;
       }
       if (engineData.empty()) {
-        LOG_ERRORS << "Decryption resulted in empty model data: "
-                   << mParams.modelPath;
+        LOG_ERROR_S << "Decryption resulted in empty model data: "
+                    << mParams.modelPath;
         return InferErrorCode::INIT_MODEL_LOAD_FAILED;
       }
     }
@@ -135,8 +135,8 @@ InferErrorCode OrtAlgoInference::initialize() {
       for (const auto &dim : ti.shape) {
         if (dim < 0) {
           mDynamicInputTensorNames.insert(ti.name);
-          LOG_INFOS << "Input tensor '" << ti.name
-                    << "' is identified as dynamic.";
+          LOG_INFO_S << "Input tensor '" << ti.name
+                     << "' is identified as dynamic.";
           break;
         }
       }
@@ -161,14 +161,14 @@ InferErrorCode OrtAlgoInference::initialize() {
       modelInfo->outputs.push_back(std::move(ti));
     }
 
-    LOG_INFOS << "Model " << mParams.name << " initialized successfully";
+    LOG_INFO_S << "Model " << mParams.name << " initialized successfully";
     return InferErrorCode::SUCCESS;
 
   } catch (const Ort::Exception &e) {
-    LOG_ERRORS << "ONNX Runtime error during initialization: " << e.what();
+    LOG_ERROR_S << "ONNX Runtime error during initialization: " << e.what();
     return InferErrorCode::INIT_MODEL_LOAD_FAILED;
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Error during initialization: " << e.what();
+    LOG_ERROR_S << "Error during initialization: " << e.what();
     return InferErrorCode::INIT_FAILED;
   }
 }
@@ -176,7 +176,7 @@ InferErrorCode OrtAlgoInference::initialize() {
 InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
   if (!mSession) {
-    LOG_ERRORS << "Session is not initialized";
+    LOG_ERROR_S << "Session is not initialized";
     return InferErrorCode::NOT_INITIALIZED;
   }
 
@@ -185,9 +185,9 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
     outputs.shapes.clear();
 
     if (inputs.datas.size() != mInputNames.size()) {
-      LOG_ERRORS << "Input data count (" << inputs.datas.size()
-                 << ") doesn't match model's expected input count ("
-                 << mInputNames.size() << ")";
+      LOG_ERROR_S << "Input data count (" << inputs.datas.size()
+                  << ") doesn't match model's expected input count ("
+                  << mInputNames.size() << ")";
       return InferErrorCode::INFER_INPUT_ERROR;
     }
 
@@ -197,8 +197,8 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
     for (const auto &name : mInputNames) {
       auto dataIt = inputs.datas.find(name);
       if (dataIt == inputs.datas.end()) {
-        LOG_ERRORS << "Input tensor '" << name
-                   << "' not found in provided inputs.";
+        LOG_ERROR_S << "Input tensor '" << name
+                    << "' not found in provided inputs.";
         return InferErrorCode::INFER_INPUT_ERROR;
       }
       const auto &inputBuffer = dataIt->second;
@@ -209,8 +209,8 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
       if (isDynamic) {
         auto shapeIt = inputs.shapes.find(name);
         if (shapeIt == inputs.shapes.end()) {
-          LOG_ERRORS << "Shape info for dynamic input tensor '" << name
-                     << "' must be provided.";
+          LOG_ERROR_S << "Shape info for dynamic input tensor '" << name
+                      << "' must be provided.";
           return InferErrorCode::INFER_INPUT_ERROR;
         }
         const auto &inputShapeVecInt = shapeIt->second;
@@ -227,7 +227,7 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
           const auto &staticShapeVecInt = modelInputInfo->shape;
           inputShape.assign(staticShapeVecInt.begin(), staticShapeVecInt.end());
         } else {
-          LOG_ERRORS
+          LOG_ERROR_S
               << "Internal error: Could not find static shape info for input '"
               << name << "'.";
           return InferErrorCode::INFER_FAILED;
@@ -240,10 +240,10 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
             TypedBuffer::getElementSize(inputBuffer.dataType());
         size_t expectedSizeBytes = expectedVolume * elementSize;
         if (inputBuffer.getSizeBytes() != expectedSizeBytes) {
-          LOG_ERRORS << "Mismatched size for static input tensor '" << name
-                     << "'. Expected: " << expectedSizeBytes
-                     << " bytes, Got: " << inputBuffer.getSizeBytes()
-                     << " bytes.";
+          LOG_ERROR_S << "Mismatched size for static input tensor '" << name
+                      << "'. Expected: " << expectedSizeBytes
+                      << " bytes, Got: " << inputBuffer.getSizeBytes()
+                      << " bytes.";
           return InferErrorCode::INFER_SIZE_MISMATCH;
         }
       }
@@ -297,7 +297,7 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
         elementSize = sizeof(int8_t);
         break;
       default:
-        LOG_ERRORS << "Unsupported data type for size calculation.";
+        LOG_ERROR_S << "Unsupported data type for size calculation.";
         return InferErrorCode::INFER_FAILED;
       }
       size_t byteSize = elementCount * elementSize;
@@ -321,10 +321,10 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
     return InferErrorCode::SUCCESS;
 
   } catch (const Ort::Exception &e) {
-    LOG_ERRORS << "ONNX Runtime error during inference: " << e.what();
+    LOG_ERROR_S << "ONNX Runtime error during inference: " << e.what();
     return InferErrorCode::INFER_FAILED;
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Error during inference: " << e.what();
+    LOG_ERROR_S << "Error during inference: " << e.what();
     return InferErrorCode::INFER_FAILED;
   }
 }
@@ -342,7 +342,7 @@ InferErrorCode OrtAlgoInference::terminate() {
 
 const ModelInfo &OrtAlgoInference::getModelInfo() {
   if (!modelInfo) {
-    LOG_WARNINGS << "getModelInfo() called on uninitialized or failed model.";
+    LOG_WARNING_S << "getModelInfo() called on uninitialized or failed model.";
     // Return a static empty info to avoid null reference
     static ModelInfo emptyInfo;
     return emptyInfo;

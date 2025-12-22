@@ -1,6 +1,7 @@
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
+#include "ai_core/logger.hpp"
 #include "ai_core/postproc_base.hpp"
 #include "ai_core/preproc_base.hpp"
 #include "ai_core/typed_buffer.hpp"
@@ -9,7 +10,6 @@
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
-#include <logger.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 #include <thread>
@@ -55,13 +55,11 @@ struct TestConfig {
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
 protected:
   void SetUp() override {
-    Logger::LogConfig logConfig;
-    logConfig.appName = "Yolo-Unit-Test";
-    logConfig.logPath = "./logs";
-    logConfig.logLevel = LogLevel::INFO;
-    logConfig.enableConsole = true;
-    logConfig.enableColor = true;
-    Logger::instance()->initialize(logConfig);
+    ai_core::logging::Logger::instance().setLevel(
+        ai_core::logging::LogLevel::Trace);
+    ai_core::logging::Logger::instance().enableConsole(true);
+    ai_core::logging::Logger::instance().enableFile(false);
+    ai_core::logging::Logger::instance().enableColor(true);
 
     framePreproc = std::make_shared<FramePreprocess>();
     ASSERT_NE(framePreproc, nullptr);

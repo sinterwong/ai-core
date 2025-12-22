@@ -10,9 +10,9 @@
  */
 #include "frame_with_mask_prep.hpp"
 #include "ai_core/algo_data_types.hpp"
+#include "ai_core/logger.hpp"
 #include "cpu_generic_preprocessor.hpp"
 #include "frame_preprocessor_base.hpp"
-#include <logger.hpp>
 #include <opencv2/opencv.hpp>
 #include <ostream>
 
@@ -29,26 +29,26 @@ bool FrameWithMaskPreprocess::process(
     std::shared_ptr<RuntimeContext> &runtimeContext) const {
   auto paramsPtr = params.getParams<FramePreprocessArg>();
   if (paramsPtr == nullptr) {
-    LOG_ERRORS
+    LOG_ERROR_S
         << "Failed to get FrameWithMaskPreprocArg from AlgoPreprocParams.";
     return false;
   }
 
   if (paramsPtr->inputNames.size() != 1) {
-    LOG_ERRORS << "FrameWithMaskPreprocess expects exactly one input name.";
+    LOG_ERROR_S << "FrameWithMaskPreprocess expects exactly one input name.";
     return false;
   }
 
   auto frameInputWithMask = input.getParams<FrameInputWithMask>();
   if (!frameInputWithMask) {
-    LOG_ERRORS << "Failed to get FrameInputWithMask from AlgoInput.";
+    LOG_ERROR_S << "Failed to get FrameInputWithMask from AlgoInput.";
     return false;
   }
 
   const auto &frameInput = frameInputWithMask->frameInput;
 
   if (frameInput.image == nullptr) {
-    LOG_ERRORS << "Input frame is null.";
+    LOG_ERROR_S << "Input frame is null.";
     throw std::runtime_error("Input frame is null.");
   }
 
@@ -142,8 +142,8 @@ bool FrameWithMaskPreprocess::process(
     break;
   }
   default: {
-    LOG_ERRORS << "Unknown preprocessor type: "
-               << static_cast<int>(paramsPtr->preprocTaskType);
+    LOG_ERROR_S << "Unknown preprocessor type: "
+                << static_cast<int>(paramsPtr->preprocTaskType);
     return false;
   }
   }
@@ -155,12 +155,12 @@ bool FrameWithMaskPreprocess::batchProcess(
     TensorData &output, std::shared_ptr<RuntimeContext> &runtimeContext) const {
   auto paramsPtr = params.getParams<FramePreprocessArg>();
   if (paramsPtr == nullptr) {
-    LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
+    LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
     return false;
   }
 
   if (paramsPtr->inputNames.size() != 1) {
-    LOG_ERRORS << "FrameWithMaskPreprocess expects exactly one input name.";
+    LOG_ERROR_S << "FrameWithMaskPreprocess expects exactly one input name.";
     return false;
   }
 
@@ -170,13 +170,13 @@ bool FrameWithMaskPreprocess::batchProcess(
   for (const auto &algoInput : input) {
     auto frameInputWithMask = algoInput.getParams<FrameInputWithMask>();
     if (!frameInputWithMask) {
-      LOG_ERRORS << "Unsupported AlgoInput type for FrameWithMaskPreprocess.";
+      LOG_ERROR_S << "Unsupported AlgoInput type for FrameWithMaskPreprocess.";
       return false;
     }
     const auto &frameInput = frameInputWithMask->frameInput;
 
     if (frameInput.image == nullptr) {
-      LOG_ERRORS << "Input frame is null in the batch.";
+      LOG_ERROR_S << "Input frame is null in the batch.";
       return false;
     }
 
@@ -247,9 +247,9 @@ bool FrameWithMaskPreprocess::batchProcess(
     break;
   }
   default: {
-    LOG_ERRORS << "Unknown or unsupported batch preprocessor type for "
-                  "FrameWithMask: "
-               << static_cast<int>(paramsPtr->preprocTaskType);
+    LOG_ERROR_S << "Unknown or unsupported batch preprocessor type for "
+                   "FrameWithMask: "
+                << static_cast<int>(paramsPtr->preprocTaskType);
     return false;
   }
   }

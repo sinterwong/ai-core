@@ -28,7 +28,6 @@ set(NCNN_MODULE_PRIVATE_INCLUDES
 
 set(NCNN_MODULE_LINK_LIBS
     encrypt::encrypt
-    logger::logger
     ${OpenMP_CXX_FLAGS}
     ${NCNN_LIBS}
     ${OpenCV_LIBS}
@@ -63,5 +62,4 @@ target_include_directories(ai_ncnn_module
 # Link dependencies
 target_link_libraries(ai_ncnn_module PRIVATE
     encrypt::encrypt
-    logger::logger
 )

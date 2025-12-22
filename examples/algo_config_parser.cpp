@@ -1,28 +1,28 @@
 #include "algo_config_parser.hpp"
+#include "ai_core/logger.hpp"
 #include <ai_core/infer_params_types.hpp>
 #include <cstddef>
 #include <fstream>
-#include <logger.hpp>
 #include <map>
 
 namespace ai_core::example::utils {
 void AlgoConfigParser::loadAndValidateJson() {
   std::ifstream file(mConfigPath);
   if (!file.is_open()) {
-    LOG_ERRORS << "Failed to open config file: " << mConfigPath;
+    LOG_ERROR_S << "Failed to open config file: " << mConfigPath;
     throw std::runtime_error("Failed to open config file: " + mConfigPath);
   }
 
   try {
     file >> mRootJson;
   } catch (const nlohmann::json::parse_error &e) {
-    LOG_ERRORS << "Failed to parse config JSON: " << e.what();
+    LOG_ERROR_S << "Failed to parse config JSON: " << e.what();
     throw std::runtime_error("Failed to parse config JSON: " +
                              std::string(e.what()));
   }
 
   if (!mRootJson.contains("algorithm") || !mRootJson["algorithm"].is_object()) {
-    LOG_ERRORS << "Config missing 'algorithms' array or it's not an array.";
+    LOG_ERROR_S << "Config missing 'algorithms' array or it's not an array.";
     throw std::runtime_error(
         "Config missing 'algorithms' array or not an object.");
   }
@@ -72,7 +72,7 @@ AlgoConfigParser::parsePreprocParams(const nlohmann::json &preprocJson,
     auto frameParams = parsePreprocFramePreprocessParams(preprocJson);
     params.setParams(frameParams);
   } else {
-    LOG_ERRORS << "Unsupported preprocType: " << preprocType;
+    LOG_ERROR_S << "Unsupported preprocType: " << preprocType;
     throw std::runtime_error("Unsupported preprocType");
   }
   return params;
@@ -111,7 +111,7 @@ AlgoConfigParser::parsePostprocParams(const nlohmann::json &postProcJson,
     confidenceFilterParams.outputNames = outputNames;
     params.setParams(confidenceFilterParams);
   } else {
-    LOG_ERRORS << "Unsupported postprocType: " << postprocType;
+    LOG_ERROR_S << "Unsupported postprocType: " << postprocType;
     throw std::runtime_error("Unsupported postprocType");
   }
   return params;
@@ -205,7 +205,7 @@ AlgoConfigData AlgoConfigParser::parse() {
     if (algoConfig.contains("preprocParams")) {
       const auto &preprocJson = algoConfig.at("preprocParams");
       if (ret.modelTypes.preprocModule.empty()) {
-        LOG_ERRORS
+        LOG_ERROR_S
             << "preproc module type is empty, but preprocParams is provided";
         throw std::runtime_error(
             "preproc module type is empty, but preprocParams is provided");
@@ -220,7 +220,7 @@ AlgoConfigData AlgoConfigParser::parse() {
     if (algoConfig.contains("postprocParams")) {
       const auto &postprocJson = algoConfig.at("postprocParams");
       if (ret.modelTypes.postprocModule.empty()) {
-        LOG_ERRORS
+        LOG_ERROR_S
             << "postproc module type is empty, but postprocParams is provided";
         throw std::runtime_error(
             "postproc module type is empty, but postprocParams is provided");
@@ -231,10 +231,10 @@ AlgoConfigData AlgoConfigParser::parse() {
     return ret;
 
   } catch (const nlohmann::json::exception &e) {
-    LOG_ERRORS << "JSON parsing error: " << e.what();
+    LOG_ERROR_S << "JSON parsing error: " << e.what();
     throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Configuration parsing failed: " << e.what();
+    LOG_ERROR_S << "Configuration parsing failed: " << e.what();
     throw;
   }
 }

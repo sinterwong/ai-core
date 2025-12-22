@@ -10,7 +10,7 @@
  */
 #include "algo_preproc_impl.hpp"
 #include "ai_core/ai_core_registrar.hpp"
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 
 namespace ai_core::dnn {
 AlgoPreproc::Impl::Impl(const std::string &moduleName)
@@ -21,11 +21,12 @@ InferErrorCode AlgoPreproc::Impl::initialize() {
     preprocessor_ =
         PreprocFactory::instance().create(moduleName_, AlgoConstructParams{});
     if (preprocessor_ == nullptr) {
-      LOG_ERRORS << "Failed to create preprocessor for module: " << moduleName_;
+      LOG_ERROR_S << "Failed to create preprocessor for module: "
+                  << moduleName_;
       return InferErrorCode::INIT_FAILED;
     }
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Failed to create preprocessor: " << e.what();
+    LOG_ERROR_S << "Failed to create preprocessor: " << e.what();
     return InferErrorCode::INIT_FAILED;
   }
   return InferErrorCode::SUCCESS;
@@ -36,7 +37,7 @@ InferErrorCode AlgoPreproc::Impl::process(
     TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
   if (!preprocessor_->process(input, preprocParams, modelInput,
                               runtimeContext)) {
-    LOG_ERRORS << "Failed to preprocess input.";
+    LOG_ERROR_S << "Failed to preprocess input.";
     return InferErrorCode::INFER_PREPROCESS_FAILED;
   }
   return InferErrorCode::SUCCESS;
@@ -47,7 +48,7 @@ InferErrorCode AlgoPreproc::Impl::batchProcess(
     TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
   if (!preprocessor_->batchProcess(input, preprocParams, modelInput,
                                    runtimeContext)) {
-    LOG_ERRORS << "Failed to batch preprocess input.";
+    LOG_ERROR_S << "Failed to batch preprocess input.";
     return InferErrorCode::INFER_PREPROCESS_FAILED;
   }
   return InferErrorCode::SUCCESS;

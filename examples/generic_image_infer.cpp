@@ -1,6 +1,6 @@
 #include "generic_image_infer.hpp"
+#include "ai_core/logger.hpp"
 #include "algo_config_parser.hpp"
-#include <logger.hpp>
 
 namespace ai_core::example {
 GenericImageInfer::GenericImageInfer(const std::string &configPath) {
@@ -10,7 +10,7 @@ GenericImageInfer::GenericImageInfer(const std::string &configPath) {
                                                  mParams.inferParams);
 
   if (mEngine->initialize() != InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "engine initialize failed";
+    LOG_ERROR_S << "engine initialize failed";
     throw std::runtime_error("Detector engine initialize failed");
   }
 }
@@ -18,7 +18,7 @@ GenericImageInfer::GenericImageInfer(const std::string &configPath) {
 AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
                                          const cv::Rect &roi) {
   if (image.empty()) {
-    LOG_ERRORS << "Input image is empty";
+    LOG_ERROR_S << "Input image is empty";
     return {};
   }
 
@@ -36,7 +36,7 @@ AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
   AlgoOutput algoOutput;
   if (mEngine->infer(algoInput, mParams.preprocParams, mParams.postprocParams,
                      algoOutput) != InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "engine infer failed";
+    LOG_ERROR_S << "engine infer failed";
     return {};
   }
 

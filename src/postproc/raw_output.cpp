@@ -10,7 +10,7 @@
  */
 
 #include "raw_output.hpp"
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
@@ -20,7 +20,7 @@ bool RawModelOutput::process(const TensorData &modelOutput,
                              AlgoOutput &algoOutput) const {
 
   if (modelOutput.datas.empty()) {
-    LOG_ERRORS << "modelOutput.outputs is empty";
+    LOG_ERROR_S << "modelOutput.outputs is empty";
     return false;
   }
   algoOutput.setParams(modelOutput);
@@ -33,7 +33,7 @@ bool RawModelOutput::batchProcess(
     const GenericPostParams &postArgs,
     std::vector<AlgoOutput> &algoOutput) const {
 
-  LOG_ERRORS << "RawModelOutput does not support batch processing right not!";
+  LOG_ERROR_S << "RawModelOutput does not support batch processing right not!";
   return false;
 }
 

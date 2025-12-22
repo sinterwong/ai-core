@@ -10,7 +10,7 @@
  */
 #include "algo_postproc_impl.hpp"
 #include "ai_core/ai_core_registrar.hpp"
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 
 namespace ai_core::dnn {
 AlgoPostproc::Impl::Impl(const std::string &moduleName)
@@ -22,12 +22,12 @@ InferErrorCode AlgoPostproc::Impl::initialize() {
         PostprocFactory::instance().create(moduleName_, AlgoConstructParams{});
 
     if (postprocessor_ == nullptr) {
-      LOG_ERRORS << "Failed to create postprocessor for module: "
-                 << moduleName_;
+      LOG_ERROR_S << "Failed to create postprocessor for module: "
+                  << moduleName_;
       return InferErrorCode::INIT_FAILED;
     }
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Failed to create vision module: " << e.what();
+    LOG_ERROR_S << "Failed to create vision module: " << e.what();
     return InferErrorCode::INIT_FAILED;
   }
   return InferErrorCode::SUCCESS;
@@ -39,7 +39,7 @@ AlgoPostproc::Impl::process(const TensorData &modelOutput, AlgoOutput &output,
                             std::shared_ptr<RuntimeContext> &runtimeContext) {
   if (!postprocessor_->process(modelOutput, postprocParams, output,
                                runtimeContext)) {
-    LOG_ERRORS << "Failed to postprocess output.";
+    LOG_ERROR_S << "Failed to postprocess output.";
     return InferErrorCode::INFER_OUTPUT_ERROR;
   }
   return InferErrorCode::SUCCESS;
@@ -51,7 +51,7 @@ InferErrorCode AlgoPostproc::Impl::batchProcess(
     std::shared_ptr<RuntimeContext> &runtimeContext) {
   if (!postprocessor_->batchProcess(modelOutput, postprocParams, output,
                                     runtimeContext)) {
-    LOG_ERRORS << "Failed to batch postprocess output.";
+    LOG_ERROR_S << "Failed to batch postprocess output.";
     return InferErrorCode::INFER_OUTPUT_ERROR;
   }
   return InferErrorCode::SUCCESS;

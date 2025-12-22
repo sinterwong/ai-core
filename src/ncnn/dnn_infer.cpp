@@ -10,8 +10,8 @@
  */
 
 #include "dnn_infer.hpp"
+#include "ai_core/logger.hpp"
 #include "crypto.hpp"
-#include "logger.hpp"
 #include <cctype>
 #include <ncnn/cpu.h>
 #include <ostream>
@@ -47,7 +47,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
   }
   pAlignedBuffers.clear();
 
-  LOG_INFOS << "Attempting to initialize model: " << mParams.name;
+  LOG_INFO_S << "Attempting to initialize model: " << mParams.name;
 
   try {
     ncnn::set_cpu_powersave(2);
@@ -58,9 +58,9 @@ InferErrorCode NCNNAlgoInference::initialize() {
     bool use_gpu = (mParams.deviceType == DeviceType::GPU);
     mNet.opt.use_vulkan_compute = use_gpu;
     if (use_gpu) {
-      LOG_INFOS << mParams.name << " will attempt to load on GPU (Vulkan).";
+      LOG_INFO_S << mParams.name << " will attempt to load on GPU (Vulkan).";
     } else {
-      LOG_INFOS << mParams.name << " will load on CPU.";
+      LOG_INFO_S << mParams.name << " will load on CPU.";
     }
 #else
     if (mParams.deviceType == DeviceType::GPU) {
@@ -69,7 +69,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
              "Falling back to CPU for model: "
           << mParams.name;
     } else {
-      LOG_INFOS << mParams.name << " will load on CPU.";
+      LOG_INFO_S << mParams.name << " will load on CPU.";
     }
 #endif
     mNet.opt.num_threads = ncnn::get_big_cpu_count();
@@ -78,27 +78,27 @@ InferErrorCode NCNNAlgoInference::initialize() {
 
     std::string paramPath = mParams.modelPath + ".param";
     if (mNet.load_param(paramPath.c_str()) != 0) {
-      LOG_ERRORS << "Failed to load model parameters: " << paramPath;
+      LOG_ERROR_S << "Failed to load model parameters: " << paramPath;
       return InferErrorCode::INIT_MODEL_LOAD_FAILED;
     }
-    LOG_INFOS << "Successfully loaded parameters: " << paramPath;
+    LOG_INFO_S << "Successfully loaded parameters: " << paramPath;
 
     std::string binPath = mParams.modelPath + ".bin";
 
     if (mParams.needDecrypt) {
       int model_load_ret = -1;
-      LOG_INFOS << "Decrypting model weights: " << binPath;
+      LOG_INFO_S << "Decrypting model weights: " << binPath;
       std::vector<u_char> modelData;
       auto cryptoConfig =
           encrypt::Crypto::deriveKeyFromCommit(mParams.decryptkeyStr);
       encrypt::Crypto crypto(cryptoConfig);
       if (!crypto.decryptData(binPath, modelData)) {
-        LOG_ERRORS << "Failed to decrypt model data: " << binPath;
+        LOG_ERROR_S << "Failed to decrypt model data: " << binPath;
         return InferErrorCode::INIT_DECRYPTION_FAILED;
       }
 
       if (modelData.empty()) {
-        LOG_ERRORS << "Decryption resulted in empty model data: " << binPath;
+        LOG_ERROR_S << "Decryption resulted in empty model data: " << binPath;
         return InferErrorCode::INIT_MODEL_LOAD_FAILED;
       }
 
@@ -111,13 +111,13 @@ InferErrorCode NCNNAlgoInference::initialize() {
 #ifdef _WIN32
       alignedData = _aligned_malloc(alignedSize, alignment);
       if (!alignedData) {
-        LOG_ERRORS << "Failed to allocate aligned memory for decrypted model.";
+        LOG_ERROR_S << "Failed to allocate aligned memory for decrypted model.";
         return InferErrorCode::INIT_MEMORY_ALLOC_FAILED;
       }
 #else
       int allocRet = posix_memalign(&alignedData, alignment, alignedSize);
       if (allocRet != 0) {
-        LOG_ERRORS << "posix_memalign failed with error code: " << allocRet;
+        LOG_ERROR_S << "posix_memalign failed with error code: " << allocRet;
         alignedData = nullptr; // Ensure pointer is null on failure
         return InferErrorCode::INIT_MEMORY_ALLOC_FAILED;
       }
@@ -133,7 +133,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
           mNet.load_model(static_cast<const unsigned char *>(alignedData));
 
       if (model_load_ret <= 0) {
-        LOG_ERRORS
+        LOG_ERROR_S
             << "Failed to load decrypted model weights from memory buffer.";
 #ifdef _WIN32
         _aligned_free(alignedData);
@@ -143,31 +143,32 @@ InferErrorCode NCNNAlgoInference::initialize() {
         return InferErrorCode::INIT_MODEL_LOAD_FAILED;
       } else {
         pAlignedBuffers.push_back(alignedData);
-        LOG_INFOS << "Successfully loaded decrypted model weights from memory.";
+        LOG_INFO_S
+            << "Successfully loaded decrypted model weights from memory.";
       }
     } else {
       if (mNet.load_model(binPath.c_str()) != 0) {
-        LOG_ERRORS << "Failed to load model weights: " << binPath;
+        LOG_ERROR_S << "Failed to load model weights: " << binPath;
         return InferErrorCode::INIT_MODEL_LOAD_FAILED;
       }
-      LOG_INFOS << "Successfully loaded model weights: " << binPath;
+      LOG_INFO_S << "Successfully loaded model weights: " << binPath;
     }
 
     const auto &in_names = mNet.input_names();
     const auto &out_names = mNet.output_names();
     mInputNames.assign(in_names.begin(), in_names.end());
     mOutputNames.assign(out_names.begin(), out_names.end());
-    LOG_INFOS << "Successfully initialized model: " << mParams.name;
+    LOG_INFO_S << "Successfully initialized model: " << mParams.name;
     mIsInitialized.store(
         true, std::memory_order_release); // Set flag ONLY on full success
     return InferErrorCode::SUCCESS;
 
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Exception during initialization: " << e.what();
+    LOG_ERROR_S << "Exception during initialization: " << e.what();
     mIsInitialized.store(false, std::memory_order_release);
     return InferErrorCode::INIT_FAILED;
   } catch (...) {
-    LOG_ERRORS << "Unknown exception during initialization.";
+    LOG_ERROR_S << "Unknown exception during initialization.";
     mIsInitialized.store(false, std::memory_order_release);
     return InferErrorCode::INIT_FAILED;
   }
@@ -176,7 +177,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
 InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
                                         TensorData &outputs) {
   if (!mIsInitialized.load(std::memory_order_acquire)) {
-    LOG_ERRORS << "Inference called on uninitialized model: " << mParams.name;
+    LOG_ERROR_S << "Inference called on uninitialized model: " << mParams.name;
     return InferErrorCode::NOT_INITIALIZED;
   }
 
@@ -187,7 +188,7 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
     outputs.shapes.clear();
 
     if (inputs.datas.empty() && !mInputNames.empty()) {
-      LOG_ERRORS << "Empty input data for NCNN model: " << mParams.name;
+      LOG_ERROR_S << "Empty input data for NCNN model: " << mParams.name;
       return InferErrorCode::INFER_PREPROCESS_FAILED; // Or appropriate error
     }
 
@@ -197,28 +198,28 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
     for (const auto &inputName : mInputNames) {
       auto it = inputs.datas.find(inputName);
       if (it == inputs.datas.end()) {
-        LOG_ERRORS << "Input tensor '" << inputName
-                   << "' not found in provided inputs for NCNN model: "
-                   << mParams.name;
+        LOG_ERROR_S << "Input tensor '" << inputName
+                    << "' not found in provided inputs for NCNN model: "
+                    << mParams.name;
         return InferErrorCode::INFER_FAILED;
       }
       const TypedBuffer &buffer = it->second;
       if (buffer.getSizeBytes() == 0) {
-        LOG_ERRORS << "Empty input data for input tensor '" << inputName;
+        LOG_ERROR_S << "Empty input data for input tensor '" << inputName;
         return InferErrorCode::INFER_FAILED;
       }
       auto shape_it = inputs.shapes.find(inputName);
       if (shape_it == inputs.shapes.end() || shape_it->second.empty()) {
-        LOG_ERRORS << "Shape for input tensor '" << inputName
-                   << "' not found or is empty for NCNN model: "
-                   << mParams.name;
+        LOG_ERROR_S << "Shape for input tensor '" << inputName
+                    << "' not found or is empty for NCNN model: "
+                    << mParams.name;
         return InferErrorCode::INFER_FAILED;
       }
       const std::vector<int> &shape = shape_it->second;
 
       if (buffer.dataType() != DataType::FLOAT32) {
-        LOG_ERRORS << "Unsupported data type for NCNN input '" << inputName
-                   << "'. Expected FLOAT32.";
+        LOG_ERROR_S << "Unsupported data type for NCNN input '" << inputName
+                    << "'. Expected FLOAT32.";
         return InferErrorCode::INFER_FAILED;
       }
 
@@ -240,13 +241,13 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
             ncnn::Mat(shape[0], const_cast<void *>(buffer.getRawHostPtr()),
                       sizeof(float));
       } else {
-        LOG_ERRORS << "Unsupported input shape dimension " << shape.size()
-                   << " for NCNN input '" << inputName << "'.";
+        LOG_ERROR_S << "Unsupported input shape dimension " << shape.size()
+                    << " for NCNN input '" << inputName << "'.";
         return InferErrorCode::INFER_FAILED;
       }
 
       if (ncnn_in.empty()) {
-        LOG_ERRORS << "Failed to create ncnn::Mat for input: " << inputName;
+        LOG_ERROR_S << "Failed to create ncnn::Mat for input: " << inputName;
         return InferErrorCode::INFER_FAILED;
       }
       ex.input(inputName.c_str(), ncnn_in);
@@ -256,8 +257,8 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
       ncnn::Mat ncnn_out;
       int ret = ex.extract(outputName.c_str(), ncnn_out);
       if (ret != 0) {
-        LOG_ERRORS << "Failed to extract output '" << outputName
-                   << "' from NCNN model: " << mParams.name;
+        LOG_ERROR_S << "Failed to extract output '" << outputName
+                    << "' from NCNN model: " << mParams.name;
         return InferErrorCode::INFER_FAILED;
       }
 
@@ -285,7 +286,7 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
         // ncnn_out.w)
         // The actual interpretation depends on how the model was constructed.
         // For now, let's use a simpler representation.
-        LOG_WARNINGS
+        LOG_WARNING_S
             << "4D NCNN output tensor, shape interpretation might need "
                "verification.";
         // A common output format might be just a flat list of features, or
@@ -315,12 +316,12 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
     }
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Std Exception during inference for " << mParams.name << ": "
-               << e.what();
+    LOG_ERROR_S << "Std Exception during inference for " << mParams.name << ": "
+                << e.what();
     return InferErrorCode::INFER_FAILED;
   } catch (...) {
-    LOG_ERRORS << "Unknown exception during NCNN inference for "
-               << mParams.name;
+    LOG_ERROR_S << "Unknown exception during NCNN inference for "
+                << mParams.name;
     return InferErrorCode::INFER_FAILED;
   }
 }
@@ -336,7 +337,8 @@ const ModelInfo &NCNNAlgoInference::getModelInfo() {
   {
     std::lock_guard lock(mMtx);
     if (!mIsInitialized.load(std::memory_order_relaxed)) {
-      LOG_ERRORS << "getModelInfo called on uninitialized or terminated model.";
+      LOG_ERROR_S
+          << "getModelInfo called on uninitialized or terminated model.";
       static ModelInfo emptyInfo = {};
       return emptyInfo;
     }
@@ -345,7 +347,7 @@ const ModelInfo &NCNNAlgoInference::getModelInfo() {
       return *modelInfo;
     }
 
-    LOG_INFOS << "Generating model info for: " << mParams.name;
+    LOG_INFO_S << "Generating model info for: " << mParams.name;
     modelInfo = std::make_shared<ModelInfo>();
     modelInfo->name = mParams.name;
 
@@ -365,7 +367,7 @@ const ModelInfo &NCNNAlgoInference::getModelInfo() {
 
 InferErrorCode NCNNAlgoInference::terminate() {
   std::lock_guard<std::mutex> lock(mMtx);
-  LOG_INFOS << "Terminating NCNN model: " << mParams.name;
+  LOG_INFO_S << "Terminating NCNN model: " << mParams.name;
   try {
     mNet.clear();                    // Releases network structure and weights
     mBlobPoolAllocator.clear();      // Clear blob memory pool
@@ -384,15 +386,15 @@ InferErrorCode NCNNAlgoInference::terminate() {
     mOutputNames.clear();
     modelInfo.reset(); // Release shared_ptr
 
-    LOG_INFOS << "NCNN Model terminated successfully: " << mParams.name;
+    LOG_INFO_S << "NCNN Model terminated successfully: " << mParams.name;
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Std Exception during termination for " << mParams.name
-               << ": " << e.what();
+    LOG_ERROR_S << "Std Exception during termination for " << mParams.name
+                << ": " << e.what();
     return InferErrorCode::TERMINATE_FAILED;
   } catch (...) {
-    LOG_ERRORS << "Unknown exception during NCNN model termination: "
-               << mParams.name;
+    LOG_ERROR_S << "Unknown exception during NCNN model termination: "
+                << mParams.name;
     return InferErrorCode::TERMINATE_FAILED;
   }
 }

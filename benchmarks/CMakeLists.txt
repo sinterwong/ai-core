@@ -37,7 +37,6 @@ set(DEPENDENCY_INCLUDES
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core
-    logger::logger
     encrypt::encrypt
     benchmark::benchmark
     ${OpenCV_LIBS}

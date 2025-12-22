@@ -25,7 +25,7 @@ nvinfer1::DataType aiCoreDataTypeToTrt(ai_core::DataType type) {
   case ai_core::DataType::INT8:
     return nvinfer1::DataType::kINT8;
   default:
-    LOG_ERRORS << "Unsupported ai_core::DataType: " << static_cast<int>(type);
+    LOG_ERROR_S << "Unsupported ai_core::DataType: " << static_cast<int>(type);
     throw std::runtime_error(
         "Unsupported ai_core::DataType for TensorRT conversion.");
   }
@@ -44,8 +44,8 @@ ai_core::DataType trtDataTypeToAiCore(nvinfer1::DataType trt_type) {
   case nvinfer1::DataType::kINT8:
     return ai_core::DataType::INT8;
   default:
-    LOG_ERRORS << "Unsupported nvinfer1::DataType: "
-               << static_cast<int>(trt_type);
+    LOG_ERROR_S << "Unsupported nvinfer1::DataType: "
+                << static_cast<int>(trt_type);
     throw std::runtime_error(
         "Unsupported nvinfer1::DataType for ai_core conversion.");
   }
@@ -66,8 +66,9 @@ size_t getTrtElementSize(nvinfer1::DataType trt_type) {
   case nvinfer1::DataType::kBOOL:
     return sizeof(bool);
   default:
-    LOG_ERRORS << "Cannot get element size for unsupported nvinfer1::DataType: "
-               << static_cast<int>(trt_type);
+    LOG_ERROR_S
+        << "Cannot get element size for unsupported nvinfer1::DataType: "
+        << static_cast<int>(trt_type);
     throw std::runtime_error(
         "Unsupported nvinfer1::DataType for GetElementSize.");
   }

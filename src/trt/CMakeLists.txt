@@ -44,7 +44,6 @@ set(TRT_MODULE_LINK_LIBS
     TensorRT::nvinfer
     ${CUDA_LIBRARIES}
     encrypt::encrypt
-    logger::logger
     ${OpenCV_LIBS}
 )
 
@@ -93,7 +92,6 @@ target_include_directories(ai_trt_module
 # Link dependencies
 target_link_libraries(ai_trt_module PRIVATE
     encrypt::encrypt
-    logger::logger
 )
 
 # ============================================================================

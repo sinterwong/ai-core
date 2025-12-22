@@ -10,9 +10,9 @@
  */
 #include "frame_prep.hpp"
 #include "ai_core/algo_data_types.hpp"
+#include "ai_core/logger.hpp"
 #include "cpu_generic_preprocessor.hpp"
 #include "frame_preprocessor_base.hpp"
-#include <logger.hpp>
 #include <opencv2/opencv.hpp>
 #include <ostream>
 
@@ -32,19 +32,19 @@ bool FramePreprocess::process(
 
   auto paramsPtr = params.getParams<FramePreprocessArg>();
   if (paramsPtr == nullptr) {
-    LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
+    LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
     return false;
   }
 
   if (paramsPtr->inputNames.size() != 1) {
-    LOG_ERRORS << "FramePreprocess expects exactly one input name.";
+    LOG_ERROR_S << "FramePreprocess expects exactly one input name.";
     return false;
   }
 
   auto frameInput = input.getParams<FrameInput>();
 
   if (!frameInput) {
-    LOG_ERRORS << "Unsupported AlgoInput type for FramePreprocess.";
+    LOG_ERROR_S << "Unsupported AlgoInput type for FramePreprocess.";
     return false;
   }
   FrameTransformContext singleRuntimeArgs;
@@ -69,12 +69,12 @@ bool FramePreprocess::batchProcess(
     TensorData &output, std::shared_ptr<RuntimeContext> &runtimeContext) const {
   auto paramsPtr = params.getParams<FramePreprocessArg>();
   if (paramsPtr == nullptr) {
-    LOG_ERRORS << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
+    LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
     return false;
   }
 
   if (paramsPtr->inputNames.size() != 1) {
-    LOG_ERRORS << "FramePreprocess expects exactly one input name.";
+    LOG_ERROR_S << "FramePreprocess expects exactly one input name.";
     return false;
   }
 
@@ -83,7 +83,7 @@ bool FramePreprocess::batchProcess(
   for (const auto &algoInput : input) {
     auto frameInput = algoInput.getParams<FrameInput>();
     if (!frameInput) {
-      LOG_ERRORS << "Unsupported AlgoInput type for FramePreprocess.";
+      LOG_ERROR_S << "Unsupported AlgoInput type for FramePreprocess.";
       return false;
     }
     frameInputs.push_back(*frameInput);
@@ -120,11 +120,11 @@ FramePreprocess::singleProcess(const FramePreprocessArg &args,
   }
   case FramePreprocessArg::FramePreprocType::NCNN_GENERIC: {
 #ifdef WITH_NCNN
-    LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but not implemented.";
+    LOG_ERROR_S << "NCNN_GENERIC preprocessor requested, but not implemented.";
     throw std::runtime_error("NCNN_GENERIC preprocessor not implemented.");
 #else
-    LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
-                  "not enabled.";
+    LOG_ERROR_S << "NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
+                   "not enabled.";
     throw std::runtime_error(
         "NCNN_GENERIC preprocessor requested, but WITH_NCNN is not enabled.");
 #endif
@@ -135,15 +135,15 @@ FramePreprocess::singleProcess(const FramePreprocessArg &args,
         std::make_unique<gpu::GpuGenericCudaPreprocessor>();
     return processor->process(args, input, runtimeContext);
 #else
-    LOG_ERRORS << "CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT is "
-                  "not enabled.";
+    LOG_ERROR_S << "CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT is "
+                   "not enabled.";
     throw std::runtime_error("CUDA_GPU_GENERIC preprocessor requested, but "
                              "WITH_TRT is not enabled.");
 #endif
   }
   default: {
-    LOG_ERRORS << "Unknown preprocessor type: "
-               << static_cast<int>(args.preprocTaskType);
+    LOG_ERROR_S << "Unknown preprocessor type: "
+                << static_cast<int>(args.preprocTaskType);
     throw std::runtime_error("Unknown preprocessor type.");
   }
   }
@@ -160,13 +160,14 @@ TypedBuffer FramePreprocess::batchProcess(
   }
   case FramePreprocessArg::FramePreprocType::NCNN_GENERIC: {
 #ifdef WITH_NCNN
-    LOG_ERRORS << "NCNN_GENERIC preprocessor requested, but not "
-                  "implemented.";
+    LOG_ERROR_S << "NCNN_GENERIC preprocessor requested, but not "
+                   "implemented.";
     throw std::runtime_error(
         "BATCH_NCNN_GENERIC preprocessor not implemented.");
 #else
-    LOG_ERRORS << "BATCH_NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
-                  "not enabled.";
+    LOG_ERROR_S
+        << "BATCH_NCNN_GENERIC preprocessor requested, but WITH_NCNN is "
+           "not enabled.";
     throw std::runtime_error("BATCH_NCNN_GENERIC preprocessor requested, but "
                              "WITH_NCNN is not enabled.");
 #endif
@@ -177,15 +178,16 @@ TypedBuffer FramePreprocess::batchProcess(
         std::make_unique<gpu::GpuGenericCudaPreprocessor>();
     return processor->batchProcess(args, input, runtimeContext);
 #else
-    LOG_ERRORS << "BATCH_CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT "
-                  "is not enabled.";
+    LOG_ERROR_S
+        << "BATCH_CUDA_GPU_GENERIC preprocessor requested, but WITH_TRT "
+           "is not enabled.";
     throw std::runtime_error("BATCH_CUDA_GPU_GENERIC preprocessor requested, "
                              "but WITH_TRT is not enabled.");
 #endif
   }
   default: {
-    LOG_ERRORS << "Unknown batch preprocessor type: "
-               << static_cast<int>(args.preprocTaskType);
+    LOG_ERROR_S << "Unknown batch preprocessor type: "
+                << static_cast<int>(args.preprocTaskType);
     throw std::runtime_error("Unknown batch preprocessor type.");
   }
   }

@@ -1,10 +1,10 @@
 #include "ocr_rec.hpp"
+#include "ai_core/logger.hpp"
 #include "ai_core/preproc_types.hpp"
 #include "algo_config_parser.hpp"
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <logger.hpp>
 #include <memory>
 #include <opencv2/opencv.hpp>
 
@@ -13,20 +13,20 @@ namespace fs = std::filesystem;
 
 OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
   if (!fs::exists(configPath)) {
-    LOG_ERRORS << "config file not found: " << configPath;
+    LOG_ERROR_S << "config file not found: " << configPath;
     throw std::runtime_error("Config file not found: " + configPath);
   }
 
   if (!dictPath.empty()) {
-    LOG_INFOS << "Dictionary file found: " << dictPath;
+    LOG_INFO_S << "Dictionary file found: " << dictPath;
     if (!fs::exists(fs::path(dictPath))) {
-      LOG_ERRORS << "Dictionary file not found: " << dictPath;
+      LOG_ERROR_S << "Dictionary file not found: " << dictPath;
       throw std::runtime_error("Dictionary file not found: " + dictPath);
     }
 
     std::ifstream dictFile(dictPath);
     if (!dictFile.is_open()) {
-      LOG_ERRORS << "Failed to open dictionary file: " << dictPath;
+      LOG_ERROR_S << "Failed to open dictionary file: " << dictPath;
       throw std::runtime_error("Failed to open dictionary file: " + dictPath);
     }
 
@@ -68,17 +68,17 @@ OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
       mParams.modelTypes.inferModule, mParams.inferParams);
 
   if (mEngine->initialize() != ai_core::InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "OCRRec engine initialize failed";
+    LOG_ERROR_S << "OCRRec engine initialize failed";
     throw std::runtime_error("OCRRec engine initialize failed");
   }
 
   if (mFramePreproc->initialize() != ai_core::InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "OCRRec preprocessor initialize failed";
+    LOG_ERROR_S << "OCRRec preprocessor initialize failed";
     throw std::runtime_error("OCRRec preprocessor initialize failed");
   }
 
   if (mOcrPostproc->initialize() != ai_core::InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "OCRRec postprocessor initialize failed";
+    LOG_ERROR_S << "OCRRec postprocessor initialize failed";
     throw std::runtime_error("OCRRec postprocessor initialize failed");
   }
 }
@@ -92,7 +92,7 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
       mParams.preprocParams.getParams<ai_core::FramePreprocessArg>();
 
   if (framePreprocessArgPtr == nullptr) {
-    LOG_ERRORS << "FramePreprocessArg is nullptr";
+    LOG_ERROR_S << "FramePreprocessArg is nullptr";
     throw std::runtime_error("FramePreprocessArg is nullptr");
   }
 
@@ -127,7 +127,7 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
   ai_core::TensorData modelOutput;
   if (mEngine->infer(modelInput, modelOutput) !=
       ai_core::InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "OCRRec engine infer failed";
+    LOG_ERROR_S << "OCRRec engine infer failed";
     return {};
   }
 
@@ -135,13 +135,13 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
   if (mOcrPostproc->process(modelOutput, mParams.postprocParams, algoOutput,
                             runtimeContext) !=
       ai_core::InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "OCRRec postprocess failed";
+    LOG_ERROR_S << "OCRRec postprocess failed";
     return {};
   }
 
   auto ocrRet = algoOutput.getParams<ai_core::OCRRecoRet>();
   if (ocrRet == nullptr) {
-    LOG_ERRORS << "OCRRecoRet is nullptr";
+    LOG_ERROR_S << "OCRRecoRet is nullptr";
     return {};
   }
   return *ocrRet;
@@ -149,7 +149,7 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
 
 std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
   if (mDict.empty()) {
-    LOG_WARNINGS
+    LOG_WARNING_S
         << "Dictionary is empty, cannot map recognition results to string.";
     return "";
   }
@@ -159,7 +159,7 @@ std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
     if (index >= 0 && index < static_cast<int64_t>(mDict.size())) {
       ret += mDict[index];
     } else if (index > static_cast<int64_t>(mDict.size())) {
-      LOG_ERRORS << "Index out of dictionary bounds: " << index;
+      LOG_ERROR_S << "Index out of dictionary bounds: " << index;
       throw std::runtime_error("Index out of dictionary bounds");
     }
   }

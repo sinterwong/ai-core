@@ -1,5 +1,5 @@
 #include "ocr_utils.hpp"
-#include <logger.hpp>
+#include "ai_core/logger.hpp"
 #include <opencv2/imgcodecs.hpp>
 
 namespace ai_core::example {
@@ -19,16 +19,16 @@ OCRUtils::OCRUtils(const std::string &detConfigPath,
     m_ocrDetector = std::make_unique<GenericImageInfer>(detConfigPath);
     m_ocrRec = std::make_unique<OCRRec>(recConfigPath, dictPath);
   } catch (const std::exception &e) {
-    LOG_ERRORS << "Failed to initialize OCR: " << e.what();
+    LOG_ERROR_S << "Failed to initialize OCR: " << e.what();
   }
-  LOG_INFOS << "OCRUtils initialized successfully.";
+  LOG_INFO_S << "OCRUtils initialized successfully.";
 }
 
 std::vector<std::string>
 OCRUtils::process(const cv::Mat &frame, const cv::Rect &roi, bool needMergeRow,
                   float expandRatioX, float expandRatioY) {
   if (!m_ocrDetector || !m_ocrRec) {
-    LOG_ERRORS << "OCR not initialized.";
+    LOG_ERROR_S << "OCR not initialized.";
     return {};
   }
 
@@ -41,23 +41,23 @@ OCRUtils::process(const cv::Mat &frame, const cv::Rect &roi, bool needMergeRow,
 
   for (cv::Rect bbox : detectedBBoxes) {
     if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-      LOG_WARNINGS
+      LOG_WARNING_S
           << "Detected bounding box is empty or has zero dimension, skipping.";
       continue;
     }
 
     bbox = bbox & cv::Rect(0, 0, frame.cols, frame.rows);
     if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-      LOG_WARNINGS << "Bounding box clipped to image boundaries is empty or "
-                      "has zero dimension, skipping.";
+      LOG_WARNING_S << "Bounding box clipped to image boundaries is empty or "
+                       "has zero dimension, skipping.";
       continue;
     }
 
     bbox = expandBox(bbox, expandRatioX, expandRatioY, frame.size());
 
     if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-      LOG_WARNINGS << "Expanded bounding box is empty or has zero dimension, "
-                      "skipping.";
+      LOG_WARNING_S << "Expanded bounding box is empty or has zero dimension, "
+                       "skipping.";
       continue;
     }
 
@@ -83,14 +83,14 @@ std::vector<cv::Rect> OCRUtils::detect(const cv::Mat &frame,
   ai_core::AlgoOutput algo_output = (*m_ocrDetector)(frame, roi);
   auto ocrDetRet = algo_output.getParams<ai_core::SegRet>();
   if (ocrDetRet == nullptr) {
-    LOG_ERRORS << "OCR Detector output is null.";
+    LOG_ERROR_S << "OCR Detector output is null.";
     return {};
   }
 
   if (ocrDetRet->clsToContours.size() != 1) {
-    LOG_ERRORS << "OCR Detector output does not contain expected number of "
-                  "classes. Expected 1, got "
-               << ocrDetRet->clsToContours.size();
+    LOG_ERROR_S << "OCR Detector output does not contain expected number of "
+                   "classes. Expected 1, got "
+                << ocrDetRet->clsToContours.size();
     return {};
   }
 
@@ -150,7 +150,7 @@ std::vector<std::pair<cv::Rect, std::string>> OCRUtils::regionsHaveKeywords(
 
   std::vector<std::pair<cv::Rect, std::string>> result;
   if (!m_ocrDetector || !m_ocrRec) {
-    LOG_ERRORS << "OCR not initialized.";
+    LOG_ERROR_S << "OCR not initialized.";
     return result;
   }
 
@@ -163,16 +163,18 @@ std::vector<std::pair<cv::Rect, std::string>> OCRUtils::regionsHaveKeywords(
 
     for (cv::Rect bbox : detectedBBoxes) {
       if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-        LOG_WARNINGS << "Detected bounding box is empty or has zero dimension, "
-                        "skipping.";
+        LOG_WARNING_S
+            << "Detected bounding box is empty or has zero dimension, "
+               "skipping.";
         continue;
       }
 
       bbox = expandBox(bbox, expandRatioX, expandRatioY, frame.size());
 
       if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-        LOG_WARNINGS << "Expanded bounding box is empty or has zero dimension, "
-                        "skipping.";
+        LOG_WARNING_S
+            << "Expanded bounding box is empty or has zero dimension, "
+               "skipping.";
         continue;
       }
 
