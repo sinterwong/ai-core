@@ -1,5 +1,6 @@
 #ifndef CUDA_UTILS_CUDA_HELPER_CUH
 #define CUDA_UTILS_CUDA_HELPER_CUH
+#include "ai_core/logger.hpp"
 #include <cuda_runtime.h>
 #include <stdexcept>
 
@@ -14,6 +15,8 @@ public:
 inline void checkCudaError(cudaError_t err, const char *func, const char *file,
                            const int line) {
   if (err != cudaSuccess) {
+    LOG_ERROR_S << "CUDA error in " << __FILE__ << " line " << __LINE__ << ": "
+                << cudaGetErrorString(err) << " (" << err << ")";
     throw CudaError(cudaGetErrorString(err), func, file, line);
   }
 }

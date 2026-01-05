@@ -1,8 +1,8 @@
 /**
  * @file cuda_utils.cu
  * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
+ * @brief CUDA preprocessing kernels implementation with stream support
+ * @version 0.2
  * @date 2025-07-12
  *
  * @copyright Copyright (c) 2025
@@ -305,25 +305,29 @@ __global__ void batch_escale_resize_normalize_bilinear_kernel(
 } // namespace kernel
 
 void hwc_to_chw_gpu(const float *src, float *dst, int height, int width,
-                    int channels) {
+                    int channels, cudaStream_t stream) {
   dim3 block(32, 32);
   dim3 grid((width + block.x - 1) / block.x, (height + block.y - 1) / block.y);
-  kernel::hwc_to_chw_kernel<<<grid, block>>>(src, dst, height, width, channels);
+  kernel::hwc_to_chw_kernel<<<grid, block, 0, stream>>>(src, dst, height, width,
+                                                        channels);
 }
 
-void fp32_to_fp16_gpu(const float *src, uint16_t *dst, int n) {
+void fp32_to_fp16_gpu(const float *src, uint16_t *dst, int n,
+                      cudaStream_t stream) {
   int threads = 256;
   int blocks = (n + threads - 1) / threads;
-  kernel::fp32_to_fp16_clamp_kernel<<<blocks, threads>>>(src, dst, n);
+  kernel::fp32_to_fp16_clamp_kernel<<<blocks, threads, 0, stream>>>(src, dst,
+                                                                    n);
 }
 
 void crop_resize_normalize_gpu(const uint8_t *src, float *dst, int src_h,
                                int src_w, int src_c, int crop_x, int crop_y,
                                int crop_h, int crop_w, int dst_h, int dst_w,
-                               const float *mean, const float *std) {
+                               const float *mean, const float *std,
+                               cudaStream_t stream) {
   dim3 block(32, 32);
   dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y);
-  kernel::crop_resize_normalize_bilinear_kernel<<<grid, block>>>(
+  kernel::crop_resize_normalize_bilinear_kernel<<<grid, block, 0, stream>>>(
       src, dst, src_h, src_w, src_c, crop_x, crop_y, crop_h, crop_w, dst_h,
       dst_w, mean, std);
 }
@@ -332,7 +336,7 @@ void escale_resize_normalize_gpu(const uint8_t *src, float *dst,
                                  int full_image_w, int src_c,
                                  const ROIData &roi, int dst_h, int dst_w,
                                  const float *mean, const float *std,
-                                 const int *pad_val) {
+                                 const int *pad_val, cudaStream_t stream) {
   float scale = fminf((float)dst_w / roi.w, (float)dst_h / roi.h);
   int new_w = (int)(roi.w * scale);
   int new_h = (int)(roi.h * scale);
@@ -342,33 +346,32 @@ void escale_resize_normalize_gpu(const uint8_t *src, float *dst,
   dim3 block(32, 32);
   dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y);
 
-  kernel::escale_resize_normalize_bilinear_kernel<<<grid, block>>>(
+  kernel::escale_resize_normalize_bilinear_kernel<<<grid, block, 0, stream>>>(
       src, dst, full_image_w, src_c, roi, dst_h, dst_w, mean, std, pad_val,
       new_h, new_w, pad_h, pad_w);
 }
 
 void batch_hwc_to_chw_gpu(const float *src, float *dst, int height, int width,
-                          int channels, int batch_size) {
+                          int channels, int batch_size, cudaStream_t stream) {
   dim3 block(32, 32);
   dim3 grid((width + block.x - 1) / block.x, (height + block.y - 1) / block.y,
             batch_size);
-  kernel::batch_hwc_to_chw_kernel<<<grid, block>>>(src, dst, height, width,
-                                                   channels, batch_size);
+  kernel::batch_hwc_to_chw_kernel<<<grid, block, 0, stream>>>(
+      src, dst, height, width, channels, batch_size);
 }
 
-void batch_crop_resize_normalize_gpu(const uint8_t *const *d_src_ptrs,
-                                     float *d_batch_dst, const int *d_src_hs,
-                                     const int *d_src_ws, int src_c,
-                                     const ROIData *d_rois, int dst_h,
-                                     int dst_w, const float *mean,
-                                     const float *std, int batch_size) {
+void batch_crop_resize_normalize_gpu(
+    const uint8_t *const *d_src_ptrs, float *d_batch_dst, const int *d_src_hs,
+    const int *d_src_ws, int src_c, const ROIData *d_rois, int dst_h, int dst_w,
+    const float *mean, const float *std, int batch_size, cudaStream_t stream) {
 
   dim3 block(32, 32);
   dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y,
             batch_size);
-  kernel::batch_crop_resize_normalize_bilinear_kernel<<<grid, block>>>(
-      d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h, dst_w,
-      mean, std, batch_size);
+  kernel::
+      batch_crop_resize_normalize_bilinear_kernel<<<grid, block, 0, stream>>>(
+          d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h,
+          dst_w, mean, std, batch_size);
 }
 
 void batch_escale_resize_normalize_gpu(
@@ -376,13 +379,15 @@ void batch_escale_resize_normalize_gpu(
     const int *d_src_ws, int src_c, const ROIData *d_rois, int dst_h, int dst_w,
     const float *mean, const float *std, const int *pad_val,
     const int *d_new_hs, const int *d_new_ws, const int *d_pad_ys,
-    const int *d_pad_xs, int batch_size) {
+    const int *d_pad_xs, int batch_size, cudaStream_t stream) {
 
   dim3 block(32, 32);
   dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y,
             batch_size);
-  kernel::batch_escale_resize_normalize_bilinear_kernel<<<grid, block>>>(
-      d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h, dst_w,
-      mean, std, pad_val, d_new_hs, d_new_ws, d_pad_ys, d_pad_xs, batch_size);
+  kernel::
+      batch_escale_resize_normalize_bilinear_kernel<<<grid, block, 0, stream>>>(
+          d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h,
+          dst_w, mean, std, pad_val, d_new_hs, d_new_ws, d_pad_ys, d_pad_xs,
+          batch_size);
 }
 } // namespace ai_core::dnn::gpu::cuda_op

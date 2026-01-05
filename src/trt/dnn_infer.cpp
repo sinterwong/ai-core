@@ -128,7 +128,7 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     return InferErrorCode::INIT_CONTEXT_FAILED;
   }
 
-  CHECK_CUDA(cudaStreamCreate(&mStream));
+  CHECK_CUDA_ERROR(cudaStreamCreate(&mStream));
 
   mManagedBuffers.clear();
   mTensorAddressMap.clear();
@@ -381,14 +381,16 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
         LOG_TRACE_S << "Copying CPU input for tensor '" << name << "' (H2D).";
         const void *srcHostPtr = inputBuffer.getRawHostPtr();
         // will adapts automatically to the hardware characteristics of jetson
-        CHECK_CUDA(cudaMemcpyAsync(destDevicePtr, srcHostPtr, actualSizeBytes,
-                                   cudaMemcpyHostToDevice, mStream));
+        CHECK_CUDA_ERROR(cudaMemcpyAsync(destDevicePtr, srcHostPtr,
+                                         actualSizeBytes,
+                                         cudaMemcpyHostToDevice, mStream));
       } else if (inputBuffer.location() == BufferLocation::GPU_DEVICE) {
         LOG_TRACE_S << "Copying GPU input for tensor '" << name << "' (D2D).";
         void *srcDevicePtr = inputBuffer.getRawDevicePtr();
         // copy between device and device(pretty fast)
-        CHECK_CUDA(cudaMemcpyAsync(destDevicePtr, srcDevicePtr, actualSizeBytes,
-                                   cudaMemcpyDeviceToDevice, mStream));
+        CHECK_CUDA_ERROR(cudaMemcpyAsync(destDevicePtr, srcDevicePtr,
+                                         actualSizeBytes,
+                                         cudaMemcpyDeviceToDevice, mStream));
         // For the sake of good portability, the cudaHostAllocMapped mechanism
         // will not be considered for the time being
       } else {
@@ -432,9 +434,9 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
       void *destinationHostPtr = hostByteVec.data();
 
       LOG_TRACE_S << "Copying output for tensor '" << name << "' to CPU (D2H).";
-      CHECK_CUDA(cudaMemcpyAsync(destinationHostPtr, srcDevicePtr,
-                                 actualOutputSizeBytes, cudaMemcpyDeviceToHost,
-                                 mStream));
+      CHECK_CUDA_ERROR(cudaMemcpyAsync(destinationHostPtr, srcDevicePtr,
+                                       actualOutputSizeBytes,
+                                       cudaMemcpyDeviceToHost, mStream));
 
       outputs.datas[name] = TypedBuffer::createFromCpu(outputInfo.dataType,
                                                        std::move(hostByteVec));
@@ -443,13 +445,13 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
     }
 
     // Synchronize stream to ensure all async operations are complete
-    CHECK_CUDA(cudaStreamSynchronize(mStream));
+    CHECK_CUDA_ERROR(cudaStreamSynchronize(mStream));
 
     LOG_TRACE_S << "Inference and all memory copies synchronized successfully.";
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception during inference: " << e.what();
-    CHECK_CUDA(cudaStreamSynchronize(mStream));
+    CHECK_CUDA_ERROR(cudaStreamSynchronize(mStream));
     return InferErrorCode::INFER_FAILED;
   }
 }

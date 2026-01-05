@@ -1,33 +1,164 @@
 /**
- * @file gpu_generic_cuda_preprocessor.hpp
+ * @file gpu_generic_cuda_preprocessor.cuh
  * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
+ * @brief GPU-accelerated frame preprocessor with optimized memory management
+ * @version 0.2
  * @date 2025-07-14
  *
  * @copyright Copyright (c) 2025
  *
+ * Design improvements:
+ * 1. Pre-allocated buffers for model parameters (mean/std/pad) - initialized
+ * once
+ * 2. Cached working buffers (HWC/CHW/output) - sized to max expected usage
+ * 3. Dedicated CUDA stream for async execution
+ * 4. Lazy initialization on first use to avoid breaking the interface contract
  */
-#ifndef __GPU_GENERIC_CUDA_PREPROCESSOR_HPP__
-#define __GPU_GENERIC_CUDA_PREPROCESSOR_HPP__
+#ifndef GPU_GENERIC_CUDA_PREPROCESSOR_HPP
+#define GPU_GENERIC_CUDA_PREPROCESSOR_HPP
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/preproc_types.hpp"
 #include "ai_core/typed_buffer.hpp"
+#include "cuda_device_buffer.cuh"
+#include "cuda_stream.cuh"
+#include "cuda_utils.hpp"
 #include "preproc/frame_preprocessor_base.hpp"
+#include <cuda_runtime.h>
+#include <vector>
 
 namespace ai_core::dnn::gpu {
+/**
+ * @brief Configuration for GpuGenericCudaPreprocessor
+ */
+struct GpuPreprocessorConfig {
+  /// Enable parallel mode (each call allocates own memory, thread-safe)
+  /// When false, uses cached buffers with mutex protection
+  bool enableParallel = false;
+
+  /// Use high-priority CUDA stream (only effective in sequential mode)
+  bool useHighPriorityStream = false;
+
+  static GpuPreprocessorConfig defaults() { return GpuPreprocessorConfig{}; }
+
+  /// Create config for parallel/multi-threaded usage
+  static GpuPreprocessorConfig parallel() {
+    GpuPreprocessorConfig cfg;
+    cfg.enableParallel = true;
+    return cfg;
+  }
+};
+
+/**
+ * @brief GPU-accelerated frame preprocessor
+ *
+ * Thread Safety:
+ * - Sequential mode (enableParallel=false): Thread-safe via mutex, serialized
+ * - Parallel mode (enableParallel=true): Thread-safe, each call independent
+ */
 class GpuGenericCudaPreprocessor : public IFramePreprocessor {
 public:
-  explicit GpuGenericCudaPreprocessor() = default;
-  ~GpuGenericCudaPreprocessor() override = default;
+  using Config = GpuPreprocessorConfig;
 
-  TypedBuffer process(const FramePreprocessArg &, const FrameInput &,
-                      FrameTransformContext &) const override;
+  GpuGenericCudaPreprocessor();
+  explicit GpuGenericCudaPreprocessor(const Config &config);
+  ~GpuGenericCudaPreprocessor() override;
 
-  TypedBuffer batchProcess(const FramePreprocessArg &,
-                           const std::vector<FrameInput> &,
-                           std::vector<FrameTransformContext> &) const override;
+  GpuGenericCudaPreprocessor(const GpuGenericCudaPreprocessor &) = delete;
+  GpuGenericCudaPreprocessor &
+  operator=(const GpuGenericCudaPreprocessor &) = delete;
+  GpuGenericCudaPreprocessor(GpuGenericCudaPreprocessor &&) = delete;
+  GpuGenericCudaPreprocessor &operator=(GpuGenericCudaPreprocessor &&) = delete;
+
+  TypedBuffer process(const FramePreprocessArg &args, const FrameInput &input,
+                      FrameTransformContext &runtimeArgs) const override;
+
+  TypedBuffer
+  batchProcess(const FramePreprocessArg &args,
+               const std::vector<FrameInput> &inputs,
+               std::vector<FrameTransformContext> &runtimeArgs) const override;
+
+  /// Get the CUDA stream (only valid in sequential mode)
+  cudaStream_t getStream() const;
+
+  /// Synchronize the stream (only valid in sequential mode)
+  void synchronize() const;
+
+  /// Reset cached resources (only effective in sequential mode)
+  void resetCache() const;
+
+  /// Check if running in parallel mode
+  bool isParallelMode() const { return m_config.enableParallel; }
+
+private:
+  TypedBuffer processSequential(const FramePreprocessArg &args,
+                                const FrameInput &input,
+                                FrameTransformContext &runtimeArgs) const;
+
+  TypedBuffer
+  batchProcessSequential(const FramePreprocessArg &args,
+                         const std::vector<FrameInput> &inputs,
+                         std::vector<FrameTransformContext> &runtimeArgs) const;
+
+  TypedBuffer processParallel(const FramePreprocessArg &args,
+                              const FrameInput &input,
+                              FrameTransformContext &runtimeArgs) const;
+
+  TypedBuffer
+  batchProcessParallel(const FramePreprocessArg &args,
+                       const std::vector<FrameInput> &inputs,
+                       std::vector<FrameTransformContext> &runtimeArgs) const;
+
+  static void validatePreprocessArgs(const FramePreprocessArg &args,
+                                     int srcChannels);
+
+  struct CachedResources {
+    // Parameter buffers
+    cuda_utils::CudaDeviceBuffer<float> d_mean;
+    cuda_utils::CudaDeviceBuffer<float> d_std;
+    cuda_utils::CudaDeviceBuffer<int> d_pad;
+
+    // Host-side copies for change detection
+    std::vector<float> cachedMeanVals;
+    std::vector<float> cachedNormVals;
+    std::vector<int> cachedPadVals;
+
+    // Working buffers
+    cuda_utils::DeviceByteBuffer d_hwcBuffer;
+    cuda_utils::DeviceByteBuffer d_chwBuffer;
+
+    // Input image buffer (reused across calls to avoid alloc/free)
+    cuda_utils::DeviceByteBuffer d_inputImage;
+
+    // Batch processing: input image buffers (one per batch slot)
+    std::vector<cuda_utils::DeviceByteBuffer> d_batchInputImages;
+
+    // Batch metadata buffers
+    cuda_utils::CudaDeviceBuffer<uint8_t *> d_srcPtrs;
+    cuda_utils::CudaDeviceBuffer<int> d_srcHeights;
+    cuda_utils::CudaDeviceBuffer<int> d_srcWidths;
+    cuda_utils::CudaDeviceBuffer<cuda_op::ROIData> d_rois;
+    cuda_utils::CudaDeviceBuffer<int> d_newHeights;
+    cuda_utils::CudaDeviceBuffer<int> d_newWidths;
+    cuda_utils::CudaDeviceBuffer<int> d_padYs;
+    cuda_utils::CudaDeviceBuffer<int> d_padXs;
+
+    void reset();
+  };
+
+  void updateParameterBuffers(const FramePreprocessArg &args,
+                              cudaStream_t stream) const;
+  void ensureWorkingBufferCapacity(const FramePreprocessArg &args,
+                                   int batchSize, cudaStream_t stream) const;
+
+  // Stream for sequential mode
+  mutable std::unique_ptr<cuda_utils::CudaStream> m_stream;
+
+  // Cached resources for sequential mode
+  mutable CachedResources m_cache;
+  mutable std::mutex m_mutex;
+
+  Config m_config;
 };
 
 } // namespace ai_core::dnn::gpu

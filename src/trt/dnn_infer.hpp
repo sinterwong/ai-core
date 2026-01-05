@@ -14,9 +14,8 @@
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
-#include "cuda_device_buffer.cuh"
-
 #include "ai_core/logger.hpp"
+#include "cuda_device_buffer.cuh"
 #include <NvInfer.h>
 #include <NvInferRuntime.h>
 #include <memory>

@@ -9,6 +9,7 @@
  *
  */
 #include "trt_utils.hpp"
+#include "ai_core/logger.hpp"
 
 namespace ai_core::trt_utils {
 

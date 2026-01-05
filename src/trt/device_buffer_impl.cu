@@ -1,6 +1,5 @@
 #include "ai_core/device_buffer_impl.hpp"
-#include "trt_utils.hpp"
-
+#include "cuda_helper.cuh"
 #include <cuda_runtime.h>
 #include <memory>
 
@@ -12,7 +11,7 @@ private:
   struct GpuCudaBufferDeleter {
     void operator()(void *ptr) const {
       if (ptr) {
-        CHECK_CUDA(cudaFree(ptr));
+        CHECK_CUDA_ERROR(cudaFree(ptr));
       }
     }
   };
@@ -25,7 +24,7 @@ public:
   explicit DeviceBufferImplCuda(size_t sizeBytes) : mSizeBytes(sizeBytes) {
     void *ptr = nullptr;
     if (mSizeBytes > 0) {
-      CHECK_CUDA(cudaMalloc(&ptr, mSizeBytes));
+      CHECK_CUDA_ERROR(cudaMalloc(&ptr, mSizeBytes));
     }
     mManagedBuffer = std::shared_ptr<void>(ptr, GpuCudaBufferDeleter());
     mPtr = mManagedBuffer.get();
@@ -42,8 +41,8 @@ public:
       : mSizeBytes(other.mSizeBytes) {
     if (mSizeBytes > 0) {
       void *ptr = nullptr;
-      CHECK_CUDA(cudaMalloc(&ptr, mSizeBytes));
-      CHECK_CUDA(
+      CHECK_CUDA_ERROR(cudaMalloc(&ptr, mSizeBytes));
+      CHECK_CUDA_ERROR(
           cudaMemcpy(ptr, other.mPtr, mSizeBytes, cudaMemcpyDeviceToDevice));
       mManagedBuffer = std::shared_ptr<void>(ptr, GpuCudaBufferDeleter());
       mPtr = mManagedBuffer.get();
