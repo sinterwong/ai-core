@@ -18,7 +18,6 @@ endif()
 # ============================================================================
 set(TEST_SOURCES
     main.cc
-    taskflow_hw.cpp
     test_algo_infer.cpp
     test_ocr_det.cpp
     test_ocr_reco.cpp
