@@ -12,20 +12,8 @@
 #define __TRT_UTILS_HPP__
 
 #include "ai_core/infer_common_types.hpp"
-#include "ai_core/logger.hpp"
 #include <NvInfer.h>
 #include <cuda_runtime_api.h>
-
-#define CHECK_CUDA(call)                                                       \
-  do {                                                                         \
-    cudaError_t err = call;                                                    \
-    if (err != cudaSuccess) {                                                  \
-      LOG_ERROR_S << "CUDA error in " << __FILE__ << " line " << __LINE__      \
-                  << ": " << cudaGetErrorString(err) << " (" << err << ")";    \
-      throw std::runtime_error("CUDA error: " +                                \
-                               std::string(cudaGetErrorString(err)));          \
-    }                                                                          \
-  } while (0)
 
 namespace ai_core::trt_utils {
 

@@ -19,7 +19,6 @@ set(TRT_MODULE_CUDA_SOURCES
     cuda_utils.cu
     device_buffer_impl.cu
     gpu_generic_cuda_preprocessor.cu
-    trt_device_buffer.cu
 )
 
 # Headers
@@ -27,7 +26,6 @@ set(TRT_MODULE_HEADERS
     cuda_utils.hpp
     dnn_infer.hpp
     gpu_generic_cuda_preprocessor.hpp
-    trt_device_buffer.hpp
     trt_utils.hpp
 )
 
