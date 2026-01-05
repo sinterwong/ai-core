@@ -12,7 +12,7 @@
 #include "dnn_infer.hpp"
 #include "ai_core/infer_error_code.hpp"
 #include "crypto.hpp"
-#include "trt_device_buffer.hpp"
+#include "cuda_device_buffer.cuh"
 #include "trt_utils.hpp"
 #include <filesystem>
 #include <fstream>
@@ -41,9 +41,7 @@ void TrtAlgoInference::releaseResources() {
     }
     mStream = nullptr;
   }
-  for (auto &buffer : mManagedBuffers) {
-    buffer.release();
-  }
+  // CudaDeviceBuffer 会在 clear() 后自动释放内存（析构时）
   mManagedBuffers.clear();
   mTensorAddressMap.clear();
   mTensorSizeMap.clear();
@@ -235,9 +233,10 @@ InferErrorCode TrtAlgoInference::setupBindings() {
       LOG_WARNING_S << "Tensor '" << name << "' has a buffer size of 0.";
     }
 
-    // Allocate buffer and get pointer
-    mManagedBuffers.emplace_back(trt_utils::TrtDeviceBuffer{bufferSize});
-    void *devicePtr = mManagedBuffers.back().get();
+    // Allocate buffer using CudaDeviceBuffer and get pointer
+    // DeviceByteBuffer 的 size 就是字节数
+    mManagedBuffers.emplace_back(cuda_utils::DeviceByteBuffer{bufferSize});
+    void *devicePtr = mManagedBuffers.back().unsafePtr();
 
     // Populate the name-based maps
     mTensorAddressMap[name] = devicePtr;

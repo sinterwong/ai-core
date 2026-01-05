@@ -14,7 +14,7 @@
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_base.hpp"
 #include "ai_core/infer_params_types.hpp"
-#include "trt_device_buffer.hpp"
+#include "cuda_device_buffer.cuh"
 
 #include "ai_core/logger.hpp"
 #include <NvInfer.h>
@@ -87,7 +87,7 @@ private:
   cudaStream_t mStream{nullptr};
 
   // Owns the actual device memory for all I/O tensors.
-  std::vector<trt_utils::TrtDeviceBuffer> mManagedBuffers;
+  std::vector<cuda_utils::DeviceByteBuffer> mManagedBuffers;
 
   // Maps tensor names to their corresponding device pointers.
   std::unordered_map<std::string, void *> mTensorAddressMap;
