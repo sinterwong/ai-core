@@ -99,15 +99,17 @@ static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
   input.setParams(frameInput);
 
   ai_core::TensorData modelInput;
+  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+      std::make_shared<ai_core::RuntimeContext>();
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_Yolo)
@@ -140,14 +142,16 @@ static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
 
   ai_core::TensorData modelInput;
 
+  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+      std::make_shared<ai_core::RuntimeContext>();
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_HWC_Yolo)
@@ -222,14 +226,17 @@ static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
 
   ai_core::TensorData modelInput;
 
+  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+      std::make_shared<ai_core::RuntimeContext>();
+
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput);
+    preproc.process(input, preprocParams, modelInput, runtimeContext);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_HWC_FP16_Yolo)
