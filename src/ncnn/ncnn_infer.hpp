@@ -1,5 +1,5 @@
 /**
- * @file dnn_infer.hpp
+ * @file ncnn_infer.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1

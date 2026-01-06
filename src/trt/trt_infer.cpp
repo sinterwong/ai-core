@@ -9,7 +9,7 @@
  *
  */
 
-#include "dnn_infer.hpp"
+#include "trt_infer.hpp"
 #include "ai_core/infer_error_code.hpp"
 #include "crypto.hpp"
 #include "cuda_device_buffer.cuh"

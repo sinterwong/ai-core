@@ -16,15 +16,15 @@
 #include <vector>
 
 #ifdef WITH_NCNN
-#include "ncnn/dnn_infer.hpp"
+#include "ncnn/ncnn_infer.hpp"
 #endif
 
 #ifdef WITH_ORT
-#include "ort/dnn_infer.hpp"
+#include "ort/ort_infer.hpp"
 #endif
 
 #ifdef WITH_TRT
-#include "trt/dnn_infer.hpp"
+#include "trt/trt_infer.hpp"
 #endif
 
 namespace testing_yolo_det {

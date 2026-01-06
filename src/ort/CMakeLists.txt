@@ -9,11 +9,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Source Files
 # ============================================================================
 set(ORT_MODULE_SOURCES
-    dnn_infer.cpp
+    ort_infer.cpp
 )
 
 set(ORT_MODULE_HEADERS
-    dnn_infer.hpp
+    ort_infer.hpp
 )
 
 # ============================================================================

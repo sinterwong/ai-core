@@ -9,12 +9,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Source Files
 # ============================================================================
 set(NCNN_MODULE_SOURCES
-    dnn_infer.cpp
+    ncnn_infer.cpp
     ncnn_generic_preprocessor.cpp
 )
 
 set(NCNN_MODULE_HEADERS
-    dnn_infer.hpp
+    ncnn_infer.hpp
     ncnn_generic_preprocessor.hpp
 )
 

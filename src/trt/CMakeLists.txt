@@ -10,7 +10,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # ============================================================================
 # C++ sources
 set(TRT_MODULE_CXX_SOURCES
-    dnn_infer.cpp
+    trt_infer.cpp
     trt_utils.cpp
 )
 
@@ -24,7 +24,7 @@ set(TRT_MODULE_CUDA_SOURCES
 # Headers
 set(TRT_MODULE_HEADERS
     cuda_utils.hpp
-    dnn_infer.hpp
+    trt_infer.hpp
     gpu_generic_cuda_preprocessor.hpp
     trt_utils.hpp
 )
