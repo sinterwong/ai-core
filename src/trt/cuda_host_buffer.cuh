@@ -561,6 +561,18 @@ public:
     dst.writeFromHost(m_ptr + srcOffset, dstOffset, count, stream);
   }
 
+  /**
+   * @brief 将数据拷贝到外部 vector，自动处理 resize
+   */
+  void copyTo(std::vector<T> &dest) const {
+    if (dest.size() != m_size) {
+      dest.resize(m_size); // 只有在大小改变时才会重新分配内存
+    }
+    if (m_size > 0) {
+      std::memcpy(dest.data(), m_ptr, m_size * sizeof(T));
+    }
+  }
+
 private:
   void prepareForWrite(size_t count) {
     if (count > m_capacity) {

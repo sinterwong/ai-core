@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __TYPED_BUFFER_HPP__
-#define __TYPED_BUFFER_HPP__
+#ifndef AI_CORE_TYPED_BUFFER_HPP
+#define AI_CORE_TYPED_BUFFER_HPP
 #include "ai_core/device_buffer_impl.hpp"
 #include "ai_core/infer_common_types.hpp"
 
@@ -41,6 +41,10 @@ public:
                                    size_t sizeBytes, int deviceId,
                                    bool manageMemory);
 
+  static TypedBuffer createFromCpuRef(DataType type, const void *hostPtr,
+                                      size_t sizeBytes,
+                                      bool manageMemory = false);
+
   DataType dataType() const noexcept { return mDataType; }
   BufferLocation location() const noexcept { return mLocation; }
   size_t getSizeBytes() const noexcept;
@@ -67,6 +71,8 @@ public:
 
   static size_t getElementSize(DataType type) noexcept;
 
+  bool isReference() const noexcept { return mIsExternalRef; }
+
 private:
   TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData);
   TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData);
@@ -74,12 +80,19 @@ private:
   TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
               int deviceId, bool manageMemory);
 
+  TypedBuffer(DataType type, const void *hostPtr, size_t sizeBytes,
+              bool manageMemory);
+
   void reset();
 
   DataType mDataType{DataType::FLOAT32};
   BufferLocation mLocation{BufferLocation::CPU};
 
   std::vector<uint8_t> mCpuData;
+
+  void *mExternalCpuPtr{nullptr};
+  bool mIsExternalRef{false};     // 是否为外部引用模式
+  bool mManageExternalCpu{false}; // 是否管理外部 CPU 内存
 
   std::unique_ptr<DeviceBufferImpl> mGpuImpl;
   size_t mDeviceBufferSizeBytes{0};
@@ -96,6 +109,10 @@ template <typename T> const T *TypedBuffer::getHostPtr() const {
   if (sizeof(T) != getElementSize(mDataType) && !mCpuData.empty()) {
     throw std::runtime_error("Mismatched type size for host data access.");
   }
+
+  if (mIsExternalRef && mExternalCpuPtr) {
+    return reinterpret_cast<const T *>(mExternalCpuPtr);
+  }
   return reinterpret_cast<const T *>(mCpuData.data());
 }
 
@@ -106,6 +123,10 @@ template <typename T> T *TypedBuffer::getHostPtr() {
   }
   if (sizeof(T) != getElementSize(mDataType) && !mCpuData.empty()) {
     throw std::runtime_error("Mismatched type size for host data access.");
+  }
+  // 优先返回外部指针
+  if (mIsExternalRef && mExternalCpuPtr) {
+    return reinterpret_cast<T *>(mExternalCpuPtr);
   }
   return reinterpret_cast<T *>(mCpuData.data());
 }

@@ -10,18 +10,34 @@
  */
 #include "ai_core/typed_buffer.hpp"
 #include "ai_core/device_buffer_impl.hpp"
-#include "ai_core/logger.hpp"
 
 namespace ai_core {
 
 TypedBuffer::TypedBuffer() = default;
-TypedBuffer::~TypedBuffer() = default;
+
+TypedBuffer::~TypedBuffer() {
+  if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
+    delete[] static_cast<uint8_t *>(mExternalCpuPtr);
+    mExternalCpuPtr = nullptr;
+  }
+}
 
 TypedBuffer::TypedBuffer(const TypedBuffer &other)
     : mDataType(other.mDataType), mLocation(other.mLocation),
       mCpuData(other.mCpuData),
       mDeviceBufferSizeBytes(other.mDeviceBufferSizeBytes),
-      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount) {
+      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount),
+      mIsExternalRef(false), mManageExternalCpu(false),
+      mExternalCpuPtr(nullptr) {
+
+  if (other.mIsExternalRef && other.mExternalCpuPtr &&
+      other.mElementCount > 0) {
+    size_t sizeBytes = other.mElementCount * getElementSize(other.mDataType);
+    mCpuData.assign(static_cast<const uint8_t *>(other.mExternalCpuPtr),
+                    static_cast<const uint8_t *>(other.mExternalCpuPtr) +
+                        sizeBytes);
+  }
+
   if (other.mGpuImpl) {
     mGpuImpl = DeviceBufferImpl::clone(*other.mGpuImpl);
   }
@@ -29,12 +45,28 @@ TypedBuffer::TypedBuffer(const TypedBuffer &other)
 
 TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
   if (this != &other) {
+    if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
+      delete[] static_cast<uint8_t *>(mExternalCpuPtr);
+    }
+
     mDataType = other.mDataType;
     mLocation = other.mLocation;
     mCpuData = other.mCpuData;
     mDeviceBufferSizeBytes = other.mDeviceBufferSizeBytes;
     mDeviceId = other.mDeviceId;
     mElementCount = other.mElementCount;
+    mIsExternalRef = false;
+    mManageExternalCpu = false;
+    mExternalCpuPtr = nullptr;
+
+    if (other.mIsExternalRef && other.mExternalCpuPtr &&
+        other.mElementCount > 0) {
+      size_t sizeBytes = other.mElementCount * getElementSize(other.mDataType);
+      mCpuData.assign(static_cast<const uint8_t *>(other.mExternalCpuPtr),
+                      static_cast<const uint8_t *>(other.mExternalCpuPtr) +
+                          sizeBytes);
+    }
+
     if (other.mGpuImpl) {
       mGpuImpl = DeviceBufferImpl::clone(*other.mGpuImpl);
     } else {
@@ -44,8 +76,51 @@ TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
   return *this;
 }
 
+TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept
+    : mDataType(other.mDataType), mLocation(other.mLocation),
+      mCpuData(std::move(other.mCpuData)),
+      mExternalCpuPtr(other.mExternalCpuPtr),
+      mIsExternalRef(other.mIsExternalRef),
+      mManageExternalCpu(other.mManageExternalCpu),
+      mGpuImpl(std::move(other.mGpuImpl)),
+      mDeviceBufferSizeBytes(other.mDeviceBufferSizeBytes),
+      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount) {
+  other.mExternalCpuPtr = nullptr;
+  other.mIsExternalRef = false;
+  other.mManageExternalCpu = false;
+  other.mElementCount = 0;
+}
+
+TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept {
+  if (this != &other) {
+    if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
+      delete[] static_cast<uint8_t *>(mExternalCpuPtr);
+    }
+
+    mDataType = other.mDataType;
+    mLocation = other.mLocation;
+    mCpuData = std::move(other.mCpuData);
+    mExternalCpuPtr = other.mExternalCpuPtr;
+    mIsExternalRef = other.mIsExternalRef;
+    mManageExternalCpu = other.mManageExternalCpu;
+    mGpuImpl = std::move(other.mGpuImpl);
+    mDeviceBufferSizeBytes = other.mDeviceBufferSizeBytes;
+    mDeviceId = other.mDeviceId;
+    mElementCount = other.mElementCount;
+
+    // 清除源对象的外部指针所有权
+    other.mExternalCpuPtr = nullptr;
+    other.mIsExternalRef = false;
+    other.mManageExternalCpu = false;
+    other.mElementCount = 0;
+  }
+  return *this;
+}
+
 TypedBuffer::TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData)
-    : mDataType(type), mLocation(BufferLocation::CPU), mCpuData(cpuData) {
+    : mDataType(type), mLocation(BufferLocation::CPU), mCpuData(cpuData),
+      mExternalCpuPtr(nullptr), mIsExternalRef(false),
+      mManageExternalCpu(false) {
   const size_t elemSize = getElementSize(mDataType);
   if (elemSize == 0 && !mCpuData.empty())
     throw std::runtime_error("Unsupported data type.");
@@ -54,7 +129,8 @@ TypedBuffer::TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData)
 
 TypedBuffer::TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData)
     : mDataType(type), mLocation(BufferLocation::CPU),
-      mCpuData(std::move(cpuData)) {
+      mCpuData(std::move(cpuData)), mExternalCpuPtr(nullptr),
+      mIsExternalRef(false), mManageExternalCpu(false) {
   const size_t elemSize = getElementSize(mDataType);
   if (elemSize == 0 && !mCpuData.empty())
     throw std::runtime_error("Unsupported data type.");
@@ -63,7 +139,9 @@ TypedBuffer::TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData)
 
 TypedBuffer::TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId)
     : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
-      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
+      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId),
+      mExternalCpuPtr(nullptr), mIsExternalRef(false),
+      mManageExternalCpu(false) {
   mGpuImpl = DeviceBufferImpl::create(bufferSizeBytes);
   const size_t elemSize = getElementSize(mDataType);
   if (elemSize == 0 && bufferSizeBytes > 0)
@@ -76,7 +154,9 @@ TypedBuffer::TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId)
 TypedBuffer::TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
                          int deviceId, bool manageMemory)
     : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
-      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId) {
+      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId),
+      mExternalCpuPtr(nullptr), mIsExternalRef(false),
+      mManageExternalCpu(false) {
   mGpuImpl = DeviceBufferImpl::create(devicePtr, bufferSizeBytes, manageMemory);
   const size_t elemSize = getElementSize(mDataType);
   if (elemSize == 0 && bufferSizeBytes > 0)
@@ -86,8 +166,18 @@ TypedBuffer::TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
                       : bufferSizeBytes / elemSize;
 }
 
-TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept = default;
-TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept = default;
+// 新增：外部 CPU 内存构造函数
+TypedBuffer::TypedBuffer(DataType type, const void *hostPtr, size_t sizeBytes,
+                         bool manageMemory)
+    : mDataType(type), mLocation(BufferLocation::CPU),
+      mExternalCpuPtr(const_cast<void *>(hostPtr)), mIsExternalRef(true),
+      mManageExternalCpu(manageMemory) {
+  const size_t elemSize = getElementSize(mDataType);
+  if (elemSize == 0 && sizeBytes > 0)
+    throw std::runtime_error("Unsupported data type.");
+  mElementCount =
+      (hostPtr == nullptr || sizeBytes == 0) ? 0 : sizeBytes / elemSize;
+}
 
 TypedBuffer TypedBuffer::createFromCpu(DataType type,
                                        const std::vector<uint8_t> &data) {
@@ -110,9 +200,20 @@ TypedBuffer TypedBuffer::createFromGpu(DataType type, void *devicePtr,
   return TypedBuffer(type, devicePtr, sizeBytes, deviceId, manageMemory);
 }
 
+TypedBuffer TypedBuffer::createFromCpuRef(DataType type, const void *hostPtr,
+                                          size_t sizeBytes, bool manageMemory) {
+  return TypedBuffer(type, hostPtr, sizeBytes, manageMemory);
+}
+
 size_t TypedBuffer::getSizeBytes() const noexcept {
-  return (mLocation == BufferLocation::CPU) ? mCpuData.size()
-                                            : mDeviceBufferSizeBytes;
+  if (mLocation == BufferLocation::CPU) {
+    // 外部引用时使用 elementCount 计算
+    if (mIsExternalRef) {
+      return mElementCount * getElementSize(mDataType);
+    }
+    return mCpuData.size();
+  }
+  return mDeviceBufferSizeBytes;
 }
 
 int TypedBuffer::getDeviceId() const noexcept {
@@ -127,6 +228,9 @@ const void *TypedBuffer::getRawHostPtr() const {
     throw std::runtime_error(
         "Attempted to get host pointer from a non-CPU buffer.");
   }
+  if (mIsExternalRef && mExternalCpuPtr) {
+    return mExternalCpuPtr;
+  }
   return mCpuData.data();
 }
 
@@ -134,6 +238,9 @@ void *TypedBuffer::getRawHostPtr() {
   if (mLocation != BufferLocation::CPU) {
     throw std::runtime_error(
         "Attempted to get host pointer from a non-CPU buffer.");
+  }
+  if (mIsExternalRef && mExternalCpuPtr) {
+    return mExternalCpuPtr;
   }
   return mCpuData.data();
 }
@@ -161,6 +268,19 @@ void TypedBuffer::setGpuDataReference(DataType type, void *ptr,
 
 void TypedBuffer::resize(size_t newElementCount) {
   if (mLocation == BufferLocation::CPU) {
+    if (mIsExternalRef) {
+      if (mExternalCpuPtr && mElementCount > 0) {
+        size_t oldSize = mElementCount * getElementSize(mDataType);
+        mCpuData.assign(static_cast<uint8_t *>(mExternalCpuPtr),
+                        static_cast<uint8_t *>(mExternalCpuPtr) + oldSize);
+      }
+      if (mManageExternalCpu && mExternalCpuPtr) {
+        delete[] static_cast<uint8_t *>(mExternalCpuPtr);
+      }
+      mExternalCpuPtr = nullptr;
+      mIsExternalRef = false;
+      mManageExternalCpu = false;
+    }
     mElementCount = newElementCount;
     mCpuData.resize(mElementCount * getElementSize(mDataType));
   } else {
@@ -193,9 +313,16 @@ size_t TypedBuffer::getElementSize(DataType type) noexcept {
 }
 
 void TypedBuffer::reset() {
+  if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
+    delete[] static_cast<uint8_t *>(mExternalCpuPtr);
+  }
+
   mDataType = DataType::FLOAT32;
   mLocation = BufferLocation::CPU;
   mCpuData.clear();
+  mExternalCpuPtr = nullptr;
+  mIsExternalRef = false;
+  mManageExternalCpu = false;
   mGpuImpl.reset();
   mDeviceBufferSizeBytes = 0;
   mDeviceId = 0;
