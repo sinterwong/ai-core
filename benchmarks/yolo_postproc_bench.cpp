@@ -63,6 +63,7 @@ const static auto engine = []() {
 }();
 #endif
 
+#if defined(WITH_ORT) || defined(WITH_NCNN) || defined(WITH_TRT)
 static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
   preproc.initialize();
@@ -129,3 +130,4 @@ BENCHMARK(BM_CPU_YoloDetPostproc)
     ->Repetitions(3)
     ->Iterations(100)
     ->Unit(benchmark::kMillisecond);
+#endif

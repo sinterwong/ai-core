@@ -188,6 +188,8 @@ std::string testNameGenerator(const testing::TestParamInfo<TestConfig> &info) {
   return info.param.testName;
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OCRDetInferenceTest);
+
 INSTANTIATE_TEST_SUITE_P(OCRDetInferenceBackends, OCRDetInferenceTest,
                          ::testing::ValuesIn(GetTestConfigs()),
                          testNameGenerator);

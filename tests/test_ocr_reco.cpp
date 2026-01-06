@@ -206,6 +206,7 @@ std::vector<TestConfig> GetTestConfigs() {
 std::string testNameGenerator(const testing::TestParamInfo<TestConfig> &info) {
   return info.param.testName;
 }
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OCRRecoInferTest);
 
 INSTANTIATE_TEST_SUITE_P(OCRRecoInferBackends, OCRRecoInferTest,
                          ::testing::ValuesIn(GetTestConfigs()),

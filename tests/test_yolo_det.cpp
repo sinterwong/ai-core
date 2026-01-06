@@ -318,6 +318,7 @@ std::vector<TestConfig> GetTestConfigs() {
 std::string testNameGenerator(const testing::TestParamInfo<TestConfig> &info) {
   return info.param.testName;
 }
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(YoloDetInferenceTest);
 
 INSTANTIATE_TEST_SUITE_P(YoloInferenceBackends, YoloDetInferenceTest,
                          ::testing::ValuesIn(GetTestConfigs()),
