@@ -13,19 +13,9 @@
 #include "ai_core/algo_preproc.hpp"
 #include "ai_core/infer_common_types.hpp"
 #include "ai_core/infer_params_types.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <opencv2/opencv.hpp>
-
-// init log
-const static auto tempInitLog = []() {
-  ai_core::logging::Logger::instance().setLevel(
-      ai_core::logging::LogLevel::Info);
-  ai_core::logging::Logger::instance().enableConsole(true);
-  ai_core::logging::Logger::instance().enableFile(false);
-  return true;
-}();
 
 const static auto getFramePreprocessArg =
     [](ai_core::DataType dataType,
@@ -227,10 +217,6 @@ static void BM_TRT_GPU_DATA_YoloInfer(benchmark::State &state) {
     engine.infer(modelInput, modelOutput);
   }
 }
-BENCHMARK(BM_TRT_CPU_DATA_YoloInfer)
-    ->Repetitions(3)
-    ->Iterations(30)
-    ->Unit(benchmark::kMillisecond);
 BENCHMARK(BM_TRT_GPU_DATA_YoloInfer)
     ->Repetitions(3)
     ->Iterations(30)

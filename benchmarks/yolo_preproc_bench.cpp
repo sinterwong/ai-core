@@ -12,7 +12,6 @@
 #include "ai_core/algo_preproc.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
-
 #include <opencv2/opencv.hpp>
 
 const static auto getFramePreprocessArg =

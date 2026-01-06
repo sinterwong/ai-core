@@ -15,7 +15,6 @@
 #include "ai_core/infer_params_types.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
-
 #include <memory>
 #include <opencv2/opencv.hpp>
 
@@ -71,14 +70,23 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   ai_core::AlgoPreprocParams preprocParams;
   ai_core::FramePreprocessArg framePreprocessArg;
   framePreprocessArg.modelInputShape = {640, 640, 3};
+#ifdef WITH_ORT
   framePreprocessArg.dataType = ai_core::DataType::FLOAT16;
+  framePreprocessArg.inputNames = {"images"};
+#elif WITH_NCNN
+  framePreprocessArg.dataType = ai_core::DataType::FLOAT32;
+  framePreprocessArg.inputNames = {"in0"};
+#elif WITH_TRT
+  framePreprocessArg.dataType = ai_core::DataType::FLOAT32;
+  framePreprocessArg.inputNames = {"images"};
+#endif
+
   framePreprocessArg.needResize = true;
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputNames = {"images"};
   framePreprocessArg.preprocTaskType =
       ai_core::FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
   framePreprocessArg.outputLocation = ai_core::BufferLocation::CPU;
