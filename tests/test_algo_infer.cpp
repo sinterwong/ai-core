@@ -40,55 +40,71 @@ TEST(AlgoInferenceTest, YoloDet) {
   moduleTypes.preprocModule = "FramePreprocess";
   moduleTypes.postprocModule = "AnchorDetPostproc";
 
+  AlgoInferParams inferParams;
 #ifdef WITH_ORT
   moduleTypes.inferModule = "OrtAlgoInference";
-#elif WITH_NCNN
-  moduleTypes.inferModule = "NCNNAlgoInference";
-#elif WITH_TRT
-  moduleTypes.inferModule = "TrtAlgoInference";
-#else
-  GTEST_SKIP() << "No inference backend enabled. Skipping test.";
-#endif
-  AlgoInferParams inferParams;
   inferParams.dataType = DataType::FLOAT16;
   inferParams.modelPath = "assets/models/yolov11n-fp16.onnx";
   inferParams.name = "yolov11n";
   inferParams.deviceType = DeviceType::CPU;
   inferParams.needDecrypt = false;
+#elif WITH_NCNN
+  moduleTypes.inferModule = "NCNNAlgoInference";
+  inferParams.dataType = DataType::FLOAT32;
+  inferParams.modelPath = "assets/models/yolov11n.ncnn";
+  inferParams.name = "yolov11n";
+  inferParams.deviceType = DeviceType::CPU;
+  inferParams.needDecrypt = false;
+#elif WITH_TRT
+  moduleTypes.inferModule = "TrtAlgoInference";
+  inferParams.dataType = DataType::FLOAT32;
+  inferParams.modelPath = "assets/models/yolov11n_trt_fp16.engine";
+  inferParams.name = "yolov11n";
+  inferParams.deviceType = DeviceType::GPU;
+  inferParams.needDecrypt = false;
+#else
+  GTEST_SKIP() << "No inference backend enabled. Skipping test.";
+#endif
 
   AlgoInference algoInf(moduleTypes, inferParams);
   ASSERT_EQ(algoInf.initialize(), InferErrorCode::SUCCESS);
 
-  AlgoPreprocParams preprocParams;
   FramePreprocessArg framePreprocessArg;
-  framePreprocessArg.modelInputShape = {640, 640, 3};
+
+  AnchorDetParams anchorDetParams;
 
 #ifdef WITH_ORT
   framePreprocessArg.dataType = DataType::FLOAT16;
+  framePreprocessArg.inputNames = {"images"};
+  anchorDetParams.outputNames = {"output0"};
 #elif WITH_NCNN
   framePreprocessArg.dataType = DataType::FLOAT32;
+  framePreprocessArg.inputNames = {"in0"};
+  anchorDetParams.outputNames = {"output0"};
 #elif WITH_TRT
   framePreprocessArg.dataType = DataType::FLOAT32;
+  framePreprocessArg.inputNames = {"images"};
+  anchorDetParams.outputNames = {"output0"};
 #endif
-
+  framePreprocessArg.modelInputShape = {640, 640, 3};
   framePreprocessArg.needResize = true;
   framePreprocessArg.isEqualScale = true;
   framePreprocessArg.pad = {0, 0, 0};
   framePreprocessArg.meanVals = {0, 0, 0};
   framePreprocessArg.normVals = {255.f, 255.f, 255.f};
   framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputNames = {"images"};
   framePreprocessArg.preprocTaskType =
       FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
   framePreprocessArg.outputLocation = BufferLocation::CPU;
+
+  AlgoPreprocParams preprocParams;
   preprocParams.setParams(framePreprocessArg);
 
-  AlgoPostprocParams postprocParams;
-  AnchorDetParams anchorDetParams;
   anchorDetParams.algoType = AnchorDetParams::AlgoType::YOLO_DET_V11;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.outputNames = {"output0"};
+
+  AlgoPostprocParams postprocParams;
   postprocParams.setParams(anchorDetParams);
 
   AlgoInput algoInput;
