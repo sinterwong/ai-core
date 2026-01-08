@@ -14,8 +14,8 @@
 #include "trt_infer.hpp"
 #include "trt_utils.hpp"
 #include <cstring>
+#include <future>
 #include <numeric>
-#include <thread>
 
 namespace ai_core::dnn {
 
@@ -55,29 +55,32 @@ TrtInferStream::~TrtInferStream() {
 
 std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
                                                        TensorData &outputs) {
-  auto promise = std::make_shared<std::promise<InferErrorCode>>();
-  auto future = promise->get_future();
-
+  // Early validation - return immediately settled future on error
   if (!mInitialized) {
-    promise->set_value(InferErrorCode::NOT_INITIALIZED);
-    return future;
+    std::promise<InferErrorCode> promise;
+    promise.set_value(InferErrorCode::NOT_INITIALIZED);
+    return promise.get_future();
   }
 
   try {
     // Update input shapes if dynamic
     if (!updateInputShapesIfNeeded(inputs)) {
-      promise->set_value(InferErrorCode::INFER_EXECUTION_FAILED);
-      return future;
+      std::promise<InferErrorCode> promise;
+      promise.set_value(InferErrorCode::INFER_EXECUTION_FAILED);
+      return promise.get_future();
     }
 
-    // Copy inputs to device
+    // Submit all async operations (non-blocking)
+
+    // H2D: Copy inputs to device (async)
     auto copyResult = copyInputsToDevice(inputs);
     if (copyResult != InferErrorCode::SUCCESS) {
-      promise->set_value(copyResult);
-      return future;
+      std::promise<InferErrorCode> promise;
+      promise.set_value(copyResult);
+      return promise.get_future();
     }
 
-    // Execute inference
+    // Execute: Run inference kernel (async)
     InferErrorCode execResult;
     if (mGraphEnabled && mGraphCaptured) {
       execResult = launchGraph();
@@ -88,36 +91,47 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
     }
 
     if (execResult != InferErrorCode::SUCCESS) {
-      promise->set_value(execResult);
-      return future;
+      std::promise<InferErrorCode> promise;
+      promise.set_value(execResult);
+      return promise.get_future();
     }
 
-    // Copy outputs to host (async)
-    auto outputResult = copyOutputsToHost(outputs);
-    if (outputResult != InferErrorCode::SUCCESS) {
-      promise->set_value(outputResult);
-      return future;
+    // D2H: Submit async output copy (non-blocking)
+    auto d2hResult = submitAsyncD2H(outputs);
+    if (d2hResult != InferErrorCode::SUCCESS) {
+      std::promise<InferErrorCode> promise;
+      promise.set_value(d2hResult);
+      return promise.get_future();
     }
 
-    // Launch background thread to wait for completion
+    // Return deferred future for caller-side synchronization
+    //
+    // Key design: No thread is created here!
+    // The lambda executes in the caller's thread when future.get() is called.
+    // This eliminates thread creation overhead (~100-500μs per call).
+
     cudaStream_t stream = mCudaStream;
-    std::thread([promise, stream]() {
-      cudaError_t err = cudaStreamSynchronize(stream);
-      if (err != cudaSuccess) {
-        LOG_ERROR_S << "CUDA stream synchronize failed: "
-                    << cudaGetErrorString(err);
-        promise->set_value(InferErrorCode::INFER_EXECUTION_FAILED);
-      } else {
-        promise->set_value(InferErrorCode::SUCCESS);
-      }
-    }).detach();
 
-    return future;
+    return std::async(std::launch::deferred,
+                      [this, stream, &outputs]() -> InferErrorCode {
+                        // Synchronize CUDA stream (blocks until all ops
+                        // complete)
+                        cudaError_t err = cudaStreamSynchronize(stream);
+                        if (err != cudaSuccess) {
+                          LOG_ERROR_S << "CUDA stream synchronize failed: "
+                                      << cudaGetErrorString(err);
+                          return InferErrorCode::STREAM_SYNC_FAILED;
+                        }
+
+                        // Finalize: Copy from pinned buffers to output
+                        return finalizeOutputs(outputs);
+                      });
 
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception in inferAsync: " << e.what();
-    promise->set_value(InferErrorCode::INFER_FAILED);
-    return future;
+    std::promise<InferErrorCode> promise;
+    promise.set_value(InferErrorCode::INFER_FAILED);
+    return promise.get_future();
   }
 }
 
@@ -357,7 +371,7 @@ InferErrorCode TrtInferStream::copyInputsToDevice(const TensorData &inputs) {
   return InferErrorCode::SUCCESS;
 }
 
-InferErrorCode TrtInferStream::copyOutputsToHost(TensorData &outputs) {
+InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
   outputs.datas.clear();
   outputs.shapes.clear();
 
@@ -381,18 +395,23 @@ InferErrorCode TrtInferStream::copyOutputsToHost(TensorData &outputs) {
 
     uint8_t *destHostPtr = pinnedBuffer.writePtr(actualOutputSizeBytes);
 
+    // Submit async D2H copy (non-blocking)
     CHECK_CUDA_ERROR(cudaMemcpyAsync(destHostPtr, srcDevicePtr,
                                      actualOutputSizeBytes,
                                      cudaMemcpyDeviceToHost, mCudaStream));
 
+    // Store output shapes immediately (available from context)
     outputs.shapes[name].assign(actualOutputDims.d,
                                 actualOutputDims.d + actualOutputDims.nbDims);
   }
 
-  // Synchronize to ensure D2H copies complete
-  CHECK_CUDA_ERROR(cudaStreamSynchronize(mCudaStream));
+  // NOTE: No synchronization here! Caller is responsible for sync.
+  return InferErrorCode::SUCCESS;
+}
 
+InferErrorCode TrtInferStream::finalizeOutputs(TensorData &outputs) {
   // Copy from pinned buffers to output TypedBuffers
+  // PRECONDITION: cudaStreamSynchronize must have been called!
   for (const auto &outputInfo : mEngine.modelInfo->outputs) {
     const auto &name = outputInfo.name;
     auto &pinnedBuffer = mPinnedOutputBuffers.at(name);
@@ -402,6 +421,19 @@ InferErrorCode TrtInferStream::copyOutputsToHost(TensorData &outputs) {
   }
 
   return InferErrorCode::SUCCESS;
+}
+
+InferErrorCode TrtInferStream::copyOutputsToHost(TensorData &outputs) {
+  // Legacy synchronous version for backward compatibility
+  auto result = submitAsyncD2H(outputs);
+  if (result != InferErrorCode::SUCCESS) {
+    return result;
+  }
+
+  // Synchronize to ensure D2H copies complete
+  CHECK_CUDA_ERROR(cudaStreamSynchronize(mCudaStream));
+
+  return finalizeOutputs(outputs);
 }
 
 InferErrorCode TrtInferStream::executeInference() {
