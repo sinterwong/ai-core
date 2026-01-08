@@ -117,6 +117,7 @@ set(AI_CORE_SOURCES
     algo_preproc.cpp
     algo_preproc_impl.cpp
     device_buffer_impl_stub.cpp
+    pinned_host_buffer_impl_stub.cpp
     infer_base.cpp
     typed_buffer.cpp
     vision_util.cpp

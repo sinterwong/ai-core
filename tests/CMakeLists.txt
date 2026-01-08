@@ -22,6 +22,7 @@ set(TEST_SOURCES
     test_ocr_det.cpp
     test_ocr_reco.cpp
     test_yolo_det.cpp
+    test_trt_infer.cpp
 )
 
 # ============================================================================

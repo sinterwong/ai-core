@@ -12,13 +12,15 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(TRT_MODULE_CXX_SOURCES
     trt_infer.cpp
     trt_utils.cpp
+    trt_infer_stream.cpp
 )
 
 # CUDA sources
 set(TRT_MODULE_CUDA_SOURCES
     cuda_utils.cu
-    device_buffer_impl.cu
+    cuda_device_buffer_impl.cu
     gpu_generic_cuda_preprocessor.cu
+    cuda_pinned_host_buffer_impl.cu
 )
 
 # Headers
