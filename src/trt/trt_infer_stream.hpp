@@ -146,6 +146,26 @@ private:
 
   bool updateInputShapesIfNeeded(const TensorData &inputs);
   InferErrorCode copyInputsToDevice(const TensorData &inputs);
+
+  /**
+   * @brief Submit async D2H copies (non-blocking)
+   *
+   * Initiates asynchronous device-to-host memory copies for all outputs.
+   * Does NOT synchronize - caller must sync before accessing output data.
+   */
+  InferErrorCode submitAsyncD2H(TensorData &outputs);
+
+  /**
+   * @brief Finalize outputs after synchronization
+   *
+   * Copies data from pinned buffers to output TypedBuffers.
+   * PRECONDITION: cudaStreamSynchronize must have been called!
+   */
+  InferErrorCode finalizeOutputs(TensorData &outputs);
+
+  /**
+   * @brief Synchronous D2H copy (legacy, for backward compatibility)
+   */
   InferErrorCode copyOutputsToHost(TensorData &outputs);
 
   InferErrorCode executeInference();
