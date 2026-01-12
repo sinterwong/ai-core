@@ -1,5 +1,23 @@
 function(ai_core_extract_version)
-    file(READ "${CMAKE_CURRENT_LIST_DIR}/src/api/ai_core/ai_core_version.hpp" file_contents)
+    set(possible_paths 
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/api/ai_core/ai_core_version.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/api/ai_core/ai_core_version.hpp"
+    )
+    
+    set(target_ver_file "")
+    foreach(p ${possible_paths})
+        if(EXISTS "${p}")
+            set(target_ver_file "${p}")
+            break()
+        endif()
+    endforeach()
+
+    if(NOT target_ver_file)
+        message(FATAL_ERROR "Could not find ai_core_version.hpp in src/api or api/")
+    endif()
+
+    file(READ "${target_ver_file}" file_contents)
+    
     string(REGEX MATCH "AI_CORE_VER_MAJOR ([0-9]+)" _ "${file_contents}")
     if(NOT CMAKE_MATCH_COUNT EQUAL 1)
         message(FATAL_ERROR "Could not extract major version number from version.hpp")

@@ -29,4 +29,5 @@
   "cmake.options.statusBarVisibility": "compact",
   "cmake.buildDirectory": "${workspaceFolder}/build",
   "git.terminalAuthentication": true,
+  "memory-view.showMemoryPanel": false,
 }

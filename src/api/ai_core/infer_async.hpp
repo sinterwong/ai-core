@@ -1,152 +1,86 @@
-/**
- * @file infer_async.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Async-capable inference engine interface extension
- * @version 0.1
- * @date 2025-01-06
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_INFER_ASYNC_HPP
 #define AI_CORE_INFER_ASYNC_HPP
 
+#include "ai_core/execution_context.hpp"
 #include "ai_core/infer_base.hpp"
-#include "ai_core/infer_stream.hpp"
 
 namespace ai_core::dnn {
 
 /**
  * @brief Extended inference engine interface with async capabilities
  *
- * This interface extends IInferEnginePlugin to support asynchronous
- * operations, primarily designed for GPU-accelerated engines like TensorRT.
- *
- * Design Philosophy:
- * - Maintains backward compatibility with IInferEnginePlugin
- * - Adds async capabilities through composition (IInferStream)
- * - Allows runtime capability detection via dynamic_pointer_cast
- *
- * Usage Pattern:
- * @code
- * auto engine = factory.createEngine("model.engine");
- * engine->initialize();
- *
- * // Check for async capability
- * if (auto asyncEngine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine))
- * {
- *     // High-performance async path
- *     auto stream = asyncEngine->createStream();
- *     stream->setGraphEnabled(true);  // Enable CUDA Graph
- *     auto pinnedInput = asyncEngine->allocatePinnedHostBuffer(
- *         DataType::FLOAT32, inputSize);
- *     // ... async inference with stream
- * } else {
- *     // Fallback to sync path (ONNX Runtime, NCNN, etc.)
- *     engine->infer(inputs, outputs);
- * }
- * @endcode
- *
- * Thread Safety:
- * - createStream() is thread-safe and can be called from multiple threads
- * - Each returned IInferStream should be used by only one thread
- * - The base class infer() method remains thread-safe (with internal locking)
+ * This interface represents a "Heavy" resource factory. It manages weights,
+ * model definitions, and hardware initialization. It spawns lightweight
+ * "IExecutionContext" instances for actual inference.
  */
 class IAsyncInferEngine : public IInferEnginePlugin {
 public:
   virtual ~IAsyncInferEngine() = default;
 
   /**
-   * @brief Create an independent inference stream
+   * @brief Create an independent execution context (Thread-Local)
    *
-   * Each stream has its own:
-   * - CUDA stream handle
-   * - Device memory buffers (input/output)
-   * - Execution context
-   * - CUDA Graph (if enabled)
+   * Creates a lightweight context for submitting tasks.
+   * This is equivalent to:
+   * - Creating a cudaStream_t (CUDA)
+   * - Creating an InferRequest (OpenVINO)
+   * - Creating a Command Queue (OpenCL)
    *
-   * @return std::shared_ptr<IInferStream> A new inference stream
-   *
-   * @note Call this once per worker thread, then reuse the stream
-   *       for all inferences on that thread.
-   *
-   * @throws std::runtime_error if engine is not initialized
+   * @return std::shared_ptr<IExecutionContext> New context
    */
-  virtual std::shared_ptr<IInferStream> createStream() = 0;
+  virtual std::shared_ptr<IExecutionContext> createExecutionContext() = 0;
 
   /**
-   * @brief Allocate page-locked (pinned) host memory
+   * @brief Allocate host memory optimized for the specific accelerator
    *
-   * Pinned memory enables:
-   * - Asynchronous Host<->Device transfers
-   * - Higher transfer bandwidth via DMA
-   * - Overlap of data transfer with computation
+   * Allocates memory on the CPU that is accessible or optimized for
+   * the backend device.
    *
-   * @param type Data type for the buffer
-   * @param sizeBytes Size in bytes to allocate
-   * @return TypedBuffer A buffer backed by pinned memory
+   * Characteristics based on backend:
+   * - CUDA/HIP: Returns Pinned Memory (Page-locked).
+   * - Integrated GPU/NPU: May return Shared Memory (Zero-Copy).
+   * - CPU: Returns aligned memory for AVX/NEON.
    *
-   * @note The returned TypedBuffer:
-   *  - Has location = BufferLocation::CPU
-   *  - Has memoryType = BufferMemoryType::Pinned
-   *  - Is managed by RAII (automatically freed)
-   *
-   * @warning Pinned memory allocation is expensive. Allocate once and reuse.
-   *
-   * @throws std::runtime_error if allocation fails
+   * @param type Data type
+   * @param sizeBytes Size in bytes
+   * @return TypedBuffer RAII-managed buffer
    */
-  virtual TypedBuffer allocatePinnedHostBuffer(DataType type,
-                                               size_t sizeBytes) = 0;
+  virtual TypedBuffer allocateAcceleratorBuffer(DataType type,
+                                                size_t sizeBytes) = 0;
 
   /**
-   * @brief Pre-allocated stream context for optimal pipelining
-   *
-   * Contains a stream with pre-allocated pinned memory buffers
-   * for zero-copy data transfer patterns.
+   * @brief Structure holding a context and its pre-allocated resources
    */
-  struct StreamContext {
-    std::shared_ptr<IInferStream> stream;
-    TensorData pinnedInputs;  ///< Pre-allocated pinned input buffers
-    TensorData pinnedOutputs; ///< Pre-allocated pinned output buffers
+  struct ContextPackage {
+    std::shared_ptr<IExecutionContext> context;
+    TensorData inputs;  ///< Pre-allocated optimized input buffers
+    TensorData outputs; ///< Pre-allocated optimized output buffers
   };
 
   /**
-   * @brief Create a stream with pre-allocated pinned buffers
+   * @brief Create a fully initialized context with buffers
    *
-   * This is the recommended method for maximum performance when:
-   * - Input/output shapes are known in advance
-   * - You want to avoid per-inference allocation overhead
-   *
-   * @return StreamContext Complete context ready for inference
-   *
-   * Default implementation creates stream without pre-allocation.
-   * Derived classes should override for optimized buffer management.
+   * Helper for Zero-Copy or Static-Memory scenarios (e.g., CUDA Graph),
+   * where memory addresses should not change between runs.
    */
-  virtual StreamContext createStreamContext() {
-    // Default: just create stream, no pre-allocation
-    return {createStream(), {}, {}};
+  virtual ContextPackage createContextPackage() {
+    return {createExecutionContext(), {}, {}};
   }
 
   /**
-   * @brief Create multiple streams for pipelining
+   * @brief Create a pool of contexts for pipelined execution
    *
-   * Pipeline pattern (N streams rotating):
-   * @code
-   * Stream0: [H2D] [Compute] [D2H]
-   * Stream1:       [H2D] [Compute] [D2H]
-   * Stream2:             [H2D] [Compute] [D2H]
-   *                  ↑ Overlapped execution hides latency
-   * @endcode
+   * Useful for maximizing hardware utilization by overlapping
+   * data transfers and computation across multiple contexts.
    *
-   * @param count Number of streams to create
-   * @return std::vector<std::shared_ptr<IInferStream>> Stream pool
+   * @param count Number of contexts
    */
-  virtual std::vector<std::shared_ptr<IInferStream>>
-  createStreamPool(size_t count) {
-    std::vector<std::shared_ptr<IInferStream>> pool;
+  virtual std::vector<std::shared_ptr<IExecutionContext>>
+  createContextPool(size_t count) {
+    std::vector<std::shared_ptr<IExecutionContext>> pool;
     pool.reserve(count);
     for (size_t i = 0; i < count; ++i) {
-      pool.push_back(createStream());
+      pool.push_back(createExecutionContext());
     }
     return pool;
   }

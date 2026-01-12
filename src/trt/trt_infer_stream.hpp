@@ -11,7 +11,7 @@
 #ifndef AI_CORE_TRT_INFER_STREAM_HPP
 #define AI_CORE_TRT_INFER_STREAM_HPP
 
-#include "ai_core/infer_stream.hpp"
+#include "ai_core/execution_context.hpp"
 #include "cuda_device_buffer.cuh"
 #include "cuda_host_buffer.cuh"
 #include <NvInfer.h>
@@ -55,7 +55,7 @@ class TrtAlgoInference;
  * @warning Input shapes must remain constant after graph capture.
  *          Changing shapes will invalidate the graph.
  */
-class TrtInferStream : public IInferStream {
+class TrtInferStream : public IExecutionContext {
 public:
   /**
    * @brief Construct a new TRT inference stream
@@ -73,7 +73,7 @@ public:
   TrtInferStream &operator=(TrtInferStream &&) = delete;
 
   // ============================================================================
-  // IInferStream Interface
+  // IExecutionContext Interface
   // ============================================================================
 
   /**
@@ -97,7 +97,7 @@ public:
 
   bool isComplete() const override;
 
-  StreamHandle getHandle() const override;
+  BackendHandle getHandle() const override;
 
   /**
    * @brief Enable/disable CUDA Graph
@@ -130,7 +130,7 @@ public:
    * - Device buffers for all I/O tensors
    * - Pinned output buffers
    *
-   * Called automatically by TrtAlgoInference::createStream().
+   * Called automatically by TrtAlgoInference::createExecutionContext().
    *
    * @return InferErrorCode
    */

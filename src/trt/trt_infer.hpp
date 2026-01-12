@@ -19,7 +19,6 @@
 #include "cuda_host_buffer.cuh"
 #include <NvInfer.h>
 #include <NvInferRuntime.h>
-#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -62,13 +61,14 @@ public:
  * @brief TensorRT-based inference engine with async capabilities
  *
  * This class now extends IAsyncInferEngine to provide both synchronous
- * (via base class infer()) and asynchronous (via IInferStream) inference.
+ * (via base class infer()) and asynchronous (via IExecutionContext) inference.
  *
  * Key Design Changes:
  * - Inherits IAsyncInferEngine instead of IInferEnginePlugin
  * - infer() uses inferWithoutGraph for backward compatibility (single-threaded
  * sync)
- * - createStream() creates independent TrtInferStream with isolated resources
+ * - createExecutionContext() creates independent TrtInferStream with isolated
+ * resources
  * - CUDA Graph is only available through TrtInferStream::setGraphEnabled()
  *
  * Resource Ownership:
@@ -79,7 +79,7 @@ public:
  *
  * Thread Safety:
  * - infer(): Thread-safe via internal mutex (uses dedicated default stream)
- * - createStream(): Thread-safe, returns independent stream
+ * - createExecutionContext(): Thread-safe, returns independent stream
  * - Each TrtInferStream: NOT thread-safe, use one per thread
  */
 class TrtAlgoInference : public IAsyncInferEngine {
@@ -106,7 +106,7 @@ public:
    * Thread-safe via internal mutex.
    *
    * @note For multi-threaded or high-performance scenarios, use
-   *       createStream() + IInferStream::inferAsync() instead.
+   *       createExecutionContext() + IExecutionContext::inferAsync() instead.
    */
   InferErrorCode infer(const TensorData &inputs, TensorData &outputs) override;
 
@@ -127,10 +127,10 @@ public:
    * - Pinned output buffers (managed by CudaHostBuffer)
    * - CUDA Graph resources (optional, via setGraphEnabled)
    *
-   * @return std::shared_ptr<IInferStream> A new independent stream
+   * @return std::shared_ptr<IExecutionContext> A new independent stream
    * @throws std::runtime_error if engine not initialized
    */
-  std::shared_ptr<IInferStream> createStream() override;
+  std::shared_ptr<IExecutionContext> createExecutionContext() override;
 
   /**
    * @brief Allocate pinned host memory
@@ -143,8 +143,8 @@ public:
    * @param sizeBytes Size in bytes
    * @return TypedBuffer backed by pinned memory
    */
-  TypedBuffer allocatePinnedHostBuffer(DataType type,
-                                       size_t sizeBytes) override;
+  TypedBuffer allocateAcceleratorBuffer(DataType type,
+                                        size_t sizeBytes) override;
 
   /**
    * @brief Create stream with pre-allocated pinned I/O buffers
@@ -152,7 +152,7 @@ public:
    * Allocates pinned buffers for all model inputs/outputs based on
    * max shapes from optimization profile.
    */
-  StreamContext createStreamContext() override;
+  ContextPackage createContextPackage() override;
 
 private:
   friend class TrtInferStream;

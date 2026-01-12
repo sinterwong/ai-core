@@ -172,7 +172,7 @@ InferErrorCode TrtAlgoInference::terminate() {
 // IAsyncInferEngine Implementation
 // ============================================================================
 
-std::shared_ptr<IInferStream> TrtAlgoInference::createStream() {
+std::shared_ptr<IExecutionContext> TrtAlgoInference::createExecutionContext() {
   if (!mIsInitialized) {
     throw std::runtime_error("Cannot create stream: engine not initialized");
   }
@@ -187,38 +187,38 @@ std::shared_ptr<IInferStream> TrtAlgoInference::createStream() {
   return stream;
 }
 
-TypedBuffer TrtAlgoInference::allocatePinnedHostBuffer(DataType type,
-                                                       size_t sizeBytes) {
+TypedBuffer TrtAlgoInference::allocateAcceleratorBuffer(DataType type,
+                                                        size_t sizeBytes) {
   return TypedBuffer::createPinnedHost(type, sizeBytes);
 }
 
-TrtAlgoInference::StreamContext TrtAlgoInference::createStreamContext() {
+TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
   if (!mIsInitialized || !modelInfo) {
     throw std::runtime_error(
         "Cannot create stream context: engine not initialized");
   }
 
-  StreamContext ctx;
-  ctx.stream = createStream();
+  ContextPackage ctx;
+  ctx.context = createExecutionContext();
 
   // Pre-allocate pinned input buffers based on max sizes
   for (const auto &input : modelInfo->inputs) {
     size_t sizeBytes = mTensorSizeMap.at(input.name);
-    ctx.pinnedInputs.datas[input.name] =
+    ctx.inputs.datas[input.name] =
         TypedBuffer::createPinnedHost(input.dataType, sizeBytes);
 
     std::vector<int> shapeInt(input.shape.begin(), input.shape.end());
-    ctx.pinnedInputs.shapes[input.name] = std::move(shapeInt);
+    ctx.inputs.shapes[input.name] = std::move(shapeInt);
   }
 
   // Pre-allocate pinned output buffers based on max sizes
   for (const auto &output : modelInfo->outputs) {
     size_t sizeBytes = mTensorSizeMap.at(output.name);
-    ctx.pinnedOutputs.datas[output.name] =
+    ctx.outputs.datas[output.name] =
         TypedBuffer::createPinnedHost(output.dataType, sizeBytes);
 
     std::vector<int> shapeInt(output.shape.begin(), output.shape.end());
-    ctx.pinnedOutputs.shapes[output.name] = std::move(shapeInt);
+    ctx.outputs.shapes[output.name] = std::move(shapeInt);
   }
 
   LOG_INFO_S << "Created stream context with pre-allocated buffers";

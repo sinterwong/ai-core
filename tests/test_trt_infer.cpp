@@ -131,7 +131,7 @@ TEST_F(TrtInferenceTest, AsyncCapabilityDetection) {
       << "TrtAlgoInference should support IAsyncInferEngine";
 
   // Verify we can create a stream
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
   engine->terminate();
@@ -149,7 +149,7 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   ASSERT_NE(asyncEngine, nullptr);
 
   // Create stream
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
   // Ensure graph is disabled
@@ -199,7 +199,7 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
   auto asyncEngine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(asyncEngine, nullptr);
 
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
   // Enable CUDA Graph
@@ -250,7 +250,7 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
 
   // Create stream pool
   const size_t poolSize = 3;
-  auto streamPool = asyncEngine->createStreamPool(poolSize);
+  auto streamPool = asyncEngine->createContextPool(poolSize);
   ASSERT_EQ(streamPool.size(), poolSize);
 
   for (const auto &stream : streamPool) {
@@ -301,26 +301,26 @@ TEST_F(TrtInferenceTest, StreamContextPreallocatedBuffers) {
   ASSERT_NE(asyncEngine, nullptr);
 
   // Create stream context with pre-allocated buffers
-  auto ctx = asyncEngine->createStreamContext();
-  ASSERT_NE(ctx.stream, nullptr);
+  auto ctx = asyncEngine->createContextPackage();
+  ASSERT_NE(ctx.context, nullptr);
 
   // Verify pre-allocated buffers exist
   const auto &modelInfo = engine->getModelInfo();
   for (const auto &input : modelInfo.inputs) {
-    auto it = ctx.pinnedInputs.datas.find(input.name);
-    EXPECT_NE(it, ctx.pinnedInputs.datas.end())
+    auto it = ctx.inputs.datas.find(input.name);
+    EXPECT_NE(it, ctx.inputs.datas.end())
         << "Missing pre-allocated input buffer: " << input.name;
-    if (it != ctx.pinnedInputs.datas.end()) {
+    if (it != ctx.inputs.datas.end()) {
       EXPECT_TRUE(it->second.isPinned())
           << "Input buffer should be pinned: " << input.name;
     }
   }
 
   for (const auto &output : modelInfo.outputs) {
-    auto it = ctx.pinnedOutputs.datas.find(output.name);
-    EXPECT_NE(it, ctx.pinnedOutputs.datas.end())
+    auto it = ctx.outputs.datas.find(output.name);
+    EXPECT_NE(it, ctx.outputs.datas.end())
         << "Missing pre-allocated output buffer: " << output.name;
-    if (it != ctx.pinnedOutputs.datas.end()) {
+    if (it != ctx.outputs.datas.end()) {
       EXPECT_TRUE(it->second.isPinned())
           << "Output buffer should be pinned: " << output.name;
     }
@@ -332,7 +332,7 @@ TEST_F(TrtInferenceTest, StreamContextPreallocatedBuffers) {
 // ============================================================================
 // Test: Allocate pinned host buffer
 // ============================================================================
-TEST_F(TrtInferenceTest, AllocatePinnedHostBuffer) {
+TEST_F(TrtInferenceTest, allocateAcceleratorBuffer) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
@@ -343,7 +343,7 @@ TEST_F(TrtInferenceTest, AllocatePinnedHostBuffer) {
   // Allocate pinned buffer
   const size_t bufferSize = 1024 * 1024; // 1MB
   auto pinnedBuffer =
-      asyncEngine->allocatePinnedHostBuffer(DataType::FLOAT32, bufferSize);
+      asyncEngine->allocateAcceleratorBuffer(DataType::FLOAT32, bufferSize);
 
   EXPECT_EQ(pinnedBuffer.location(), BufferLocation::CPU);
   EXPECT_EQ(pinnedBuffer.memoryType(), BufferMemoryType::Pinned);
@@ -365,7 +365,7 @@ TEST_F(TrtInferenceTest, GraphEnableDisableToggle) {
   auto asyncEngine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(asyncEngine, nullptr);
 
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
   cv::Mat image = cv::imread(imagePath);
@@ -416,7 +416,7 @@ TEST_F(TrtInferenceTest, SynchronizeAndIsComplete) {
   auto asyncEngine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(asyncEngine, nullptr);
 
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
   cv::Mat image = cv::imread(imagePath);
@@ -454,7 +454,7 @@ TEST_F(TrtInferenceTest, GetStreamHandle) {
   auto asyncEngine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(asyncEngine, nullptr);
 
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
   auto handle = stream->getHandle();
@@ -515,7 +515,7 @@ TEST_F(TrtInferenceTest, StressTestManyStreams) {
   const int numIterations = 20;
   for (int i = 0; i < numIterations; ++i) {
     // Create stream
-    auto stream = asyncEngine->createStream();
+    auto stream = asyncEngine->createExecutionContext();
     ASSERT_NE(stream, nullptr);
 
     // Run one inference
@@ -555,7 +555,7 @@ TEST_F(TrtInferenceTest, PerformanceComparisonWithGraph) {
 
   // Benchmark without graph
   {
-    auto stream = asyncEngine->createStream();
+    auto stream = asyncEngine->createExecutionContext();
     stream->setGraphEnabled(false);
 
     // Warmup
@@ -579,7 +579,7 @@ TEST_F(TrtInferenceTest, PerformanceComparisonWithGraph) {
 
   // Benchmark with graph
   {
-    auto stream = asyncEngine->createStream();
+    auto stream = asyncEngine->createExecutionContext();
     stream->setGraphEnabled(true);
 
     // Warmup (includes graph capture)

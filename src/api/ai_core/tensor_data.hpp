@@ -1,5 +1,5 @@
-#ifndef __AI_CORE_MODEL_OUTPUT_HPP__
-#define __AI_CORE_MODEL_OUTPUT_HPP__
+#ifndef AI_CORE_MODEL_OUTPUT_HPP
+#define AI_CORE_MODEL_OUTPUT_HPP
 
 #include <map>
 #include <string>
@@ -15,4 +15,4 @@ struct TensorData {
 };
 
 } // namespace ai_core
-#endif // __AI_CORE_MODEL_OUTPUT_HPP__
+#endif

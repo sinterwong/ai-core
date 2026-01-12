@@ -109,7 +109,7 @@ static TensorData createPinnedInput(IAsyncInferEngine *engine,
   TensorData data;
   size_t sizeBytes = calculateSizeBytes(shape, dtype);
 
-  auto buffer = engine->allocatePinnedHostBuffer(dtype, sizeBytes);
+  auto buffer = engine->allocateAcceleratorBuffer(dtype, sizeBytes);
 
   float *ptr = buffer.getHostPtr<float>();
   size_t numElements = sizeBytes / sizeof(float);
@@ -133,7 +133,7 @@ static void warmup(IInferEnginePlugin *engine, const TensorData &input,
   }
 }
 
-static void warmupStream(IInferStream *stream, const TensorData &input,
+static void warmupStream(IExecutionContext *stream, const TensorData &input,
                          int iterations = config::kWarmupIterations) {
   for (int i = 0; i < iterations; ++i) {
     TensorData output;
@@ -250,7 +250,7 @@ BENCHMARK(BM_TRT_Baseline_Sync)->Unit(benchmark::kMillisecond)->Iterations(100);
  */
 static void BM_TRT_Async_NoGraph_Pageable(benchmark::State &state) {
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   stream->setGraphEnabled(false);
 
   auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
@@ -277,7 +277,7 @@ BENCHMARK(BM_TRT_Async_NoGraph_Pageable)
  */
 static void BM_TRT_Async_WithGraph_Pageable(benchmark::State &state) {
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
@@ -304,7 +304,7 @@ BENCHMARK(BM_TRT_Async_WithGraph_Pageable)
  */
 static void BM_TRT_Async_WithGraph_Pinned(benchmark::State &state) {
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input =
@@ -339,7 +339,7 @@ static void BM_TRT_MemoryType_Comparison(benchmark::State &state) {
   const bool usePinned = state.range(0) == 1;
 
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   stream->setGraphEnabled(false); // Disable graph to isolate memory impact
 
   TensorData input;
@@ -382,7 +382,7 @@ static void BM_TRT_Pipeline_Throughput(benchmark::State &state) {
   const int pipelineDepth = state.range(0);
 
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto streamPool = asyncEngine->createStreamPool(pipelineDepth);
+  auto streamPool = asyncEngine->createContextPool(pipelineDepth);
 
   // Enable graph for all streams
   for (auto &s : streamPool) {
@@ -446,7 +446,7 @@ static void BM_TRT_Graph_Capture_Overhead(benchmark::State &state) {
 
   for (auto _ : state) {
     // Create fresh stream for each iteration
-    auto stream = asyncEngine->createStream();
+    auto stream = asyncEngine->createExecutionContext();
     stream->setGraphEnabled(true);
 
     // First inference captures the graph
@@ -469,7 +469,7 @@ BENCHMARK(BM_TRT_Graph_Capture_Overhead)
  */
 static void BM_TRT_Graph_Replay_Latency(benchmark::State &state) {
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input =
@@ -500,7 +500,7 @@ BENCHMARK(BM_TRT_Graph_Replay_Latency)
  */
 static void BM_TRT_Graph_Recapture_Overhead(benchmark::State &state) {
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input640 =
@@ -538,7 +538,7 @@ static void BM_TRT_Stream_Creation_Overhead(benchmark::State &state) {
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
 
   for (auto _ : state) {
-    auto stream = asyncEngine->createStream();
+    auto stream = asyncEngine->createExecutionContext();
     benchmark::DoNotOptimize(stream);
   }
 
@@ -557,7 +557,7 @@ static void BM_TRT_Stream_ColdStart_Latency(benchmark::State &state) {
       createPinnedInput(asyncEngine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
 
   for (auto _ : state) {
-    auto stream = asyncEngine->createStream();
+    auto stream = asyncEngine->createExecutionContext();
     stream->setGraphEnabled(false);
 
     TensorData output;
@@ -583,7 +583,7 @@ static void BM_TRT_Summary_Comparison(benchmark::State &state) {
   const bool pinnedMemory = state.range(1) == 1;
 
   auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createStream();
+  auto stream = asyncEngine->createExecutionContext();
   stream->setGraphEnabled(graphEnabled);
 
   TensorData input;

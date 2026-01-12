@@ -50,7 +50,7 @@ TrtInferStream::~TrtInferStream() {
 }
 
 // ============================================================================
-// IInferStream Implementation
+// IExecutionContext Implementation
 // ============================================================================
 
 std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
@@ -157,8 +157,8 @@ bool TrtInferStream::isComplete() const {
   return status == cudaSuccess;
 }
 
-StreamHandle TrtInferStream::getHandle() const {
-  return StreamHandle(mCudaStream);
+BackendHandle TrtInferStream::getHandle() const {
+  return BackendHandle(mCudaStream);
 }
 
 InferErrorCode TrtInferStream::setGraphEnabled(bool enable) {
