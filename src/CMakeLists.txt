@@ -32,124 +32,42 @@ set(DEPENDENCY_LIBS
     ${ANDROID_JIN_LIBS}
 )
 
-# ============================================================================
-# Source Files - Explicitly Listed
-# ============================================================================
 # Public API headers
-set(AI_CORE_PUBLIC_HEADERS
-    api/ai_core/ai_core_registrar.hpp
-    api/ai_core/ai_core_version.hpp
-    api/ai_core/algo_data_types.hpp
-    api/ai_core/algo_infer.hpp
-    api/ai_core/algo_infer_engine.hpp
-    api/ai_core/algo_input_types.hpp
-    api/ai_core/algo_manager.hpp
-    api/ai_core/algo_output_types.hpp
-    api/ai_core/algo_postproc.hpp
-    api/ai_core/algo_preproc.hpp
-    api/ai_core/data_packet.hpp
-    api/ai_core/device_buffer_impl.hpp
-    api/ai_core/infer_base.hpp
-    api/ai_core/infer_common_types.hpp
-    api/ai_core/infer_error_code.hpp
-    api/ai_core/infer_params_types.hpp
-    api/ai_core/param_center.hpp
-    api/ai_core/postproc_base.hpp
-    api/ai_core/postproc_types.hpp
-    api/ai_core/preproc_base.hpp
-    api/ai_core/preproc_types.hpp
-    api/ai_core/tensor_data.hpp
-    api/ai_core/type_safe_factory.hpp
-    api/ai_core/typed_buffer.hpp
-    api/ai_core/logger.hpp
+# Recursively find all headers in api/ai_core/
+file(GLOB_RECURSE AI_CORE_PUBLIC_HEADERS CONFIGURE_DEPENDS 
+    "api/ai_core/*.hpp"
 )
 
-# Private implementation headers
-set(AI_CORE_PRIVATE_HEADERS
-    # Core headers
-    algo_infer_engine_impl.hpp
-    algo_infer_impl.hpp
-    algo_manager_impl.hpp
-    algo_postproc_impl.hpp
-    algo_preproc_impl.hpp
-    vision_util.hpp
+# Private/Internal Headers and Sources
+# A. Root directory files (Non-recursive to strictly avoid sub folders)
+file(GLOB AI_CORE_ROOT_SRCS CONFIGURE_DEPENDS "*.cpp")
+file(GLOB AI_CORE_ROOT_HDRS CONFIGURE_DEPENDS "*.hpp")
 
-    # Preprocessing headers
-    preproc/cpu_generic_preprocessor.hpp
-    preproc/frame_prep.hpp
-    preproc/frame_preprocessor_base.hpp
-    preproc/frame_with_mask_prep.hpp
-
-    # Postprocessing headers
-    postproc/anchor_det_post_base.hpp
-    postproc/anchor_det_postproc.hpp
-    postproc/confidence_filter_post_base.hpp
-    postproc/confidence_filter_postproc.hpp
-    postproc/cv_generic_post_base.hpp
-    postproc/cv_generic_postproc.hpp
-    postproc/fpr_cls.hpp
-    postproc/nano_det.hpp
-    postproc/ocr_reco.hpp
-    postproc/raw_output.hpp
-    postproc/rtm_det.hpp
-    postproc/semantic_seg.hpp
-    postproc/softmax_cls.hpp
-    postproc/unet_daul_out_seg.hpp
-    postproc/yolo_det.hpp
-
-    # Registrar headers
-    registrar/infer_engine_registrar.hpp
-    registrar/postproc_registrar.hpp
-    registrar/preproc_registrar.hpp
+# B. Implementation Subdirectories (Recursive to allow sub-folders)
+# Includes: preproc, postproc, registrar
+file(GLOB_RECURSE AI_CORE_SUBMOD_SRCS CONFIGURE_DEPENDS 
+    "preproc/*.cpp"
+    "postproc/*.cpp"
+    "registrar/*.cpp"
 )
 
-# Source files
+file(GLOB_RECURSE AI_CORE_SUBMOD_HDRS CONFIGURE_DEPENDS 
+    "preproc/*.hpp"
+    "postproc/*.hpp"
+    "registrar/*.hpp"
+)
+
+# Combine lists
 set(AI_CORE_SOURCES
-    # Core implementation
-    algo_infer.cpp
-    algo_infer_engine.cpp
-    algo_infer_engine_impl.cpp
-    algo_infer_impl.cpp
-    algo_manager.cpp
-    algo_manager_impl.cpp
-    algo_postproc.cpp
-    algo_postproc_impl.cpp
-    algo_preproc.cpp
-    algo_preproc_impl.cpp
-    device_buffer_impl_stub.cpp
-    infer_base.cpp
-    typed_buffer.cpp
-    vision_util.cpp
-    logger.cpp
-
-    # Preprocessing implementation
-    preproc/cpu_generic_preprocessor.cpp
-    preproc/frame_prep.cpp
-    preproc/frame_with_mask_prep.cpp
-
-    # Postprocessing implementation
-    postproc/anchor_det_postproc.cpp
-    postproc/confidence_filter_postproc.cpp
-    postproc/cv_generic_postproc.cpp
-    postproc/fpr_cls.cpp
-    postproc/nano_det.cpp
-    postproc/ocr_reco.cpp
-    postproc/raw_output.cpp
-    postproc/rtm_det.cpp
-    postproc/semantic_seg.cpp
-    postproc/softmax_cls.cpp
-    postproc/unet_daul_out_seg.cpp
-    postproc/yolo_det.cpp
-
-    # Registrar implementation
-    registrar/infer_engine_registrar.cpp
-    registrar/postproc_registrar.cpp
-    registrar/preproc_registrar.cpp
+    ${AI_CORE_ROOT_SRCS}
+    ${AI_CORE_SUBMOD_SRCS}
 )
 
-# ============================================================================
-# Inference Engine Modules
-# ============================================================================
+set(AI_CORE_PRIVATE_HEADERS
+    ${AI_CORE_ROOT_HDRS}
+    ${AI_CORE_SUBMOD_HDRS}
+)
+
 # ONNX Runtime engine
 if(WITH_ORT_ENGINE)
     message(STATUS "Configuring ONNX Runtime engine module")
@@ -191,9 +109,6 @@ if(WITH_TRT_ENGINE)
     list(APPEND DEPENDENCY_LIBS ${TRT_MODULE_LIBS})
 endif()
 
-# ============================================================================
-# Main Library Target
-# ============================================================================
 add_library(ai_core SHARED
     ${AI_CORE_SOURCES}
     ${AI_CORE_PRIVATE_HEADERS}
@@ -269,6 +184,11 @@ install(
 # CMake Package Configuration
 # ============================================================================
 include(CMakePackageConfigHelpers)
+
+set_target_properties(ai_core PROPERTIES
+    VERSION ${AI_CORE_VERSION}
+    SOVERSION ${AI_CORE_VERSION_MAJOR}
+)
 
 # Generate version file
 write_basic_package_version_file(

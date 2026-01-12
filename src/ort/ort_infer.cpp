@@ -9,7 +9,7 @@
  *
  */
 
-#include "dnn_infer.hpp"
+#include "ort_infer.hpp"
 #include "ai_core/logger.hpp"
 #include "crypto.hpp"
 #include <numeric>

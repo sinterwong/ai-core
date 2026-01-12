@@ -16,13 +16,7 @@ endif()
 # ============================================================================
 # Source Files
 # ============================================================================
-set(TEST_SOURCES
-    main.cc
-    test_algo_infer.cpp
-    test_ocr_det.cpp
-    test_ocr_reco.cpp
-    test_yolo_det.cpp
-)
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "*.cpp" ".cc")
 
 # ============================================================================
 # Dependencies Configuration

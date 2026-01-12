@@ -21,6 +21,7 @@ set(BENCHMARK_SOURCES
     yolo_infer_bench.cpp
     yolo_postproc_bench.cpp
     yolo_preproc_bench.cpp
+    trt_infer_bench.cpp
 )
 
 # ============================================================================

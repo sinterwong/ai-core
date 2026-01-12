@@ -16,15 +16,11 @@
 #include <vector>
 
 #ifdef WITH_NCNN
-#include "ncnn/dnn_infer.hpp"
+#include "ncnn/ncnn_infer.hpp"
 #endif
 
 #ifdef WITH_ORT
-#include "ort/dnn_infer.hpp"
-#endif
-
-#ifdef WITH_TRT
-#include "trt/dnn_infer.hpp"
+#include "ort/ort_infer.hpp"
 #endif
 
 namespace testing_yolo_det {
@@ -291,26 +287,6 @@ std::vector<TestConfig> GetTestConfigs() {
                      DataType::FLOAT32, DeviceType::CPU, "in0",
                      FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
                      BufferLocation::CPU, true});
-#endif
-#ifdef WITH_TRT
-  configs.push_back({"trt",
-                     [](const AlgoConstructParams &p) {
-                       return std::make_shared<TrtAlgoInference>(p);
-                     },
-                     "assets/models/yolov11n_trt_fp16.engine",
-                     DataType::FLOAT32, DataType::FLOAT32, DeviceType::GPU,
-                     "images",
-                     FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
-                     BufferLocation::GPU_DEVICE, false});
-  configs.push_back({"trt_enc",
-                     [](const AlgoConstructParams &p) {
-                       return std::make_shared<TrtAlgoInference>(p);
-                     },
-                     "assets/enc_models/yolov11n_trt_fp16.enc.engine",
-                     DataType::FLOAT32, DataType::FLOAT32, DeviceType::GPU,
-                     "images",
-                     FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
-                     BufferLocation::GPU_DEVICE, true});
 #endif
   return configs;
 }

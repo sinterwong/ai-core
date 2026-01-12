@@ -1,5 +1,5 @@
-#ifndef __AI_CORE_INFER_ERROR_CODE_HPP__
-#define __AI_CORE_INFER_ERROR_CODE_HPP__
+#ifndef AI_CORE_INFER_ERROR_CODE_HPP
+#define AI_CORE_INFER_ERROR_CODE_HPP
 #include <cstdint>
 
 namespace ai_core {
@@ -36,6 +36,13 @@ enum class InferErrorCode : int32_t {
   INFER_EXECUTION_FAILED = 212,
   INFER_BINDING_ERROR = 213,
 
+  // async/stream error
+  STREAM_CREATION_FAILED = 250,
+  STREAM_SYNC_FAILED = 251,
+  GRAPH_CAPTURE_FAILED = 252,
+  GRAPH_LAUNCH_FAILED = 253,
+  ASYNC_OPERATION_PENDING = 254,
+
   // release error
   TERMINATE_FAILED = 300,
 
@@ -47,4 +54,4 @@ enum class InferErrorCode : int32_t {
 };
 
 } // namespace ai_core
-#endif // __AI_CORE_INFER_ERROR_CODE_HPP__
+#endif
