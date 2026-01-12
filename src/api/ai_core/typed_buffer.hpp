@@ -1,20 +1,21 @@
 /**
  * @file typed_buffer.hpp
  * @author Sinter Wong (sintercver@gmail.com)
- * @brief Type-safe buffer management with support for CPU, GPU, and Pinned
- * memory
- * @version 0.2
- * @date 2025-01-06
+ * @brief Type-safe buffer management with unified backend memory support
+ * @version 0.3
+ * @date 2026-01-06
  *
- * @copyright Copyright (c) 2025
+ * @copyright Copyright (c) 2026
  *
  */
 #ifndef AI_CORE_TYPED_BUFFER_HPP
 #define AI_CORE_TYPED_BUFFER_HPP
-#include "ai_core/device_buffer_impl.hpp"
+
+#include "ai_core/accelerator_buffer_impl.hpp"
 #include "ai_core/infer_common_types.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -26,23 +27,13 @@ namespace ai_core {
 enum class BufferLocation { CPU, GPU_DEVICE };
 
 /**
- * @brief Memory type classification for CPU buffers
- *
- * This enum distinguishes between different allocation strategies
- * for host-side memory, which affects transfer performance.
+ * @brief Memory type classification
  */
 enum class BufferMemoryType {
-  Pageable, ///< Standard pageable memory (malloc/new)
-  Pinned,   ///< CUDA page-locked memory (cudaMallocHost)
-  Managed   ///< CUDA managed memory (cudaMallocManaged) - future use
+  Pageable, // Standard pageable memory (std::vector)
+  Pinned,   // Page-locked memory (Host RAM via Accelerator)
+  Managed   // Unified Memory
 };
-
-/**
- * @brief Forward declaration for pinned memory implementation
- *
- * This is implemented in the CUDA module to avoid CUDA headers in this file.
- */
-class PinnedHostBufferImpl;
 
 /**
  * @brief Type-safe buffer class supporting CPU, GPU, and Pinned memory
@@ -51,76 +42,60 @@ class PinnedHostBufferImpl;
  * different memory types and locations. It uses RAII for automatic
  * resource management.
  *
- * Memory Types:
- * - CPU Pageable: Standard heap memory, suitable for most CPU operations
- * - CPU Pinned: Page-locked memory for fast async GPU transfers
- * - GPU Device: CUDA device memory
- *
- * Usage Examples:
- * @code
- * // Standard CPU buffer
- * auto cpuBuf = TypedBuffer::createFromCpu(DataType::FLOAT32, data);
- *
- * // GPU buffer
- * auto gpuBuf = TypedBuffer::createFromGpu(DataType::FLOAT32, sizeBytes);
- *
- * // Pinned memory for async transfers (requires CUDA)
- * auto pinnedBuf = TypedBuffer::createPinnedHost(DataType::FLOAT32, sizeBytes);
- * @endcode
+ * Internal Architecture:
+ * - CPU Pageable: Managed via std::vector<uint8_t>
+ * - CPU External: Managed via raw pointers
+ * - CPU Pinned / GPU Device: Managed via unified AcceleratorBufferImpl
  */
 class TypedBuffer {
 public:
   TypedBuffer();
   ~TypedBuffer();
 
+  // Rule of 5: Copy and Move semantics
   TypedBuffer(const TypedBuffer &other);
   TypedBuffer &operator=(const TypedBuffer &other);
   TypedBuffer(TypedBuffer &&other) noexcept;
   TypedBuffer &operator=(TypedBuffer &&other) noexcept;
 
   // ============================================================================
-  // Factory Methods - CPU Buffers
+  // Factory Methods
   // ============================================================================
 
+  /**
+   * @brief Create from existing CPU data (Deep Copy)
+   */
   static TypedBuffer createFromCpu(DataType type,
                                    const std::vector<uint8_t> &data);
   static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t> &&data);
+
+  /**
+   * @brief Create a wrapper around existing CPU memory (Reference)
+   * @param manageMemory If true, TypedBuffer will delete[] the pointer on
+   * destruction
+   */
   static TypedBuffer createFromCpuRef(DataType type, const void *hostPtr,
                                       size_t sizeBytes,
                                       bool manageMemory = false);
 
-  // ============================================================================
-  // Factory Methods - GPU Buffers
-  // ============================================================================
-
+  /**
+   * @brief Create a GPU Device buffer
+   */
   static TypedBuffer createFromGpu(DataType type, size_t sizeBytes,
                                    int deviceId = 0);
+
+  /**
+   * @brief Wrap existing GPU pointer
+   */
   static TypedBuffer createFromGpu(DataType type, void *devicePtr,
                                    size_t sizeBytes, int deviceId,
                                    bool manageMemory);
 
-  // ============================================================================
-  // Factory Methods - Pinned Memory
-  // ============================================================================
-
   /**
-   * @brief Create a pinned (page-locked) host memory buffer
+   * @brief Create a Pinned (Page-locked) Host buffer
    *
-   * Pinned memory provides:
-   * - Asynchronous H2D/D2H transfers
-   * - Higher bandwidth via DMA
-   * - Required for CUDA stream-based async operations
-   *
-   * @param type Data type for the buffer
-   * @param sizeBytes Size in bytes to allocate
-   * @return TypedBuffer backed by pinned memory
-   *
-   * @note This function requires CUDA runtime. On non-CUDA builds,
-   *       it falls back to regular pageable memory.
-   *
-   * @warning Pinned memory allocation is expensive. Allocate once and reuse.
-   *
-   * @throws std::runtime_error if CUDA allocation fails
+   * Optimized for async H2D/D2H transfers.
+   * Internally uses AcceleratorBufferImpl with HostPinned type.
    */
   static TypedBuffer createPinnedHost(DataType type, size_t sizeBytes);
 
@@ -136,13 +111,9 @@ public:
   size_t getElementCount() const noexcept { return mElementCount; }
   int getDeviceId() const noexcept;
 
-  /**
-   * @brief Check if this buffer uses pinned memory
-   */
   bool isPinned() const noexcept {
     return mMemoryType == BufferMemoryType::Pinned;
   }
-
   bool isReference() const noexcept { return mIsExternalRef; }
 
   // ============================================================================
@@ -166,11 +137,18 @@ public:
   // ============================================================================
 
   void setCpuData(DataType type, const std::vector<uint8_t> &data);
-  void setCpuData(DataType type, std::vector<uint8_t> &&data);
-
   void setGpuDataReference(DataType type, void *ptr, size_t sizeBytes,
                            int devId = 0);
 
+  /**
+   * @brief Resize the buffer
+   *
+   * @note
+   * - For CPU Pageable: Preserves data (std::vector resize behavior).
+   * - For Pinned/GPU: Reallocates. Data preservation depends on backend
+   * implementation (Current impl: destructive resize to avoid expensive
+   * copies).
+   */
   void resize(size_t newElementCount);
 
   void clear();
@@ -178,40 +156,27 @@ public:
   static size_t getElementSize(DataType type) noexcept;
 
 private:
-  TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData);
-  TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData);
-  TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId);
-  TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
-              int deviceId, bool manageMemory);
-  TypedBuffer(DataType type, const void *hostPtr, size_t sizeBytes,
-              bool manageMemory);
-
-  // Private constructor for pinned memory
-  TypedBuffer(DataType type, size_t sizeBytes, BufferMemoryType memType);
-
+  // Private helper to reset state
   void reset();
 
   DataType mDataType{DataType::FLOAT32};
   BufferLocation mLocation{BufferLocation::CPU};
   BufferMemoryType mMemoryType{BufferMemoryType::Pageable};
 
-  // CPU storage (pageable)
+  size_t mElementCount{0};
+
+  // Standard CPU Storage
   std::vector<uint8_t> mCpuData;
 
-  // External reference mode
+  // External Reference Storage
   void *mExternalCpuPtr{nullptr};
   bool mIsExternalRef{false};
   bool mManageExternalCpu{false};
 
-  // Pinned memory storage
-  std::unique_ptr<PinnedHostBufferImpl> mPinnedImpl;
+  // Unified Accelerator Storage (Handles both GPU VRAM and CPU Pinned RAM)
+  std::unique_ptr<AcceleratorBufferImpl> mAccelBuffer;
 
-  // GPU storage
-  std::unique_ptr<DeviceBufferImpl> mGpuImpl;
-  size_t mDeviceBufferSizeBytes{0};
   int mDeviceId{0};
-
-  size_t mElementCount{0};
 };
 
 // ============================================================================
@@ -226,14 +191,7 @@ template <typename T> const T *TypedBuffer::getHostPtr() const {
   if (sizeof(T) != getElementSize(mDataType) && mElementCount > 0) {
     throw std::runtime_error("Mismatched type size for host data access.");
   }
-
-  if (mPinnedImpl) {
-    return reinterpret_cast<const T *>(getRawHostPtr());
-  }
-  if (mIsExternalRef && mExternalCpuPtr) {
-    return reinterpret_cast<const T *>(mExternalCpuPtr);
-  }
-  return reinterpret_cast<const T *>(mCpuData.data());
+  return reinterpret_cast<const T *>(getRawHostPtr());
 }
 
 template <typename T> T *TypedBuffer::getHostPtr() {
@@ -244,14 +202,7 @@ template <typename T> T *TypedBuffer::getHostPtr() {
   if (sizeof(T) != getElementSize(mDataType) && mElementCount > 0) {
     throw std::runtime_error("Mismatched type size for host data access.");
   }
-
-  if (mPinnedImpl) {
-    return reinterpret_cast<T *>(getRawHostPtr());
-  }
-  if (mIsExternalRef && mExternalCpuPtr) {
-    return reinterpret_cast<T *>(mExternalCpuPtr);
-  }
-  return reinterpret_cast<T *>(mCpuData.data());
+  return reinterpret_cast<T *>(getRawHostPtr());
 }
 
 } // namespace ai_core

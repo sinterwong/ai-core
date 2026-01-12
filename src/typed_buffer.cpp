@@ -1,269 +1,246 @@
 /**
  * @file typed_buffer.cpp
  * @author Sinter Wong (sintercver@gmail.com)
- * @brief TypedBuffer implementation with Pinned Memory support
- * @version 0.2
- * @date 2025-01-06
+ * @brief Implementation of TypedBuffer with unified backend storage
+ * @version 0.3
+ * @date 2026-01-06
  *
- * @copyright Copyright (c) 2025
+ * @copyright Copyright (c) 2026
  *
  */
 #include "ai_core/typed_buffer.hpp"
-#include "ai_core/device_buffer_impl.hpp"
-#include "ai_core/pinned_host_buffer_impl.hpp"
+#include <algorithm>
 #include <cstring>
 
 namespace ai_core {
 
+// ============================================================================
+// Lifecycle Management
+// ============================================================================
+
 TypedBuffer::TypedBuffer() = default;
 
-TypedBuffer::~TypedBuffer() {
+TypedBuffer::~TypedBuffer() { reset(); }
+
+void TypedBuffer::reset() {
+  // Clean up manually managed external pointer
   if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
+    // Note: Assuming uint8_t array allocation for generic void*
+    // In a real generic container, deleting void* is undefined behavior without
+    // a custom deleter. Here we assume standard byte array usage.
     delete[] static_cast<uint8_t *>(mExternalCpuPtr);
-    mExternalCpuPtr = nullptr;
   }
-  // mPinnedImpl and mGpuImpl are automatically cleaned up by unique_ptr
+
+  // mAccelBuffer and mCpuData clean themselves up
+  mAccelBuffer.reset();
+  mCpuData.clear();
+
+  mExternalCpuPtr = nullptr;
+  mIsExternalRef = false;
+  mManageExternalCpu = false;
+  mElementCount = 0;
+  mDataType = DataType::FLOAT32;
+  mLocation = BufferLocation::CPU;
+  mMemoryType = BufferMemoryType::Pageable;
+  mDeviceId = 0;
 }
 
+// Copy Constructor
 TypedBuffer::TypedBuffer(const TypedBuffer &other)
     : mDataType(other.mDataType), mLocation(other.mLocation),
-      mMemoryType(other.mMemoryType), mCpuData(other.mCpuData),
-      mDeviceBufferSizeBytes(other.mDeviceBufferSizeBytes),
-      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount),
+      mMemoryType(other.mMemoryType), mDeviceId(other.mDeviceId),
+      mElementCount(other.mElementCount),
+      // References are converted to deep copies by default in copy-ctor
       mIsExternalRef(false), mManageExternalCpu(false),
       mExternalCpuPtr(nullptr) {
 
-  // Handle external reference: copy data to owned storage
-  if (other.mIsExternalRef && other.mExternalCpuPtr &&
-      other.mElementCount > 0) {
-    size_t sizeBytes = other.mElementCount * getElementSize(other.mDataType);
-    mCpuData.assign(static_cast<const uint8_t *>(other.mExternalCpuPtr),
-                    static_cast<const uint8_t *>(other.mExternalCpuPtr) +
-                        sizeBytes);
-    mMemoryType = BufferMemoryType::Pageable;
+  // Handle CPU Pageable Data
+  if (other.mLocation == BufferLocation::CPU &&
+      other.mMemoryType == BufferMemoryType::Pageable) {
+    if (other.mIsExternalRef && other.mExternalCpuPtr) {
+      // Deep copy external reference to internal vector
+      size_t bytes = other.getSizeBytes();
+      const uint8_t *src = static_cast<const uint8_t *>(other.getRawHostPtr());
+      mCpuData.assign(src, src + bytes);
+    } else {
+      mCpuData = other.mCpuData;
+    }
   }
 
-  // Clone pinned memory
-  if (other.mPinnedImpl) {
-    mPinnedImpl = PinnedHostBufferImpl::clone(*other.mPinnedImpl);
-  }
-
-  // Clone GPU memory
-  if (other.mGpuImpl) {
-    mGpuImpl = DeviceBufferImpl::clone(*other.mGpuImpl);
+  // Handle Accelerator Data (GPU or Pinned)
+  if (other.mAccelBuffer) {
+    mAccelBuffer = AcceleratorBufferImpl::clone(*other.mAccelBuffer);
   }
 }
 
+// Copy Assignment
 TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
   if (this != &other) {
-    if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
-      delete[] static_cast<uint8_t *>(mExternalCpuPtr);
-    }
+    reset(); // Clean up current resources
 
     mDataType = other.mDataType;
     mLocation = other.mLocation;
     mMemoryType = other.mMemoryType;
-    mCpuData = other.mCpuData;
-    mDeviceBufferSizeBytes = other.mDeviceBufferSizeBytes;
     mDeviceId = other.mDeviceId;
     mElementCount = other.mElementCount;
-    mIsExternalRef = false;
-    mManageExternalCpu = false;
-    mExternalCpuPtr = nullptr;
 
-    if (other.mIsExternalRef && other.mExternalCpuPtr &&
-        other.mElementCount > 0) {
-      size_t sizeBytes = other.mElementCount * getElementSize(other.mDataType);
-      mCpuData.assign(static_cast<const uint8_t *>(other.mExternalCpuPtr),
-                      static_cast<const uint8_t *>(other.mExternalCpuPtr) +
-                          sizeBytes);
-      mMemoryType = BufferMemoryType::Pageable;
+    // Handle CPU Pageable
+    if (other.mLocation == BufferLocation::CPU &&
+        other.mMemoryType == BufferMemoryType::Pageable) {
+      if (other.mIsExternalRef && other.mExternalCpuPtr) {
+        size_t bytes = other.getSizeBytes();
+        const uint8_t *src =
+            static_cast<const uint8_t *>(other.getRawHostPtr());
+        mCpuData.assign(src, src + bytes);
+      } else {
+        mCpuData = other.mCpuData;
+      }
     }
 
-    if (other.mPinnedImpl) {
-      mPinnedImpl = PinnedHostBufferImpl::clone(*other.mPinnedImpl);
-    } else {
-      mPinnedImpl.reset();
-    }
-
-    if (other.mGpuImpl) {
-      mGpuImpl = DeviceBufferImpl::clone(*other.mGpuImpl);
-    } else {
-      mGpuImpl.reset();
+    // Handle Accelerator Data
+    if (other.mAccelBuffer) {
+      mAccelBuffer = AcceleratorBufferImpl::clone(*other.mAccelBuffer);
     }
   }
   return *this;
 }
 
+// Move Constructor
 TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept
     : mDataType(other.mDataType), mLocation(other.mLocation),
-      mMemoryType(other.mMemoryType), mCpuData(std::move(other.mCpuData)),
+      mMemoryType(other.mMemoryType), mElementCount(other.mElementCount),
+      mCpuData(std::move(other.mCpuData)),
       mExternalCpuPtr(other.mExternalCpuPtr),
       mIsExternalRef(other.mIsExternalRef),
       mManageExternalCpu(other.mManageExternalCpu),
-      mPinnedImpl(std::move(other.mPinnedImpl)),
-      mGpuImpl(std::move(other.mGpuImpl)),
-      mDeviceBufferSizeBytes(other.mDeviceBufferSizeBytes),
-      mDeviceId(other.mDeviceId), mElementCount(other.mElementCount) {
+      mAccelBuffer(std::move(other.mAccelBuffer)), mDeviceId(other.mDeviceId) {
+
+  // Neutralize other
   other.mExternalCpuPtr = nullptr;
   other.mIsExternalRef = false;
   other.mManageExternalCpu = false;
   other.mElementCount = 0;
-  other.mMemoryType = BufferMemoryType::Pageable;
 }
 
+// Move Assignment
 TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept {
   if (this != &other) {
-    if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
-      delete[] static_cast<uint8_t *>(mExternalCpuPtr);
-    }
+    reset();
 
     mDataType = other.mDataType;
     mLocation = other.mLocation;
     mMemoryType = other.mMemoryType;
+    mElementCount = other.mElementCount;
+    mDeviceId = other.mDeviceId;
+
     mCpuData = std::move(other.mCpuData);
+    mAccelBuffer = std::move(other.mAccelBuffer);
+
     mExternalCpuPtr = other.mExternalCpuPtr;
     mIsExternalRef = other.mIsExternalRef;
     mManageExternalCpu = other.mManageExternalCpu;
-    mPinnedImpl = std::move(other.mPinnedImpl);
-    mGpuImpl = std::move(other.mGpuImpl);
-    mDeviceBufferSizeBytes = other.mDeviceBufferSizeBytes;
-    mDeviceId = other.mDeviceId;
-    mElementCount = other.mElementCount;
 
+    // Neutralize other
     other.mExternalCpuPtr = nullptr;
     other.mIsExternalRef = false;
     other.mManageExternalCpu = false;
     other.mElementCount = 0;
-    other.mMemoryType = BufferMemoryType::Pageable;
   }
   return *this;
 }
 
 // ============================================================================
-// Private Constructors
-// ============================================================================
-
-TypedBuffer::TypedBuffer(DataType type, const std::vector<uint8_t> &cpuData)
-    : mDataType(type), mLocation(BufferLocation::CPU),
-      mMemoryType(BufferMemoryType::Pageable), mCpuData(cpuData),
-      mExternalCpuPtr(nullptr), mIsExternalRef(false),
-      mManageExternalCpu(false) {
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && !mCpuData.empty())
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = mCpuData.empty() ? 0 : mCpuData.size() / elemSize;
-}
-
-TypedBuffer::TypedBuffer(DataType type, std::vector<uint8_t> &&cpuData)
-    : mDataType(type), mLocation(BufferLocation::CPU),
-      mMemoryType(BufferMemoryType::Pageable), mCpuData(std::move(cpuData)),
-      mExternalCpuPtr(nullptr), mIsExternalRef(false),
-      mManageExternalCpu(false) {
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && !mCpuData.empty())
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = mCpuData.empty() ? 0 : mCpuData.size() / elemSize;
-}
-
-TypedBuffer::TypedBuffer(DataType type, size_t bufferSizeBytes, int deviceId)
-    : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
-      mMemoryType(BufferMemoryType::Pageable),
-      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId),
-      mExternalCpuPtr(nullptr), mIsExternalRef(false),
-      mManageExternalCpu(false) {
-  mGpuImpl = DeviceBufferImpl::create(bufferSizeBytes);
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && bufferSizeBytes > 0)
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
-                      ? 0
-                      : bufferSizeBytes / elemSize;
-}
-
-TypedBuffer::TypedBuffer(DataType type, void *devicePtr, size_t bufferSizeBytes,
-                         int deviceId, bool manageMemory)
-    : mDataType(type), mLocation(BufferLocation::GPU_DEVICE),
-      mMemoryType(BufferMemoryType::Pageable),
-      mDeviceBufferSizeBytes(bufferSizeBytes), mDeviceId(deviceId),
-      mExternalCpuPtr(nullptr), mIsExternalRef(false),
-      mManageExternalCpu(false) {
-  mGpuImpl = DeviceBufferImpl::create(devicePtr, bufferSizeBytes, manageMemory);
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && bufferSizeBytes > 0)
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = (mGpuImpl == nullptr || bufferSizeBytes == 0)
-                      ? 0
-                      : bufferSizeBytes / elemSize;
-}
-
-TypedBuffer::TypedBuffer(DataType type, const void *hostPtr, size_t sizeBytes,
-                         bool manageMemory)
-    : mDataType(type), mLocation(BufferLocation::CPU),
-      mMemoryType(BufferMemoryType::Pageable),
-      mExternalCpuPtr(const_cast<void *>(hostPtr)), mIsExternalRef(true),
-      mManageExternalCpu(manageMemory) {
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && sizeBytes > 0)
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount =
-      (hostPtr == nullptr || sizeBytes == 0) ? 0 : sizeBytes / elemSize;
-}
-
-// Constructor for pinned memory
-TypedBuffer::TypedBuffer(DataType type, size_t sizeBytes,
-                         BufferMemoryType memType)
-    : mDataType(type), mLocation(BufferLocation::CPU), mMemoryType(memType),
-      mExternalCpuPtr(nullptr), mIsExternalRef(false),
-      mManageExternalCpu(false) {
-  if (memType == BufferMemoryType::Pinned) {
-    mPinnedImpl = PinnedHostBufferImpl::create(sizeBytes);
-    if (!mPinnedImpl) {
-      throw std::runtime_error("Failed to create pinned memory buffer");
-    }
-  } else {
-    throw std::runtime_error(
-        "Invalid memory type for this constructor. Use Pinned.");
-  }
-
-  const size_t elemSize = getElementSize(mDataType);
-  if (elemSize == 0 && sizeBytes > 0)
-    throw std::runtime_error("Unsupported data type.");
-  mElementCount = sizeBytes == 0 ? 0 : sizeBytes / elemSize;
-}
-
-// ============================================================================
-// Factory Methods
+// Factory Implementation
 // ============================================================================
 
 TypedBuffer TypedBuffer::createFromCpu(DataType type,
                                        const std::vector<uint8_t> &data) {
-  return TypedBuffer(type, data);
+  TypedBuffer buf;
+  buf.mDataType = type;
+  buf.mLocation = BufferLocation::CPU;
+  buf.mMemoryType = BufferMemoryType::Pageable;
+  buf.mCpuData = data;
+  size_t elemSize = getElementSize(type);
+  buf.mElementCount = (elemSize > 0) ? data.size() / elemSize : 0;
+  return buf;
 }
 
 TypedBuffer TypedBuffer::createFromCpu(DataType type,
                                        std::vector<uint8_t> &&data) {
-  return TypedBuffer(type, std::move(data));
+  TypedBuffer buf;
+  buf.mDataType = type;
+  buf.mLocation = BufferLocation::CPU;
+  buf.mMemoryType = BufferMemoryType::Pageable;
+  size_t sizeBytes = data.size();
+  buf.mCpuData = std::move(data);
+  size_t elemSize = getElementSize(type);
+  buf.mElementCount = (elemSize > 0) ? sizeBytes / elemSize : 0;
+  return buf;
+}
+
+TypedBuffer TypedBuffer::createFromCpuRef(DataType type, const void *hostPtr,
+                                          size_t sizeBytes, bool manageMemory) {
+  TypedBuffer buf;
+  buf.mDataType = type;
+  buf.mLocation = BufferLocation::CPU;
+  buf.mMemoryType = BufferMemoryType::Pageable;
+  buf.mExternalCpuPtr = const_cast<void *>(hostPtr);
+  buf.mIsExternalRef = true;
+  buf.mManageExternalCpu = manageMemory;
+  size_t elemSize = getElementSize(type);
+  buf.mElementCount = (elemSize > 0) ? sizeBytes / elemSize : 0;
+  return buf;
 }
 
 TypedBuffer TypedBuffer::createFromGpu(DataType type, size_t sizeBytes,
                                        int deviceId) {
-  return TypedBuffer(type, sizeBytes, deviceId);
+  TypedBuffer buf;
+  buf.mDataType = type;
+  buf.mLocation = BufferLocation::GPU_DEVICE;
+  // Device memory is typically pageable on the GPU, but managed by Accelerator
+  buf.mMemoryType = BufferMemoryType::Pageable;
+  buf.mDeviceId = deviceId;
+  size_t elemSize = getElementSize(type);
+  buf.mElementCount = (elemSize > 0) ? sizeBytes / elemSize : 0;
+
+  if (sizeBytes > 0) {
+    buf.mAccelBuffer =
+        AcceleratorBufferImpl::create(sizeBytes, AcceleratorMemoryType::Device);
+  }
+  return buf;
 }
 
 TypedBuffer TypedBuffer::createFromGpu(DataType type, void *devicePtr,
                                        size_t sizeBytes, int deviceId,
                                        bool manageMemory) {
-  return TypedBuffer(type, devicePtr, sizeBytes, deviceId, manageMemory);
-}
+  TypedBuffer buf;
+  buf.mDataType = type;
+  buf.mLocation = BufferLocation::GPU_DEVICE;
+  buf.mMemoryType = BufferMemoryType::Pageable;
+  buf.mDeviceId = deviceId;
+  size_t elemSize = getElementSize(type);
+  buf.mElementCount = (elemSize > 0) ? sizeBytes / elemSize : 0;
 
-TypedBuffer TypedBuffer::createFromCpuRef(DataType type, const void *hostPtr,
-                                          size_t sizeBytes, bool manageMemory) {
-  return TypedBuffer(type, hostPtr, sizeBytes, manageMemory);
+  if (sizeBytes > 0 && devicePtr) {
+    buf.mAccelBuffer = AcceleratorBufferImpl::createReference(
+        devicePtr, sizeBytes, AcceleratorMemoryType::Device, manageMemory);
+  }
+  return buf;
 }
 
 TypedBuffer TypedBuffer::createPinnedHost(DataType type, size_t sizeBytes) {
-  return TypedBuffer(type, sizeBytes, BufferMemoryType::Pinned);
+  TypedBuffer buf;
+  buf.mDataType = type;
+  buf.mLocation = BufferLocation::CPU;
+  buf.mMemoryType = BufferMemoryType::Pinned;
+  size_t elemSize = getElementSize(type);
+  buf.mElementCount = (elemSize > 0) ? sizeBytes / elemSize : 0;
+
+  if (sizeBytes > 0) {
+    buf.mAccelBuffer = AcceleratorBufferImpl::create(
+        sizeBytes, AcceleratorMemoryType::HostPinned);
+  }
+  return buf;
 }
 
 // ============================================================================
@@ -271,137 +248,28 @@ TypedBuffer TypedBuffer::createPinnedHost(DataType type, size_t sizeBytes) {
 // ============================================================================
 
 size_t TypedBuffer::getSizeBytes() const noexcept {
-  if (mLocation == BufferLocation::CPU) {
-    if (mPinnedImpl) {
-      return mPinnedImpl->getSizeBytes();
-    }
-    if (mIsExternalRef) {
-      return mElementCount * getElementSize(mDataType);
-    }
-    return mCpuData.size();
+  // If backed by accelerator (Pinned or GPU), trust it
+  if (mAccelBuffer) {
+    return mAccelBuffer->getSizeBytes();
   }
-  return mDeviceBufferSizeBytes;
+
+  // Otherwise, standard CPU logic
+  if (mIsExternalRef) {
+    return mElementCount * getElementSize(mDataType);
+  }
+  return mCpuData.size();
 }
 
 int TypedBuffer::getDeviceId() const noexcept {
-  if (mLocation != BufferLocation::GPU_DEVICE) {
-    return 0;
-  }
-  return mDeviceId;
+  return (mLocation == BufferLocation::GPU_DEVICE) ? mDeviceId : 0;
 }
-
-// ============================================================================
-// Data Access
-// ============================================================================
-
-const void *TypedBuffer::getRawHostPtr() const {
-  if (mLocation != BufferLocation::CPU) {
-    throw std::runtime_error(
-        "Attempted to get host pointer from a non-CPU buffer.");
-  }
-
-  if (mPinnedImpl) {
-    return mPinnedImpl->get();
-  }
-  if (mIsExternalRef && mExternalCpuPtr) {
-    return mExternalCpuPtr;
-  }
-  return mCpuData.data();
-}
-
-void *TypedBuffer::getRawHostPtr() {
-  if (mLocation != BufferLocation::CPU) {
-    throw std::runtime_error(
-        "Attempted to get host pointer from a non-CPU buffer.");
-  }
-
-  if (mPinnedImpl) {
-    return mPinnedImpl->get();
-  }
-  if (mIsExternalRef && mExternalCpuPtr) {
-    return mExternalCpuPtr;
-  }
-  return mCpuData.data();
-}
-
-void *TypedBuffer::getRawDevicePtr() const {
-  if (mLocation != BufferLocation::GPU_DEVICE) {
-    throw std::runtime_error(
-        "Attempted to get device pointer from a non-GPU buffer.");
-  }
-  return mGpuImpl ? mGpuImpl->get() : nullptr;
-}
-
-// ============================================================================
-// Data Modification
-// ============================================================================
-
-void TypedBuffer::setCpuData(DataType type, const std::vector<uint8_t> &data) {
-  *this = createFromCpu(type, data);
-}
-
-void TypedBuffer::setCpuData(DataType type, std::vector<uint8_t> &&data) {
-  *this = createFromCpu(type, std::move(data));
-}
-
-void TypedBuffer::setGpuDataReference(DataType type, void *ptr,
-                                      size_t sizeBytes, int devId) {
-  *this = createFromGpu(type, ptr, sizeBytes, devId, false);
-}
-
-void TypedBuffer::resize(size_t newElementCount) {
-  if (mLocation == BufferLocation::CPU) {
-    // Cannot resize pinned memory in-place, need to reallocate
-    if (mPinnedImpl) {
-      size_t newSizeBytes = newElementCount * getElementSize(mDataType);
-      size_t oldSizeBytes = mPinnedImpl->getSizeBytes();
-
-      if (newSizeBytes != oldSizeBytes) {
-        auto newPinned = PinnedHostBufferImpl::create(newSizeBytes);
-        if (newPinned && mPinnedImpl->get() && newPinned->get()) {
-          size_t copySize = std::min(oldSizeBytes, newSizeBytes);
-          std::memcpy(newPinned->get(), mPinnedImpl->get(), copySize);
-        }
-        mPinnedImpl = std::move(newPinned);
-      }
-      mElementCount = newElementCount;
-      return;
-    }
-
-    if (mIsExternalRef) {
-      if (mExternalCpuPtr && mElementCount > 0) {
-        size_t oldSize = mElementCount * getElementSize(mDataType);
-        mCpuData.assign(static_cast<uint8_t *>(mExternalCpuPtr),
-                        static_cast<uint8_t *>(mExternalCpuPtr) + oldSize);
-      }
-      if (mManageExternalCpu && mExternalCpuPtr) {
-        delete[] static_cast<uint8_t *>(mExternalCpuPtr);
-      }
-      mExternalCpuPtr = nullptr;
-      mIsExternalRef = false;
-      mManageExternalCpu = false;
-      mMemoryType = BufferMemoryType::Pageable;
-    }
-    mElementCount = newElementCount;
-    mCpuData.resize(mElementCount * getElementSize(mDataType));
-  } else {
-    size_t newSize = newElementCount * getElementSize(mDataType);
-    if (newSize > mDeviceBufferSizeBytes) {
-      mGpuImpl = DeviceBufferImpl::create(newSize);
-      mDeviceBufferSizeBytes = newSize;
-    }
-    mElementCount = newElementCount;
-  }
-}
-
-void TypedBuffer::clear() { reset(); }
 
 size_t TypedBuffer::getElementSize(DataType type) noexcept {
   switch (type) {
   case DataType::FLOAT32:
     return sizeof(float);
   case DataType::FLOAT16:
-    return sizeof(uint16_t);
+    return 2;
   case DataType::INT32:
     return sizeof(int32_t);
   case DataType::INT64:
@@ -413,23 +281,98 @@ size_t TypedBuffer::getElementSize(DataType type) noexcept {
   }
 }
 
-void TypedBuffer::reset() {
-  if (mIsExternalRef && mManageExternalCpu && mExternalCpuPtr) {
-    delete[] static_cast<uint8_t *>(mExternalCpuPtr);
+// ============================================================================
+// Data Access
+// ============================================================================
+
+const void *TypedBuffer::getRawHostPtr() const {
+  return const_cast<TypedBuffer *>(this)->getRawHostPtr();
+}
+
+void *TypedBuffer::getRawHostPtr() {
+  if (mLocation != BufferLocation::CPU) {
+    throw std::runtime_error(
+        "Attempted to access Host pointer on Non-CPU buffer");
   }
 
-  mDataType = DataType::FLOAT32;
-  mLocation = BufferLocation::CPU;
-  mMemoryType = BufferMemoryType::Pageable;
-  mCpuData.clear();
-  mExternalCpuPtr = nullptr;
-  mIsExternalRef = false;
-  mManageExternalCpu = false;
-  mPinnedImpl.reset();
-  mGpuImpl.reset();
-  mDeviceBufferSizeBytes = 0;
-  mDeviceId = 0;
-  mElementCount = 0;
+  // 1. Check if it's Pinned Memory (held in AcceleratorBuffer)
+  if (mMemoryType == BufferMemoryType::Pinned) {
+    return mAccelBuffer ? mAccelBuffer->get() : nullptr;
+  }
+
+  // 2. Check External Ref
+  if (mIsExternalRef) {
+    return mExternalCpuPtr;
+  }
+
+  // 3. Standard Vector
+  return mCpuData.data();
+}
+
+void *TypedBuffer::getRawDevicePtr() const {
+  if (mLocation != BufferLocation::GPU_DEVICE) {
+    throw std::runtime_error(
+        "Attempted to access Device pointer on Non-GPU buffer");
+  }
+  return mAccelBuffer ? mAccelBuffer->get() : nullptr;
+}
+
+// ============================================================================
+// Modification
+// ============================================================================
+
+void TypedBuffer::setCpuData(DataType type, const std::vector<uint8_t> &data) {
+  *this = createFromCpu(type, data);
+}
+
+void TypedBuffer::setGpuDataReference(DataType type, void *ptr,
+                                      size_t sizeBytes, int devId) {
+  *this = createFromGpu(type, ptr, sizeBytes, devId, false);
+}
+
+void TypedBuffer::clear() { reset(); }
+
+void TypedBuffer::resize(size_t newElementCount) {
+  if (newElementCount == mElementCount)
+    return;
+
+  size_t newSizeBytes = newElementCount * getElementSize(mDataType);
+
+  // Case 1: Standard CPU Pageable
+  if (mLocation == BufferLocation::CPU &&
+      mMemoryType == BufferMemoryType::Pageable) {
+    // If it's an external reference, we must convert to owned to resize
+    if (mIsExternalRef) {
+      std::vector<uint8_t> newData(newSizeBytes);
+      if (mExternalCpuPtr && mElementCount > 0) {
+        size_t copySize = std::min(getSizeBytes(), newSizeBytes);
+        std::memcpy(newData.data(), mExternalCpuPtr, copySize);
+      }
+      // Reset ref and move to owned
+      if (mManageExternalCpu && mExternalCpuPtr) {
+        delete[] static_cast<uint8_t *>(mExternalCpuPtr);
+      }
+      mIsExternalRef = false;
+      mExternalCpuPtr = nullptr;
+      mManageExternalCpu = false;
+      mCpuData = std::move(newData);
+    } else {
+      // Standard vector resize
+      mCpuData.resize(newSizeBytes);
+    }
+  }
+  // Case 2: Accelerator Managed (Pinned CPU or Device GPU)
+  else if (mAccelBuffer) {
+    // Note: AcceleratorBuffer resizing typically implies reallocation.
+    // Preserving data (copying old to new) is expensive and often unnecessary
+    // for output buffers. If needed, clone-and-copy logic would go here.
+    // Current Strategy: Destructive Resize (Reallocate)
+
+    auto currentType = mAccelBuffer->getType(); // Needs getType() in interface
+    mAccelBuffer = AcceleratorBufferImpl::create(newSizeBytes, currentType);
+  }
+
+  mElementCount = newElementCount;
 }
 
 } // namespace ai_core
