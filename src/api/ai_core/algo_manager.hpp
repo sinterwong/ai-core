@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __AI_CORE_ALGO_MANAGER_HPP_
-#define __AI_CORE_ALGO_MANAGER_HPP_
+#ifndef AI_CORE_ALGO_MANAGER_HPP
+#define AI_CORE_ALGO_MANAGER_HPP
 
 #include "ai_core/algo_infer.hpp"
 #include "ai_core/infer_error_code.hpp"
@@ -35,8 +35,8 @@ public:
   InferErrorCode unregisterAlgo(const std::string &name);
 
   InferErrorCode infer(const std::string &name, AlgoInput &input,
-                       AlgoPreprocParams &preprocParams, AlgoOutput &output,
-                       AlgoPostprocParams &postprocParams);
+                       AlgoPreprocParams &preproc_params, AlgoOutput &output,
+                       AlgoPostprocParams &postproc_params);
 
   std::shared_ptr<AlgoInference> getAlgo(const std::string &name) const;
 
@@ -46,9 +46,9 @@ public:
 
 private:
   class Impl;
-  std::unique_ptr<Impl> pImpl;
+  std::unique_ptr<Impl> m_pImpl;
 };
 
 } // namespace ai_core::dnn
 
-#endif // __AI_CORE_ALGO_MANAGER_HPP_
+#endif

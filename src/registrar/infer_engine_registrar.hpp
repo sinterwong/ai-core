@@ -34,7 +34,7 @@ private:
 };
 
 [[maybe_unused]] inline const static DefaultInferEnginePluginRegistrar
-    &__temp_infer_engine_registrar_ =
+    &temp_infer_engine_registrar =
         DefaultInferEnginePluginRegistrar::getInstance();
 
 } // namespace ai_core::dnn

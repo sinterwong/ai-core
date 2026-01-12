@@ -31,4 +31,4 @@ public:
 };
 } // namespace ai_core::dnn
 
-#endif // __I_IMAGE_PREPROCESSOR_HPP__
+#endif

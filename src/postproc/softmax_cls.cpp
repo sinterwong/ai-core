@@ -13,87 +13,87 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool SoftmaxCls::process(const TensorData &modelOutput,
-                         const FrameTransformContext &prepArgs,
-                         const GenericPostParams &postArgs,
-                         AlgoOutput &algoOutput) const {
-  if (modelOutput.datas.empty()) {
-    LOG_ERROR_S << "modelOutput.datas is empty";
+bool SoftmaxCls::process(const TensorData &model_output,
+                         const FrameTransformContext &prep_args,
+                         const GenericPostParams &post_args,
+                         AlgoOutput &algo_output) const {
+  if (model_output.datas.empty()) {
+    LOG_ERROR_S << "model_output.datas is empty";
     return false;
   }
 
-  const auto &scoreOutputName = postArgs.outputNames.at(0);
-  const auto &output = modelOutput.datas.at(scoreOutputName);
-  const auto &outputShape = modelOutput.shapes.at(scoreOutputName);
+  const auto &score_output_name = post_args.output_names.at(0);
+  const auto &output = model_output.datas.at(score_output_name);
+  const auto &output_shape = model_output.shapes.at(score_output_name);
 
-  int numClasses = outputShape.at(outputShape.size() - 1);
+  int num_classes = output_shape.at(output_shape.size() - 1);
 
   const float *logits = output.getHostPtr<float>();
 
-  ClsRet clsRet = processSingleItem(logits, numClasses);
+  ClsRet cls_ret = processSingleItem(logits, num_classes);
 
-  algoOutput.setParams(clsRet);
+  algo_output.setParams(cls_ret);
   return true;
 }
 
 bool SoftmaxCls::batchProcess(
-    const TensorData &modelOutput,
-    const std::vector<FrameTransformContext> &prepArgs,
-    const GenericPostParams &postArgs,
-    std::vector<AlgoOutput> &algoOutput) const {
-  if (modelOutput.datas.empty()) {
-    LOG_ERROR_S << "modelOutput.datas is empty";
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const GenericPostParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
+  if (model_output.datas.empty()) {
+    LOG_ERROR_S << "model_output.datas is empty";
     return false;
   }
 
-  const auto &scoreOutputName = postArgs.outputNames.at(0);
-  const auto &output = modelOutput.datas.at(scoreOutputName);
-  const auto &outputShape = modelOutput.shapes.at(scoreOutputName);
+  const auto &score_output_name = post_args.output_names.at(0);
+  const auto &output = model_output.datas.at(score_output_name);
+  const auto &output_shape = model_output.shapes.at(score_output_name);
 
-  if (outputShape.size() != 2) {
+  if (output_shape.size() != 2) {
     LOG_ERROR_S
         << "Expected a 2D tensor for batch classification (N, C), but got "
-        << outputShape.size() << " dimensions.";
+        << output_shape.size() << " dimensions.";
     return false;
   }
 
-  const int batchSize = outputShape.at(0);
-  const int numClasses = outputShape.at(1);
+  const int batch_size = output_shape.at(0);
+  const int num_classes = output_shape.at(1);
 
-  const float *baseLogits = output.getHostPtr<float>();
+  const float *base_logits = output.getHostPtr<float>();
 
-  algoOutput.resize(batchSize);
+  algo_output.resize(batch_size);
 
-  for (int i = 0; i < batchSize; ++i) {
-    const float *currentLogits = baseLogits + i * numClasses;
-    ClsRet clsRet = processSingleItem(currentLogits, numClasses);
-    algoOutput[i].setParams(clsRet);
+  for (int i = 0; i < batch_size; ++i) {
+    const float *current_logits = base_logits + i * num_classes;
+    ClsRet cls_ret = processSingleItem(current_logits, num_classes);
+    algo_output[i].setParams(cls_ret);
   }
   return true;
 }
 
 ClsRet SoftmaxCls::processSingleItem(const float *logits,
-                                     int numClasses) const {
-  cv::Mat logitMat(1, numClasses, CV_32F, const_cast<float *>(logits));
+                                     int num_classes) const {
+  cv::Mat logit_mat(1, num_classes, CV_32F, const_cast<float *>(logits));
 
-  double maxLogit;
-  cv::minMaxLoc(logitMat, nullptr, &maxLogit, nullptr, nullptr);
+  double max_logit;
+  cv::minMaxLoc(logit_mat, nullptr, &max_logit, nullptr, nullptr);
 
-  cv::Mat expMat;
-  cv::exp(logitMat - maxLogit, expMat);
+  cv::Mat exp_mat;
+  cv::exp(logit_mat - max_logit, exp_mat);
 
-  double sum = cv::sum(expMat)[0];
+  double sum = cv::sum(exp_mat)[0];
 
-  cv::Mat probMat = expMat / sum;
+  cv::Mat prob_mat = exp_mat / sum;
 
-  cv::Point classIdPoint;
+  cv::Point class_id_point;
   double score;
-  cv::minMaxLoc(probMat, nullptr, &score, nullptr, &classIdPoint);
+  cv::minMaxLoc(prob_mat, nullptr, &score, nullptr, &class_id_point);
 
-  ClsRet clsRet;
-  clsRet.score = static_cast<float>(score);
-  clsRet.label = classIdPoint.x;
+  ClsRet cls_ret;
+  cls_ret.score = static_cast<float>(score);
+  cls_ret.label = class_id_point.x;
 
-  return clsRet;
+  return cls_ret;
 }
 } // namespace ai_core::dnn

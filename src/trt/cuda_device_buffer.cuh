@@ -203,11 +203,11 @@ public:
    */
   DeviceWriteSpan<T> writeSpanAt(size_t offset, size_t count,
                                  cudaStream_t stream = 0) {
-    size_t requiredSize = offset + count;
-    if (requiredSize > m_capacity) {
-      reallocate(requiredSize, true, stream);
+    size_t required_size = offset + count;
+    if (required_size > m_capacity) {
+      reallocate(required_size, true, stream);
     }
-    m_size = std::max(m_size, requiredSize);
+    m_size = std::max(m_size, required_size);
     return {m_ptr + offset, count};
   }
 
@@ -236,15 +236,15 @@ public:
    */
   DeviceWriteSpan<T> appendSpan(size_t count, cudaStream_t stream = 0) {
     size_t offset = m_size;
-    size_t newSize = m_size + count;
+    size_t new_size = m_size + count;
 
-    if (newSize > m_capacity) {
+    if (new_size > m_capacity) {
       // 扩容策略：至少翻倍或满足需求
-      size_t newCapacity = std::max(m_capacity * 2, newSize);
-      reallocate(newCapacity, true, stream);
+      size_t new_capacity = std::max(m_capacity * 2, new_size);
+      reallocate(new_capacity, true, stream);
     }
 
-    m_size = newSize;
+    m_size = new_size;
     return {m_ptr + offset, count};
   }
 
@@ -278,15 +278,15 @@ public:
    *
    * 仅在使用 unsafePtr() 后需要更新 size 时使用。
    *
-   * @param newSize 新的有效元素数量
-   * @throw std::length_error 如果 newSize > capacity
+   * @param new_size 新的有效元素数量
+   * @throw std::length_error 如果 new_size > capacity
    */
-  void unsafeSetSize(size_t newSize) {
-    if (newSize > m_capacity) {
+  void unsafeSetSize(size_t new_size) {
+    if (new_size > m_capacity) {
       throw std::length_error(
-          "unsafeSetSize: newSize exceeds capacity. Use reserve() first.");
+          "unsafeSetSize: new_size exceeds capacity. Use reserve() first.");
     }
-    m_size = newSize;
+    m_size = new_size;
   }
 
   // ==========================================================================
@@ -297,38 +297,38 @@ public:
    *
    * 确保容量至少为 newCapacity，不改变 size。
    */
-  void reserve(size_t newCapacity, cudaStream_t stream = 0) {
-    if (newCapacity <= m_capacity) {
+  void reserve(size_t new_capacity, cudaStream_t stream = 0) {
+    if (new_capacity <= m_capacity) {
       return;
     }
-    reallocate(newCapacity, true, stream);
+    reallocate(new_capacity, true, stream);
   }
 
   /**
    * @brief 调整大小
    *
-   * @param newSize 新的元素数量
+   * @param new_size 新的元素数量
    * @param preserveData 是否保留现有数据
    * @param stream CUDA stream
    */
-  void resize(size_t newSize, bool preserveData = true,
+  void resize(size_t new_size, bool preserve_data = true,
               cudaStream_t stream = 0) {
-    if (newSize == m_size) {
+    if (new_size == m_size) {
       return;
     }
 
-    if (newSize == 0) {
+    if (new_size == 0) {
       m_size = 0;
       return;
     }
 
-    if (newSize <= m_capacity) {
-      m_size = newSize;
+    if (new_size <= m_capacity) {
+      m_size = new_size;
       return;
     }
 
-    reallocate(newSize, preserveData, stream);
-    m_size = newSize;
+    reallocate(new_size, preserve_data, stream);
+    m_size = new_size;
   }
 
   /**
@@ -350,13 +350,13 @@ public:
       return;
     }
 
-    T *newPtr = nullptr;
-    CHECK_CUDA_ERROR(cudaMalloc(&newPtr, m_size * sizeof(T)));
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(newPtr, m_ptr, m_size * sizeof(T),
+    T *new_ptr = nullptr;
+    CHECK_CUDA_ERROR(cudaMalloc(&new_ptr, m_size * sizeof(T)));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(new_ptr, m_ptr, m_size * sizeof(T),
                                      cudaMemcpyDeviceToDevice, stream));
 
     freeMemory();
-    m_ptr = newPtr;
+    m_ptr = new_ptr;
     m_capacity = m_size;
   }
 
@@ -381,16 +381,16 @@ public:
   /**
    * @brief 将有效数据区域清零
    */
-  void clearAsync(int byteValue = 0, cudaStream_t stream = 0) {
+  void clearAsync(int byte_value = 0, cudaStream_t stream = 0) {
     if (m_size == 0 || !m_ptr)
       return;
-    CHECK_CUDA_ERROR(cudaMemsetAsync(m_ptr, byteValue, bytes(), stream));
+    CHECK_CUDA_ERROR(cudaMemsetAsync(m_ptr, byte_value, bytes(), stream));
   }
 
   /**
    * @brief 清零指定范围
    */
-  void clearRangeAsync(size_t offset, size_t count, int byteValue = 0,
+  void clearRangeAsync(size_t offset, size_t count, int byte_value = 0,
                        cudaStream_t stream = 0) {
     if (count == 0)
       return;
@@ -398,7 +398,7 @@ public:
       throw std::out_of_range("clearRangeAsync: range exceeds valid size");
     }
     CHECK_CUDA_ERROR(
-        cudaMemsetAsync(m_ptr + offset, byteValue, count * sizeof(T), stream));
+        cudaMemsetAsync(m_ptr + offset, byte_value, count * sizeof(T), stream));
   }
 
   // ==========================================================================
@@ -411,7 +411,7 @@ public:
    *
    * 完全覆盖 buffer 内容，size 设置为 count。
    */
-  void initFromHost(const T *srcPtr, size_t count, cudaStream_t stream = 0) {
+  void initFromHost(const T *src_ptr, size_t count, cudaStream_t stream = 0) {
     if (count == 0) {
       m_size = 0;
       return;
@@ -421,7 +421,7 @@ public:
       reallocate(count, false, stream);
     }
 
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(m_ptr, srcPtr, count * sizeof(T),
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(m_ptr, src_ptr, count * sizeof(T),
                                      cudaMemcpyHostToDevice, stream));
     m_size = count;
   }
@@ -444,21 +444,21 @@ public:
    * @param count 元素数量
    * @param stream CUDA stream
    */
-  void writeFromHost(const T *srcPtr, size_t dstOffset, size_t count,
+  void writeFromHost(const T *src_ptr, size_t dst_offset, size_t count,
                      cudaStream_t stream = 0) {
     if (count == 0)
       return;
 
-    size_t requiredSize = dstOffset + count;
-    if (requiredSize > m_capacity) {
+    size_t required_size = dst_offset + count;
+    if (required_size > m_capacity) {
       throw std::out_of_range(
           "writeFromHost: exceeds capacity. Call reserve() first.");
     }
 
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(m_ptr + dstOffset, srcPtr,
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(m_ptr + dst_offset, src_ptr,
                                      count * sizeof(T), cudaMemcpyHostToDevice,
                                      stream));
-    m_size = std::max(m_size, requiredSize);
+    m_size = std::max(m_size, required_size);
   }
 
   // -------------------- Device -> Host --------------------
@@ -466,24 +466,24 @@ public:
   /**
    * @brief 读取所有有效数据到 host
    */
-  void readToHost(T *dstPtr, cudaStream_t stream = 0) const {
+  void readToHost(T *dst_ptr, cudaStream_t stream = 0) const {
     if (m_size == 0)
       return;
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(dstPtr, m_ptr, m_size * sizeof(T),
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(dst_ptr, m_ptr, m_size * sizeof(T),
                                      cudaMemcpyDeviceToHost, stream));
   }
 
   /**
    * @brief 读取指定范围到 host
    */
-  void readToHost(T *dstPtr, size_t srcOffset, size_t count,
+  void readToHost(T *dst_ptr, size_t src_offset, size_t count,
                   cudaStream_t stream = 0) const {
     if (count == 0)
       return;
-    if (srcOffset + count > m_size) {
+    if (src_offset + count > m_size) {
       throw std::out_of_range("readToHost: range exceeds valid size");
     }
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(dstPtr, m_ptr + srcOffset,
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(dst_ptr, m_ptr + src_offset,
                                      count * sizeof(T), cudaMemcpyDeviceToHost,
                                      stream));
   }
@@ -541,26 +541,26 @@ public:
   /**
    * @brief 从另一个 buffer 的指定范围拷贝
    */
-  void writeFromDevice(const CudaDeviceBuffer<T> &src, size_t srcOffset,
-                       size_t dstOffset, size_t count,
+  void writeFromDevice(const CudaDeviceBuffer<T> &src, size_t src_offset,
+                       size_t dst_offset, size_t count,
                        cudaStream_t stream = 0) {
     if (count == 0)
       return;
 
-    if (srcOffset + count > src.size()) {
+    if (src_offset + count > src.size()) {
       throw std::out_of_range("writeFromDevice: source range out of bounds");
     }
 
-    size_t requiredSize = dstOffset + count;
-    if (requiredSize > m_capacity) {
+    size_t required_size = dst_offset + count;
+    if (required_size > m_capacity) {
       throw std::out_of_range(
           "writeFromDevice: exceeds capacity. Call reserve() first.");
     }
 
     CHECK_CUDA_ERROR(
-        cudaMemcpyAsync(m_ptr + dstOffset, src.readPtr() + srcOffset,
+        cudaMemcpyAsync(m_ptr + dst_offset, src.readPtr() + src_offset,
                         count * sizeof(T), cudaMemcpyDeviceToDevice, stream));
-    m_size = std::max(m_size, requiredSize);
+    m_size = std::max(m_size, required_size);
   }
 
 private:
@@ -571,19 +571,19 @@ private:
     m_size = count;
   }
 
-  void reallocate(size_t newCapacity, bool preserveData, cudaStream_t stream) {
-    T *newPtr = nullptr;
-    CHECK_CUDA_ERROR(cudaMalloc(&newPtr, newCapacity * sizeof(T)));
+  void reallocate(size_t new_capacity, bool preserve_data, cudaStream_t stream) {
+    T *new_ptr = nullptr;
+    CHECK_CUDA_ERROR(cudaMalloc(&new_ptr, new_capacity * sizeof(T)));
 
-    if (preserveData && m_ptr && m_size > 0) {
-      size_t copyCount = std::min(m_size, newCapacity);
-      CHECK_CUDA_ERROR(cudaMemcpyAsync(newPtr, m_ptr, copyCount * sizeof(T),
+    if (preserve_data && m_ptr && m_size > 0) {
+      size_t copy_count = std::min(m_size, new_capacity);
+      CHECK_CUDA_ERROR(cudaMemcpyAsync(new_ptr, m_ptr, copy_count * sizeof(T),
                                        cudaMemcpyDeviceToDevice, stream));
     }
 
     freeMemory();
-    m_ptr = newPtr;
-    m_capacity = newCapacity;
+    m_ptr = new_ptr;
+    m_capacity = new_capacity;
   }
 
   void freeMemory() {

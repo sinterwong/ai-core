@@ -13,7 +13,7 @@ public:
   OCRRec(const std::string &modelPath, const std::string &dictPath = "");
   ~OCRRec();
 
-  ai_core::OCRRecoRet process(const cv::Mat &imageGray);
+  ai_core::OCRRecoRet process(const cv::Mat &image_gray);
 
   std::string mapToString(const std::vector<int64_t> &recResult);
 

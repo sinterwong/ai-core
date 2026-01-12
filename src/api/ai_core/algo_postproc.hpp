@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __AI_CORE_ALGO_POSTPROC_HPP__
-#define __AI_CORE_ALGO_POSTPROC_HPP__
+#ifndef AI_CORE_ALGO_POSTPROC_HPP
+#define AI_CORE_ALGO_POSTPROC_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_error_code.hpp"
@@ -20,27 +20,27 @@ namespace ai_core::dnn {
 
 class AlgoPostproc {
 public:
-  AlgoPostproc(const std::string &moduleName);
+  AlgoPostproc(const std::string &module_name);
 
   ~AlgoPostproc();
 
   InferErrorCode initialize();
 
-  InferErrorCode process(const TensorData &modelOutput,
-                         const AlgoPostprocParams &postprocParams,
+  InferErrorCode process(const TensorData &model_output,
+                         const AlgoPostprocParams &postproc_params,
                          AlgoOutput &output,
-                         std::shared_ptr<RuntimeContext> &runtimeContext);
+                         std::shared_ptr<RuntimeContext> &runtime_context);
 
-  InferErrorCode batchProcess(const TensorData &modelOutput,
-                              const AlgoPostprocParams &postprocParams,
+  InferErrorCode batchProcess(const TensorData &model_output,
+                              const AlgoPostprocParams &postproc_params,
                               std::vector<AlgoOutput> &output,
-                              std::shared_ptr<RuntimeContext> &runtimeContext);
+                              std::shared_ptr<RuntimeContext> &runtime_context);
 
   InferErrorCode terminate();
 
 private:
   class Impl;
-  std::unique_ptr<Impl> pImpl;
+  std::unique_ptr<Impl> m_pImpl;
 };
 } // namespace ai_core::dnn
-#endif // __AI_CORE_ALGO_POSTPROC_HPP__
+#endif

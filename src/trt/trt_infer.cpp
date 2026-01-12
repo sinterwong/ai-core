@@ -21,8 +21,8 @@
 namespace ai_core::dnn {
 
 TrtAlgoInference::TrtAlgoInference(const AlgoConstructParams &params)
-    : mParams(params.getParam<AlgoInferParams>("params")) {
-  LOG_INFO_S << "TrtAlgoInference created for model: " << mParams.name;
+    : m_params(params.getParam<AlgoInferParams>("params")) {
+  LOG_INFO_S << "TrtAlgoInference created for model: " << m_params.name;
 }
 
 TrtAlgoInference::~TrtAlgoInference() { terminate(); }
@@ -32,18 +32,18 @@ TrtAlgoInference::~TrtAlgoInference() { terminate(); }
 // ============================================================================
 
 InferErrorCode TrtAlgoInference::initialize() {
-  std::lock_guard<std::mutex> lock(mMutex);
-  if (mIsInitialized) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_isInitialized) {
     LOG_INFO_S << "TrtAlgoInference already initialized for model: "
-               << mParams.name;
+               << m_params.name;
     return InferErrorCode::SUCCESS;
   }
 
-  LOG_INFO_S << "Initializing TrtAlgoInference for model: " << mParams.name;
+  LOG_INFO_S << "Initializing TrtAlgoInference for model: " << m_params.name;
 
   try {
     InferErrorCode err =
-        loadEngineFromPath(mParams.modelPath, mParams.needDecrypt);
+        loadEngineFromPath(m_params.model_path, m_params.need_decrypt);
     if (err != InferErrorCode::SUCCESS) {
       releaseResources();
       return err;
@@ -61,79 +61,79 @@ InferErrorCode TrtAlgoInference::initialize() {
       return err;
     }
 
-    mIsInitialized = true;
+    m_isInitialized = true;
     LOG_INFO_S << "TrtAlgoInference initialized successfully for model: "
-               << mParams.name;
-    LOG_INFO_S << "All inputs static: " << (mAllInputsStatic ? "yes" : "no");
+               << m_params.name;
+    LOG_INFO_S << "All inputs static: " << (m_allInputsStatic ? "yes" : "no");
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception during initialization: " << e.what();
     releaseResources();
-    return InferErrorCode::INIT_FAILED;
+    return InferErrorCode::InitFailed;
   }
 }
 
 InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
-  std::lock_guard<std::mutex> lock(mMutex);
+  std::lock_guard<std::mutex> lock(m_mutex);
 
-  if (!mIsInitialized) {
+  if (!m_isInitialized) {
     LOG_ERROR_S << "Inference called on uninitialized model.";
-    return InferErrorCode::NOT_INITIALIZED;
+    return InferErrorCode::NotInitialized;
   }
 
   try {
     // Validate inputs
-    for (const auto &inputInfo : modelInfo->inputs) {
-      const auto &name = inputInfo.name;
-      auto dataIt = inputs.datas.find(name);
-      if (dataIt == inputs.datas.end()) {
+    for (const auto &input_info : m_modelInfo->inputs) {
+      const auto &name = input_info.name;
+      auto data_it = inputs.datas.find(name);
+      if (data_it == inputs.datas.end()) {
         LOG_ERROR_S << "Input tensor '" << name
                     << "' not found in provided inputs.";
-        return InferErrorCode::INFER_INPUT_ERROR;
+        return InferErrorCode::InferInputError;
       }
 
-      const TypedBuffer &inputBuffer = dataIt->second;
-      if (inputBuffer.dataType() != inputInfo.dataType) {
+      const TypedBuffer &input_buffer = data_it->second;
+      if (input_buffer.dataType() != input_info.data_type) {
         LOG_ERROR_S << "Mismatched data type for input tensor '" << name
-                    << "'. Expected: " << static_cast<int>(inputInfo.dataType)
-                    << ", Got: " << static_cast<int>(inputBuffer.dataType());
-        return InferErrorCode::INFER_TYPE_MISMATCH;
+                    << "'. Expected: " << static_cast<int>(input_info.data_type)
+                    << ", Got: " << static_cast<int>(input_buffer.dataType());
+        return InferErrorCode::InferTypeMismatch;
       }
 
-      const size_t actualSizeBytes = inputBuffer.getSizeBytes();
-      const bool isDynamic = mDynamicInputTensorNames.count(name);
+      const size_t actual_size_bytes = input_buffer.getSizeBytes();
+      const bool is_dynamic = m_dynamicInputTensorNames.count(name);
 
-      if (isDynamic) {
-        auto shapeIt = inputs.shapes.find(name);
-        if (shapeIt == inputs.shapes.end()) {
+      if (is_dynamic) {
+        auto shape_it = inputs.shapes.find(name);
+        if (shape_it == inputs.shapes.end()) {
           LOG_ERROR_S << "Shape info for dynamic input tensor '" << name
                       << "' must be provided.";
-          return InferErrorCode::INFER_INPUT_ERROR;
+          return InferErrorCode::InferInputError;
         }
-        if (actualSizeBytes > mTensorSizeMap.at(name)) {
+        if (actual_size_bytes > m_tensorSizeMap.at(name)) {
           LOG_ERROR_S << "Actual size for dynamic input '" << name
                       << "' exceeds max buffer size.";
-          return InferErrorCode::INFER_SIZE_MISMATCH;
+          return InferErrorCode::InferSizeMismatch;
         }
       } else {
-        if (actualSizeBytes != mTensorSizeMap.at(name)) {
+        if (actual_size_bytes != m_tensorSizeMap.at(name)) {
           LOG_ERROR_S << "Mismatched size for static input tensor '" << name
-                      << "'. Expected: " << mTensorSizeMap.at(name)
-                      << " bytes, Got: " << actualSizeBytes << " bytes.";
-          return InferErrorCode::INFER_SIZE_MISMATCH;
+                      << "'. Expected: " << m_tensorSizeMap.at(name)
+                      << " bytes, Got: " << actual_size_bytes << " bytes.";
+          return InferErrorCode::InferSizeMismatch;
         }
       }
 
-      if (inputBuffer.location() != BufferLocation::CPU &&
-          inputBuffer.location() != BufferLocation::GPU_DEVICE) {
+      if (input_buffer.location() != BufferLocation::CPU &&
+          input_buffer.location() != BufferLocation::GpuDevice) {
         LOG_ERROR_S << "Unsupported buffer location for input tensor: " << name;
-        return InferErrorCode::INFER_INVALID_INPUT;
+        return InferErrorCode::InferInvalidInput;
       }
     }
 
     if (!updateInputShapesIfNeeded(inputs)) {
-      return InferErrorCode::INFER_EXECUTION_FAILED;
+      return InferErrorCode::InferExecutionFailed;
     }
 
     // Always use inferWithoutGraph for backward compatible sync mode
@@ -141,30 +141,30 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
 
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception during inference: " << e.what();
-    CHECK_CUDA_ERROR(cudaStreamSynchronize(mStream));
-    return InferErrorCode::INFER_FAILED;
+    CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));
+    return InferErrorCode::InferFailed;
   }
 }
 
 const ModelInfo &TrtAlgoInference::getModelInfo() {
-  if (!mIsInitialized || !modelInfo) {
+  if (!m_isInitialized || !m_modelInfo) {
     LOG_WARNING_S << "getModelInfo() called on uninitialized model.";
-    static ModelInfo emptyInfo;
-    return emptyInfo;
+    static ModelInfo empty_info;
+    return empty_info;
   }
-  return *modelInfo;
+  return *m_modelInfo;
 }
 
 InferErrorCode TrtAlgoInference::terminate() {
-  std::lock_guard<std::mutex> lock(mMutex);
-  if (!mIsInitialized) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (!m_isInitialized) {
     LOG_INFO_S
         << "TrtAlgoInference terminate called on uninitialized instance: "
-        << mParams.name;
+        << m_params.name;
     return InferErrorCode::SUCCESS;
   }
   releaseResources();
-  mIsInitialized = false;
+  m_isInitialized = false;
   return InferErrorCode::SUCCESS;
 }
 
@@ -173,7 +173,7 @@ InferErrorCode TrtAlgoInference::terminate() {
 // ============================================================================
 
 std::shared_ptr<IExecutionContext> TrtAlgoInference::createExecutionContext() {
-  if (!mIsInitialized) {
+  if (!m_isInitialized) {
     throw std::runtime_error("Cannot create stream: engine not initialized");
   }
 
@@ -183,17 +183,17 @@ std::shared_ptr<IExecutionContext> TrtAlgoInference::createExecutionContext() {
     throw std::runtime_error("Failed to initialize inference stream");
   }
 
-  LOG_INFO_S << "Created new inference stream for model: " << mParams.name;
+  LOG_INFO_S << "Created new inference stream for model: " << m_params.name;
   return stream;
 }
 
 TypedBuffer TrtAlgoInference::allocateAcceleratorBuffer(DataType type,
-                                                        size_t sizeBytes) {
-  return TypedBuffer::createPinnedHost(type, sizeBytes);
+                                                        size_t size_bytes) {
+  return TypedBuffer::createPinnedHost(type, size_bytes);
 }
 
 TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
-  if (!mIsInitialized || !modelInfo) {
+  if (!m_isInitialized || !m_modelInfo) {
     throw std::runtime_error(
         "Cannot create stream context: engine not initialized");
   }
@@ -202,23 +202,23 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
   ctx.context = createExecutionContext();
 
   // Pre-allocate pinned input buffers based on max sizes
-  for (const auto &input : modelInfo->inputs) {
-    size_t sizeBytes = mTensorSizeMap.at(input.name);
+  for (const auto &input : m_modelInfo->inputs) {
+    size_t size_bytes = m_tensorSizeMap.at(input.name);
     ctx.inputs.datas[input.name] =
-        TypedBuffer::createPinnedHost(input.dataType, sizeBytes);
+        TypedBuffer::createPinnedHost(input.data_type, size_bytes);
 
-    std::vector<int> shapeInt(input.shape.begin(), input.shape.end());
-    ctx.inputs.shapes[input.name] = std::move(shapeInt);
+    std::vector<int> shape_int(input.shape.begin(), input.shape.end());
+    ctx.inputs.shapes[input.name] = std::move(shape_int);
   }
 
   // Pre-allocate pinned output buffers based on max sizes
-  for (const auto &output : modelInfo->outputs) {
-    size_t sizeBytes = mTensorSizeMap.at(output.name);
+  for (const auto &output : m_modelInfo->outputs) {
+    size_t size_bytes = m_tensorSizeMap.at(output.name);
     ctx.outputs.datas[output.name] =
-        TypedBuffer::createPinnedHost(output.dataType, sizeBytes);
+        TypedBuffer::createPinnedHost(output.data_type, size_bytes);
 
-    std::vector<int> shapeInt(output.shape.begin(), output.shape.end());
-    ctx.outputs.shapes[output.name] = std::move(shapeInt);
+    std::vector<int> shape_int(output.shape.begin(), output.shape.end());
+    ctx.outputs.shapes[output.name] = std::move(shape_int);
   }
 
   LOG_INFO_S << "Created stream context with pre-allocated buffers";
@@ -230,29 +230,29 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
 // ============================================================================
 
 void TrtAlgoInference::releaseResources() {
-  LOG_INFO_S << "Releasing TensorRT resources for model: " << mParams.name;
+  LOG_INFO_S << "Releasing TensorRT resources for model: " << m_params.name;
 
-  mContext.reset();
-  mEngine.reset();
-  mRuntime.reset();
+  m_context.reset();
+  m_engine.reset();
+  m_runtime.reset();
 
-  if (mStream) {
-    cudaError_t err = cudaStreamDestroy(mStream);
+  if (m_stream) {
+    cudaError_t err = cudaStreamDestroy(m_stream);
     if (err != cudaSuccess && err != cudaErrorCudartUnloading) {
       LOG_WARNING_S << "Failed to destroy CUDA stream: "
                     << cudaGetErrorString(err);
     }
-    mStream = nullptr;
+    m_stream = nullptr;
   }
 
-  mManagedBuffers.clear();
-  mPinnedOutputBuffers.clear();
-  mTensorAddressMap.clear();
-  mTensorSizeMap.clear();
-  mCachedInputShapes.clear();
-  modelInfo.reset();
+  m_managedBuffers.clear();
+  m_pinnedOutputBuffers.clear();
+  m_tensorAddressMap.clear();
+  m_tensorSizeMap.clear();
+  m_cachedInputShapes.clear();
+  m_modelInfo.reset();
 
-  LOG_INFO_S << "TensorRT resources released for model: " << mParams.name;
+  LOG_INFO_S << "TensorRT resources released for model: " << m_params.name;
 }
 
 int64_t TrtAlgoInference::calculateVolume(const nvinfer1::Dims &dims) {
@@ -261,240 +261,240 @@ int64_t TrtAlgoInference::calculateVolume(const nvinfer1::Dims &dims) {
 }
 
 InferErrorCode TrtAlgoInference::loadEngineFromPath(const std::string &path,
-                                                    bool needsDecrypt) {
+                                                    bool needs_decrypt) {
   if (!std::filesystem::exists(path)) {
     LOG_ERROR_S << "Model file does not exist: " << path;
-    return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+    return InferErrorCode::InitModelLoadFailed;
   }
 
-  std::vector<char> engineData;
-  if (needsDecrypt) {
+  std::vector<char> engine_data;
+  if (needs_decrypt) {
     LOG_INFO_S << "Decrypting TensorRT engine: " << path;
-    std::vector<unsigned char> decryptedData;
-    auto cryptoConfig =
-        encrypt::Crypto::deriveKeyFromCommit(mParams.decryptkeyStr);
-    encrypt::Crypto crypto(cryptoConfig);
-    if (!crypto.decryptData(path, decryptedData)) {
+    std::vector<unsigned char> decrypted_data;
+    auto crypto_config =
+        encrypt::Crypto::deriveKeyFromCommit(m_params.decryptkey_str);
+    encrypt::Crypto crypto(crypto_config);
+    if (!crypto.decryptData(path, decrypted_data)) {
       LOG_ERROR_S << "Failed to decrypt model data: " << path;
-      return InferErrorCode::INIT_DECRYPTION_FAILED;
+      return InferErrorCode::InitDecryptionFailed;
     }
-    if (decryptedData.empty()) {
+    if (decrypted_data.empty()) {
       LOG_ERROR_S << "Decryption resulted in empty model data: " << path;
-      return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+      return InferErrorCode::InitModelLoadFailed;
     }
-    engineData.assign(decryptedData.begin(), decryptedData.end());
+    engine_data.assign(decrypted_data.begin(), decrypted_data.end());
   } else {
-    std::ifstream engineFile(path, std::ios::binary);
-    if (!engineFile) {
+    std::ifstream engine_file(path, std::ios::binary);
+    if (!engine_file) {
       LOG_ERROR_S << "Failed to open TensorRT engine file: " << path;
-      return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+      return InferErrorCode::InitModelLoadFailed;
     }
-    engineFile.seekg(0, std::ios::end);
-    size_t fileSize = engineFile.tellg();
-    engineFile.seekg(0, std::ios::beg);
-    engineData.resize(fileSize);
-    engineFile.read(engineData.data(), fileSize);
+    engine_file.seekg(0, std::ios::end);
+    size_t file_size = engine_file.tellg();
+    engine_file.seekg(0, std::ios::beg);
+    engine_data.resize(file_size);
+    engine_file.read(engine_data.data(), file_size);
   }
 
-  if (engineData.empty()) {
+  if (engine_data.empty()) {
     LOG_ERROR_S << "Engine data is empty for model: " << path;
-    return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+    return InferErrorCode::InitModelLoadFailed;
   }
 
-  mRuntime.reset(nvinfer1::createInferRuntime(mLogger));
-  if (!mRuntime) {
+  m_runtime.reset(nvinfer1::createInferRuntime(m_logger));
+  if (!m_runtime) {
     LOG_ERROR_S << "Failed to create TensorRT Runtime.";
-    return InferErrorCode::INIT_RUNTIME_FAILED;
+    return InferErrorCode::InitRuntimeFailed;
   }
 
-  mEngine.reset(
-      mRuntime->deserializeCudaEngine(engineData.data(), engineData.size()));
-  if (!mEngine) {
+  m_engine.reset(
+      m_runtime->deserializeCudaEngine(engine_data.data(), engine_data.size()));
+  if (!m_engine) {
     LOG_ERROR_S << "Failed to deserialize TensorRT engine.";
-    return InferErrorCode::INIT_ENGINE_FAILED;
+    return InferErrorCode::InitEngineFailed;
   }
 
   LOG_INFO_S << "TensorRT engine loaded and deserialized successfully: "
-             << mParams.name;
+             << m_params.name;
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode TrtAlgoInference::setupBindings() {
-  mContext.reset(mEngine->createExecutionContext());
-  if (!mContext) {
+  m_context.reset(m_engine->createExecutionContext());
+  if (!m_context) {
     LOG_ERROR_S << "Failed to create TensorRT Execution Context.";
-    return InferErrorCode::INIT_CONTEXT_FAILED;
+    return InferErrorCode::InitContextFailed;
   }
 
-  int leastPriority, greatestPriority;
+  int least_priority, greatest_priority;
   CHECK_CUDA_ERROR(
-      cudaDeviceGetStreamPriorityRange(&leastPriority, &greatestPriority));
-  CHECK_CUDA_ERROR(cudaStreamCreateWithPriority(&mStream, cudaStreamNonBlocking,
-                                                greatestPriority));
+      cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  CHECK_CUDA_ERROR(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking,
+                                                greatest_priority));
 
-  mManagedBuffers.clear();
-  mTensorAddressMap.clear();
-  mTensorSizeMap.clear();
-  mDynamicInputTensorNames.clear();
-  mCachedInputShapes.clear();
-  mAllInputsStatic = true;
+  m_managedBuffers.clear();
+  m_tensorAddressMap.clear();
+  m_tensorSizeMap.clear();
+  m_dynamicInputTensorNames.clear();
+  m_cachedInputShapes.clear();
+  m_allInputsStatic = true;
 
-  modelInfo = std::make_shared<ModelInfo>();
-  modelInfo->name = mParams.name;
+  m_modelInfo = std::make_shared<ModelInfo>();
+  m_modelInfo->name = m_params.name;
 
-  const int profileIndex = 0;
-  if (mEngine->getNbOptimizationProfiles() <= profileIndex) {
+  const int profile_index = 0;
+  if (m_engine->getNbOptimizationProfiles() <= profile_index) {
     LOG_ERROR_S << "Engine does not have optimization profile at index "
-                << profileIndex;
-    return InferErrorCode::INIT_FAILED;
+                << profile_index;
+    return InferErrorCode::InitFailed;
   }
 
-  const int32_t numIOTensors = mEngine->getNbIOTensors();
+  const int32_t num_io_tensors = m_engine->getNbIOTensors();
 
   // Set input shapes to MAX for buffer allocation
-  for (int32_t i = 0; i < numIOTensors; ++i) {
-    const char *name = mEngine->getIOTensorName(i);
-    if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
-      auto maxDims = mEngine->getProfileShape(
-          name, profileIndex, nvinfer1::OptProfileSelector::kMAX);
-      if (!mContext->setInputShape(name, maxDims)) {
+  for (int32_t i = 0; i < num_io_tensors; ++i) {
+    const char *name = m_engine->getIOTensorName(i);
+    if (m_engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
+      auto max_dims = m_engine->getProfileShape(
+          name, profile_index, nvinfer1::OptProfileSelector::kMAX);
+      if (!m_context->setInputShape(name, max_dims)) {
         LOG_WARNING_S
             << "Failed to set max input shape for auto-sizing tensor: " << name;
       }
     }
   }
 
-  mManagedBuffers.reserve(numIOTensors);
+  m_managedBuffers.reserve(num_io_tensors);
 
-  for (int32_t i = 0; i < numIOTensors; ++i) {
-    const char *name = mEngine->getIOTensorName(i);
-    auto trtDtype = mEngine->getTensorDataType(name);
+  for (int32_t i = 0; i < num_io_tensors; ++i) {
+    const char *name = m_engine->getIOTensorName(i);
+    auto trt_dtype = m_engine->getTensorDataType(name);
 
-    auto dims = mEngine->getProfileShape(name, profileIndex,
+    auto dims = m_engine->getProfileShape(name, profile_index,
                                          nvinfer1::OptProfileSelector::kMAX);
 
     int64_t volume = -1;
-    size_t bufferSize = 0;
+    size_t buffer_size = 0;
 
     if (dims.nbDims >= 0) {
       volume = calculateVolume(dims);
     }
 
     if (volume < 0) {
-      if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT) {
-        auto it = mParams.maxOutputBufferSizes.find(name);
-        if (it != mParams.maxOutputBufferSizes.end()) {
-          bufferSize = it->second;
+      if (m_engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT) {
+        auto it = m_params.max_output_buffer_sizes.find(name);
+        if (it != m_params.max_output_buffer_sizes.end()) {
+          buffer_size = it->second;
         } else {
-          nvinfer1::Dims deducedDims = mContext->getTensorShape(name);
-          int64_t deducedVolume = calculateVolume(deducedDims);
+          nvinfer1::Dims deduced_dims = m_context->getTensorShape(name);
+          int64_t deduced_volume = calculateVolume(deduced_dims);
 
-          if (deducedVolume > 0) {
-            bufferSize = static_cast<size_t>(deducedVolume) *
-                         trt_utils::getTrtElementSize(trtDtype);
+          if (deduced_volume > 0) {
+            buffer_size = static_cast<size_t>(deduced_volume) *
+                         trt_utils::getTrtElementSize(trt_dtype);
           } else {
             LOG_ERROR_S << "Could not deduce max size for dynamic output: "
                         << name;
-            return InferErrorCode::INIT_BINDING_FAILED;
+            return InferErrorCode::InitBindingFailed;
           }
         }
       } else {
         LOG_ERROR_S << "Input tensor '" << name
                     << "' has unexpected dynamic dimension.";
-        return InferErrorCode::INIT_BINDING_FAILED;
+        return InferErrorCode::InitBindingFailed;
       }
     } else {
-      bufferSize =
-          static_cast<size_t>(volume) * trt_utils::getTrtElementSize(trtDtype);
+      buffer_size =
+          static_cast<size_t>(volume) * trt_utils::getTrtElementSize(trt_dtype);
     }
 
-    mManagedBuffers.emplace_back(cuda_utils::DeviceByteBuffer{bufferSize});
-    void *devicePtr = mManagedBuffers.back().unsafePtr();
+    m_managedBuffers.emplace_back(cuda_utils::DeviceByteBuffer{buffer_size});
+    void *device_ptr = m_managedBuffers.back().unsafePtr();
 
-    mTensorAddressMap[name] = devicePtr;
-    mTensorSizeMap[name] = bufferSize;
+    m_tensorAddressMap[name] = device_ptr;
+    m_tensorSizeMap[name] = buffer_size;
 
-    if (!mContext->setTensorAddress(name, devicePtr)) {
+    if (!m_context->setTensorAddress(name, device_ptr)) {
       LOG_ERROR_S << "Failed to set tensor address for: " << name;
-      return InferErrorCode::INIT_BINDING_FAILED;
+      return InferErrorCode::InitBindingFailed;
     }
 
     // Populate ModelInfo
-    ModelInfo::TensorInfo tensorInfo;
-    tensorInfo.name = name;
+    ModelInfo::TensorInfo tensor_info;
+    tensor_info.name = name;
 
-    auto bindingDims = mEngine->getTensorShape(name);
-    tensorInfo.shape.assign(bindingDims.d, bindingDims.d + bindingDims.nbDims);
-    tensorInfo.dataType = trt_utils::trtDataTypeToAiCore(trtDtype);
+    auto binding_dims = m_engine->getTensorShape(name);
+    tensor_info.shape.assign(binding_dims.d, binding_dims.d + binding_dims.nbDims);
+    tensor_info.data_type = trt_utils::trtDataTypeToAiCore(trt_dtype);
 
-    if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
-      for (const auto &dim : tensorInfo.shape) {
+    if (m_engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
+      for (const auto &dim : tensor_info.shape) {
         if (dim == -1) {
-          mDynamicInputTensorNames.insert(name);
-          mAllInputsStatic = false;
+          m_dynamicInputTensorNames.insert(name);
+          m_allInputsStatic = false;
           LOG_DEBUG_S << "Input tensor '" << name
                       << "' is identified as dynamic.";
           break;
         }
       }
-      modelInfo->inputs.emplace_back(std::move(tensorInfo));
+      m_modelInfo->inputs.emplace_back(std::move(tensor_info));
     } else {
-      modelInfo->outputs.emplace_back(std::move(tensorInfo));
+      m_modelInfo->outputs.emplace_back(std::move(tensor_info));
     }
   }
 
-  LOG_INFO_S << "Bindings and buffers configured for model: " << mParams.name;
+  LOG_INFO_S << "Bindings and buffers configured for model: " << m_params.name;
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode TrtAlgoInference::setupPinnedOutputBuffers() {
-  for (const auto &outputInfo : modelInfo->outputs) {
-    const auto &name = outputInfo.name;
-    size_t bufferSize = mTensorSizeMap.at(name);
+  for (const auto &output_info : m_modelInfo->outputs) {
+    const auto &name = output_info.name;
+    size_t buffer_size = m_tensorSizeMap.at(name);
 
-    cuda_utils::CudaHostBuffer<uint8_t> pinnedBuffer;
-    pinnedBuffer.reserve(bufferSize);
+    cuda_utils::CudaHostBuffer<uint8_t> pinned_buffer;
+    pinned_buffer.reserve(buffer_size);
 
-    mPinnedOutputBuffers[name] = std::move(pinnedBuffer);
+    m_pinnedOutputBuffers[name] = std::move(pinned_buffer);
 
-    LOG_DEBUG_S << "Pre-allocated " << bufferSize
+    LOG_DEBUG_S << "Pre-allocated " << buffer_size
                 << " bytes of pinned memory for output: " << name;
   }
 
   LOG_INFO_S << "Pinned output buffers allocated for "
-             << modelInfo->outputs.size() << " outputs.";
+             << m_modelInfo->outputs.size() << " outputs.";
   return InferErrorCode::SUCCESS;
 }
 
 bool TrtAlgoInference::updateInputShapesIfNeeded(const TensorData &inputs) {
-  for (const auto &inputInfo : modelInfo->inputs) {
-    const auto &name = inputInfo.name;
-    const bool isDynamic = mDynamicInputTensorNames.count(name);
+  for (const auto &input_info : m_modelInfo->inputs) {
+    const auto &name = input_info.name;
+    const bool is_dynamic = m_dynamicInputTensorNames.count(name);
 
-    if (!isDynamic) {
+    if (!is_dynamic) {
       continue;
     }
 
-    auto shapeIt = inputs.shapes.find(name);
-    if (shapeIt == inputs.shapes.end()) {
+    auto shape_it = inputs.shapes.find(name);
+    if (shape_it == inputs.shapes.end()) {
       continue;
     }
 
-    const std::vector<int64_t> newShape(shapeIt->second.begin(),
-                                        shapeIt->second.end());
-    auto cacheIt = mCachedInputShapes.find(name);
+    const std::vector<int64_t> new_shape(shape_it->second.begin(),
+                                        shape_it->second.end());
+    auto cache_it = m_cachedInputShapes.find(name);
 
-    if (cacheIt == mCachedInputShapes.end() || cacheIt->second != newShape) {
-      nvinfer1::Dims actualDims;
-      actualDims.nbDims = newShape.size();
-      std::copy(newShape.begin(), newShape.end(), actualDims.d);
+    if (cache_it == m_cachedInputShapes.end() || cache_it->second != new_shape) {
+      nvinfer1::Dims actual_dims;
+      actual_dims.nbDims = new_shape.size();
+      std::copy(new_shape.begin(), new_shape.end(), actual_dims.d);
 
-      if (!mContext->setInputShape(name.c_str(), actualDims)) {
+      if (!m_context->setInputShape(name.c_str(), actual_dims)) {
         LOG_ERROR_S << "Failed to set input shape for tensor: " << name;
         return false;
       }
 
-      mCachedInputShapes[name] = newShape;
+      m_cachedInputShapes[name] = new_shape;
       LOG_TRACE_S << "Updated input shape for tensor '" << name << "'";
     }
   }
@@ -503,22 +503,22 @@ bool TrtAlgoInference::updateInputShapesIfNeeded(const TensorData &inputs) {
 }
 
 void TrtAlgoInference::copyInputsToDevice(const TensorData &inputs) {
-  for (const auto &inputInfo : modelInfo->inputs) {
-    const auto &name = inputInfo.name;
-    const TypedBuffer &inputBuffer = inputs.datas.at(name);
-    const size_t actualSizeBytes = inputBuffer.getSizeBytes();
-    void *destDevicePtr = mTensorAddressMap.at(name);
+  for (const auto &input_info : m_modelInfo->inputs) {
+    const auto &name = input_info.name;
+    const TypedBuffer &input_buffer = inputs.datas.at(name);
+    const size_t actual_size_bytes = input_buffer.getSizeBytes();
+    void *dest_device_ptr = m_tensorAddressMap.at(name);
 
-    if (inputBuffer.location() == BufferLocation::CPU) {
-      const void *srcHostPtr = inputBuffer.getRawHostPtr();
-      CHECK_CUDA_ERROR(cudaMemcpyAsync(destDevicePtr, srcHostPtr,
-                                       actualSizeBytes, cudaMemcpyHostToDevice,
-                                       mStream));
-    } else if (inputBuffer.location() == BufferLocation::GPU_DEVICE) {
-      void *srcDevicePtr = inputBuffer.getRawDevicePtr();
-      CHECK_CUDA_ERROR(cudaMemcpyAsync(destDevicePtr, srcDevicePtr,
-                                       actualSizeBytes,
-                                       cudaMemcpyDeviceToDevice, mStream));
+    if (input_buffer.location() == BufferLocation::CPU) {
+      const void *src_host_ptr = input_buffer.getRawHostPtr();
+      CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_host_ptr,
+                                       actual_size_bytes, cudaMemcpyHostToDevice,
+                                       m_stream));
+    } else if (input_buffer.location() == BufferLocation::GpuDevice) {
+      void *src_device_ptr = input_buffer.getRawDevicePtr();
+      CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_device_ptr,
+                                       actual_size_bytes,
+                                       cudaMemcpyDeviceToDevice, m_stream));
     }
   }
 }
@@ -527,42 +527,42 @@ void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
   outputs.datas.clear();
   outputs.shapes.clear();
 
-  for (const auto &outputInfo : modelInfo->outputs) {
-    const auto &name = outputInfo.name;
-    void *srcDevicePtr = mTensorAddressMap.at(name);
+  for (const auto &output_info : m_modelInfo->outputs) {
+    const auto &name = output_info.name;
+    void *src_device_ptr = m_tensorAddressMap.at(name);
 
-    nvinfer1::Dims actualOutputDims = mContext->getTensorShape(name.c_str());
-    int64_t actualVolume = calculateVolume(actualOutputDims);
+    nvinfer1::Dims actual_output_dims = m_context->getTensorShape(name.c_str());
+    int64_t actual_volume = calculateVolume(actual_output_dims);
 
-    size_t actualOutputSizeBytes =
-        static_cast<size_t>(actualVolume) *
+    size_t actual_output_size_bytes =
+        static_cast<size_t>(actual_volume) *
         trt_utils::getTrtElementSize(
-            trt_utils::aiCoreDataTypeToTrt(outputInfo.dataType));
+            trt_utils::aiCoreDataTypeToTrt(output_info.data_type));
 
-    auto &pinnedBuffer = mPinnedOutputBuffers.at(name);
+    auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
 
-    if (pinnedBuffer.capacity() < actualOutputSizeBytes) {
-      pinnedBuffer.reserve(actualOutputSizeBytes);
+    if (pinned_buffer.capacity() < actual_output_size_bytes) {
+      pinned_buffer.reserve(actual_output_size_bytes);
     }
 
-    uint8_t *destHostPtr = pinnedBuffer.writePtr(actualOutputSizeBytes);
+    uint8_t *dest_host_ptr = pinned_buffer.writePtr(actual_output_size_bytes);
 
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(destHostPtr, srcDevicePtr,
-                                     actualOutputSizeBytes,
-                                     cudaMemcpyDeviceToHost, mStream));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_host_ptr, src_device_ptr,
+                                     actual_output_size_bytes,
+                                     cudaMemcpyDeviceToHost, m_stream));
 
-    outputs.shapes[name].assign(actualOutputDims.d,
-                                actualOutputDims.d + actualOutputDims.nbDims);
+    outputs.shapes[name].assign(actual_output_dims.d,
+                                actual_output_dims.d + actual_output_dims.nbDims);
   }
 
-  CHECK_CUDA_ERROR(cudaStreamSynchronize(mStream));
+  CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));
 
-  for (const auto &outputInfo : modelInfo->outputs) {
-    const auto &name = outputInfo.name;
-    auto &pinnedBuffer = mPinnedOutputBuffers.at(name);
-    std::vector<uint8_t> safeData = pinnedBuffer.toVector();
+  for (const auto &output_info : m_modelInfo->outputs) {
+    const auto &name = output_info.name;
+    auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
+    std::vector<uint8_t> safe_data = pinned_buffer.toVector();
     outputs.datas[name] =
-        TypedBuffer::createFromCpu(outputInfo.dataType, std::move(safeData));
+        TypedBuffer::createFromCpu(output_info.data_type, std::move(safe_data));
   }
 }
 
@@ -570,10 +570,10 @@ InferErrorCode TrtAlgoInference::inferWithoutGraph(const TensorData &inputs,
                                                    TensorData &outputs) {
   copyInputsToDevice(inputs);
 
-  LOG_TRACE_S << "Executing inference on stream " << mStream;
-  if (!mContext->enqueueV3(mStream)) {
+  LOG_TRACE_S << "Executing inference on stream " << m_stream;
+  if (!m_context->enqueueV3(m_stream)) {
     LOG_ERROR_S << "Failed to enqueue TensorRT inference.";
-    return InferErrorCode::INFER_EXECUTION_FAILED;
+    return InferErrorCode::InferExecutionFailed;
   }
 
   copyOutputsToHost(outputs);

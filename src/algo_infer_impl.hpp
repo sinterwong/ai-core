@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_INFER_HPP__
-#define __INFERENCE_VISION_INFER_HPP__
+#ifndef AI_CORE_INFERENCE_VISION_INFER_HPP
+#define AI_CORE_INFERENCE_VISION_INFER_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/algo_infer.hpp"
@@ -24,21 +24,21 @@
 namespace ai_core::dnn {
 class AlgoInference::Impl {
 public:
-  Impl(const AlgoModuleTypes &algoModuleTypes,
-       const AlgoInferParams &inferParams);
+  Impl(const AlgoModuleTypes &algo_module_types,
+       const AlgoInferParams &infer_params);
 
   ~Impl() = default;
 
   InferErrorCode initialize();
 
   InferErrorCode infer(const AlgoInput &input,
-                       const AlgoPreprocParams &preprocParams,
-                       const AlgoPostprocParams &postprocParams,
+                       const AlgoPreprocParams &preproc_params,
+                       const AlgoPostprocParams &postproc_params,
                        AlgoOutput &output);
 
   InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs,
-                            const AlgoPreprocParams &preprocParams,
-                            const AlgoPostprocParams &postprocParams,
+                            const AlgoPreprocParams &preproc_params,
+                            const AlgoPostprocParams &postproc_params,
                             std::vector<AlgoOutput> &outputs);
 
   InferErrorCode terminate();
@@ -48,12 +48,12 @@ public:
   const AlgoModuleTypes &getModuleTypes() const noexcept;
 
 private:
-  AlgoModuleTypes algoModuleTypes_;
+  AlgoModuleTypes m_algoModuleTypes;
 
-  AlgoInferParams inferParams_;
-  std::shared_ptr<AlgoPreproc> preprocessor_;
-  std::shared_ptr<AlgoInferEngine> engine_;
-  std::shared_ptr<AlgoPostproc> postprocessor_;
+  AlgoInferParams m_inferParams;
+  std::shared_ptr<AlgoPreproc> m_preprocessor;
+  std::shared_ptr<AlgoInferEngine> m_engine;
+  std::shared_ptr<AlgoPostproc> m_postprocessor;
 };
 } // namespace ai_core::dnn
 #endif

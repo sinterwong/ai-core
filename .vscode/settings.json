@@ -2,6 +2,11 @@
   "[cuda-cpp]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
+  "clangd.arguments": [
+    "--compile-commands-dir=build",
+    "--clang-tidy",
+    "--header-filter=^$(pwd)/(src)/.*"
+  ],
   "cmake.installPrefix": "${workspaceFolder}/build",
   "cmake.configureSettings": {
     "CMAKE_BUILD_TYPE": "${buildType}",

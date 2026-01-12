@@ -14,13 +14,13 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool Yolov11Det::process(const TensorData &modelOutput,
-                         const FrameTransformContext &prepArgs,
-                         const AnchorDetParams &postArgs,
-                         AlgoOutput &algoOutput) const {
-  const auto &outputShapes = modelOutput.shapes;
-  const auto &inputShape = prepArgs.modelInputShape;
-  const auto &outputs = modelOutput.datas;
+bool Yolov11Det::process(const TensorData &model_output,
+                         const FrameTransformContext &prep_args,
+                         const AnchorDetParams &post_args,
+                         AlgoOutput &algo_output) const {
+  const auto &output_shapes = model_output.shapes;
+  const auto &input_shape = prep_args.model_input_shape;
+  const auto &outputs = model_output.datas;
 
   // just one output
   if (outputs.size() != 1) {
@@ -29,137 +29,137 @@ bool Yolov11Det::process(const TensorData &modelOutput,
     throw std::runtime_error(
         "AnchorDetParams(Yolov11Det)  unexpected size of outputs");
   }
-  auto output = outputs.at(postArgs.outputNames.at(0));
+  auto output = outputs.at(post_args.output_names.at(0));
 
-  std::vector<int> outputShape = outputShapes.at(postArgs.outputNames.at(0));
-  int signalResultNum = outputShape.at(outputShape.size() - 2);
-  int strideNum = outputShape.at(outputShape.size() - 1);
+  std::vector<int> output_shape = output_shapes.at(post_args.output_names.at(0));
+  int signal_result_num = output_shape.at(output_shape.size() - 2);
+  int stride_num = output_shape.at(output_shape.size() - 1);
 
-  cv::Mat rawData = cv::Mat(strideNum, signalResultNum, CV_32F);
+  cv::Mat raw_data = cv::Mat(stride_num, signal_result_num, CV_32F);
   if (output.dataType() == DataType::FLOAT32) {
-    cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F,
+    cv::transpose(cv::Mat(signal_result_num, stride_num, CV_32F,
                           const_cast<void *>(output.getRawHostPtr())),
-                  rawData);
+                  raw_data);
   } else if (output.dataType() == DataType::FLOAT16) {
-    const uint16_t *fp16Data = output.getHostPtr<uint16_t>();
-    cv::Mat halfMat(1, output.getElementCount(), CV_16F, (void *)fp16Data);
-    cv::Mat floatMat(1, output.getElementCount(), CV_32F);
-    halfMat.convertTo(floatMat, CV_32F);
-    cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F, floatMat.data),
-                  rawData);
+    const uint16_t *fp16_data = output.getHostPtr<uint16_t>();
+    cv::Mat half_mat(1, output.getElementCount(), CV_16F, (void *)fp16_data);
+    cv::Mat float_mat(1, output.getElementCount(), CV_32F);
+    half_mat.convertTo(float_mat, CV_32F);
+    cv::transpose(cv::Mat(signal_result_num, stride_num, CV_32F, float_mat.data),
+                  raw_data);
   }
 
-  std::vector<BBox> results = processRawOutput(rawData, inputShape, prepArgs,
-                                               postArgs, signalResultNum - 4);
+  std::vector<BBox> results = processRawOutput(raw_data, input_shape, prep_args,
+                                               post_args, signal_result_num - 4);
 
-  DetRet detRet;
-  detRet.bboxes = utils::NMS(results, postArgs.nmsThre, postArgs.condThre);
-  algoOutput.setParams(detRet);
+  DetRet det_ret;
+  det_ret.bboxes = utils::nms(results, post_args.nms_thre, post_args.cond_thre);
+  algo_output.setParams(det_ret);
   return true;
 }
 
 bool Yolov11Det::batchProcess(
-    const TensorData &modelOutput,
-    const std::vector<FrameTransformContext> &prepArgs,
-    const AnchorDetParams &postArgs,
-    std::vector<AlgoOutput> &algoOutput) const {
-  const auto &outputs = modelOutput.datas;
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const AnchorDetParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
+  const auto &outputs = model_output.datas;
   if (outputs.size() != 1) {
     LOG_ERROR_S << "Yolov11Det::batchProcess unexpected size of outputs: "
                 << outputs.size();
     throw std::runtime_error(
         "Yolov11Det::batchProcess expects only 1 output tensor.");
   }
-  const auto &outputTensor = outputs.at(postArgs.outputNames.at(0));
-  const auto &outputShape = modelOutput.shapes.at(postArgs.outputNames.at(0));
+  const auto &output_tensor = outputs.at(post_args.output_names.at(0));
+  const auto &output_shape = model_output.shapes.at(post_args.output_names.at(0));
 
-  if (outputShape.size() != 3) {
+  if (output_shape.size() != 3) {
     LOG_ERROR_S << "Yolov11Det::batchProcess unexpected output dimensions: "
-                << outputShape.size();
+                << output_shape.size();
     throw std::runtime_error("Yolov11Det::batchProcess expects a 3D output "
                              "tensor [batch, stride, num_results].");
   }
-  const int batchSize = outputShape.at(0);
-  const int strideNum = outputShape.at(1);
-  const int signalResultNum = outputShape.at(2);
-  const int numClasses = strideNum - 4;
+  const int batch_size = output_shape.at(0);
+  const int stride_num = output_shape.at(1);
+  const int signal_result_num = output_shape.at(2);
+  const int num_classes = stride_num - 4;
 
-  if (batchSize != prepArgs.size()) {
+  if (batch_size != prep_args.size()) {
     LOG_ERROR_S
         << "Yolov11Det::batchProcess mismatch between model output batch size ("
-        << batchSize << ") and prepArgs size (" << prepArgs.size() << ").";
+        << batch_size << ") and prep_args size (" << prep_args.size() << ").";
     throw std::runtime_error(
         "Batch size mismatch in Yolov11Det::batchProcess.");
   }
 
-  algoOutput.resize(batchSize);
-  const size_t elementsPerSample =
-      static_cast<size_t>(strideNum) * signalResultNum;
+  algo_output.resize(batch_size);
+  const size_t elements_per_sample =
+      static_cast<size_t>(stride_num) * signal_result_num;
 
-  const float *batchedFloatData = nullptr;
-  cv::Mat fullFloatMat;
-  if (outputTensor.dataType() == DataType::FLOAT32) {
-    batchedFloatData = outputTensor.getHostPtr<float>();
-  } else if (outputTensor.dataType() == DataType::FLOAT16) {
-    const uint16_t *fp16Data = outputTensor.getHostPtr<uint16_t>();
-    cv::Mat halfMat(1, outputTensor.getElementCount(), CV_16F,
-                    const_cast<uint16_t *>(fp16Data));
-    halfMat.convertTo(fullFloatMat, CV_32F);
-    batchedFloatData = fullFloatMat.ptr<float>();
+  const float *batched_float_data = nullptr;
+  cv::Mat full_float_mat;
+  if (output_tensor.dataType() == DataType::FLOAT32) {
+    batched_float_data = output_tensor.getHostPtr<float>();
+  } else if (output_tensor.dataType() == DataType::FLOAT16) {
+    const uint16_t *fp16_data = output_tensor.getHostPtr<uint16_t>();
+    cv::Mat half_mat(1, output_tensor.getElementCount(), CV_16F,
+                    const_cast<uint16_t *>(fp16_data));
+    half_mat.convertTo(full_float_mat, CV_32F);
+    batched_float_data = full_float_mat.ptr<float>();
   } else {
     throw std::runtime_error(
         "Unsupported data type in Yolov11Det::batchProcess.");
   }
 
-  for (int i = 0; i < batchSize; ++i) {
-    const float *currentSampleData = batchedFloatData + i * elementsPerSample;
+  for (int i = 0; i < batch_size; ++i) {
+    const float *current_sample_data = batched_float_data + i * elements_per_sample;
 
-    cv::Mat singleOutputMat(strideNum, signalResultNum, CV_32F,
-                            const_cast<float *>(currentSampleData));
-    cv::Mat transposedOutput;
-    cv::transpose(singleOutputMat, transposedOutput);
+    cv::Mat single_output_mat(stride_num, signal_result_num, CV_32F,
+                            const_cast<float *>(current_sample_data));
+    cv::Mat transposed_output;
+    cv::transpose(single_output_mat, transposed_output);
 
-    const auto &currentPrepArgs = prepArgs[i];
-    const auto &inputShape = currentPrepArgs.modelInputShape;
+    const auto &current_prep_args = prep_args[i];
+    const auto &input_shape = current_prep_args.model_input_shape;
 
     std::vector<BBox> results = processRawOutput(
-        transposedOutput, inputShape, currentPrepArgs, postArgs, numClasses);
+        transposed_output, input_shape, current_prep_args, post_args, num_classes);
 
-    DetRet detRet;
-    detRet.bboxes = utils::NMS(results, postArgs.nmsThre, postArgs.condThre);
-    algoOutput[i].setParams(detRet);
+    DetRet det_ret;
+    det_ret.bboxes = utils::nms(results, post_args.nms_thre, post_args.cond_thre);
+    algo_output[i].setParams(det_ret);
   }
   return true;
 }
 
 std::vector<BBox> Yolov11Det::processRawOutput(
-    const cv::Mat &transposedOutput, const Shape &inputShape,
-    const FrameTransformContext &prepArgs, const AnchorDetParams &postArgs,
-    int numClasses) const {
+    const cv::Mat &transposed_output, const Shape &input_shape,
+    const FrameTransformContext &prep_args, const AnchorDetParams &post_args,
+    int num_classes) const {
   std::vector<BBox> results;
-  Shape originShape;
-  const auto &inputRoi = *prepArgs.roi;
-  if (inputRoi.area() > 0) {
-    originShape.w = inputRoi.width;
-    originShape.h = inputRoi.height;
+  Shape origin_shape;
+  const auto &input_roi = *prep_args.roi;
+  if (input_roi.area() > 0) {
+    origin_shape.w = input_roi.width;
+    origin_shape.h = input_roi.height;
   } else {
-    originShape = prepArgs.originShape;
+    origin_shape = prep_args.origin_shape;
   }
   auto [scaleX, scaleY] =
-      utils::scaleRatio(originShape, inputShape, prepArgs.isEqualScale);
+      utils::scaleRatio(origin_shape, input_shape, prep_args.is_equal_scale);
 
-  for (int i = 0; i < transposedOutput.rows; ++i) {
-    const float *data = transposedOutput.ptr<float>(i);
+  for (int i = 0; i < transposed_output.rows; ++i) {
+    const float *data = transposed_output.ptr<float>(i);
 
-    cv::Mat scores(1, numClasses, CV_32F, (void *)(data + 4));
-    cv::Point classIdPoint;
+    cv::Mat scores(1, num_classes, CV_32F, (void *)(data + 4));
+    cv::Point class_id_point;
     double score;
-    cv::minMaxLoc(scores, nullptr, &score, nullptr, &classIdPoint);
+    cv::minMaxLoc(scores, nullptr, &score, nullptr, &class_id_point);
 
-    if (score > postArgs.condThre) {
+    if (score > post_args.cond_thre) {
       BBox result;
       result.score = score;
-      result.label = classIdPoint.x;
+      result.label = class_id_point.x;
 
       float x = data[0];
       float y = data[1];
@@ -169,17 +169,17 @@ std::vector<BBox> Yolov11Det::processRawOutput(
       x = x - 0.5 * w;
       y = y - 0.5 * h;
 
-      if (prepArgs.isEqualScale) {
-        x = (x - prepArgs.leftPad) / scaleX;
-        y = (y - prepArgs.topPad) / scaleY;
+      if (prep_args.is_equal_scale) {
+        x = (x - prep_args.left_pad) / scaleX;
+        y = (y - prep_args.top_pad) / scaleY;
       } else {
         x = x / scaleX;
         y = y / scaleY;
       }
       w = w / scaleX;
       h = h / scaleY;
-      x += inputRoi.x;
-      y += inputRoi.y;
+      x += input_roi.x;
+      y += input_roi.y;
       result.rect =
           std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
                                      static_cast<int>(w), static_cast<int>(h));

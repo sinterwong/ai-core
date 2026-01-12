@@ -74,7 +74,7 @@ private:
  *
  * Usage Pattern:
  * @code
- * auto context = asyncEngine->createExecutionContext();
+ * auto context = async_engine->createExecutionContext();
  *
  * // Submit async task
  * auto future = context->inferAsync(inputs, outputs);

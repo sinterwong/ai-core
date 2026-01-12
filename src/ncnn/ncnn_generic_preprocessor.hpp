@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __NCNN_GENERIC_PREPROCESSOR_HPP_
-#define __NCNN_GENERIC_PREPROCESSOR_HPP_
+#ifndef AI_CORE_NCNN_GENERIC_PREPROCESSOR_HPP
+#define AI_CORE_NCNN_GENERIC_PREPROCESSOR_HPP
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/preproc_types.hpp"

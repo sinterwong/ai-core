@@ -9,15 +9,15 @@
  *
  */
 
-#ifndef __PREPROCESS_TYPES_HPP__
-#define __PREPROCESS_TYPES_HPP__
+#ifndef AI_CORE_PREPROCESS_TYPES_HPP
+#define AI_CORE_PREPROCESS_TYPES_HPP
 
 #include "ai_core/typed_buffer.hpp"
 #include <string>
 #include <vector>
 
 namespace cv {
-template <typename _Tp> class Rect_;
+template <typename Tp> class Rect_;
 using Rect = Rect_<int>;
 } // namespace cv
 
@@ -32,35 +32,35 @@ struct Shape {
 struct FramePreprocessArg {
   enum class FramePreprocType : int8_t {
     // ROI -> Resize -> Normalize -> Layout convert
-    OPENCV_CPU_GENERIC = 0,
-    NCNN_GENERIC,
-    CUDA_GPU_GENERIC,
+    OpencvCpuGeneric = 0,
+    NcnnGeneric,
+    CudaGpuGeneric,
 
     // ROI -> Concat -> Resize -> Normalize -> Layout convert
-    OPENCV_CPU_CONCAT_MASK
+    OpencvCpuConcatMask
   };
-  FramePreprocType preprocTaskType = FramePreprocType::OPENCV_CPU_GENERIC;
-  Shape modelInputShape;
-  bool needResize;
-  bool isEqualScale;
+  FramePreprocType preproc_task_type = FramePreprocType::OpencvCpuGeneric;
+  Shape model_input_shape;
+  bool need_resize;
+  bool is_equal_scale;
   std::vector<int> pad;
-  std::vector<float> meanVals;
-  std::vector<float> normVals;
+  std::vector<float> mean_vals;
+  std::vector<float> norm_vals;
   bool hwc2chw;
-  DataType dataType;
-  BufferLocation outputLocation = BufferLocation::CPU;
-  std::vector<std::string> inputNames;
+  DataType data_type;
+  BufferLocation output_location = BufferLocation::CPU;
+  std::vector<std::string> input_names;
 };
 
 struct FrameTransformContext {
-  bool isEqualScale;
-  Shape originShape;
-  Shape modelInputShape;
+  bool is_equal_scale;
+  Shape origin_shape;
+  Shape model_input_shape;
   std::shared_ptr<cv::Rect> roi;
-  int topPad = 0;
-  int leftPad = 0;
+  int top_pad = 0;
+  int left_pad = 0;
 };
 
 } // namespace ai_core
 
-#endif // __PREPROCESS_TYPES_HPP__
+#endif

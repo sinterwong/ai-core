@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __PREPROCESS_SINGLE_FRAME_WITH_MASK_INPUT_HPP_
-#define __PREPROCESS_SINGLE_FRAME_WITH_MASK_INPUT_HPP_
+#ifndef AI_CORE_PREPROCESS_SINGLE_FRAME_WITH_MASK_INPUT_HPP
+#define AI_CORE_PREPROCESS_SINGLE_FRAME_WITH_MASK_INPUT_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/preproc_base.hpp"

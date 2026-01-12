@@ -10,9 +10,9 @@ namespace ai_core::example::utils {
 struct AlgoConfigData {
   std::string moduleName;
   ai_core::AlgoModuleTypes modelTypes;
-  ai_core::AlgoPreprocParams preprocParams;
+  ai_core::AlgoPreprocParams preproc_params;
   ai_core::AlgoInferParams inferParams;
-  ai_core::AlgoPostprocParams postprocParams;
+  ai_core::AlgoPostprocParams postproc_params;
 };
 
 class AlgoConfigParser {

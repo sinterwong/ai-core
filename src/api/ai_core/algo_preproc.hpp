@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __AI_CORE_ALGO_PREPROC_HPP__
-#define __AI_CORE_ALGO_PREPROC_HPP__
+#ifndef AI_CORE_ALGO_PREPROC_HPP
+#define AI_CORE_ALGO_PREPROC_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_error_code.hpp"
@@ -20,27 +20,27 @@ namespace ai_core::dnn {
 
 class AlgoPreproc {
 public:
-  AlgoPreproc(const std::string &moduleName);
+  AlgoPreproc(const std::string &module_name);
 
   ~AlgoPreproc();
 
   InferErrorCode initialize();
 
   InferErrorCode process(const AlgoInput &input,
-                         const AlgoPreprocParams &preprocParams,
-                         TensorData &modelInput,
-                         std::shared_ptr<RuntimeContext> &runtimeContext);
+                         const AlgoPreprocParams &preproc_params,
+                         TensorData &model_input,
+                         std::shared_ptr<RuntimeContext> &runtime_context);
 
   InferErrorCode batchProcess(const std::vector<AlgoInput> &input,
-                              const AlgoPreprocParams &preprocParams,
-                              TensorData &modelInput,
-                              std::shared_ptr<RuntimeContext> &runtimeContext);
+                              const AlgoPreprocParams &preproc_params,
+                              TensorData &model_input,
+                              std::shared_ptr<RuntimeContext> &runtime_context);
 
   InferErrorCode terminate();
 
 private:
   class Impl;
-  std::unique_ptr<Impl> pImpl;
+  std::unique_ptr<Impl> m_pImpl;
 };
 } // namespace ai_core::dnn
-#endif // __AI_CORE_ALGO_PREPROC_HPP__
+#endif

@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __TRT_UTILS_HPP__
-#define __TRT_UTILS_HPP__
+#ifndef AI_CORE_TRT_UTILS_HPP
+#define AI_CORE_TRT_UTILS_HPP
 
 #include "ai_core/infer_common_types.hpp"
 #include <NvInfer.h>
@@ -28,4 +28,4 @@ size_t getTrtElementSize(nvinfer1::DataType trt_type);
 
 } // namespace ai_core::trt_utils
 
-#endif // __TRT_UTILS_HPP__
+#endif

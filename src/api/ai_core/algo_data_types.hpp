@@ -1,5 +1,5 @@
-#ifndef __AI_CORE_ALGO_DATA_TYPES_HPP__
-#define __AI_CORE_ALGO_DATA_TYPES_HPP__
+#ifndef AI_CORE_ALGO_DATA_TYPES_HPP
+#define AI_CORE_ALGO_DATA_TYPES_HPP
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/algo_output_types.hpp"
@@ -35,11 +35,11 @@ using RuntimeContext = DataPacket;
 
 // Algo module types
 struct AlgoModuleTypes {
-  std::string preprocModule;
-  std::string inferModule;
-  std::string postprocModule;
+  std::string preproc_module;
+  std::string infer_module;
+  std::string postproc_module;
 };
 
 } // namespace ai_core
 
-#endif // __AI_CORE_ALGO_DATA_TYPES_HPP__
+#endif

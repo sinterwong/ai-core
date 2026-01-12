@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_SOFTMAX_CLS_HPP_
-#define __INFERENCE_VISION_SOFTMAX_CLS_HPP_
+#ifndef AI_CORE_INFERENCE_VISION_SOFTMAX_CLS_HPP
+#define AI_CORE_INFERENCE_VISION_SOFTMAX_CLS_HPP
 
 #include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
@@ -26,7 +26,7 @@ public:
                             std::vector<AlgoOutput> &) const override;
 
 private:
-  ClsRet processSingleItem(const float *logits, int numClasses) const;
+  ClsRet processSingleItem(const float *logits, int num_classes) const;
 };
 } // namespace ai_core::dnn
 

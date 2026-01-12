@@ -8,14 +8,14 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __ALGO_INPUT_TYPES_HPP__
-#define __ALGO_INPUT_TYPES_HPP__
+#ifndef AI_CORE_ALGO_INPUT_TYPES_HPP
+#define AI_CORE_ALGO_INPUT_TYPES_HPP
 
 #include <memory>
 #include <vector>
 
 namespace cv {
-template <typename _Tp> class Rect_;
+template <typename Tp> class Rect_;
 using Rect = Rect_<int>;
 
 class Mat;
@@ -24,14 +24,14 @@ class Mat;
 namespace ai_core {
 struct FrameInput {
   std::shared_ptr<cv::Mat> image;
-  std::shared_ptr<cv::Rect> inputRoi;
+  std::shared_ptr<cv::Rect> input_roi;
 };
 
 struct FrameInputWithMask {
-  FrameInput frameInput;
-  std::vector<cv::Rect> maskRegions;
+  FrameInput frame_input;
+  std::vector<cv::Rect> mask_regions;
 };
 
 } // namespace ai_core
 
-#endif // __ALGO_INPUT_TYPES_HPP__
+#endif

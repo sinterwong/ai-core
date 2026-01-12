@@ -19,31 +19,31 @@ namespace ai_core {
 
 class CudaAcceleratorBuffer : public AcceleratorBufferImpl {
 public:
-  CudaAcceleratorBuffer(size_t sizeBytes, AcceleratorMemoryType type)
-      : mSizeBytes(sizeBytes), mType(type), mOwnsMemory(true) {
+  CudaAcceleratorBuffer(size_t size_bytes, AcceleratorMemoryType type)
+      : m_sizeBytes(size_bytes), m_type(type), m_ownsMemory(true) {
 
-    if (mSizeBytes == 0)
+    if (m_sizeBytes == 0)
       return;
 
-    if (mType == AcceleratorMemoryType::Device) {
-      CHECK_CUDA_ERROR(cudaMalloc(&mPtr, mSizeBytes));
-    } else if (mType == AcceleratorMemoryType::HostPinned) {
-      CHECK_CUDA_ERROR(cudaMallocHost(&mPtr, mSizeBytes));
+    if (m_type == AcceleratorMemoryType::Device) {
+      CHECK_CUDA_ERROR(cudaMalloc(&m_ptr, m_sizeBytes));
+    } else if (m_type == AcceleratorMemoryType::HostPinned) {
+      CHECK_CUDA_ERROR(cudaMallocHost(&m_ptr, m_sizeBytes));
       // Optional: Zero-init pinned memory implies generic CPU usage
-      std::memset(mPtr, 0, mSizeBytes);
+      std::memset(m_ptr, 0, m_sizeBytes);
     }
   }
 
-  CudaAcceleratorBuffer(void *ptr, size_t sizeBytes, AcceleratorMemoryType type,
+  CudaAcceleratorBuffer(void *ptr, size_t size_bytes, AcceleratorMemoryType type,
                         bool manage)
-      : mPtr(ptr), mSizeBytes(sizeBytes), mType(type), mOwnsMemory(manage) {}
+      : m_ptr(ptr), m_sizeBytes(size_bytes), m_type(type), m_ownsMemory(manage) {}
 
   ~CudaAcceleratorBuffer() override {
-    if (mPtr && mOwnsMemory) {
-      if (mType == AcceleratorMemoryType::Device) {
-        cudaFree(mPtr);
+    if (m_ptr && m_ownsMemory) {
+      if (m_type == AcceleratorMemoryType::Device) {
+        cudaFree(m_ptr);
       } else {
-        cudaFreeHost(mPtr);
+        cudaFreeHost(m_ptr);
       }
     }
   }
@@ -54,33 +54,33 @@ public:
 
   // Clone constructor helper
   CudaAcceleratorBuffer(const CudaAcceleratorBuffer &other, bool)
-      : mSizeBytes(other.mSizeBytes), mType(other.mType), mOwnsMemory(true) {
+      : m_sizeBytes(other.m_sizeBytes), m_type(other.m_type), m_ownsMemory(true) {
 
-    if (mSizeBytes == 0)
+    if (m_sizeBytes == 0)
       return;
 
     // Allocate
-    if (mType == AcceleratorMemoryType::Device) {
-      CHECK_CUDA_ERROR(cudaMalloc(&mPtr, mSizeBytes));
+    if (m_type == AcceleratorMemoryType::Device) {
+      CHECK_CUDA_ERROR(cudaMalloc(&m_ptr, m_sizeBytes));
       // Copy (Device to Device)
       CHECK_CUDA_ERROR(
-          cudaMemcpy(mPtr, other.mPtr, mSizeBytes, cudaMemcpyDeviceToDevice));
+          cudaMemcpy(m_ptr, other.m_ptr, m_sizeBytes, cudaMemcpyDeviceToDevice));
     } else {
-      CHECK_CUDA_ERROR(cudaMallocHost(&mPtr, mSizeBytes));
+      CHECK_CUDA_ERROR(cudaMallocHost(&m_ptr, m_sizeBytes));
       // Copy (Host to Host)
-      std::memcpy(mPtr, other.mPtr, mSizeBytes);
+      std::memcpy(m_ptr, other.m_ptr, m_sizeBytes);
     }
   }
 
-  void *get() const override { return mPtr; }
-  size_t getSizeBytes() const override { return mSizeBytes; }
-  AcceleratorMemoryType getType() const override { return mType; }
+  void *get() const override { return m_ptr; }
+  size_t getSizeBytes() const override { return m_sizeBytes; }
+  AcceleratorMemoryType getType() const override { return m_type; }
 
 private:
-  void *mPtr{nullptr};
-  size_t mSizeBytes{0};
-  AcceleratorMemoryType mType;
-  bool mOwnsMemory;
+  void *m_ptr{nullptr};
+  size_t m_sizeBytes{0};
+  AcceleratorMemoryType m_type;
+  bool m_ownsMemory;
 };
 
 // ============================================================================
@@ -88,28 +88,28 @@ private:
 // ============================================================================
 
 std::unique_ptr<AcceleratorBufferImpl>
-AcceleratorBufferImpl::create(size_t sizeBytes, AcceleratorMemoryType type) {
-  return std::make_unique<CudaAcceleratorBuffer>(sizeBytes, type);
+AcceleratorBufferImpl::create(size_t size_bytes, AcceleratorMemoryType type) {
+  return std::make_unique<CudaAcceleratorBuffer>(size_bytes, type);
 }
 
 std::unique_ptr<AcceleratorBufferImpl>
-AcceleratorBufferImpl::createReference(void *ptr, size_t sizeBytes,
+AcceleratorBufferImpl::createReference(void *ptr, size_t size_bytes,
                                        AcceleratorMemoryType type,
-                                       bool manageMemory) {
-  return std::make_unique<CudaAcceleratorBuffer>(ptr, sizeBytes, type,
-                                                 manageMemory);
+                                       bool manage_memory) {
+  return std::make_unique<CudaAcceleratorBuffer>(ptr, size_bytes, type,
+                                                 manage_memory);
 }
 
 std::unique_ptr<AcceleratorBufferImpl>
 AcceleratorBufferImpl::clone(const AcceleratorBufferImpl &other) {
   // Dynamic cast ensures we are cloning a compatible CUDA buffer
-  const auto *cudaImpl = dynamic_cast<const CudaAcceleratorBuffer *>(&other);
-  if (!cudaImpl) {
+  const auto *cuda_impl = dynamic_cast<const CudaAcceleratorBuffer *>(&other);
+  if (!cuda_impl) {
     throw std::runtime_error(
         "Cannot clone incompatible accelerator buffer type.");
   }
   // Invoke private clone constructor
-  return std::make_unique<CudaAcceleratorBuffer>(*cudaImpl, true);
+  return std::make_unique<CudaAcceleratorBuffer>(*cuda_impl, true);
 }
 
 } // namespace ai_core

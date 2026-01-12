@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef __POSTPROCESS_TYPES_HPP__
-#define __POSTPROCESS_TYPES_HPP__
+#ifndef AI_CORE_POSTPROCESS_TYPES_HPP
+#define AI_CORE_POSTPROCESS_TYPES_HPP
 
 #include <string>
 #include <vector>
@@ -18,37 +18,37 @@ namespace ai_core {
 
 struct GenericPostParams {
   enum class AlgoType : int8_t {
-    SOFTMAX_CLS = 0,
-    FPR_CLS,
-    RAW_MODEL_OUTPUT,
-    UNET_DUAL_OUTPUT,
-    OCR_RECO
+    SoftmaxCls = 0,
+    FprCls,
+    RawModelOutput,
+    UnetDualOutput,
+    OcrReco
   };
 
-  AlgoType algoType;
-  std::vector<std::string> outputNames;
+  AlgoType algo_type;
+  std::vector<std::string> output_names;
 };
 
 struct ConfidenceFilterParams {
-  enum class AlgoType : int8_t { SEMANTIC_SEG = 0 };
-  AlgoType algoType;
-  float condThre;
-  std::vector<std::string> outputNames;
+  enum class AlgoType : int8_t { SemanticSeg = 0 };
+  AlgoType algo_type;
+  float cond_thre;
+  std::vector<std::string> output_names;
 };
 
 struct AnchorDetParams {
   enum class AlgoType : int8_t {
-    YOLO_DET_V11 = 0,
-    RTM_DET,
-    NANO_DET,
+    YoloDetV11 = 0,
+    RtmDet,
+    NanoDet,
   };
 
-  float condThre;
-  float nmsThre;
+  float cond_thre;
+  float nms_thre;
 
-  AlgoType algoType;
-  std::vector<std::string> outputNames;
+  AlgoType algo_type;
+  std::vector<std::string> output_names;
 };
 } // namespace ai_core
 
-#endif // __POSTPROCESS_TYPES_HPP__
+#endif

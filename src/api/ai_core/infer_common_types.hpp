@@ -8,19 +8,19 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFER_COMMON_TYPES_HPP__
-#define __INFER_COMMON_TYPES_HPP__
+#ifndef AI_CORE_INFER_COMMON_TYPES_HPP
+#define AI_CORE_INFER_COMMON_TYPES_HPP
 
 #include <string>
 #include <vector>
 
 namespace cv {
-template <typename _Tp> class Rect_;
+template <typename Tp> class Rect_;
 using Rect = Rect_<int>;
 
 class Mat;
 
-template <typename _Tp> class Point_;
+template <typename Tp> class Point_;
 using Point = Point_<int>;
 using Point2f = Point_<float>;
 } // namespace cv
@@ -48,7 +48,7 @@ struct ModelInfo {
   struct TensorInfo {
     std::string name;
     std::vector<int64_t> shape;
-    DataType dataType;
+    DataType data_type;
   };
 
   std::vector<TensorInfo> inputs;
@@ -57,4 +57,4 @@ struct ModelInfo {
 
 } // namespace ai_core
 
-#endif // __INFER_COMMON_TYPES_HPP__
+#endif

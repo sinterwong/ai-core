@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __AI_CORE_ALGO_INFER_BASE_HPP__
-#define __AI_CORE_ALGO_INFER_BASE_HPP__
+#ifndef AI_CORE_ALGO_INFER_BASE_HPP
+#define AI_CORE_ALGO_INFER_BASE_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_common_types.hpp"
@@ -21,21 +21,21 @@ namespace ai_core::dnn {
 
 class AlgoInference {
 public:
-  AlgoInference(const AlgoModuleTypes &moduleTypes,
-                const AlgoInferParams &inferParams);
+  AlgoInference(const AlgoModuleTypes &module_types,
+                const AlgoInferParams &infer_params);
 
   ~AlgoInference();
 
   InferErrorCode initialize();
 
   InferErrorCode infer(const AlgoInput &input,
-                       const AlgoPreprocParams &preprocParams,
-                       const AlgoPostprocParams &postprocParams,
+                       const AlgoPreprocParams &preproc_params,
+                       const AlgoPostprocParams &postproc_params,
                        AlgoOutput &output);
 
   InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs,
-                            const AlgoPreprocParams &preprocParams,
-                            const AlgoPostprocParams &postprocParams,
+                            const AlgoPreprocParams &preproc_params,
+                            const AlgoPostprocParams &postproc_params,
                             std::vector<AlgoOutput> &outputs);
 
   InferErrorCode terminate();
@@ -46,7 +46,7 @@ public:
 
 private:
   class Impl;
-  std::unique_ptr<Impl> pImpl;
+  std::unique_ptr<Impl> m_pImpl;
 };
 } // namespace ai_core::dnn
-#endif // __AI_CORE_ALGO_INFER_BASE_HPP__
+#endif

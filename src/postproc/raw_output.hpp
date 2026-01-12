@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP_
-#define __INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP_
+#ifndef AI_CORE_INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP
+#define AI_CORE_INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP
 
 #include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {

@@ -30,22 +30,22 @@ using namespace ai_core;
 using namespace ai_core::dnn;
 
 struct TestConfig {
-  std::string testName;
+  std::string test_name;
 
   std::function<std::shared_ptr<IInferEnginePlugin>(
       const AlgoConstructParams &)>
-      engineFactory;
+      engine_factory;
 
-  std::string modelPath;
-  DataType inferDataType;
-  DataType preprocDataType;
-  DeviceType deviceType;
-  std::string inputName;
-  FramePreprocessArg::FramePreprocType preprocTaskType =
-      FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
-  BufferLocation bufferLocation = BufferLocation::CPU;
-  bool needDecrypt = false;
-  std::string decryptkeyStr = "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25";
+  std::string model_path;
+  DataType infer_data_type;
+  DataType preproc_data_type;
+  DeviceType device_type;
+  std::string input_name;
+  FramePreprocessArg::FramePreprocType preproc_task_type =
+      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
+  BufferLocation buffer_location = BufferLocation::CPU;
+  bool need_decrypt = false;
+  std::string decryptkey_str = "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25";
 };
 
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
@@ -57,188 +57,188 @@ protected:
     ai_core::logging::Logger::instance().enableFile(false);
     ai_core::logging::Logger::instance().enableColor(true);
 
-    framePreproc = std::make_shared<FramePreprocess>();
-    ASSERT_NE(framePreproc, nullptr);
+    m_framePreproc = std::make_shared<FramePreprocess>();
+    ASSERT_NE(m_framePreproc, nullptr);
 
-    yoloDetPostproc = std::make_shared<AnchorDetPostproc>();
-    ASSERT_NE(yoloDetPostproc, nullptr);
+    m_yoloDetPostproc = std::make_shared<AnchorDetPostproc>();
+    ASSERT_NE(m_yoloDetPostproc, nullptr);
   }
 
-  void CheckResults(const DetRet *detRet) {
-    ASSERT_NE(detRet, nullptr);
-    ASSERT_EQ(detRet->bboxes.size(), 1);
+  void checkResults(const DetRet *det_ret) {
+    ASSERT_NE(det_ret, nullptr);
+    ASSERT_EQ(det_ret->bboxes.size(), 1);
 
     const auto &box0 =
-        (detRet->bboxes[0].label == 0) ? detRet->bboxes[0] : detRet->bboxes[1];
+        (det_ret->bboxes[0].label == 0) ? det_ret->bboxes[0] : det_ret->bboxes[1];
 
     ASSERT_EQ(box0.label, 0);
     ASSERT_NEAR(box0.score, 0.811, 1e-2);
   }
 
-  fs::path resourceDir = fs::path("assets");
-  fs::path confDir = resourceDir / "conf";
-  fs::path dataDir = resourceDir / "data";
+  fs::path m_resourceDir = fs::path("assets");
+  fs::path m_confDir = m_resourceDir / "conf";
+  fs::path m_dataDir = m_resourceDir / "data";
 
-  std::string imagePath = (dataDir / "yolov11/image.png").string();
+  std::string m_image_path = (m_dataDir / "yolov11/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> framePreproc;
-  std::shared_ptr<IPostprocssPlugin> yoloDetPostproc;
+  std::shared_ptr<IPreprocssPlugin> m_framePreproc;
+  std::shared_ptr<IPostprocssPlugin> m_yoloDetPostproc;
 };
 
 TEST_P(YoloDetInferenceTest, Normal) {
   const auto &config = GetParam();
 
-  AlgoConstructParams tempInferParams;
-  AlgoInferParams inferParams;
-  inferParams.dataType = config.inferDataType;
-  inferParams.modelPath = config.modelPath;
-  inferParams.name = "yolov11n";
-  inferParams.deviceType = config.deviceType;
-  inferParams.needDecrypt = config.needDecrypt;
-  inferParams.decryptkeyStr = config.decryptkeyStr;
-  tempInferParams.setParam("params", inferParams);
+  AlgoConstructParams temp_infer_params;
+  AlgoInferParams infer_params;
+  infer_params.data_type = config.infer_data_type;
+  infer_params.model_path = config.model_path;
+  infer_params.name = "yolov11n";
+  infer_params.device_type = config.device_type;
+  infer_params.need_decrypt = config.need_decrypt;
+  infer_params.decryptkey_str = config.decryptkey_str;
+  temp_infer_params.setParam("params", infer_params);
 
   std::shared_ptr<IInferEnginePlugin> engine =
-      config.engineFactory(tempInferParams);
+      config.engine_factory(temp_infer_params);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
   engine->prettyPrintModelInfos();
 
-  cv::Mat image = cv::imread(imagePath);
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
+  cv::Mat image = cv::imread(m_image_path);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
-  AlgoPreprocParams preprocParams;
-  FramePreprocessArg framePreprocessArg;
-  framePreprocessArg.modelInputShape = {640, 640, 3};
-  framePreprocessArg.dataType = config.preprocDataType; // 使用 config
-  framePreprocessArg.needResize = true;
-  framePreprocessArg.isEqualScale = true;
-  framePreprocessArg.pad = {0, 0, 0};
-  framePreprocessArg.meanVals = {0, 0, 0};
-  framePreprocessArg.normVals = {255.f, 255.f, 255.f};
-  framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputNames = {config.inputName};
-  framePreprocessArg.preprocTaskType = config.preprocTaskType;
-  framePreprocessArg.outputLocation = config.bufferLocation;
-  preprocParams.setParams(framePreprocessArg);
+  AlgoPreprocParams preproc_params;
+  FramePreprocessArg frame_preprocess_arg;
+  frame_preprocess_arg.model_input_shape = {640, 640, 3};
+  frame_preprocess_arg.data_type = config.preproc_data_type; // 使用 config
+  frame_preprocess_arg.need_resize = true;
+  frame_preprocess_arg.is_equal_scale = true;
+  frame_preprocess_arg.pad = {0, 0, 0};
+  frame_preprocess_arg.mean_vals = {0, 0, 0};
+  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.hwc2chw = true;
+  frame_preprocess_arg.input_names = {config.input_name};
+  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
+  frame_preprocess_arg.output_location = config.buffer_location;
+  preproc_params.setParams(frame_preprocess_arg);
 
-  AlgoPostprocParams postprocParams;
-  AnchorDetParams anchorDetParams;
-  anchorDetParams.algoType = AnchorDetParams::AlgoType::YOLO_DET_V11;
-  anchorDetParams.condThre = 0.5f;
-  anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.outputNames = {"output0"};
-  postprocParams.setParams(anchorDetParams);
+  AlgoPostprocParams postproc_params;
+  AnchorDetParams anchor_det_params;
+  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
+  anchor_det_params.cond_thre = 0.5f;
+  anchor_det_params.nms_thre = 0.45f;
+  anchor_det_params.output_names = {"output0"};
+  postproc_params.setParams(anchor_det_params);
 
-  AlgoInput algoInput;
-  FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(2, 2, imageRGB.cols - 4, imageRGB.rows - 4);
-  algoInput.setParams(frameInput);
+  AlgoInput algo_input;
+  FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4, image_rgb.rows - 4);
+  algo_input.setParams(frame_input);
 
-  std::shared_ptr<RuntimeContext> runtimeContext =
+  std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
-  TensorData modelInput;
-  framePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
+  TensorData model_input;
+  m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
 
-  TensorData modelOutput;
-  ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);
+  TensorData model_output;
+  ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);
 
-  AlgoOutput algoOutput;
-  ASSERT_TRUE(yoloDetPostproc->process(modelOutput, postprocParams, algoOutput,
-                                       runtimeContext));
+  AlgoOutput algo_output;
+  ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
+                                       runtime_context));
 
-  auto *detRet = algoOutput.getParams<DetRet>();
-  CheckResults(detRet);
+  auto *det_ret = algo_output.getParams<DetRet>();
+  checkResults(det_ret);
 
-  cv::Mat visImage = image.clone();
-  for (const auto &bbox : detRet->bboxes) {
-    cv::rectangle(visImage, *bbox.rect, cv::Scalar(0, 255, 0), 2);
+  cv::Mat vis_image = image.clone();
+  for (const auto &bbox : det_ret->bboxes) {
+    cv::rectangle(vis_image, *bbox.rect, cv::Scalar(0, 255, 0), 2);
     std::stringstream ss;
     ss << bbox.label << ":" << std::fixed << std::setprecision(2) << bbox.score;
-    cv::putText(visImage, ss.str(), bbox.rect->tl(), cv::FONT_HERSHEY_SIMPLEX,
+    cv::putText(vis_image, ss.str(), bbox.rect->tl(), cv::FONT_HERSHEY_SIMPLEX,
                 1, cv::Scalar(0, 0, 255), 2);
   }
-  std::string output_filename = "vis_yolodet_" + config.testName + ".png";
-  cv::imwrite(output_filename, visImage);
+  std::string output_filename = "vis_yolodet_" + config.test_name + ".png";
+  cv::imwrite(output_filename, vis_image);
 }
 
 TEST_P(YoloDetInferenceTest, MultiThreads) {
   const auto &config = GetParam();
 
-  AlgoConstructParams tempInferParams;
-  AlgoInferParams inferParams;
-  inferParams.dataType = config.inferDataType;
-  inferParams.modelPath = config.modelPath;
-  inferParams.name = "yolov11n";
-  inferParams.deviceType = config.deviceType;
-  inferParams.needDecrypt = config.needDecrypt;
-  inferParams.decryptkeyStr = config.decryptkeyStr;
-  tempInferParams.setParam("params", inferParams);
+  AlgoConstructParams temp_infer_params;
+  AlgoInferParams infer_params;
+  infer_params.data_type = config.infer_data_type;
+  infer_params.model_path = config.model_path;
+  infer_params.name = "yolov11n";
+  infer_params.device_type = config.device_type;
+  infer_params.need_decrypt = config.need_decrypt;
+  infer_params.decryptkey_str = config.decryptkey_str;
+  temp_infer_params.setParam("params", infer_params);
 
   std::shared_ptr<IInferEnginePlugin> engine =
-      config.engineFactory(tempInferParams);
+      config.engine_factory(temp_infer_params);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
-  cv::Mat image = cv::imread(imagePath);
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
+  cv::Mat image = cv::imread(m_image_path);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
-  AlgoPreprocParams preprocParams;
-  FramePreprocessArg framePreprocessArg;
-  framePreprocessArg.modelInputShape = {640, 640, 3};
-  framePreprocessArg.dataType = config.preprocDataType;
-  framePreprocessArg.needResize = true;
-  framePreprocessArg.isEqualScale = true;
-  framePreprocessArg.pad = {0, 0, 0};
-  framePreprocessArg.meanVals = {0, 0, 0};
-  framePreprocessArg.normVals = {255.f, 255.f, 255.f};
-  framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputNames = {config.inputName};
-  framePreprocessArg.preprocTaskType = config.preprocTaskType;
-  framePreprocessArg.outputLocation = config.bufferLocation;
-  preprocParams.setParams(framePreprocessArg);
+  AlgoPreprocParams preproc_params;
+  FramePreprocessArg frame_preprocess_arg;
+  frame_preprocess_arg.model_input_shape = {640, 640, 3};
+  frame_preprocess_arg.data_type = config.preproc_data_type;
+  frame_preprocess_arg.need_resize = true;
+  frame_preprocess_arg.is_equal_scale = true;
+  frame_preprocess_arg.pad = {0, 0, 0};
+  frame_preprocess_arg.mean_vals = {0, 0, 0};
+  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.hwc2chw = true;
+  frame_preprocess_arg.input_names = {config.input_name};
+  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
+  frame_preprocess_arg.output_location = config.buffer_location;
+  preproc_params.setParams(frame_preprocess_arg);
 
-  AlgoPostprocParams postprocParams;
-  AnchorDetParams anchorDetParams;
-  anchorDetParams.algoType = AnchorDetParams::AlgoType::YOLO_DET_V11;
-  anchorDetParams.condThre = 0.5f;
-  anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.outputNames = {"output0"};
-  postprocParams.setParams(anchorDetParams);
+  AlgoPostprocParams postproc_params;
+  AnchorDetParams anchor_det_params;
+  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
+  anchor_det_params.cond_thre = 0.5f;
+  anchor_det_params.nms_thre = 0.45f;
+  anchor_det_params.output_names = {"output0"};
+  postproc_params.setParams(anchor_det_params);
 
-  AlgoInput algoInput;
-  FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(2, 2, imageRGB.cols - 4, imageRGB.rows - 4);
-  algoInput.setParams(frameInput);
+  AlgoInput algo_input;
+  FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4, image_rgb.rows - 4);
+  algo_input.setParams(frame_input);
 
   std::vector<std::thread> threads;
   for (int i = 0; i < 50; ++i) {
     threads.emplace_back([&]() {
-      std::shared_ptr<RuntimeContext> runtimeContext =
+      std::shared_ptr<RuntimeContext> runtime_context =
           std::make_shared<RuntimeContext>();
 
-      TensorData modelInput;
-      framePreproc->process(algoInput, preprocParams, modelInput,
-                            runtimeContext);
+      TensorData model_input;
+      m_framePreproc->process(algo_input, preproc_params, model_input,
+                            runtime_context);
 
-      TensorData modelOutput;
-      ASSERT_EQ(engine->infer(modelInput, modelOutput),
+      TensorData model_output;
+      ASSERT_EQ(engine->infer(model_input, model_output),
                 InferErrorCode::SUCCESS);
 
-      AlgoOutput algoOutput;
-      ASSERT_TRUE(yoloDetPostproc->process(modelOutput, postprocParams,
-                                           algoOutput, runtimeContext));
+      AlgoOutput algo_output;
+      ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params,
+                                           algo_output, runtime_context));
 
-      auto *detRet = algoOutput.getParams<DetRet>();
-      CheckResults(detRet);
+      auto *det_ret = algo_output.getParams<DetRet>();
+      checkResults(det_ret);
     });
   }
 
@@ -249,7 +249,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   }
 }
 
-std::vector<TestConfig> GetTestConfigs() {
+std::vector<TestConfig> getTestConfigs() {
   std::vector<TestConfig> configs;
 #ifdef WITH_ORT
   configs.push_back({"ort",
@@ -258,7 +258,7 @@ std::vector<TestConfig> GetTestConfigs() {
                      },
                      "assets/models/yolov11n-fp16.onnx", DataType::FLOAT16,
                      DataType::FLOAT16, DeviceType::CPU, "images",
-                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
   configs.push_back({"ort_enc",
                      [](const AlgoConstructParams &p) {
@@ -267,7 +267,7 @@ std::vector<TestConfig> GetTestConfigs() {
                      "assets/enc_models/yolov11n-fp16.enc.onnx",
                      DataType::FLOAT16, DataType::FLOAT16, DeviceType::CPU,
                      "images",
-                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, true});
 #endif
 #ifdef WITH_NCNN
@@ -277,7 +277,7 @@ std::vector<TestConfig> GetTestConfigs() {
                      },
                      "assets/models/yolov11n.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
-                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
   configs.push_back({"ncnn_enc",
                      [](const AlgoConstructParams &p) {
@@ -285,19 +285,19 @@ std::vector<TestConfig> GetTestConfigs() {
                      },
                      "assets/enc_models/yolov11n.enc.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
-                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, true});
 #endif
   return configs;
 }
 
 std::string testNameGenerator(const testing::TestParamInfo<TestConfig> &info) {
-  return info.param.testName;
+  return info.param.test_name;
 }
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(YoloDetInferenceTest);
 
 INSTANTIATE_TEST_SUITE_P(YoloInferenceBackends, YoloDetInferenceTest,
-                         ::testing::ValuesIn(GetTestConfigs()),
+                         ::testing::ValuesIn(getTestConfigs()),
                          testNameGenerator);
 
 } // namespace testing_yolo_det

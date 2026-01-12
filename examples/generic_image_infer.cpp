@@ -3,8 +3,8 @@
 #include "algo_config_parser.hpp"
 
 namespace ai_core::example {
-GenericImageInfer::GenericImageInfer(const std::string &configPath) {
-  mParams = utils::AlgoConfigParser(configPath).parse();
+GenericImageInfer::GenericImageInfer(const std::string &config_path) {
+  mParams = utils::AlgoConfigParser(config_path).parse();
 
   mEngine = std::make_shared<dnn::AlgoInference>(mParams.modelTypes,
                                                  mParams.inferParams);
@@ -22,25 +22,25 @@ AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
     return {};
   }
 
-  cv::Rect detRoi = roi;
-  if (detRoi.empty()) {
-    detRoi = cv::Rect(0, 0, image.cols, image.rows);
+  cv::Rect det_roi = roi;
+  if (det_roi.empty()) {
+    det_roi = cv::Rect(0, 0, image.cols, image.rows);
   }
 
-  AlgoInput algoInput;
-  FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(image);
-  frameInput.inputRoi = std::make_shared<cv::Rect>(detRoi);
-  algoInput.setParams(frameInput);
+  AlgoInput algo_input;
+  FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image);
+  frame_input.input_roi = std::make_shared<cv::Rect>(det_roi);
+  algo_input.setParams(frame_input);
 
-  AlgoOutput algoOutput;
-  if (mEngine->infer(algoInput, mParams.preprocParams, mParams.postprocParams,
-                     algoOutput) != InferErrorCode::SUCCESS) {
+  AlgoOutput algo_output;
+  if (mEngine->infer(algo_input, mParams.preproc_params, mParams.postproc_params,
+                     algo_output) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "engine infer failed";
     return {};
   }
 
-  return algoOutput;
+  return algo_output;
 }
 
 std::vector<ai_core::AlgoOutput>
@@ -55,31 +55,31 @@ GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
     return {};
   }
 
-  std::vector<AlgoInput> algoInputs(images.size());
+  std::vector<AlgoInput> algo_inputs(images.size());
   for (size_t i = 0; i < images.size(); ++i) {
     if (images[i].empty()) {
       LOG_WARNINGS << "Input image at index " << i << " is empty, skipping.";
       continue;
     }
 
-    cv::Rect detRoi = rois[i];
-    if (detRoi.empty()) {
-      detRoi = cv::Rect(0, 0, images[i].cols, images[i].rows);
+    cv::Rect det_roi = rois[i];
+    if (det_roi.empty()) {
+      det_roi = cv::Rect(0, 0, images[i].cols, images[i].rows);
     }
 
-    FrameInput frameInput;
-    frameInput.image = std::make_shared<cv::Mat>(images[i]);
-    frameInput.inputRoi = std::make_shared<cv::Rect>(detRoi);
-    algoInputs[i].setParams(frameInput);
+    FrameInput frame_input;
+    frame_input.image = std::make_shared<cv::Mat>(images[i]);
+    frame_input.input_roi = std::make_shared<cv::Rect>(det_roi);
+    algo_inputs[i].setParams(frame_input);
   }
 
-  std::vector<AlgoOutput> algoOutputs;
-  if (mEngine->batchInfer(algoInputs, mParams.preprocParams,
-                          mParams.postprocParams,
-                          algoOutputs) != InferErrorCode::SUCCESS) {
+  std::vector<AlgoOutput> algo_outputs;
+  if (mEngine->batchInfer(algo_inputs, mParams.preproc_params,
+                          mParams.postproc_params,
+                          algo_outputs) != InferErrorCode::SUCCESS) {
     LOG_ERRORS << "engine batch infer failed";
     return {};
   }
-  return algoOutputs;
+  return algo_outputs;
 }
 } // namespace ai_core::example

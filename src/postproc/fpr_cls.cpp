@@ -10,88 +10,88 @@
  */
 #include "fpr_cls.hpp"
 #include "ai_core/algo_output_types.hpp"
-
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool FprCls::process(const TensorData &modelOutput,
-                     const FrameTransformContext &prepArgs,
-                     const GenericPostParams &postArgs,
-                     AlgoOutput &algoOutput) const {
-  const auto &scoreOutputName = postArgs.outputNames.at(0);
-  const auto &biradOutputName = postArgs.outputNames.at(1);
+bool FprCls::process(const TensorData &model_output,
+                     const FrameTransformContext &prep_args,
+                     const GenericPostParams &post_args,
+                     AlgoOutput &algo_output) const {
+  const auto &score_output_name = post_args.output_names.at(0);
+  const auto &birad_output_name = post_args.output_names.at(1);
 
-  const auto &outputs = modelOutput.datas;
-  auto pScores = outputs.at(scoreOutputName);
-  auto pBirads = outputs.at(biradOutputName);
+  const auto &outputs = model_output.datas;
+  auto p_scores = outputs.at(score_output_name);
+  auto p_birads = outputs.at(birad_output_name);
 
-  std::vector<int> pScoresShape = modelOutput.shapes.at(scoreOutputName);
-  int numClasses = pScoresShape.at(pScoresShape.size() - 1);
+  std::vector<int> p_scores_shape = model_output.shapes.at(score_output_name);
+  int num_classes = p_scores_shape.at(p_scores_shape.size() - 1);
 
-  std::vector<int> pBiradsShape = modelOutput.shapes.at(biradOutputName);
-  int numBirads = pBiradsShape.at(pBiradsShape.size() - 1);
+  std::vector<int> p_birads_shape = model_output.shapes.at(birad_output_name);
+  int num_birads = p_birads_shape.at(p_birads_shape.size() - 1);
 
-  FprClsRet fprRet = processSingleItem(pScores.getHostPtr<float>(), numClasses,
-                                       pBirads.getHostPtr<float>(), numBirads);
+  FprClsRet fpr_ret =
+      processSingleItem(p_scores.getHostPtr<float>(), num_classes,
+                        p_birads.getHostPtr<float>(), num_birads);
 
-  algoOutput.setParams(fprRet);
+  algo_output.setParams(fpr_ret);
   return true;
 }
 
-bool FprCls::batchProcess(const TensorData &modelOutput,
-                          const std::vector<FrameTransformContext> &prepArgs,
-                          const GenericPostParams &postArgs,
-                          std::vector<AlgoOutput> &algoOutput) const {
-  const auto &scoreOutputName = postArgs.outputNames.at(0);
-  const auto &biradOutputName = postArgs.outputNames.at(1);
+bool FprCls::batchProcess(const TensorData &model_output,
+                          const std::vector<FrameTransformContext> &prep_args,
+                          const GenericPostParams &post_args,
+                          std::vector<AlgoOutput> &algo_output) const {
+  const auto &score_output_name = post_args.output_names.at(0);
+  const auto &birad_output_name = post_args.output_names.at(1);
 
-  const auto &outputs = modelOutput.datas;
-  auto pScores = outputs.at(scoreOutputName);
-  auto pBirads = outputs.at(biradOutputName);
+  const auto &outputs = model_output.datas;
+  auto p_scores = outputs.at(score_output_name);
+  auto p_birads = outputs.at(birad_output_name);
 
-  std::vector<int> pScoresShape = modelOutput.shapes.at(scoreOutputName);
-  int batchSize = pScoresShape.at(0);
-  int numClasses = pScoresShape.at(pScoresShape.size() - 1);
+  std::vector<int> p_scores_shape = model_output.shapes.at(score_output_name);
+  int batch_size = p_scores_shape.at(0);
+  int num_classes = p_scores_shape.at(p_scores_shape.size() - 1);
 
-  std::vector<int> pBiradsShape = modelOutput.shapes.at(biradOutputName);
-  int numBirads = pBiradsShape.at(pBiradsShape.size() - 1);
+  std::vector<int> p_birads_shape = model_output.shapes.at(birad_output_name);
+  int num_birads = p_birads_shape.at(p_birads_shape.size() - 1);
 
-  const float *scoresData = pScores.getHostPtr<float>();
-  const float *biradsData = pBirads.getHostPtr<float>();
+  const float *scores_data = p_scores.getHostPtr<float>();
+  const float *birads_data = p_birads.getHostPtr<float>();
 
-  algoOutput.resize(batchSize);
+  algo_output.resize(batch_size);
 
-  for (int i = 0; i < batchSize; ++i) {
-    const float *currentScores = scoresData + i * numClasses;
-    const float *currentBirads = biradsData + i * numBirads;
+  for (int i = 0; i < batch_size; ++i) {
+    const float *current_scores = scores_data + i * num_classes;
+    const float *current_birads = birads_data + i * num_birads;
 
-    FprClsRet fprRet =
-        processSingleItem(currentScores, numClasses, currentBirads, numBirads);
-    algoOutput[i].setParams(fprRet);
+    FprClsRet fpr_ret = processSingleItem(current_scores, num_classes,
+                                          current_birads, num_birads);
+    algo_output[i].setParams(fpr_ret);
   }
   return true;
 }
 
-FprClsRet FprCls::processSingleItem(const float *scoresData, int numClasses,
-                                    const float *biradsData,
-                                    int numBirads) const {
-  cv::Mat scores(1, numClasses, CV_32F, const_cast<float *>(scoresData));
-  cv::Mat birads(1, numBirads, CV_32F, const_cast<float *>(biradsData));
+FprClsRet FprCls::processSingleItem(const float *scores_data, int num_classes,
+                                    const float *birads_data,
+                                    int num_birads) const {
+  cv::Mat scores(1, num_classes, CV_32F, const_cast<float *>(scores_data));
+  cv::Mat birads(1, num_birads, CV_32F, const_cast<float *>(birads_data));
 
-  cv::Point classIdPoint;
+  cv::Point class_id_point;
   double score;
-  cv::minMaxLoc(scores, nullptr, &score, nullptr, &classIdPoint);
+  cv::minMaxLoc(scores, nullptr, &score, nullptr, &class_id_point);
 
-  cv::Point biradsIdPoint;
-  double biradsScore;
-  cv::minMaxLoc(birads, nullptr, &biradsScore, nullptr, &biradsIdPoint);
+  cv::Point birads_id_point;
+  double birads_score;
+  cv::minMaxLoc(birads, nullptr, &birads_score, nullptr, &birads_id_point);
 
-  FprClsRet fprRet;
-  fprRet.score = score;
-  fprRet.label = classIdPoint.x;
-  fprRet.scoreProbs.assign(scoresData, scoresData + numClasses);
-  fprRet.birad = biradsIdPoint.x;
+  FprClsRet fpr_ret;
+  fpr_ret.score = score;
+  fpr_ret.label = class_id_point.x;
+  fpr_ret.score_probs.assign(scores_data, scores_data + num_classes);
+  fpr_ret.birad = birads_id_point.x;
 
-  return fprRet;
+  return fpr_ret;
 }
 } // namespace ai_core::dnn

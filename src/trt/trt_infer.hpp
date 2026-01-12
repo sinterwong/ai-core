@@ -144,7 +144,7 @@ public:
    * @return TypedBuffer backed by pinned memory
    */
   TypedBuffer allocateAcceleratorBuffer(DataType type,
-                                        size_t sizeBytes) override;
+                                        size_t size_bytes) override;
 
   /**
    * @brief Create stream with pre-allocated pinned I/O buffers
@@ -188,48 +188,48 @@ private:
   // Member Variables - Shared Resources
   // ============================================================================
 
-  AlgoInferParams mParams;
-  TrtFrameworkLogger mLogger;
+  AlgoInferParams m_params;
+  TrtFrameworkLogger m_logger;
 
   // TRT core components (shared across all streams)
-  std::unique_ptr<nvinfer1::IRuntime> mRuntime;
+  std::unique_ptr<nvinfer1::IRuntime> m_runtime;
   // Use shared_ptr so that streams can keep the engine alive
   // This prevents "destroying engine before context" errors
-  std::shared_ptr<nvinfer1::ICudaEngine> mEngine;
+  std::shared_ptr<nvinfer1::ICudaEngine> m_engine;
 
   // Model metadata (shared, read-only after init)
-  std::shared_ptr<ModelInfo> modelInfo;
+  std::shared_ptr<ModelInfo> m_modelInfo;
 
   // Binding metadata (shared, read-only after init)
-  std::unordered_set<std::string> mDynamicInputTensorNames;
-  std::unordered_map<std::string, size_t> mTensorSizeMap;
-  bool mAllInputsStatic{true};
+  std::unordered_set<std::string> m_dynamicInputTensorNames;
+  std::unordered_map<std::string, size_t> m_tensorSizeMap;
+  bool m_allInputsStatic{true};
 
-  bool mIsInitialized{false};
+  bool m_isInitialized{false};
 
   // ============================================================================
   // Member Variables - Default Stream Resources (for sync infer())
   // ============================================================================
 
   // Execution context for default sync stream
-  std::unique_ptr<nvinfer1::IExecutionContext> mContext;
+  std::unique_ptr<nvinfer1::IExecutionContext> m_context;
 
   // CUDA stream for default sync path
-  cudaStream_t mStream{nullptr};
+  cudaStream_t m_stream{nullptr};
 
   // Device buffers for default sync path
-  std::vector<cuda_utils::DeviceByteBuffer> mManagedBuffers;
-  std::unordered_map<std::string, void *> mTensorAddressMap;
+  std::vector<cuda_utils::DeviceByteBuffer> m_managedBuffers;
+  std::unordered_map<std::string, void *> m_tensorAddressMap;
 
   // Pinned output buffers for default sync path
   std::unordered_map<std::string, cuda_utils::CudaHostBuffer<uint8_t>>
-      mPinnedOutputBuffers;
+      m_pinnedOutputBuffers;
 
   // Cached input shapes (to avoid redundant setInputShape calls)
-  std::unordered_map<std::string, std::vector<int64_t>> mCachedInputShapes;
+  std::unordered_map<std::string, std::vector<int64_t>> m_cachedInputShapes;
 
   // Mutex for thread-safe sync infer()
-  mutable std::mutex mMutex;
+  mutable std::mutex m_mutex;
 };
 
 } // namespace ai_core::dnn

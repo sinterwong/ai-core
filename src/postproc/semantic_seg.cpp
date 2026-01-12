@@ -15,173 +15,173 @@
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
-bool SemanticSeg::process(const TensorData &modelOutput,
-                          const FrameTransformContext &prepArgs,
-                          const ConfidenceFilterParams &postArgs,
-                          AlgoOutput &algoOutput) const {
-  const auto &featMapOutputName = postArgs.outputNames.at(0);
-  const auto &featMapOutput = modelOutput.datas.at(featMapOutputName);
-  const auto &featMapShape = modelOutput.shapes.at(featMapOutputName);
+bool SemanticSeg::process(const TensorData &model_output,
+                          const FrameTransformContext &prep_args,
+                          const ConfidenceFilterParams &post_args,
+                          AlgoOutput &algo_output) const {
+  const auto &feat_map_output_name = post_args.output_names.at(0);
+  const auto &feat_map_output = model_output.datas.at(feat_map_output_name);
+  const auto &feat_map_shape = model_output.shapes.at(feat_map_output_name);
 
-  const int numClasses = featMapShape.at(featMapShape.size() - 3);
-  const int height = featMapShape.at(featMapShape.size() - 2);
-  const int width = featMapShape.at(featMapShape.size() - 1);
+  const int num_classes = feat_map_shape.at(feat_map_shape.size() - 3);
+  const int height = feat_map_shape.at(feat_map_shape.size() - 2);
+  const int width = feat_map_shape.at(feat_map_shape.size() - 1);
 
-  if (numClasses > 256) {
+  if (num_classes > 256) {
     LOG_ERROR_S << "Too many classes for CV_8UC1 mask.";
     return false;
   }
 
-  const float *data = featMapOutput.getHostPtr<float>();
-  SegRet segRet =
-      processSingleItem(data, numClasses, height, width, prepArgs, postArgs);
+  const float *data = feat_map_output.getHostPtr<float>();
+  SegRet seg_ret =
+      processSingleItem(data, num_classes, height, width, prep_args, post_args);
 
-  algoOutput.setParams(segRet);
+  algo_output.setParams(seg_ret);
   return true;
 }
 
 bool SemanticSeg::batchProcess(
-    const TensorData &modelOutput,
-    const std::vector<FrameTransformContext> &prepArgs,
-    const ConfidenceFilterParams &postArgs,
-    std::vector<AlgoOutput> &algoOutput) const {
-  const auto &featMapOutputName = postArgs.outputNames.at(0);
-  const auto &featMapOutput = modelOutput.datas.at(featMapOutputName);
-  const auto &featMapShape = modelOutput.shapes.at(featMapOutputName);
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const ConfidenceFilterParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
+  const auto &feat_map_output_name = post_args.output_names.at(0);
+  const auto &feat_map_output = model_output.datas.at(feat_map_output_name);
+  const auto &feat_map_shape = model_output.shapes.at(feat_map_output_name);
 
-  if (featMapShape.size() != 4) {
+  if (feat_map_shape.size() != 4) {
     LOG_ERROR_S << "Expected a 4D tensor for batch processing (NCHW), but got "
-                << featMapShape.size() << " dimensions.";
+                << feat_map_shape.size() << " dimensions.";
     return false;
   }
 
-  const int batchSize = featMapShape.at(0);
-  const int numClasses = featMapShape.at(1);
-  const int height = featMapShape.at(2);
-  const int width = featMapShape.at(3);
+  const int batch_size = feat_map_shape.at(0);
+  const int num_classes = feat_map_shape.at(1);
+  const int height = feat_map_shape.at(2);
+  const int width = feat_map_shape.at(3);
 
-  if (numClasses > 256) {
+  if (num_classes > 256) {
     LOG_ERROR_S << "Too many classes for CV_8UC1 mask.";
     return false;
   }
 
-  if (batchSize != prepArgs.size()) {
-    LOG_ERROR_S << "Batch size mismatch between model output (" << batchSize
-                << ") and preprocessing arguments (" << prepArgs.size() << ").";
+  if (batch_size != prep_args.size()) {
+    LOG_ERROR_S << "Batch size mismatch between model output (" << batch_size
+                << ") and preprocessing arguments (" << prep_args.size() << ").";
     return false;
   }
 
-  const float *baseData = featMapOutput.getHostPtr<float>();
-  const size_t itemStep = static_cast<size_t>(numClasses) * height * width;
+  const float *base_data = feat_map_output.getHostPtr<float>();
+  const size_t item_step = static_cast<size_t>(num_classes) * height * width;
 
-  algoOutput.resize(batchSize);
+  algo_output.resize(batch_size);
 
-  for (int i = 0; i < batchSize; ++i) {
-    const float *currentItemData = baseData + i * itemStep;
-    const FrameTransformContext &currentItemPrepArgs = prepArgs[i];
+  for (int i = 0; i < batch_size; ++i) {
+    const float *current_item_data = base_data + i * item_step;
+    const FrameTransformContext &current_item_prep_args = prep_args[i];
 
-    SegRet segRet = processSingleItem(currentItemData, numClasses, height,
-                                      width, currentItemPrepArgs, postArgs);
+    SegRet seg_ret = processSingleItem(current_item_data, num_classes, height,
+                                      width, current_item_prep_args, post_args);
 
-    algoOutput[i].setParams(segRet);
+    algo_output[i].setParams(seg_ret);
   }
 
   return true;
 }
 
 SegRet
-SemanticSeg::processSingleItem(const float *data, int numClasses, int height,
-                               int width, const FrameTransformContext &prepArgs,
-                               const ConfidenceFilterParams &postArgs) const {
-  const size_t channelStep = static_cast<size_t>(height) * width;
-  cv::Mat classMap(height, width, CV_8UC1);
+SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
+                               int width, const FrameTransformContext &prep_args,
+                               const ConfidenceFilterParams &post_args) const {
+  const size_t channel_step = static_cast<size_t>(height) * width;
+  cv::Mat class_map(height, width, CV_8UC1);
 
-  if (numClasses == 1) {
-    cv::Mat probMap(height, width, CV_32FC1, const_cast<float *>(data));
+  if (num_classes == 1) {
+    cv::Mat prob_map(height, width, CV_32FC1, const_cast<float *>(data));
     // 大于阈值的设为1，否则为0
-    cv::threshold(probMap, classMap, postArgs.condThre, 1, cv::THRESH_BINARY);
-    classMap.convertTo(classMap, CV_8U); // 确保是 8 位
+    cv::threshold(prob_map, class_map, post_args.cond_thre, 1, cv::THRESH_BINARY);
+    class_map.convertTo(class_map, CV_8U); // 确保是 8 位
   } else {
     // 第一个通道作为初始最大概率图
-    cv::Mat maxProbs(height, width, CV_32F, const_cast<float *>(data));
-    classMap.setTo(0); // 默认类别为0 (背景)
+    cv::Mat max_probs(height, width, CV_32F, const_cast<float *>(data));
+    class_map.setTo(0); // 默认类别为0 (背景)
 
     // 从第二个通道开始遍历，更新 maxProbs 和 classMap
-    for (int c = 1; c < numClasses; ++c) {
-      cv::Mat currentProbs(height, width, CV_32F,
-                           const_cast<float *>(data + c * channelStep));
-      cv::Mat updateMask;
-      cv::compare(currentProbs, maxProbs, updateMask, cv::CMP_GT);
+    for (int c = 1; c < num_classes; ++c) {
+      cv::Mat current_probs(height, width, CV_32F,
+                           const_cast<float *>(data + c * channel_step));
+      cv::Mat update_mask;
+      cv::compare(current_probs, max_probs, update_mask, cv::CMP_GT);
 
-      currentProbs.copyTo(maxProbs, updateMask);
-      classMap.setTo(c, updateMask);
+      current_probs.copyTo(max_probs, update_mask);
+      class_map.setTo(c, update_mask);
     }
 
-    cv::Mat lowConfidenceMask;
-    cv::compare(maxProbs, postArgs.condThre, lowConfidenceMask, cv::CMP_LT);
-    classMap.setTo(0, lowConfidenceMask);
+    cv::Mat low_confidence_mask;
+    cv::compare(max_probs, post_args.cond_thre, low_confidence_mask, cv::CMP_LT);
+    class_map.setTo(0, low_confidence_mask);
   }
 
-  SegRet segRet;
-  segRet.clsToContours.clear();
+  SegRet seg_ret;
+  seg_ret.cls_to_contours.clear();
 
-  Shape originShape;
-  const auto &inputRoi = *prepArgs.roi;
-  if (inputRoi.area() > 0) {
-    originShape.w = inputRoi.width;
-    originShape.h = inputRoi.height;
+  Shape origin_shape;
+  const auto &input_roi = *prep_args.roi;
+  if (input_roi.area() > 0) {
+    origin_shape.w = input_roi.width;
+    origin_shape.h = input_roi.height;
   } else {
-    originShape = prepArgs.originShape;
+    origin_shape = prep_args.origin_shape;
   }
 
   auto [scaleX, scaleY] = utils::scaleRatio(
-      originShape, prepArgs.modelInputShape, prepArgs.isEqualScale);
+      origin_shape, prep_args.model_input_shape, prep_args.is_equal_scale);
 
   if (scaleX <= 0.0f || scaleY <= 0.0f) {
     LOG_ERROR_S << "Invalid scale factors detected: scaleX=" << scaleX
                 << ", scaleY=" << scaleY;
-    return segRet;
+    return seg_ret;
   }
 
-  int startClass = 1;
-  int endClass = (numClasses == 1) ? 2 : numClasses;
+  int start_class = 1;
+  int end_class = (num_classes == 1) ? 2 : num_classes;
 
-  for (int c = startClass; c < endClass; ++c) {
-    cv::Mat classMask;
-    cv::compare(classMap, c, classMask, cv::CMP_EQ);
+  for (int c = start_class; c < end_class; ++c) {
+    cv::Mat class_mask;
+    cv::compare(class_map, c, class_mask, cv::CMP_EQ);
 
-    if (cv::countNonZero(classMask) == 0) {
+    if (cv::countNonZero(class_mask) == 0) {
       continue;
     }
 
     std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(classMask, contours, cv::RETR_LIST,
+    cv::findContours(class_mask, contours, cv::RETR_LIST,
                      cv::CHAIN_APPROX_SIMPLE);
 
     if (contours.empty()) {
       continue;
     }
 
-    const float offsetX = prepArgs.roi->x - prepArgs.leftPad / scaleX;
-    const float offsetY = prepArgs.roi->y - prepArgs.topPad / scaleY;
+    const float offset_x = prep_args.roi->x - prep_args.left_pad / scaleX;
+    const float offset_y = prep_args.roi->y - prep_args.top_pad / scaleY;
 
     for (const auto &contour : contours) {
-      std::vector<cv::Point> transformedContour;
-      transformedContour.reserve(contour.size());
+      std::vector<cv::Point> transformed_contour;
+      transformed_contour.reserve(contour.size());
       std::transform(contour.begin(), contour.end(),
-                     std::back_inserter(transformedContour),
+                     std::back_inserter(transformed_contour),
                      [&](const cv::Point &pt) -> cv::Point {
                        float originalX =
-                           static_cast<float>(pt.x) / scaleX + offsetX;
+                           static_cast<float>(pt.x) / scaleX + offset_x;
                        float originalY =
-                           static_cast<float>(pt.y) / scaleY + offsetY;
+                           static_cast<float>(pt.y) / scaleY + offset_y;
                        return cv::Point(cvRound(originalX), cvRound(originalY));
                      });
 
-      segRet.clsToContours[c].emplace_back(std::move(transformedContour));
+      seg_ret.cls_to_contours[c].emplace_back(std::move(transformed_contour));
     }
   }
 
-  return segRet;
+  return seg_ret;
 }
 } // namespace ai_core::dnn

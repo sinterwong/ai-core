@@ -21,10 +21,10 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  std::string detConfigPath = argv[1];
-  std::string recConfigPath = argv[2];
-  std::string imagePath = argv[3];
-  std::string dictPath = argv[4];
+  std::string det_config_path = argv[1];
+  std::string rec_config_path = argv[2];
+  std::string image_path = argv[3];
+  std::string dict_path = argv[4];
 
   ai_core::logging::Logger::instance().setLevel(
       ai_core::logging::LogLevel::Trace);
@@ -32,22 +32,22 @@ int main(int argc, char *argv[]) {
   ai_core::logging::Logger::instance().enableFile(false);
   ai_core::logging::Logger::instance().enableColor(true);
 
-  cv::Mat image = cv::imread(imagePath);
+  cv::Mat image = cv::imread(image_path);
 
   if (image.empty()) {
-    LOG_ERROR_S << "Failed to read image: " << imagePath;
+    LOG_ERROR_S << "Failed to read image: " << image_path;
     return -1;
   }
 
   try {
     ai_core::example::OCRUtils *ocr = ai_core::example::OCRUtils::instance(
-        detConfigPath, recConfigPath, dictPath);
+        det_config_path, rec_config_path, dict_path);
 
-    auto detectedBBoxes = ocr->detect(image);
-    LOG_INFO_S << "Detected BBoxes: " << detectedBBoxes.size();
+    auto detected_boxes = ocr->detect(image);
+    LOG_INFO_S << "Detected BBoxes: " << detected_boxes.size();
 
-    std::vector<std::string> recognizedTexts;
-    for (auto &bbox : detectedBBoxes) {
+    std::vector<std::string> recognized_texts;
+    for (auto &bbox : detected_boxes) {
       bbox = ocr->expandBox(bbox, 0.0f, 0.5f, image.size());
       if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
         LOG_WARNING_S
@@ -80,13 +80,13 @@ int main(int argc, char *argv[]) {
                    << ", " << bbox.height << "> "
                    << "Recognized text : " << text;
       }
-      recognizedTexts.push_back(text);
+      recognized_texts.push_back(text);
     }
 
-    for (int i = 0; i < detectedBBoxes.size(); ++i) {
-      const auto &bbox = detectedBBoxes[i];
+    for (int i = 0; i < detected_boxes.size(); ++i) {
+      const auto &bbox = detected_boxes[i];
       cv::rectangle(image, bbox, cv::Scalar(0, 255, 0), 2);
-      cv::putText(image, recognizedTexts[i], cv::Point(bbox.x, bbox.y - 10),
+      cv::putText(image, recognized_texts[i], cv::Point(bbox.x, bbox.y - 10),
                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
     }
 

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef __ALGO_OUTPUT_TYPES_HPP__
-#define __ALGO_OUTPUT_TYPES_HPP__
+#ifndef AI_CORE_ALGO_OUTPUT_TYPES_HPP
+#define AI_CORE_ALGO_OUTPUT_TYPES_HPP
 
 #include "ai_core/infer_common_types.hpp"
 #include "ai_core/tensor_data.hpp"
@@ -36,7 +36,7 @@ struct FprClsRet {
   float score;
   int label;
   int birad;
-  std::vector<float> scoreProbs;
+  std::vector<float> score_probs;
 };
 
 struct DetRet {
@@ -44,7 +44,7 @@ struct DetRet {
 };
 
 struct SegRet {
-  std::map<int, std::vector<Contour>> clsToContours;
+  std::map<int, std::vector<Contour>> cls_to_contours;
 };
 
 struct DaulRawSegRet {
@@ -52,15 +52,15 @@ struct DaulRawSegRet {
   std::shared_ptr<cv::Mat> prob;
   std::shared_ptr<cv::Rect> roi;
   float ratio;
-  int leftShift;
-  int topShift;
+  int left_shift;
+  int top_shift;
 };
 
 struct OCRRecoRet {
-  int64_t outputLengths;
+  int64_t output_lengths;
   std::vector<int64_t> outputs;
 };
 
 } // namespace ai_core
 
-#endif // __ALGO_OUTPUT_TYPES_HPP__
+#endif

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef __I_FRAME_PREPROCESSOR_HPP__
-#define __I_FRAME_PREPROCESSOR_HPP__
+#ifndef AI_CORE_I_FRAME_PREPROCESSOR_HPP
+#define AI_CORE_I_FRAME_PREPROCESSOR_HPP
 
 #include "ai_core/algo_input_types.hpp"
 #include "ai_core/preproc_types.hpp"
@@ -27,14 +27,14 @@ public:
 
   virtual TypedBuffer process(const FramePreprocessArg &args,
                               const FrameInput &input,
-                              FrameTransformContext &runtimeArgs) const = 0;
+                              FrameTransformContext &runtime_args) const = 0;
 
   virtual TypedBuffer
   batchProcess(const FramePreprocessArg &args,
                const std::vector<FrameInput> &input,
-               std::vector<FrameTransformContext> &runtimeArgs) const = 0;
+               std::vector<FrameTransformContext> &runtime_args) const = 0;
 };
 
 } // namespace ai_core
 
-#endif // __I_IMAGE_PREPROCESSOR_HPP__
+#endif

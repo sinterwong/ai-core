@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __ALGO_POSTPROC_IMPL_HPP__
-#define __ALGO_POSTPROC_IMPL_HPP__
+#ifndef ALGO_POSTPROC_IMPL_HPP
+#define ALGO_POSTPROC_IMPL_HPP
 
 #include "ai_core/algo_postproc.hpp"
 #include "ai_core/postproc_base.hpp"
@@ -19,26 +19,26 @@ namespace ai_core::dnn {
 
 class AlgoPostproc::Impl {
 public:
-  Impl(const std::string &moduleName);
+  Impl(const std::string &module_name);
 
   ~Impl() = default;
 
   InferErrorCode initialize();
 
-  InferErrorCode process(const TensorData &modelOutput, AlgoOutput &output,
-                         const AlgoPostprocParams &postprocParams,
-                         std::shared_ptr<RuntimeContext> &runtimeContext);
+  InferErrorCode process(const TensorData &model_output, AlgoOutput &output,
+                         const AlgoPostprocParams &postproc_params,
+                         std::shared_ptr<RuntimeContext> &runtime_context);
 
-  InferErrorCode batchProcess(const TensorData &modelOutput,
+  InferErrorCode batchProcess(const TensorData &model_output,
                               std::vector<AlgoOutput> &output,
-                              const AlgoPostprocParams &postprocParams,
-                              std::shared_ptr<RuntimeContext> &runtimeContext);
+                              const AlgoPostprocParams &postproc_params,
+                              std::shared_ptr<RuntimeContext> &runtime_context);
 
   InferErrorCode terminate();
 
 private:
-  std::string moduleName_;
-  std::shared_ptr<IPostprocssPlugin> postprocessor_;
+  std::string m_moduleName;
+  std::shared_ptr<IPostprocssPlugin> m_postprocessor;
 };
 } // namespace ai_core::dnn
 #endif

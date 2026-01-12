@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __PREPROCESS_SINGLE_FRAME_INPUT_HPP_
-#define __PREPROCESS_SINGLE_FRAME_INPUT_HPP_
+#ifndef AI_CORE_PREPROCESS_SINGLE_FRAME_INPUT_HPP
+#define AI_CORE_PREPROCESS_SINGLE_FRAME_INPUT_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/preproc_base.hpp"
@@ -32,12 +32,12 @@ public:
 private:
   TypedBuffer singleProcess(const FramePreprocessArg &args,
                             const FrameInput &input,
-                            FrameTransformContext &runtimeArgs) const;
+                            FrameTransformContext &runtime_args) const;
 
   TypedBuffer
   batchProcess(const FramePreprocessArg &args,
                const std::vector<FrameInput> &input,
-               std::vector<FrameTransformContext> &runtimeArgs) const;
+               std::vector<FrameTransformContext> &runtime_args) const;
 };
 } // namespace ai_core::dnn
 

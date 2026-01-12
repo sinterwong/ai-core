@@ -15,23 +15,23 @@
 
 namespace ai_core::dnn {
 
-AlgoInferEngine::AlgoInferEngine(const std::string &moduleName,
-                                 const AlgoInferParams &inferParams)
-    : pImpl(std::make_unique<Impl>(moduleName, inferParams)) {}
+AlgoInferEngine::AlgoInferEngine(const std::string &module_name,
+                                 const AlgoInferParams &infer_params)
+    : m_pImpl(std::make_unique<Impl>(module_name, infer_params)) {}
 
 AlgoInferEngine::~AlgoInferEngine() = default;
 
-InferErrorCode AlgoInferEngine::initialize() { return pImpl->initialize(); }
+InferErrorCode AlgoInferEngine::initialize() { return m_pImpl->initialize(); }
 
-InferErrorCode AlgoInferEngine::infer(const TensorData &modelInput,
-                                      TensorData &modelOutput) {
-  return pImpl->infer(modelInput, modelOutput);
+InferErrorCode AlgoInferEngine::infer(const TensorData &model_input,
+                                      TensorData &model_output) {
+  return m_pImpl->infer(model_input, model_output);
 }
 
-InferErrorCode AlgoInferEngine::terminate() { return pImpl->terminate(); }
+InferErrorCode AlgoInferEngine::terminate() { return m_pImpl->terminate(); }
 
 const ModelInfo &AlgoInferEngine::getModelInfo() const noexcept {
-  return pImpl->getModelInfo();
+  return m_pImpl->getModelInfo();
 }
 
 } // namespace ai_core::dnn

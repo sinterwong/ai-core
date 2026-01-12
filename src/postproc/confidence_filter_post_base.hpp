@@ -35,4 +35,4 @@ public:
 
 } // namespace ai_core
 
-#endif // __I_IMAGE_PREPROCESSOR_HPP__
+#endif

@@ -46,7 +46,7 @@ public:
    * @return TypedBuffer RAII-managed buffer
    */
   virtual TypedBuffer allocateAcceleratorBuffer(DataType type,
-                                                size_t sizeBytes) = 0;
+                                                size_t size_bytes) = 0;
 
   /**
    * @brief Structure holding a context and its pre-allocated resources

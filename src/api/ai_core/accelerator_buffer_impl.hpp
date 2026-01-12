@@ -40,14 +40,14 @@ public:
    * @brief Factory method to create specific memory type
    */
   static std::unique_ptr<AcceleratorBufferImpl>
-  create(size_t sizeBytes, AcceleratorMemoryType type);
+  create(size_t size_bytes, AcceleratorMemoryType type);
 
   /**
    * @brief Factory wrapper for wrapping existing pointers (advanced use)
    */
   static std::unique_ptr<AcceleratorBufferImpl>
-  createReference(void *ptr, size_t sizeBytes, AcceleratorMemoryType type,
-                  bool manageMemory);
+  createReference(void *ptr, size_t size_bytes, AcceleratorMemoryType type,
+                  bool manage_memory);
 
   /**
    * @brief Clone factory

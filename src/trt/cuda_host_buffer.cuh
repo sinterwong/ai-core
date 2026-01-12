@@ -208,11 +208,11 @@ public:
    * @brief 在指定偏移处准备写入
    */
   HostWriteSpan<T> writeSpanAt(size_t offset, size_t count) {
-    size_t requiredSize = offset + count;
-    if (requiredSize > m_capacity) {
-      reallocate(requiredSize, true);
+    size_t required_size = offset + count;
+    if (required_size > m_capacity) {
+      reallocate(required_size, true);
     }
-    m_size = std::max(m_size, requiredSize);
+    m_size = std::max(m_size, required_size);
     return {m_ptr + offset, count};
   }
 
@@ -228,14 +228,14 @@ public:
    */
   HostWriteSpan<T> appendSpan(size_t count) {
     size_t offset = m_size;
-    size_t newSize = m_size + count;
+    size_t new_size = m_size + count;
 
-    if (newSize > m_capacity) {
-      size_t newCapacity = std::max(m_capacity * 2, newSize);
-      reallocate(newCapacity, true);
+    if (new_size > m_capacity) {
+      size_t new_capacity = std::max(m_capacity * 2, new_size);
+      reallocate(new_capacity, true);
     }
 
-    m_size = newSize;
+    m_size = new_size;
     return {m_ptr + offset, count};
   }
 
@@ -306,53 +306,53 @@ public:
   /**
    * @brief 手动设置有效大小（不安全）
    */
-  void unsafeSetSize(size_t newSize) {
-    if (newSize > m_capacity) {
-      throw std::length_error("unsafeSetSize: newSize exceeds capacity");
+  void unsafeSetSize(size_t new_size) {
+    if (new_size > m_capacity) {
+      throw std::length_error("unsafeSetSize: new_size exceeds capacity");
     }
-    m_size = newSize;
+    m_size = new_size;
   }
 
   // ==========================================================================
   // 内存管理
   // ==========================================================================
 
-  void reserve(size_t newCapacity) {
-    if (newCapacity <= m_capacity) {
+  void reserve(size_t new_capacity) {
+    if (new_capacity <= m_capacity) {
       return;
     }
-    reallocate(newCapacity, true);
+    reallocate(new_capacity, true);
   }
 
-  void resize(size_t newSize, bool preserveData = true) {
-    if (newSize == m_size) {
+  void resize(size_t new_size, bool preserve_data = true) {
+    if (new_size == m_size) {
       return;
     }
 
-    if (newSize == 0) {
+    if (new_size == 0) {
       m_size = 0;
       return;
     }
 
-    if (newSize <= m_capacity) {
-      m_size = newSize;
+    if (new_size <= m_capacity) {
+      m_size = new_size;
       return;
     }
 
-    reallocate(newSize, preserveData);
-    m_size = newSize;
+    reallocate(new_size, preserve_data);
+    m_size = new_size;
   }
 
   /**
    * @brief 调整大小并用指定值填充新增区域
    */
-  void resize(size_t newSize, const T &value) {
-    size_t oldSize = m_size;
-    resize(newSize, true);
+  void resize(size_t new_size, const T &value) {
+    size_t old_size = m_size;
+    resize(new_size, true);
 
     // 填充新增部分
-    if (newSize > oldSize) {
-      std::fill(m_ptr + oldSize, m_ptr + newSize, value);
+    if (new_size > old_size) {
+      std::fill(m_ptr + old_size, m_ptr + new_size, value);
     }
   }
 
@@ -369,12 +369,12 @@ public:
       return;
     }
 
-    T *newPtr = nullptr;
-    CHECK_CUDA_ERROR(cudaMallocHost(&newPtr, m_size * sizeof(T)));
-    std::memcpy(newPtr, m_ptr, m_size * sizeof(T));
+    T *new_ptr = nullptr;
+    CHECK_CUDA_ERROR(cudaMallocHost(&new_ptr, m_size * sizeof(T)));
+    std::memcpy(new_ptr, m_ptr, m_size * sizeof(T));
 
     freeMemory();
-    m_ptr = newPtr;
+    m_ptr = new_ptr;
     m_capacity = m_size;
   }
 
@@ -397,18 +397,18 @@ public:
   /**
    * @brief 在末尾添加元素
    */
-  void push_back(const T &value) {
+  void pushBack(const T &value) {
     if (m_size >= m_capacity) {
-      size_t newCapacity = m_capacity == 0 ? 16 : m_capacity * 2;
-      reallocate(newCapacity, true);
+      size_t new_capacity = m_capacity == 0 ? 16 : m_capacity * 2;
+      reallocate(new_capacity, true);
     }
     m_ptr[m_size++] = value;
   }
 
-  void push_back(T &&value) {
+  void pushBack(T &&value) {
     if (m_size >= m_capacity) {
-      size_t newCapacity = m_capacity == 0 ? 16 : m_capacity * 2;
-      reallocate(newCapacity, true);
+      size_t new_capacity = m_capacity == 0 ? 16 : m_capacity * 2;
+      reallocate(new_capacity, true);
     }
     m_ptr[m_size++] = std::move(value);
   }
@@ -416,7 +416,7 @@ public:
   /**
    * @brief 移除末尾元素
    */
-  void pop_back() {
+  void popBack() {
     if (m_size > 0) {
       --m_size;
     }
@@ -425,10 +425,10 @@ public:
   /**
    * @brief 原地构造元素
    */
-  template <typename... Args> T &emplace_back(Args &&...args) {
+  template <typename... Args> T &emplaceBack(Args &&...args) {
     if (m_size >= m_capacity) {
-      size_t newCapacity = m_capacity == 0 ? 16 : m_capacity * 2;
-      reallocate(newCapacity, true);
+      size_t new_capacity = m_capacity == 0 ? 16 : m_capacity * 2;
+      reallocate(new_capacity, true);
     }
     new (&m_ptr[m_size]) T(std::forward<Args>(args)...);
     return m_ptr[m_size++];
@@ -515,25 +515,25 @@ public:
   /**
    * @brief 从 Device buffer 读取指定范围
    */
-  void readFromDevice(const CudaDeviceBuffer<T> &src, size_t srcOffset,
-                      size_t dstOffset, size_t count, cudaStream_t stream = 0) {
+  void readFromDevice(const CudaDeviceBuffer<T> &src, size_t src_offset,
+                      size_t dst_offset, size_t count, cudaStream_t stream = 0) {
     if (count == 0)
       return;
 
-    if (srcOffset + count > src.size()) {
+    if (src_offset + count > src.size()) {
       throw std::out_of_range("readFromDevice: source range out of bounds");
     }
 
-    size_t requiredSize = dstOffset + count;
-    if (requiredSize > m_capacity) {
+    size_t required_size = dst_offset + count;
+    if (required_size > m_capacity) {
       throw std::out_of_range(
           "readFromDevice: exceeds capacity. Call reserve() first.");
     }
 
     CHECK_CUDA_ERROR(
-        cudaMemcpyAsync(m_ptr + dstOffset, src.readPtr() + srcOffset,
+        cudaMemcpyAsync(m_ptr + dst_offset, src.readPtr() + src_offset,
                         count * sizeof(T), cudaMemcpyDeviceToHost, stream));
-    m_size = std::max(m_size, requiredSize);
+    m_size = std::max(m_size, required_size);
   }
 
   /**
@@ -548,17 +548,17 @@ public:
   /**
    * @brief 异步写入到 Device buffer（指定范围）
    */
-  void writeToDeviceAsync(CudaDeviceBuffer<T> &dst, size_t srcOffset,
-                          size_t dstOffset, size_t count,
+  void writeToDeviceAsync(CudaDeviceBuffer<T> &dst, size_t src_offset,
+                          size_t dst_offset, size_t count,
                           cudaStream_t stream = 0) const {
     if (count == 0)
       return;
 
-    if (srcOffset + count > m_size) {
+    if (src_offset + count > m_size) {
       throw std::out_of_range("writeToDeviceAsync: source range out of bounds");
     }
 
-    dst.writeFromHost(m_ptr + srcOffset, dstOffset, count, stream);
+    dst.writeFromHost(m_ptr + src_offset, dst_offset, count, stream);
   }
 
   /**
@@ -581,18 +581,18 @@ private:
     m_size = count;
   }
 
-  void reallocate(size_t newCapacity, bool preserveData) {
-    T *newPtr = nullptr;
-    CHECK_CUDA_ERROR(cudaMallocHost(&newPtr, newCapacity * sizeof(T)));
+  void reallocate(size_t new_capacity, bool preserve_data) {
+    T *new_ptr = nullptr;
+    CHECK_CUDA_ERROR(cudaMallocHost(&new_ptr, new_capacity * sizeof(T)));
 
-    if (preserveData && m_ptr && m_size > 0) {
-      size_t copyCount = std::min(m_size, newCapacity);
-      std::memcpy(newPtr, m_ptr, copyCount * sizeof(T));
+    if (preserve_data && m_ptr && m_size > 0) {
+      size_t copy_count = std::min(m_size, new_capacity);
+      std::memcpy(new_ptr, m_ptr, copy_count * sizeof(T));
     }
 
     freeMemory();
-    m_ptr = newPtr;
-    m_capacity = newCapacity;
+    m_ptr = new_ptr;
+    m_capacity = new_capacity;
   }
 
   void freeMemory() {

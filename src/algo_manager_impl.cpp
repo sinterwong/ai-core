@@ -22,24 +22,24 @@ AlgoManager::Impl::~Impl() {}
 InferErrorCode
 AlgoManager::Impl::registerAlgo(const std::string &name,
                                 const std::shared_ptr<AlgoInference> &algo) {
-  std::unique_lock<std::shared_mutex> lock(mutex_);
-  if (algoMap_.count(name)) {
+  std::unique_lock<std::shared_mutex> lock(m_mutex);
+  if (m_algoMap.count(name)) {
     LOG_ERROR_S << "Algo with name " << name << " already registered.";
-    return InferErrorCode::ALGO_REGISTER_FAILED;
+    return InferErrorCode::AlgoRegisterFailed;
   }
   if (!algo) {
     LOG_ERROR_S << "Attempted to register a null algo with name " << name;
-    return InferErrorCode::ALGO_REGISTER_FAILED;
+    return InferErrorCode::AlgoRegisterFailed;
   }
-  algoMap_[name] = algo;
+  m_algoMap[name] = algo;
   LOG_INFO_S << "Registered algo: " << name;
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode AlgoManager::Impl::unregisterAlgo(const std::string &name) {
-  std::unique_lock<std::shared_mutex> lock(mutex_);
-  if (algoMap_.count(name)) {
-    algoMap_.erase(name);
+  std::unique_lock<std::shared_mutex> lock(m_mutex);
+  if (m_algoMap.count(name)) {
+    m_algoMap.erase(name);
     LOG_INFO_S << "Unregistered algo: " << name;
   } else {
     LOG_WARNING_S << "Attempted to unregister non-existent algo: " << name;
@@ -49,27 +49,27 @@ InferErrorCode AlgoManager::Impl::unregisterAlgo(const std::string &name) {
 
 InferErrorCode AlgoManager::Impl::infer(const std::string &name,
                                         AlgoInput &input,
-                                        AlgoPreprocParams &preprocParams,
+                                        AlgoPreprocParams &preproc_params,
                                         AlgoOutput &output,
-                                        AlgoPostprocParams &postprocParams) {
-  std::shared_lock<std::shared_mutex> lock(mutex_);
-  auto it = algoMap_.find(name);
-  if (it == algoMap_.end()) {
+                                        AlgoPostprocParams &postproc_params) {
+  std::shared_lock<std::shared_mutex> lock(m_mutex);
+  auto it = m_algoMap.find(name);
+  if (it == m_algoMap.end()) {
     LOG_ERROR_S << "Algo with name " << name << " not found for inference.";
-    return InferErrorCode::ALGO_NOT_FOUND;
+    return InferErrorCode::AlgoNotFound;
   }
   if (!it->second) {
     LOG_ERROR_S << "Algo with name " << name << " is registered but null.";
-    return InferErrorCode::ALGO_NOT_FOUND;
+    return InferErrorCode::AlgoNotFound;
   }
-  return it->second->infer(input, preprocParams, postprocParams, output);
+  return it->second->infer(input, preproc_params, postproc_params, output);
 }
 
 std::shared_ptr<AlgoInference>
 AlgoManager::Impl::getAlgo(const std::string &name) const {
-  std::shared_lock<std::shared_mutex> lock(mutex_);
-  auto it = algoMap_.find(name);
-  if (it == algoMap_.end()) {
+  std::shared_lock<std::shared_mutex> lock(m_mutex);
+  auto it = m_algoMap.find(name);
+  if (it == m_algoMap.end()) {
     LOG_ERROR_S << "Algo with name " << name << " not found in getAlgo.";
     return nullptr;
   }
@@ -77,13 +77,13 @@ AlgoManager::Impl::getAlgo(const std::string &name) const {
 }
 
 bool AlgoManager::Impl::hasAlgo(const std::string &name) const {
-  std::shared_lock<std::shared_mutex> lock(mutex_);
-  return algoMap_.count(name) > 0;
+  std::shared_lock<std::shared_mutex> lock(m_mutex);
+  return m_algoMap.count(name) > 0;
 }
 
 void AlgoManager::Impl::clear() {
-  std::unique_lock<std::shared_mutex> lock(mutex_);
-  algoMap_.clear();
+  std::unique_lock<std::shared_mutex> lock(m_mutex);
+  m_algoMap.clear();
   LOG_INFO_S << "Cleared all registered algos.";
 }
 

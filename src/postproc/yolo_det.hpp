@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_YOLOV11_DETECTION_HPP_
-#define __INFERENCE_VISION_YOLOV11_DETECTION_HPP_
+#ifndef AI_CORE_INFERENCE_VISION_YOLOV11_DETECTION_HPP
+#define AI_CORE_INFERENCE_VISION_YOLOV11_DETECTION_HPP
 
 #include "ai_core/preproc_types.hpp"
 #include "anchor_det_post_base.hpp"
@@ -27,11 +27,11 @@ public:
                             std::vector<AlgoOutput> &) const override;
 
 private:
-  std::vector<BBox> processRawOutput(const cv::Mat &transposedOutput,
-                                     const Shape &inputShape,
-                                     const FrameTransformContext &prepArgs,
-                                     const AnchorDetParams &postArgs,
-                                     int numClasses) const;
+  std::vector<BBox> processRawOutput(const cv::Mat &transposed_output,
+                                     const Shape &input_shape,
+                                     const FrameTransformContext &prep_args,
+                                     const AnchorDetParams &post_args,
+                                     int num_classes) const;
 };
 } // namespace ai_core::dnn
 

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef __INFER_PARAMS_TYPES_HPP__
-#define __INFER_PARAMS_TYPES_HPP__
+#ifndef AI_CORE_INFER_PARAMS_TYPES_HPP
+#define AI_CORE_INFER_PARAMS_TYPES_HPP
 
 #include "ai_core/infer_common_types.hpp"
 #include <map>
@@ -19,13 +19,13 @@
 namespace ai_core {
 struct AlgoInferParams {
   std::string name;
-  std::string modelPath;
-  bool needDecrypt = false;
-  std::string decryptkeyStr;
-  DeviceType deviceType;
-  DataType dataType;
-  std::map<std::string, size_t> maxOutputBufferSizes;
+  std::string model_path;
+  bool need_decrypt = false;
+  std::string decryptkey_str;
+  DeviceType device_type;
+  DataType data_type;
+  std::map<std::string, size_t> max_output_buffer_sizes;
 };
 } // namespace ai_core
 
-#endif // __INFER_PARAMS_TYPES_HPP__
+#endif

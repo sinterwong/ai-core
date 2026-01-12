@@ -35,7 +35,7 @@ public:
   virtual void prettyPrintModelInfos();
 
 protected:
-  std::shared_ptr<ModelInfo> modelInfo;
+  std::shared_ptr<ModelInfo> m_modelInfo;
 };
 } // namespace ai_core::dnn
 #endif

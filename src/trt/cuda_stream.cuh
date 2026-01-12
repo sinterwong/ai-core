@@ -12,14 +12,14 @@ public:
     if (priority == Priority::Default) {
       CHECK_CUDA_ERROR(cudaStreamCreateWithFlags(&m_stream, flags));
     } else {
-      int leastPriority, greatestPriority;
+      int least_priority, greatest_priority;
       CHECK_CUDA_ERROR(
-          cudaDeviceGetStreamPriorityRange(&leastPriority, &greatestPriority));
+          cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
 
-      int streamPriority =
-          (priority == Priority::High) ? greatestPriority : leastPriority;
+      int stream_priority =
+          (priority == Priority::High) ? greatest_priority : least_priority;
       CHECK_CUDA_ERROR(
-          cudaStreamCreateWithPriority(&m_stream, flags, streamPriority));
+          cudaStreamCreateWithPriority(&m_stream, flags, stream_priority));
     }
   }
 

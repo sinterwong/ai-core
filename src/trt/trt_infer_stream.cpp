@@ -3,7 +3,7 @@
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief TensorRT inference stream implementation
  * @version 0.1
- * @date 2025-01-06
+ * @date 2026-01-06
  *
  * @copyright Copyright (c) 2025
  *
@@ -24,27 +24,27 @@ namespace ai_core::dnn {
 // ============================================================================
 
 TrtInferStream::TrtInferStream(TrtAlgoInference &engine)
-    : mEngine(engine), mSharedEngine(engine.mEngine), mCudaStream(nullptr),
-      mContext(nullptr) {}
+    : m_engine(engine), m_sharedEngine(engine.m_engine), m_cudaStream(nullptr),
+      m_context(nullptr) {}
 
 TrtInferStream::~TrtInferStream() {
   destroyGraph();
 
-  mContext.reset();
+  m_context.reset();
 
-  if (mCudaStream) {
-    cudaError_t err = cudaStreamDestroy(mCudaStream);
+  if (m_cudaStream) {
+    cudaError_t err = cudaStreamDestroy(m_cudaStream);
     if (err != cudaSuccess && err != cudaErrorCudartUnloading) {
       LOG_WARNING_S << "Failed to destroy CUDA stream: "
                     << cudaGetErrorString(err);
     }
-    mCudaStream = nullptr;
+    m_cudaStream = nullptr;
   }
 
-  mDeviceBuffers.clear();
-  mPinnedOutputBuffers.clear();
-  mTensorAddressMap.clear();
-  mCachedInputShapes.clear();
+  m_deviceBuffers.clear();
+  m_pinnedOutputBuffers.clear();
+  m_tensorAddressMap.clear();
+  m_cachedInputShapes.clear();
 
   LOG_DEBUG_S << "TrtInferStream destroyed";
 }
@@ -56,9 +56,9 @@ TrtInferStream::~TrtInferStream() {
 std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
                                                        TensorData &outputs) {
   // Early validation - return immediately settled future on error
-  if (!mInitialized) {
+  if (!m_initialized) {
     std::promise<InferErrorCode> promise;
-    promise.set_value(InferErrorCode::NOT_INITIALIZED);
+    promise.set_value(InferErrorCode::NotInitialized);
     return promise.get_future();
   }
 
@@ -66,41 +66,41 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
     // Update input shapes if dynamic
     if (!updateInputShapesIfNeeded(inputs)) {
       std::promise<InferErrorCode> promise;
-      promise.set_value(InferErrorCode::INFER_EXECUTION_FAILED);
+      promise.set_value(InferErrorCode::InferExecutionFailed);
       return promise.get_future();
     }
 
     // Submit all async operations (non-blocking)
 
     // H2D: Copy inputs to device (async)
-    auto copyResult = copyInputsToDevice(inputs);
-    if (copyResult != InferErrorCode::SUCCESS) {
+    auto copy_result = copyInputsToDevice(inputs);
+    if (copy_result != InferErrorCode::SUCCESS) {
       std::promise<InferErrorCode> promise;
-      promise.set_value(copyResult);
+      promise.set_value(copy_result);
       return promise.get_future();
     }
 
     // Execute: Run inference kernel (async)
-    InferErrorCode execResult;
-    if (mGraphEnabled && mGraphCaptured) {
-      execResult = launchGraph();
-    } else if (mGraphEnabled && !mGraphCaptured) {
-      execResult = captureGraph();
+    InferErrorCode exec_result;
+    if (m_graphEnabled && m_graphCaptured) {
+      exec_result = launchGraph();
+    } else if (m_graphEnabled && !m_graphCaptured) {
+      exec_result = captureGraph();
     } else {
-      execResult = executeInference();
+      exec_result = executeInference();
     }
 
-    if (execResult != InferErrorCode::SUCCESS) {
+    if (exec_result != InferErrorCode::SUCCESS) {
       std::promise<InferErrorCode> promise;
-      promise.set_value(execResult);
+      promise.set_value(exec_result);
       return promise.get_future();
     }
 
     // D2H: Submit async output copy (non-blocking)
-    auto d2hResult = submitAsyncD2H(outputs);
-    if (d2hResult != InferErrorCode::SUCCESS) {
+    auto d2h_result = submitAsyncD2H(outputs);
+    if (d2h_result != InferErrorCode::SUCCESS) {
       std::promise<InferErrorCode> promise;
-      promise.set_value(d2hResult);
+      promise.set_value(d2h_result);
       return promise.get_future();
     }
 
@@ -110,7 +110,7 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
     // The lambda executes in the caller's thread when future.get() is called.
     // This eliminates thread creation overhead (~100-500μs per call).
 
-    cudaStream_t stream = mCudaStream;
+    cudaStream_t stream = m_cudaStream;
 
     return std::async(std::launch::deferred,
                       [this, stream, &outputs]() -> InferErrorCode {
@@ -120,7 +120,7 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
                         if (err != cudaSuccess) {
                           LOG_ERROR_S << "CUDA stream synchronize failed: "
                                       << cudaGetErrorString(err);
-                          return InferErrorCode::STREAM_SYNC_FAILED;
+                          return InferErrorCode::StreamSyncFailed;
                         }
 
                         // Finalize: Copy from pinned buffers to output
@@ -130,107 +130,107 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception in inferAsync: " << e.what();
     std::promise<InferErrorCode> promise;
-    promise.set_value(InferErrorCode::INFER_FAILED);
+    promise.set_value(InferErrorCode::InferFailed);
     return promise.get_future();
   }
 }
 
 InferErrorCode TrtInferStream::synchronize() {
-  if (!mInitialized) {
-    return InferErrorCode::NOT_INITIALIZED;
+  if (!m_initialized) {
+    return InferErrorCode::NotInitialized;
   }
 
-  cudaError_t err = cudaStreamSynchronize(mCudaStream);
+  cudaError_t err = cudaStreamSynchronize(m_cudaStream);
   if (err != cudaSuccess) {
     LOG_ERROR_S << "CUDA stream synchronize failed: "
                 << cudaGetErrorString(err);
-    return InferErrorCode::STREAM_SYNC_FAILED;
+    return InferErrorCode::StreamSyncFailed;
   }
   return InferErrorCode::SUCCESS;
 }
 
 bool TrtInferStream::isComplete() const {
-  if (!mInitialized || !mCudaStream) {
+  if (!m_initialized || !m_cudaStream) {
     return true;
   }
-  cudaError_t status = cudaStreamQuery(mCudaStream);
+  cudaError_t status = cudaStreamQuery(m_cudaStream);
   return status == cudaSuccess;
 }
 
 BackendHandle TrtInferStream::getHandle() const {
-  return BackendHandle(mCudaStream);
+  return BackendHandle(m_cudaStream);
 }
 
 InferErrorCode TrtInferStream::setGraphEnabled(bool enable) {
-  if (!mInitialized) {
-    return InferErrorCode::NOT_INITIALIZED;
+  if (!m_initialized) {
+    return InferErrorCode::NotInitialized;
   }
 
-  if (enable && !mEngine.mAllInputsStatic) {
+  if (enable && !m_engine.m_allInputsStatic) {
     LOG_WARNING_S << "CUDA Graph requires static input shapes. "
                   << "Graph will remain disabled.";
     return InferErrorCode::SUCCESS;
   }
 
-  if (enable == mGraphEnabled) {
+  if (enable == m_graphEnabled) {
     return InferErrorCode::SUCCESS;
   }
 
-  if (!enable && mGraphCaptured) {
+  if (!enable && m_graphCaptured) {
     destroyGraph();
   }
 
-  mGraphEnabled = enable;
-  mGraphCaptured = false;
+  m_graphEnabled = enable;
+  m_graphCaptured = false;
 
   LOG_INFO_S << "CUDA Graph " << (enable ? "enabled" : "disabled")
              << " for stream";
   return InferErrorCode::SUCCESS;
 }
 
-bool TrtInferStream::isGraphEnabled() const { return mGraphEnabled; }
+bool TrtInferStream::isGraphEnabled() const { return m_graphEnabled; }
 
 // ============================================================================
 // Stream Lifecycle
 // ============================================================================
 
 InferErrorCode TrtInferStream::initialize() {
-  if (mInitialized) {
+  if (m_initialized) {
     return InferErrorCode::SUCCESS;
   }
 
-  if (!mSharedEngine) {
+  if (!m_sharedEngine) {
     LOG_ERROR_S << "Parent engine not initialized";
-    return InferErrorCode::NOT_INITIALIZED;
+    return InferErrorCode::NotInitialized;
   }
 
   // Create high-priority non-blocking CUDA stream
-  int leastPriority, greatestPriority;
+  int least_priority, greatest_priority;
   CHECK_CUDA_ERROR(
-      cudaDeviceGetStreamPriorityRange(&leastPriority, &greatestPriority));
+      cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
   CHECK_CUDA_ERROR(cudaStreamCreateWithPriority(
-      &mCudaStream, cudaStreamNonBlocking, greatestPriority));
+      &m_cudaStream, cudaStreamNonBlocking, greatest_priority));
 
   // Create execution context
-  mContext.reset(mSharedEngine->createExecutionContext());
-  if (!mContext) {
+  m_context.reset(m_sharedEngine->createExecutionContext());
+  if (!m_context) {
     LOG_ERROR_S << "Failed to create TensorRT execution context for stream";
-    return InferErrorCode::INIT_CONTEXT_FAILED;
+    return InferErrorCode::InitContextFailed;
   }
 
   // Allocate device buffers
-  auto allocResult = allocateBuffers();
-  if (allocResult != InferErrorCode::SUCCESS) {
-    return allocResult;
+  auto alloc_result = allocateBuffers();
+  if (alloc_result != InferErrorCode::SUCCESS) {
+    return alloc_result;
   }
 
   // Allocate pinned output buffers
-  auto pinnedResult = allocatePinnedOutputBuffers();
-  if (pinnedResult != InferErrorCode::SUCCESS) {
-    return pinnedResult;
+  auto pinned_result = allocatePinnedOutputBuffers();
+  if (pinned_result != InferErrorCode::SUCCESS) {
+    return pinned_result;
   }
 
-  mInitialized = true;
+  m_initialized = true;
   LOG_DEBUG_S << "TrtInferStream initialized successfully";
   return InferErrorCode::SUCCESS;
 }
@@ -240,42 +240,42 @@ InferErrorCode TrtInferStream::initialize() {
 // ============================================================================
 
 InferErrorCode TrtInferStream::allocateBuffers() {
-  const int32_t numIOTensors = mSharedEngine->getNbIOTensors();
-  const int profileIndex = 0;
+  const int32_t num_io_tensors = m_sharedEngine->getNbIOTensors();
+  const int profile_index = 0;
 
-  mDeviceBuffers.clear();
-  mDeviceBuffers.reserve(numIOTensors);
-  mTensorAddressMap.clear();
+  m_deviceBuffers.clear();
+  m_deviceBuffers.reserve(num_io_tensors);
+  m_tensorAddressMap.clear();
 
   // Set input shapes to MAX for buffer allocation
-  for (int32_t i = 0; i < numIOTensors; ++i) {
-    const char *name = mSharedEngine->getIOTensorName(i);
-    if (mSharedEngine->getTensorIOMode(name) ==
+  for (int32_t i = 0; i < num_io_tensors; ++i) {
+    const char *name = m_sharedEngine->getIOTensorName(i);
+    if (m_sharedEngine->getTensorIOMode(name) ==
         nvinfer1::TensorIOMode::kINPUT) {
-      auto maxDims = mSharedEngine->getProfileShape(
-          name, profileIndex, nvinfer1::OptProfileSelector::kMAX);
-      if (!mContext->setInputShape(name, maxDims)) {
+      auto max_dims = m_sharedEngine->getProfileShape(
+          name, profile_index, nvinfer1::OptProfileSelector::kMAX);
+      if (!m_context->setInputShape(name, max_dims)) {
         LOG_WARNING_S << "Failed to set max input shape for: " << name;
       }
     }
   }
 
   // Allocate buffers for each tensor
-  for (int32_t i = 0; i < numIOTensors; ++i) {
-    const char *name = mSharedEngine->getIOTensorName(i);
-    size_t bufferSize = mEngine.mTensorSizeMap.at(name);
+  for (int32_t i = 0; i < num_io_tensors; ++i) {
+    const char *name = m_sharedEngine->getIOTensorName(i);
+    size_t buffer_size = m_engine.m_tensorSizeMap.at(name);
 
-    mDeviceBuffers.emplace_back(cuda_utils::DeviceByteBuffer{bufferSize});
-    void *devicePtr = mDeviceBuffers.back().unsafePtr();
+    m_deviceBuffers.emplace_back(cuda_utils::DeviceByteBuffer{buffer_size});
+    void *device_ptr = m_deviceBuffers.back().unsafePtr();
 
-    mTensorAddressMap[name] = devicePtr;
+    m_tensorAddressMap[name] = device_ptr;
 
-    if (!mContext->setTensorAddress(name, devicePtr)) {
+    if (!m_context->setTensorAddress(name, device_ptr)) {
       LOG_ERROR_S << "Failed to set tensor address for: " << name;
-      return InferErrorCode::INIT_BINDING_FAILED;
+      return InferErrorCode::InitBindingFailed;
     }
 
-    LOG_DEBUG_S << "Stream allocated " << bufferSize
+    LOG_DEBUG_S << "Stream allocated " << buffer_size
                 << " bytes for tensor: " << name;
   }
 
@@ -283,88 +283,88 @@ InferErrorCode TrtInferStream::allocateBuffers() {
 }
 
 InferErrorCode TrtInferStream::allocatePinnedOutputBuffers() {
-  for (const auto &outputInfo : mEngine.modelInfo->outputs) {
-    const auto &name = outputInfo.name;
-    size_t bufferSize = mEngine.mTensorSizeMap.at(name);
+  for (const auto &output_info : m_engine.m_modelInfo->outputs) {
+    const auto &name = output_info.name;
+    size_t buffer_size = m_engine.m_tensorSizeMap.at(name);
 
-    cuda_utils::CudaHostBuffer<uint8_t> pinnedBuffer;
-    pinnedBuffer.reserve(bufferSize);
+    cuda_utils::CudaHostBuffer<uint8_t> pinned_buffer;
+    pinned_buffer.reserve(buffer_size);
 
-    mPinnedOutputBuffers[name] = std::move(pinnedBuffer);
+    m_pinnedOutputBuffers[name] = std::move(pinned_buffer);
   }
 
   return InferErrorCode::SUCCESS;
 }
 
 bool TrtInferStream::updateInputShapesIfNeeded(const TensorData &inputs) {
-  bool shapeChanged = false;
+  bool shape_changed = false;
 
-  for (const auto &inputInfo : mEngine.modelInfo->inputs) {
-    const auto &name = inputInfo.name;
-    const bool isDynamic = mEngine.mDynamicInputTensorNames.count(name);
+  for (const auto &input_info : m_engine.m_modelInfo->inputs) {
+    const auto &name = input_info.name;
+    const bool is_dynamic = m_engine.m_dynamicInputTensorNames.count(name);
 
-    if (!isDynamic) {
+    if (!is_dynamic) {
       continue;
     }
 
-    auto shapeIt = inputs.shapes.find(name);
-    if (shapeIt == inputs.shapes.end()) {
+    auto shape_it = inputs.shapes.find(name);
+    if (shape_it == inputs.shapes.end()) {
       continue;
     }
 
-    const std::vector<int64_t> newShape(shapeIt->second.begin(),
-                                        shapeIt->second.end());
-    auto cacheIt = mCachedInputShapes.find(name);
+    const std::vector<int64_t> new_shape(shape_it->second.begin(),
+                                        shape_it->second.end());
+    auto cache_it = m_cachedInputShapes.find(name);
 
-    if (cacheIt == mCachedInputShapes.end() || cacheIt->second != newShape) {
-      nvinfer1::Dims actualDims;
-      actualDims.nbDims = newShape.size();
-      std::copy(newShape.begin(), newShape.end(), actualDims.d);
+    if (cache_it == m_cachedInputShapes.end() || cache_it->second != new_shape) {
+      nvinfer1::Dims actual_dims;
+      actual_dims.nbDims = new_shape.size();
+      std::copy(new_shape.begin(), new_shape.end(), actual_dims.d);
 
-      if (!mContext->setInputShape(name.c_str(), actualDims)) {
+      if (!m_context->setInputShape(name.c_str(), actual_dims)) {
         LOG_ERROR_S << "Failed to set input shape for tensor: " << name;
         return false;
       }
 
-      mCachedInputShapes[name] = newShape;
-      shapeChanged = true;
+      m_cachedInputShapes[name] = new_shape;
+      shape_changed = true;
     }
   }
 
   // If shapes changed and we had a captured graph, invalidate it
-  if (shapeChanged && mGraphCaptured) {
+  if (shape_changed && m_graphCaptured) {
     LOG_DEBUG_S << "Input shapes changed, invalidating CUDA Graph.";
     destroyGraph();
-    mGraphCaptured = false;
+    m_graphCaptured = false;
   }
 
   return true;
 }
 
 InferErrorCode TrtInferStream::copyInputsToDevice(const TensorData &inputs) {
-  for (const auto &inputInfo : mEngine.modelInfo->inputs) {
-    const auto &name = inputInfo.name;
+  for (const auto &input_info : m_engine.m_modelInfo->inputs) {
+    const auto &name = input_info.name;
 
-    auto dataIt = inputs.datas.find(name);
-    if (dataIt == inputs.datas.end()) {
+    auto data_it = inputs.datas.find(name);
+    if (data_it == inputs.datas.end()) {
       LOG_ERROR_S << "Input tensor not found: " << name;
-      return InferErrorCode::INFER_INPUT_ERROR;
+      return InferErrorCode::InferInputError;
     }
 
-    const TypedBuffer &inputBuffer = dataIt->second;
-    const size_t actualSizeBytes = inputBuffer.getSizeBytes();
-    void *destDevicePtr = mTensorAddressMap.at(name);
+    const TypedBuffer &input_buffer = data_it->second;
+    const size_t actual_size_bytes = input_buffer.getSizeBytes();
+    void *dest_device_ptr = m_tensorAddressMap.at(name);
 
-    if (inputBuffer.location() == BufferLocation::CPU) {
-      const void *srcHostPtr = inputBuffer.getRawHostPtr();
-      CHECK_CUDA_ERROR(cudaMemcpyAsync(destDevicePtr, srcHostPtr,
-                                       actualSizeBytes, cudaMemcpyHostToDevice,
-                                       mCudaStream));
-    } else if (inputBuffer.location() == BufferLocation::GPU_DEVICE) {
-      void *srcDevicePtr = inputBuffer.getRawDevicePtr();
-      CHECK_CUDA_ERROR(cudaMemcpyAsync(destDevicePtr, srcDevicePtr,
-                                       actualSizeBytes,
-                                       cudaMemcpyDeviceToDevice, mCudaStream));
+    if (input_buffer.location() == BufferLocation::CPU) {
+      const void *src_host_ptr = input_buffer.getRawHostPtr();
+      CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_host_ptr,
+                                       actual_size_bytes, cudaMemcpyHostToDevice,
+                                       m_cudaStream));
+    } else if (input_buffer.location() == BufferLocation::GpuDevice) {
+      void *src_device_ptr = input_buffer.getRawDevicePtr();
+      CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_device_ptr,
+                                       actual_size_bytes,
+                                       cudaMemcpyDeviceToDevice, m_cudaStream));
     }
   }
 
@@ -375,34 +375,34 @@ InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
   outputs.datas.clear();
   outputs.shapes.clear();
 
-  for (const auto &outputInfo : mEngine.modelInfo->outputs) {
-    const auto &name = outputInfo.name;
-    void *srcDevicePtr = mTensorAddressMap.at(name);
+  for (const auto &output_info : m_engine.m_modelInfo->outputs) {
+    const auto &name = output_info.name;
+    void *src_device_ptr = m_tensorAddressMap.at(name);
 
-    nvinfer1::Dims actualOutputDims = mContext->getTensorShape(name.c_str());
-    int64_t actualVolume = TrtAlgoInference::calculateVolume(actualOutputDims);
+    nvinfer1::Dims actual_output_dims = m_context->getTensorShape(name.c_str());
+    int64_t actual_volume = TrtAlgoInference::calculateVolume(actual_output_dims);
 
-    size_t actualOutputSizeBytes =
-        static_cast<size_t>(actualVolume) *
+    size_t actual_output_size_bytes =
+        static_cast<size_t>(actual_volume) *
         trt_utils::getTrtElementSize(
-            trt_utils::aiCoreDataTypeToTrt(outputInfo.dataType));
+            trt_utils::aiCoreDataTypeToTrt(output_info.data_type));
 
-    auto &pinnedBuffer = mPinnedOutputBuffers.at(name);
+    auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
 
-    if (pinnedBuffer.capacity() < actualOutputSizeBytes) {
-      pinnedBuffer.reserve(actualOutputSizeBytes);
+    if (pinned_buffer.capacity() < actual_output_size_bytes) {
+      pinned_buffer.reserve(actual_output_size_bytes);
     }
 
-    uint8_t *destHostPtr = pinnedBuffer.writePtr(actualOutputSizeBytes);
+    uint8_t *dest_host_ptr = pinned_buffer.writePtr(actual_output_size_bytes);
 
     // Submit async D2H copy (non-blocking)
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(destHostPtr, srcDevicePtr,
-                                     actualOutputSizeBytes,
-                                     cudaMemcpyDeviceToHost, mCudaStream));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_host_ptr, src_device_ptr,
+                                     actual_output_size_bytes,
+                                     cudaMemcpyDeviceToHost, m_cudaStream));
 
     // Store output shapes immediately (available from context)
-    outputs.shapes[name].assign(actualOutputDims.d,
-                                actualOutputDims.d + actualOutputDims.nbDims);
+    outputs.shapes[name].assign(actual_output_dims.d,
+                                actual_output_dims.d + actual_output_dims.nbDims);
   }
 
   // NOTE: No synchronization here! Caller is responsible for sync.
@@ -412,12 +412,12 @@ InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
 InferErrorCode TrtInferStream::finalizeOutputs(TensorData &outputs) {
   // Copy from pinned buffers to output TypedBuffers
   // PRECONDITION: cudaStreamSynchronize must have been called!
-  for (const auto &outputInfo : mEngine.modelInfo->outputs) {
-    const auto &name = outputInfo.name;
-    auto &pinnedBuffer = mPinnedOutputBuffers.at(name);
-    std::vector<uint8_t> safeData = pinnedBuffer.toVector();
+  for (const auto &output_info : m_engine.m_modelInfo->outputs) {
+    const auto &name = output_info.name;
+    auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
+    std::vector<uint8_t> safe_data = pinned_buffer.toVector();
     outputs.datas[name] =
-        TypedBuffer::createFromCpu(outputInfo.dataType, std::move(safeData));
+        TypedBuffer::createFromCpu(output_info.data_type, std::move(safe_data));
   }
 
   return InferErrorCode::SUCCESS;
@@ -431,15 +431,15 @@ InferErrorCode TrtInferStream::copyOutputsToHost(TensorData &outputs) {
   }
 
   // Synchronize to ensure D2H copies complete
-  CHECK_CUDA_ERROR(cudaStreamSynchronize(mCudaStream));
+  CHECK_CUDA_ERROR(cudaStreamSynchronize(m_cudaStream));
 
   return finalizeOutputs(outputs);
 }
 
 InferErrorCode TrtInferStream::executeInference() {
-  if (!mContext->enqueueV3(mCudaStream)) {
+  if (!m_context->enqueueV3(m_cudaStream)) {
     LOG_ERROR_S << "TensorRT enqueueV3 failed";
-    return InferErrorCode::INFER_EXECUTION_FAILED;
+    return InferErrorCode::InferExecutionFailed;
   }
 
   return InferErrorCode::SUCCESS;
@@ -449,89 +449,89 @@ InferErrorCode TrtInferStream::captureGraph() {
   LOG_INFO_S << "Capturing CUDA Graph...";
 
   // Warm-up run before capture
-  if (!mContext->enqueueV3(mCudaStream)) {
+  if (!m_context->enqueueV3(m_cudaStream)) {
     LOG_ERROR_S << "Warm-up enqueue failed before graph capture";
-    return InferErrorCode::INFER_EXECUTION_FAILED;
+    return InferErrorCode::InferExecutionFailed;
   }
-  CHECK_CUDA_ERROR(cudaStreamSynchronize(mCudaStream));
+  CHECK_CUDA_ERROR(cudaStreamSynchronize(m_cudaStream));
 
   // Begin capture with ThreadLocal mode
-  cudaError_t captureErr =
-      cudaStreamBeginCapture(mCudaStream, cudaStreamCaptureModeThreadLocal);
-  if (captureErr != cudaSuccess) {
+  cudaError_t capture_err =
+      cudaStreamBeginCapture(m_cudaStream, cudaStreamCaptureModeThreadLocal);
+  if (capture_err != cudaSuccess) {
     LOG_WARNING_S << "Failed to begin CUDA Graph capture: "
-                  << cudaGetErrorString(captureErr)
+                  << cudaGetErrorString(capture_err)
                   << ". Falling back to non-graph inference.";
-    mGraphEnabled = false;
+    m_graphEnabled = false;
     return executeInference();
   }
 
   // Execute inference (will be captured)
-  bool enqueueSuccess = mContext->enqueueV3(mCudaStream);
+  bool enqueue_success = m_context->enqueueV3(m_cudaStream);
 
   // End capture
-  cudaGraph_t tempGraph = nullptr;
-  captureErr = cudaStreamEndCapture(mCudaStream, &tempGraph);
+  cudaGraph_t temp_graph = nullptr;
+  capture_err = cudaStreamEndCapture(m_cudaStream, &temp_graph);
 
-  if (!enqueueSuccess || captureErr != cudaSuccess || tempGraph == nullptr) {
+  if (!enqueue_success || capture_err != cudaSuccess || temp_graph == nullptr) {
     LOG_WARNING_S << "CUDA Graph capture failed. Falling back to non-graph.";
-    if (tempGraph) {
-      cudaGraphDestroy(tempGraph);
+    if (temp_graph) {
+      cudaGraphDestroy(temp_graph);
     }
-    mGraphEnabled = false;
+    m_graphEnabled = false;
     return executeInference();
   }
 
-  mCudaGraph = tempGraph;
+  m_cudaGraph = temp_graph;
 
   // Instantiate the graph
-  cudaGraphExec_t tempGraphExec = nullptr;
-  captureErr =
-      cudaGraphInstantiate(&tempGraphExec, mCudaGraph, nullptr, nullptr, 0);
-  if (captureErr != cudaSuccess || tempGraphExec == nullptr) {
+  cudaGraphExec_t temp_graph_exec = nullptr;
+  capture_err =
+      cudaGraphInstantiate(&temp_graph_exec, m_cudaGraph, nullptr, nullptr, 0);
+  if (capture_err != cudaSuccess || temp_graph_exec == nullptr) {
     LOG_WARNING_S << "Failed to instantiate CUDA Graph: "
-                  << cudaGetErrorString(captureErr);
-    cudaGraphDestroy(mCudaGraph);
-    mCudaGraph = nullptr;
-    mGraphEnabled = false;
+                  << cudaGetErrorString(capture_err);
+    cudaGraphDestroy(m_cudaGraph);
+    m_cudaGraph = nullptr;
+    m_graphEnabled = false;
     return executeInference();
   }
 
-  mCudaGraphExec = tempGraphExec;
-  mGraphCaptured = true;
+  m_cudaGraphExec = temp_graph_exec;
+  m_graphCaptured = true;
   LOG_INFO_S << "CUDA Graph captured successfully.";
 
   // Launch the graph for this first inference
-  CHECK_CUDA_ERROR(cudaGraphLaunch(mCudaGraphExec, mCudaStream));
+  CHECK_CUDA_ERROR(cudaGraphLaunch(m_cudaGraphExec, m_cudaStream));
 
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode TrtInferStream::launchGraph() {
-  if (!mCudaGraphExec) {
+  if (!m_cudaGraphExec) {
     LOG_ERROR_S << "No graph to launch";
-    return InferErrorCode::GRAPH_LAUNCH_FAILED;
+    return InferErrorCode::GraphLaunchFailed;
   }
 
-  cudaError_t err = cudaGraphLaunch(mCudaGraphExec, mCudaStream);
+  cudaError_t err = cudaGraphLaunch(m_cudaGraphExec, m_cudaStream);
   if (err != cudaSuccess) {
     LOG_ERROR_S << "cudaGraphLaunch failed: " << cudaGetErrorString(err);
-    return InferErrorCode::GRAPH_LAUNCH_FAILED;
+    return InferErrorCode::GraphLaunchFailed;
   }
 
   return InferErrorCode::SUCCESS;
 }
 
 void TrtInferStream::destroyGraph() {
-  if (mCudaGraphExec) {
-    cudaGraphExecDestroy(mCudaGraphExec);
-    mCudaGraphExec = nullptr;
+  if (m_cudaGraphExec) {
+    cudaGraphExecDestroy(m_cudaGraphExec);
+    m_cudaGraphExec = nullptr;
   }
-  if (mCudaGraph) {
-    cudaGraphDestroy(mCudaGraph);
-    mCudaGraph = nullptr;
+  if (m_cudaGraph) {
+    cudaGraphDestroy(m_cudaGraph);
+    m_cudaGraph = nullptr;
   }
-  mGraphCaptured = false;
+  m_graphCaptured = false;
 }
 
 } // namespace ai_core::dnn

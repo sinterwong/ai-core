@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __ONNXRUNTIME_INFERENCE_H_
-#define __ONNXRUNTIME_INFERENCE_H_
+#ifndef AI_CORE_ONNXRUNTIME_INFERENCE_HPP
+#define AI_CORE_ONNXRUNTIME_INFERENCE_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/infer_base.hpp"
@@ -22,7 +22,7 @@ namespace ai_core::dnn {
 class OrtAlgoInference : public IInferEnginePlugin {
 public:
   explicit OrtAlgoInference(const AlgoConstructParams &params)
-      : mParams(std::move(params.getParam<AlgoInferParams>("params"))) {}
+      : m_params(std::move(params.getParam<AlgoInferParams>("params"))) {}
 
   virtual ~OrtAlgoInference() override {}
 
@@ -36,19 +36,19 @@ private:
   static DataType ortDataTypeToAiCore(ONNXTensorElementDataType type);
 
 private:
-  AlgoInferParams mParams;
-  std::vector<std::string> mInputNames;
-  std::vector<std::string> mOutputNames;
+  AlgoInferParams m_params;
+  std::vector<std::string> m_inputNames;
+  std::vector<std::string> m_outputNames;
 
-  std::unique_ptr<Ort::Env> mEnv;
-  std::unique_ptr<Ort::Session> mSession;
-  std::unique_ptr<Ort::MemoryInfo> mMemoryInfo;
+  std::unique_ptr<Ort::Env> m_env;
+  std::unique_ptr<Ort::Session> m_session;
+  std::unique_ptr<Ort::MemoryInfo> m_memoryInfo;
 
-  std::shared_ptr<ModelInfo> modelInfo;
+  std::shared_ptr<ModelInfo> m_modelInfo;
 
-  std::unordered_set<std::string> mDynamicInputTensorNames;
+  std::unordered_set<std::string> m_dynamicInputTensorNames;
 
-  mutable std::mutex mMutex;
+  mutable std::mutex m_mutex;
 };
 } // namespace ai_core::dnn
 #endif

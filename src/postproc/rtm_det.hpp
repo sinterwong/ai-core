@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_RTM_DETECTION_HPP_
-#define __INFERENCE_VISION_RTM_DETECTION_HPP_
+#ifndef AI_CORE_INFERENCE_VISION_RTM_DETECTION_HPP
+#define AI_CORE_INFERENCE_VISION_RTM_DETECTION_HPP
 
 #include "anchor_det_post_base.hpp"
 namespace ai_core::dnn {
@@ -26,10 +26,10 @@ public:
                             std::vector<AlgoOutput> &) const override;
 
 private:
-  DetRet processSingle(const float *detDataPtr, const float *clsDataPtr,
-                       int anchorNum, int numClasses,
-                       const FrameTransformContext &prepArgs,
-                       const AnchorDetParams &postArgs) const;
+  DetRet processSingle(const float *det_data_ptr, const float *cls_data_ptr,
+                       int anchor_num, int num_classes,
+                       const FrameTransformContext &prep_args,
+                       const AnchorDetParams &post_args) const;
 };
 } // namespace ai_core::dnn
 

@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __CV_GENERIC_POSTPROC_HPP__
-#define __CV_GENERIC_POSTPROC_HPP__
+#ifndef AI_CORE_CV_GENERIC_POSTPROC_HPP
+#define AI_CORE_CV_GENERIC_POSTPROC_HPP
 
 #include "ai_core/algo_data_types.hpp"
 #include "ai_core/postproc_base.hpp"
@@ -31,4 +31,4 @@ public:
 };
 } // namespace ai_core::dnn
 
-#endif // __I_IMAGE_PREPROCESSOR_HPP__
+#endif
