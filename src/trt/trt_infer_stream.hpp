@@ -3,7 +3,7 @@
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief TensorRT inference stream with independent resources and CUDA Graph
  * @version 0.1
- * @date 2025-01-06
+ * @date 2026-01-06
  *
  * @copyright Copyright (c) 2025
  *
@@ -11,7 +11,7 @@
 #ifndef AI_CORE_TRT_INFER_STREAM_HPP
 #define AI_CORE_TRT_INFER_STREAM_HPP
 
-#include "ai_core/execution_context.hpp"
+#include "ai_core/i_execution_context.hpp"
 #include "cuda_device_buffer.cuh"
 #include "cuda_host_buffer.cuh"
 #include <NvInfer.h>
@@ -178,38 +178,38 @@ private:
   // ============================================================================
 
   // Parent engine reference (provides ModelInfo, mTensorSizeMap etc.)
-  TrtAlgoInference &mEngine;
+  TrtAlgoInference &m_engine;
 
   // Keep engine alive - prevents destruction while this stream exists
   // IMPORTANT: Declared BEFORE mContext so mContext is destroyed FIRST
   // (C++ destroys members in reverse declaration order)
-  std::shared_ptr<nvinfer1::ICudaEngine> mSharedEngine;
+  std::shared_ptr<nvinfer1::ICudaEngine> m_sharedEngine;
 
   // CUDA stream (owned by this stream instance)
-  cudaStream_t mCudaStream{nullptr};
+  cudaStream_t m_cudaStream{nullptr};
 
   // TensorRT execution context (owned by this stream instance)
   // Will be destroyed BEFORE mSharedEngine (since it's declared after)
-  std::unique_ptr<nvinfer1::IExecutionContext> mContext;
+  std::unique_ptr<nvinfer1::IExecutionContext> m_context;
 
   // Device buffers for I/O tensors (owned by this stream instance)
-  std::vector<cuda_utils::DeviceByteBuffer> mDeviceBuffers;
-  std::unordered_map<std::string, void *> mTensorAddressMap;
+  std::vector<cuda_utils::DeviceByteBuffer> m_deviceBuffers;
+  std::unordered_map<std::string, void *> m_tensorAddressMap;
 
   // Pinned output buffers (owned by this stream instance)
   std::unordered_map<std::string, cuda_utils::CudaHostBuffer<uint8_t>>
-      mPinnedOutputBuffers;
+      m_pinnedOutputBuffers;
 
   // Cached input shapes for this stream
-  std::unordered_map<std::string, std::vector<int64_t>> mCachedInputShapes;
+  std::unordered_map<std::string, std::vector<int64_t>> m_cachedInputShapes;
 
   // CUDA Graph resources (owned by this stream instance)
-  bool mGraphEnabled{false};
-  bool mGraphCaptured{false};
-  cudaGraph_t mCudaGraph{nullptr};
-  cudaGraphExec_t mCudaGraphExec{nullptr};
+  bool m_graphEnabled{false};
+  bool m_graphCaptured{false};
+  cudaGraph_t m_cudaGraph{nullptr};
+  cudaGraphExec_t m_cudaGraphExec{nullptr};
 
-  bool mInitialized{false};
+  bool m_initialized{false};
 };
 
 } // namespace ai_core::dnn

@@ -9,10 +9,10 @@
  *
  */
 
-#ifndef __I_CV_GENERIC_POSTPROCESSOR_HPP__
-#define __I_CV_GENERIC_POSTPROCESSOR_HPP__
+#ifndef AI_CORE_I_CV_GENERIC_POSTPROCESSOR_HPP
+#define AI_CORE_I_CV_GENERIC_POSTPROCESSOR_HPP
 
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core {
@@ -35,4 +35,4 @@ public:
 
 } // namespace ai_core
 
-#endif // __I_IMAGE_PREPROCESSOR_HPP__
+#endif

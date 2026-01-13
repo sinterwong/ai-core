@@ -14,7 +14,7 @@
 
 namespace ai_core::dnn {
 
-AlgoManager::AlgoManager() : pImpl(std::make_unique<Impl>()) {}
+AlgoManager::AlgoManager() : m_pImpl(std::make_unique<Impl>()) {}
 
 AlgoManager::~AlgoManager() = default;
 
@@ -25,29 +25,29 @@ AlgoManager &AlgoManager::operator=(AlgoManager &&other) noexcept = default;
 InferErrorCode
 AlgoManager::registerAlgo(const std::string &name,
                           const std::shared_ptr<AlgoInference> &algo) {
-  return pImpl->registerAlgo(name, algo);
+  return m_pImpl->registerAlgo(name, algo);
 }
 
 InferErrorCode AlgoManager::unregisterAlgo(const std::string &name) {
-  return pImpl->unregisterAlgo(name);
+  return m_pImpl->unregisterAlgo(name);
 }
 
 InferErrorCode AlgoManager::infer(const std::string &name, AlgoInput &input,
-                                  AlgoPreprocParams &preprocParams,
+                                  AlgoPreprocParams &preproc_params,
                                   AlgoOutput &output,
-                                  AlgoPostprocParams &postprocParams) {
-  return pImpl->infer(name, input, preprocParams, output, postprocParams);
+                                  AlgoPostprocParams &postproc_params) {
+  return m_pImpl->infer(name, input, preproc_params, output, postproc_params);
 }
 
 std::shared_ptr<AlgoInference>
 AlgoManager::getAlgo(const std::string &name) const {
-  return pImpl->getAlgo(name);
+  return m_pImpl->getAlgo(name);
 }
 
 bool AlgoManager::hasAlgo(const std::string &name) const {
-  return pImpl->hasAlgo(name);
+  return m_pImpl->hasAlgo(name);
 }
 
-void AlgoManager::clear() { pImpl->clear(); }
+void AlgoManager::clear() { m_pImpl->clear(); }
 
 } // namespace ai_core::dnn

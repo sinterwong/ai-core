@@ -9,7 +9,7 @@
  *
  */
 #include "infer_engine_registrar.hpp"
-#include "ai_core/ai_core_registrar.hpp"
+#include "ai_core/plugin_registrar.hpp"
 #include "ai_core/logger.hpp"
 
 #ifdef WITH_ORT

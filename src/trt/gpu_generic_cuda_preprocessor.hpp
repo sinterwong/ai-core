@@ -17,8 +17,8 @@
 #ifndef GPU_GENERIC_CUDA_PREPROCESSOR_HPP
 #define GPU_GENERIC_CUDA_PREPROCESSOR_HPP
 
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "cuda_device_buffer.cuh"
 #include "cuda_stream.cuh"
@@ -34,17 +34,17 @@ namespace ai_core::dnn::gpu {
 struct GpuPreprocessorConfig {
   /// Enable parallel mode (each call allocates own memory, thread-safe)
   /// When false, uses cached buffers with mutex protection
-  bool enableParallel = false;
+  bool enable_parallel = false;
 
   /// Use high-priority CUDA stream (only effective in sequential mode)
-  bool useHighPriorityStream = false;
+  bool use_high_priority_stream = false;
 
   static GpuPreprocessorConfig defaults() { return GpuPreprocessorConfig{}; }
 
   /// Create config for parallel/multi-threaded usage
   static GpuPreprocessorConfig parallel() {
     GpuPreprocessorConfig cfg;
-    cfg.enableParallel = true;
+    cfg.enable_parallel = true;
     return cfg;
   }
 };
@@ -71,12 +71,12 @@ public:
   GpuGenericCudaPreprocessor &operator=(GpuGenericCudaPreprocessor &&) = delete;
 
   TypedBuffer process(const FramePreprocessArg &args, const FrameInput &input,
-                      FrameTransformContext &runtimeArgs) const override;
+                      FrameTransformContext &runtime_args) const override;
 
   TypedBuffer
   batchProcess(const FramePreprocessArg &args,
                const std::vector<FrameInput> &inputs,
-               std::vector<FrameTransformContext> &runtimeArgs) const override;
+               std::vector<FrameTransformContext> &runtime_args) const override;
 
   /// Get the CUDA stream (only valid in sequential mode)
   cudaStream_t getStream() const;
@@ -88,29 +88,28 @@ public:
   void resetCache() const;
 
   /// Check if running in parallel mode
-  bool isParallelMode() const { return m_config.enableParallel; }
+  bool isParallelMode() const { return m_config.enable_parallel; }
 
 private:
   TypedBuffer processSequential(const FramePreprocessArg &args,
                                 const FrameInput &input,
-                                FrameTransformContext &runtimeArgs) const;
+                                FrameTransformContext &runtime_args) const;
 
-  TypedBuffer
-  batchProcessSequential(const FramePreprocessArg &args,
-                         const std::vector<FrameInput> &inputs,
-                         std::vector<FrameTransformContext> &runtimeArgs) const;
+  TypedBuffer batchProcessSequential(
+      const FramePreprocessArg &args, const std::vector<FrameInput> &inputs,
+      std::vector<FrameTransformContext> &runtime_args) const;
 
   TypedBuffer processParallel(const FramePreprocessArg &args,
                               const FrameInput &input,
-                              FrameTransformContext &runtimeArgs) const;
+                              FrameTransformContext &runtime_args) const;
 
   TypedBuffer
   batchProcessParallel(const FramePreprocessArg &args,
                        const std::vector<FrameInput> &inputs,
-                       std::vector<FrameTransformContext> &runtimeArgs) const;
+                       std::vector<FrameTransformContext> &runtime_args) const;
 
   static void validatePreprocessArgs(const FramePreprocessArg &args,
-                                     int srcChannels);
+                                     int src_channels);
 
   struct CachedResources {
     // Parameter buffers
@@ -119,29 +118,29 @@ private:
     cuda_utils::CudaDeviceBuffer<int> d_pad;
 
     // Host-side copies for change detection
-    std::vector<float> cachedMeanVals;
-    std::vector<float> cachedNormVals;
-    std::vector<int> cachedPadVals;
+    std::vector<float> cached_mean_vals;
+    std::vector<float> cached_norm_vals;
+    std::vector<int> cached_pad_vals;
 
     // Working buffers
-    cuda_utils::DeviceByteBuffer d_hwcBuffer;
-    cuda_utils::DeviceByteBuffer d_chwBuffer;
+    cuda_utils::DeviceByteBuffer d_hwc_buffer;
+    cuda_utils::DeviceByteBuffer d_chw_buffer;
 
     // Input image buffer (reused across calls to avoid alloc/free)
-    cuda_utils::DeviceByteBuffer d_inputImage;
+    cuda_utils::DeviceByteBuffer d_input_image;
 
     // Batch processing: input image buffers (one per batch slot)
-    std::vector<cuda_utils::DeviceByteBuffer> d_batchInputImages;
+    std::vector<cuda_utils::DeviceByteBuffer> d_batch_input_images;
 
     // Batch metadata buffers
-    cuda_utils::CudaDeviceBuffer<uint8_t *> d_srcPtrs;
-    cuda_utils::CudaDeviceBuffer<int> d_srcHeights;
-    cuda_utils::CudaDeviceBuffer<int> d_srcWidths;
+    cuda_utils::CudaDeviceBuffer<uint8_t *> d_src_ptrs;
+    cuda_utils::CudaDeviceBuffer<int> d_src_heights;
+    cuda_utils::CudaDeviceBuffer<int> d_src_widths;
     cuda_utils::CudaDeviceBuffer<cuda_op::ROIData> d_rois;
-    cuda_utils::CudaDeviceBuffer<int> d_newHeights;
-    cuda_utils::CudaDeviceBuffer<int> d_newWidths;
-    cuda_utils::CudaDeviceBuffer<int> d_padYs;
-    cuda_utils::CudaDeviceBuffer<int> d_padXs;
+    cuda_utils::CudaDeviceBuffer<int> d_new_heights;
+    cuda_utils::CudaDeviceBuffer<int> d_new_widths;
+    cuda_utils::CudaDeviceBuffer<int> d_pad_ys;
+    cuda_utils::CudaDeviceBuffer<int> d_pad_xs;
 
     void reset();
   };
@@ -149,7 +148,7 @@ private:
   void updateParameterBuffers(const FramePreprocessArg &args,
                               cudaStream_t stream) const;
   void ensureWorkingBufferCapacity(const FramePreprocessArg &args,
-                                   int batchSize, cudaStream_t stream) const;
+                                   int batch_size, cudaStream_t stream) const;
 
   // Stream for sequential mode
   mutable std::unique_ptr<cuda_utils::CudaStream> m_stream;
@@ -163,4 +162,4 @@ private:
 
 } // namespace ai_core::dnn::gpu
 
-#endif // __GPU_GENERIC_CUDA_PREPROCESSOR_HPP__
+#endif

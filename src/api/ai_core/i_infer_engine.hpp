@@ -1,5 +1,5 @@
 /**
- * @file infer_base.hpp
+ * @file i_infer_engine.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -11,8 +11,8 @@
 #ifndef AI_CORE_INFER_BASE_HPP
 #define AI_CORE_INFER_BASE_HPP
 
-#include "ai_core/infer_common_types.hpp"
-#include "ai_core/infer_error_code.hpp"
+#include "ai_core/common_types.hpp"
+#include "ai_core/error_code.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <memory>
 
@@ -35,7 +35,7 @@ public:
   virtual void prettyPrintModelInfos();
 
 protected:
-  std::shared_ptr<ModelInfo> modelInfo;
+  std::shared_ptr<ModelInfo> m_modelInfo;
 };
 } // namespace ai_core::dnn
 #endif

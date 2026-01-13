@@ -8,12 +8,12 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __AI_CORE_ALGO_INFER_ENGINE_HPP__
-#define __AI_CORE_ALGO_INFER_ENGINE_HPP__
+#ifndef AI_CORE_ALGO_INFER_ENGINE_HPP
+#define AI_CORE_ALGO_INFER_ENGINE_HPP
 
-#include "ai_core/infer_common_types.hpp"
-#include "ai_core/infer_error_code.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/common_types.hpp"
+#include "ai_core/error_code.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <memory>
 
@@ -21,14 +21,14 @@ namespace ai_core::dnn {
 
 class AlgoInferEngine {
 public:
-  AlgoInferEngine(const std::string &moduleName,
-                  const AlgoInferParams &inferParams);
+  AlgoInferEngine(const std::string &module_name,
+                  const AlgoInferParams &infer_params);
 
   ~AlgoInferEngine();
 
   InferErrorCode initialize();
 
-  InferErrorCode infer(const TensorData &modelInput, TensorData &modelOutput);
+  InferErrorCode infer(const TensorData &model_input, TensorData &model_output);
 
   InferErrorCode terminate();
 
@@ -36,7 +36,7 @@ public:
 
 private:
   class Impl;
-  std::unique_ptr<Impl> pImpl;
+  std::unique_ptr<Impl> m_pImpl;
 };
 } // namespace ai_core::dnn
-#endif // __AI_CORE_ALGO_INFER_ENGINE_HPP__
+#endif

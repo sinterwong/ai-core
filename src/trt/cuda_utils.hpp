@@ -24,19 +24,19 @@ struct ROIData {
 // Single frame operations (with stream support)
 // ===========================================================================
 
-void hwc_to_chw_gpu(const float *src, float *dst, int height, int width,
+void hwcToChwGpu(const float *src, float *dst, int height, int width,
                     int channels, cudaStream_t stream = nullptr);
 
-void fp32_to_fp16_gpu(const float *src, uint16_t *dst, int n,
+void fp32ToFp16Gpu(const float *src, uint16_t *dst, int n,
                       cudaStream_t stream = nullptr);
 
-void crop_resize_normalize_gpu(const uint8_t *src, float *dst, int src_h,
+void cropResizeNormalizeGpu(const uint8_t *src, float *dst, int src_h,
                                int src_w, int src_c, int crop_x, int crop_y,
                                int crop_h, int crop_w, int dst_h, int dst_w,
                                const float *mean, const float *std,
                                cudaStream_t stream = nullptr);
 
-void escale_resize_normalize_gpu(const uint8_t *src, float *dst,
+void escaleResizeNormalizeGpu(const uint8_t *src, float *dst,
                                  int full_image_w, int src_c,
                                  const ROIData &roi, int dst_h, int dst_w,
                                  const float *mean, const float *std,
@@ -47,11 +47,11 @@ void escale_resize_normalize_gpu(const uint8_t *src, float *dst,
 // Batch operations (with stream support)
 // ===========================================================================
 
-void batch_hwc_to_chw_gpu(const float *src, float *dst, int height, int width,
+void batchHwcToChwGpu(const float *src, float *dst, int height, int width,
                           int channels, int batch_size,
                           cudaStream_t stream = nullptr);
 
-void batch_crop_resize_normalize_gpu(const uint8_t *const *d_src_ptrs,
+void batchCropResizeNormalizeGpu(const uint8_t *const *d_src_ptrs,
                                      float *d_batch_dst, const int *d_src_hs,
                                      const int *d_src_ws, int src_c,
                                      const ROIData *d_rois, int dst_h,
@@ -59,7 +59,7 @@ void batch_crop_resize_normalize_gpu(const uint8_t *const *d_src_ptrs,
                                      const float *std, int batch_size,
                                      cudaStream_t stream = nullptr);
 
-void batch_escale_resize_normalize_gpu(
+void batchEscaleResizeNormalizeGpu(
     const uint8_t *const *d_src_ptrs, float *d_batch_dst, const int *d_src_hs,
     const int *d_src_ws, int src_c, const ROIData *d_rois, int dst_h, int dst_w,
     const float *mean, const float *std, const int *pad_val,

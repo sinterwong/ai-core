@@ -1,9 +1,9 @@
 #pragma once
 
 #include "algo_config_parser.hpp"
-#include <ai_core/algo_infer_engine.hpp>
-#include <ai_core/algo_postproc.hpp>
-#include <ai_core/algo_preproc.hpp>
+#include "ai_core/infer_engine_wrapper.hpp"
+#include "ai_core/algo_postprocessor.hpp"
+#include "ai_core/algo_preprocessor.hpp"
 #include <vector>
 
 namespace ai_core::example {
@@ -13,7 +13,7 @@ public:
   OCRRec(const std::string &modelPath, const std::string &dictPath = "");
   ~OCRRec();
 
-  ai_core::OCRRecoRet process(const cv::Mat &imageGray);
+  ai_core::OCRRecoRet process(const cv::Mat &image_gray);
 
   std::string mapToString(const std::vector<int64_t> &recResult);
 

@@ -32,7 +32,7 @@ private:
 };
 
 [[maybe_unused]] inline const static DefaultPostprocPluginRegistrar
-    &__temp_postproc_registrar_ = DefaultPostprocPluginRegistrar::getInstance();
+    &temp_postproc_registrar = DefaultPostprocPluginRegistrar::getInstance();
 } // namespace ai_core::dnn
 
 #endif

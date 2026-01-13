@@ -8,11 +8,11 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/algo_infer_engine.hpp"
-#include "ai_core/algo_postproc.hpp"
-#include "ai_core/algo_preproc.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
+#include "ai_core/algo_postprocessor.hpp"
+#include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <memory>
@@ -20,15 +20,15 @@
 
 #ifdef WITH_ORT
 const static auto engine = []() {
-  ai_core::AlgoInferParams inferParams;
-  inferParams.modelPath = "assets/models/yolov11n-fp16.onnx";
-  inferParams.name = "yolov11n";
-  inferParams.deviceType = ai_core::DeviceType::CPU;
-  inferParams.dataType = ai_core::DataType::FLOAT16;
+  ai_core::AlgoInferParams infer_params;
+  infer_params.model_path = "assets/models/yolov11n-fp16.onnx";
+  infer_params.name = "yolov11n";
+  infer_params.device_type = ai_core::DeviceType::CPU;
+  infer_params.data_type = ai_core::DataType::FLOAT16;
 
   std::shared_ptr<ai_core::dnn::AlgoInferEngine> engine;
   engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("OrtAlgoInference",
-                                                           inferParams);
+                                                           infer_params);
   engine->initialize();
   return engine;
 }();
@@ -67,71 +67,71 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
   preproc.initialize();
 
-  ai_core::AlgoPreprocParams preprocParams;
-  ai_core::FramePreprocessArg framePreprocessArg;
-  framePreprocessArg.modelInputShape = {640, 640, 3};
+  ai_core::AlgoPreprocParams preproc_params;
+  ai_core::FramePreprocessArg frame_preprocess_arg;
+  frame_preprocess_arg.model_input_shape = {640, 640, 3};
 #ifdef WITH_ORT
-  framePreprocessArg.dataType = ai_core::DataType::FLOAT16;
-  framePreprocessArg.inputNames = {"images"};
+  frame_preprocess_arg.data_type = ai_core::DataType::FLOAT16;
+  frame_preprocess_arg.input_names = {"images"};
 #elif WITH_NCNN
-  framePreprocessArg.dataType = ai_core::DataType::FLOAT32;
-  framePreprocessArg.inputNames = {"in0"};
+  frame_preprocess_arg_ptr.dataType = ai_core::DataType::FLOAT32;
+  frame_preprocess_arg_ptr.input_names = {"in0"};
 #elif WITH_TRT
-  framePreprocessArg.dataType = ai_core::DataType::FLOAT32;
-  framePreprocessArg.inputNames = {"images"};
+  frame_preprocess_arg_ptr.dataType = ai_core::DataType::FLOAT32;
+  frame_preprocess_arg_ptr.input_names = {"images"};
 #endif
 
-  framePreprocessArg.needResize = true;
-  framePreprocessArg.isEqualScale = true;
-  framePreprocessArg.pad = {0, 0, 0};
-  framePreprocessArg.meanVals = {0, 0, 0};
-  framePreprocessArg.normVals = {255.f, 255.f, 255.f};
-  framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.preprocTaskType =
-      ai_core::FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
-  framePreprocessArg.outputLocation = ai_core::BufferLocation::CPU;
-  preprocParams.setParams(framePreprocessArg);
+  frame_preprocess_arg.need_resize = true;
+  frame_preprocess_arg.is_equal_scale = true;
+  frame_preprocess_arg.pad = {0, 0, 0};
+  frame_preprocess_arg.mean_vals = {0, 0, 0};
+  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.hwc2chw = true;
+  frame_preprocess_arg.preproc_task_type =
+      ai_core::FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
+  frame_preprocess_arg.output_location = ai_core::BufferLocation::CPU;
+  preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
-  ai_core::FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  input.setParams(frameInput);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  ai_core::FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  input.setParams(frame_input);
 
-  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+  std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
-  ai_core::TensorData modelInput;
-  preproc.process(input, preprocParams, modelInput, runtimeContext);
+  ai_core::TensorData model_input;
+  preproc.process(input, preproc_params, model_input, runtime_context);
 
-  ai_core::TensorData modelOutput;
-  engine->infer(modelInput, modelOutput);
+  ai_core::TensorData model_output;
+  engine->infer(model_input, model_output);
 
   ai_core::dnn::AlgoPostproc postproc("AnchorDetPostproc");
   postproc.initialize();
 
-  ai_core::AlgoPostprocParams postprocParams;
-  ai_core::AnchorDetParams anchorDetParams;
-  anchorDetParams.algoType = ai_core::AnchorDetParams::AlgoType::YOLO_DET_V11;
-  anchorDetParams.condThre = 0.5f;
-  anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.outputNames = {"output0"};
-  postprocParams.setParams(anchorDetParams);
+  ai_core::AlgoPostprocParams postproc_params;
+  ai_core::AnchorDetParams anchor_det_params;
+  anchor_det_params.algo_type = ai_core::AnchorDetParams::AlgoType::YoloDetV11;
+  anchor_det_params.cond_thre = 0.5f;
+  anchor_det_params.nms_thre = 0.45f;
+  anchor_det_params.output_names = {"output0"};
+  postproc_params.setParams(anchor_det_params);
 
-  ai_core::AlgoOutput algoOutput;
+  ai_core::AlgoOutput algo_output;
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    postproc.process(modelOutput, postprocParams, algoOutput, runtimeContext);
+    postproc.process(model_output, postproc_params, algo_output, runtime_context);
   }
   // =================================================
 
   for (auto _ : state) {
-    postproc.process(modelOutput, postprocParams, algoOutput, runtimeContext);
+    postproc.process(model_output, postproc_params, algo_output, runtime_context);
   }
 }
 BENCHMARK(BM_CPU_YoloDetPostproc)

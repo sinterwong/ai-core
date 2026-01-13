@@ -14,24 +14,24 @@
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
-bool RawModelOutput::process(const TensorData &modelOutput,
-                             const FrameTransformContext &prepArgs,
-                             const GenericPostParams &postArgs,
-                             AlgoOutput &algoOutput) const {
+bool RawModelOutput::process(const TensorData &model_output,
+                             const FrameTransformContext &prep_args,
+                             const GenericPostParams &post_args,
+                             AlgoOutput &algo_output) const {
 
-  if (modelOutput.datas.empty()) {
-    LOG_ERROR_S << "modelOutput.outputs is empty";
+  if (model_output.datas.empty()) {
+    LOG_ERROR_S << "model_output.outputs is empty";
     return false;
   }
-  algoOutput.setParams(modelOutput);
+  algo_output.setParams(model_output);
   return true;
 }
 
 bool RawModelOutput::batchProcess(
-    const TensorData &modelOutput,
-    const std::vector<FrameTransformContext> &prepArgs,
-    const GenericPostParams &postArgs,
-    std::vector<AlgoOutput> &algoOutput) const {
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const GenericPostParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
 
   LOG_ERROR_S << "RawModelOutput does not support batch processing right not!";
   return false;

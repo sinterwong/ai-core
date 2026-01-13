@@ -24,9 +24,9 @@ namespace ai_core::dnn::mncnn {
 TypedBuffer
 NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
                                  const FrameInput &input,
-                                 FrameTransformContext &runtimeArgs) const {
+                                 FrameTransformContext &runtime_args) const {
 
-  if (args.outputLocation != BufferLocation::CPU) {
+  if (args.output_location != BufferLocation::CPU) {
     LOG_WARNING_S
         << "NCNN NcnnGenericPreprocessor requested to output to GPU_DEVICE. "
            "This is not supported. Output will be on CPU.";
@@ -36,49 +36,49 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
     throw std::runtime_error("Input frame is null.");
   }
 
-  if (input.inputRoi == nullptr) {
-    runtimeArgs.roi =
+  if (input.input_roi == nullptr) {
+    runtime_args.roi =
         std::make_shared<cv::Rect>(0, 0, input.image->cols, input.image->rows);
   } else {
-    runtimeArgs.roi = input.inputRoi;
+    runtime_args.roi = input.input_roi;
   }
-  runtimeArgs.originShape = {input.image->cols, input.image->rows,
+  runtime_args.origin_shape = {input.image->cols, input.image->rows,
                              input.image->channels()};
 
-  const auto &cvImageOrig = *input.image;
-  const auto &inputRoi = *runtimeArgs.roi;
-  if (inputRoi.x < 0 || inputRoi.y < 0 || inputRoi.width <= 0 ||
-      inputRoi.height <= 0 || inputRoi.x + inputRoi.width > cvImageOrig.cols ||
-      inputRoi.y + inputRoi.height > cvImageOrig.rows) {
-    LOG_ERROR_S << "Invalid ROI: " << inputRoi
-                << " for image size: " << cvImageOrig.size();
+  const auto &cv_image_orig = *input.image;
+  const auto &input_roi = *runtime_args.roi;
+  if (input_roi.x < 0 || input_roi.y < 0 || input_roi.width <= 0 ||
+      input_roi.height <= 0 || input_roi.x + input_roi.width > cv_image_orig.cols ||
+      input_roi.y + input_roi.height > cv_image_orig.rows) {
+    LOG_ERROR_S << "Invalid ROI: " << input_roi
+                << " for image size: " << cv_image_orig.size();
     throw std::runtime_error("Invalid ROI.");
   }
 
-  if (cvImageOrig.empty()) {
+  if (cv_image_orig.empty()) {
     LOG_ERROR_S << "Input cv::Mat image is empty.";
     throw std::runtime_error("Input cv::Mat image is empty.");
   }
 
-  int targetWidth = args.modelInputShape.w;
-  int targetHeight = args.modelInputShape.h;
-  int targetChannels = cvImageOrig.channels();
+  int target_width = args.model_input_shape.w;
+  int target_height = args.model_input_shape.h;
+  int target_channels = cv_image_orig.channels();
 
-  if (targetWidth <= 0 || targetHeight <= 0 || targetChannels <= 0) {
+  if (target_width <= 0 || target_height <= 0 || target_channels <= 0) {
     LOG_ERROR_S << "Invalid target dimensions in FramePreprocessArg: W="
-                << targetWidth << ", H=" << targetHeight
-                << ", C=" << targetChannels;
+                << target_width << ", H=" << target_height
+                << ", C=" << target_channels;
     throw std::runtime_error(
         "Invalid target dimensions in FramePreprocessArg.");
   }
 
-  cv::Mat currentCvMat = cvImageOrig;
+  cv::Mat current_cv_mat = cv_image_orig;
 
-  if (inputRoi.area() > 0) {
-    cv::Rect validRoi =
-        inputRoi & cv::Rect(0, 0, currentCvMat.cols, currentCvMat.rows);
-    if (validRoi.area() > 0) {
-      currentCvMat = currentCvMat(validRoi).clone();
+  if (input_roi.area() > 0) {
+    cv::Rect valid_roi =
+        input_roi & cv::Rect(0, 0, current_cv_mat.cols, current_cv_mat.rows);
+    if (valid_roi.area() > 0) {
+      current_cv_mat = current_cv_mat(valid_roi).clone();
     } else {
       LOG_WARNING_S
           << "Specified ROI is outside image bounds or has zero area. "
@@ -86,142 +86,142 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
     }
   }
 
-  ncnn::Mat ncnnIn;
-  int ncnnPixelType = ncnn::Mat::PIXEL_BGR;
-  if (targetChannels == 3) {
-    if (currentCvMat.channels() == 3) {
-      ncnnPixelType = ncnn::Mat::PIXEL_BGR2RGB;
-    } else if (currentCvMat.channels() == 1) {
-      ncnnPixelType = ncnn::Mat::PIXEL_GRAY2RGB;
+  ncnn::Mat ncnn_in;
+  int ncnn_pixel_type = ncnn::Mat::PIXEL_BGR;
+  if (target_channels == 3) {
+    if (current_cv_mat.channels() == 3) {
+      ncnn_pixel_type = ncnn::Mat::PIXEL_BGR2RGB;
+    } else if (current_cv_mat.channels() == 1) {
+      ncnn_pixel_type = ncnn::Mat::PIXEL_GRAY2RGB;
     } else {
-      LOG_ERROR_S << "Unsupported channel count " << currentCvMat.channels()
+      LOG_ERROR_S << "Unsupported channel count " << current_cv_mat.channels()
                   << " for 3-channel RGB output.";
       throw std::runtime_error("Unsupported channel count for RGB output.");
     }
-  } else if (targetChannels == 1) {
-    if (currentCvMat.channels() == 3)
-      ncnnPixelType = ::ncnn::Mat::PIXEL_BGR2GRAY;
-    else if (currentCvMat.channels() == 1)
-      ncnnPixelType = ncnn::Mat::PIXEL_GRAY;
+  } else if (target_channels == 1) {
+    if (current_cv_mat.channels() == 3)
+      ncnn_pixel_type = ::ncnn::Mat::PIXEL_BGR2GRAY;
+    else if (current_cv_mat.channels() == 1)
+      ncnn_pixel_type = ncnn::Mat::PIXEL_GRAY;
     else {
-      LOG_ERROR_S << "Unsupported channel count " << currentCvMat.channels()
+      LOG_ERROR_S << "Unsupported channel count " << current_cv_mat.channels()
                   << " for 1-channel Gray output.";
       throw std::runtime_error("Unsupported channel count for Gray output.");
     }
   } else {
-    LOG_ERROR_S << "Unsupported target channel count: " << targetChannels;
+    LOG_ERROR_S << "Unsupported target channel count: " << target_channels;
     throw std::runtime_error("Unsupported target channel count.");
   }
 
   // Resize & Pad
-  if (args.needResize) {
-    if (args.isEqualScale) {
-      int imgWidth = currentCvMat.cols;
-      int imgHeight = currentCvMat.rows;
-      float scale = std::min((float)targetWidth / imgWidth,
-                             (float)targetHeight / imgHeight);
-      int scaledWidth = static_cast<int>(imgWidth * scale);
-      int scaledHeight = static_cast<int>(imgHeight * scale);
+  if (args.need_resize) {
+    if (args.is_equal_scale) {
+      int img_width = current_cv_mat.cols;
+      int img_height = current_cv_mat.rows;
+      float scale = std::min((float)target_width / img_width,
+                             (float)target_height / img_height);
+      int scaled_width = static_cast<int>(img_width * scale);
+      int scaled_height = static_cast<int>(img_height * scale);
 
-      ncnn::Mat tempNcnnMat = ncnn::Mat::from_pixels_resize(
-          currentCvMat.data, ncnnPixelType, currentCvMat.cols,
-          currentCvMat.rows, scaledWidth, scaledHeight);
+      ncnn::Mat temp_ncnn_mat = ncnn::Mat::from_pixels_resize(
+          current_cv_mat.data, ncnn_pixel_type, current_cv_mat.cols,
+          current_cv_mat.rows, scaled_width, scaled_height);
 
-      runtimeArgs.leftPad = (targetWidth - scaledWidth) / 2;
-      runtimeArgs.topPad = (targetHeight - scaledHeight) / 2;
-      int rightPad = targetWidth - scaledWidth - runtimeArgs.leftPad;
-      int bottomPad = targetHeight - scaledHeight - runtimeArgs.topPad;
+      runtime_args.left_pad = (target_width - scaled_width) / 2;
+      runtime_args.top_pad = (target_height - scaled_height) / 2;
+      int right_pad = target_width - scaled_width - runtime_args.left_pad;
+      int bottom_pad = target_height - scaled_height - runtime_args.top_pad;
 
-      ncnn::copy_make_border(tempNcnnMat, ncnnIn, runtimeArgs.topPad, bottomPad,
-                             runtimeArgs.leftPad, rightPad,
+      ncnn::copy_make_border(temp_ncnn_mat, ncnn_in, runtime_args.top_pad, bottom_pad,
+                             runtime_args.left_pad, right_pad,
                              ncnn::BORDER_CONSTANT, (float)args.pad[0]);
-      if (ncnnIn.w != targetWidth || ncnnIn.h != targetHeight) {
-        LOG_WARNING_S << "Padded NCNN Mat size (" << ncnnIn.w << "x" << ncnnIn.h
-                      << ") mismatch target (" << targetWidth << "x"
-                      << targetHeight
+      if (ncnn_in.w != target_width || ncnn_in.h != target_height) {
+        LOG_WARNING_S << "Padded NCNN Mat size (" << ncnn_in.w << "x" << ncnn_in.h
+                      << ") mismatch target (" << target_width << "x"
+                      << target_height
                       << "). This is unexpected after ncnn::copy_make_border.";
       }
 
     } else {
-      ncnnIn = ncnn::Mat::from_pixels_resize(
-          currentCvMat.data, ncnnPixelType, currentCvMat.cols,
-          currentCvMat.rows, targetWidth, targetHeight);
+      ncnn_in = ncnn::Mat::from_pixels_resize(
+          current_cv_mat.data, ncnn_pixel_type, current_cv_mat.cols,
+          current_cv_mat.rows, target_width, target_height);
     }
   } else {
-    if (currentCvMat.cols != targetWidth || currentCvMat.rows != targetHeight) {
+    if (current_cv_mat.cols != target_width || current_cv_mat.rows != target_height) {
       LOG_WARNING_S << "NeedResize is false, but image dimensions ("
-                    << currentCvMat.cols << "x" << currentCvMat.rows
-                    << ") do not match target (" << targetWidth << "x"
-                    << targetHeight
+                    << current_cv_mat.cols << "x" << current_cv_mat.rows
+                    << ") do not match target (" << target_width << "x"
+                    << target_height
                     << "). Resizing to target dimensions as a fallback.";
-      ncnnIn = ncnn::Mat::from_pixels_resize(
-          currentCvMat.data, ncnnPixelType, currentCvMat.cols,
-          currentCvMat.rows, targetWidth, targetHeight);
+      ncnn_in = ncnn::Mat::from_pixels_resize(
+          current_cv_mat.data, ncnn_pixel_type, current_cv_mat.cols,
+          current_cv_mat.rows, target_width, target_height);
     } else {
-      ncnnIn = ncnn::Mat::from_pixels(currentCvMat.data, ncnnPixelType,
-                                      currentCvMat.cols, currentCvMat.rows);
+      ncnn_in = ncnn::Mat::from_pixels(current_cv_mat.data, ncnn_pixel_type,
+                                      current_cv_mat.cols, current_cv_mat.rows);
     }
   }
 
-  if (ncnnIn.empty()) {
+  if (ncnn_in.empty()) {
     LOG_ERROR_S << "ncnn::Mat is empty after conversion/resize.";
     throw std::runtime_error("ncnn::Mat is empty after conversion/resize.");
   }
 
   // Normalization (mean subtraction and scaling)
-  if (!args.meanVals.empty() || !args.normVals.empty()) {
-    if (args.meanVals.size() != ncnnIn.c && !args.meanVals.empty()) {
-      LOG_ERROR_S << "meanVals size (" << args.meanVals.size()
-                  << ") != ncnnIn.c (" << ncnnIn.c << ")";
+  if (!args.mean_vals.empty() || !args.norm_vals.empty()) {
+    if (args.mean_vals.size() != ncnn_in.c && !args.mean_vals.empty()) {
+      LOG_ERROR_S << "mean_vals size (" << args.mean_vals.size()
+                  << ") != ncnnIn.c (" << ncnn_in.c << ")";
       throw std::runtime_error(
           "MeanVals size mismatch with NCNN Mat channels.");
     }
-    if (args.normVals.size() != ncnnIn.c && !args.normVals.empty()) {
-      LOG_ERROR_S << "normVals size (" << args.normVals.size()
-                  << ") != ncnnIn.c (" << ncnnIn.c << ")";
+    if (args.norm_vals.size() != ncnn_in.c && !args.norm_vals.empty()) {
+      LOG_ERROR_S << "norm_vals size (" << args.norm_vals.size()
+                  << ") != ncnnIn.c (" << ncnn_in.c << ")";
       throw std::runtime_error(
           "NormVals size mismatch with NCNN Mat channels.");
     }
 
-    std::vector<float> ncnnNormVals = args.normVals;
-    if (!ncnnNormVals.empty()) {
-      std::transform(ncnnNormVals.begin(), ncnnNormVals.end(),
-                     ncnnNormVals.begin(),
+    std::vector<float> ncnn_norm_vals = args.norm_vals;
+    if (!ncnn_norm_vals.empty()) {
+      std::transform(ncnn_norm_vals.begin(), ncnn_norm_vals.end(),
+                     ncnn_norm_vals.begin(),
                      [](float val) { return val == 0.0f ? 1.0f : 1.0f / val; });
     } else {
-      if (!args.meanVals.empty()) {
-        ncnnNormVals.assign(ncnnIn.c, 1.0f);
+      if (!args.mean_vals.empty()) {
+        ncnn_norm_vals.assign(ncnn_in.c, 1.0f);
       }
     }
 
-    std::vector<float> ncnnMeanVals = args.meanVals;
-    if (ncnnMeanVals.empty() && !ncnnNormVals.empty()) {
-      ncnnMeanVals.assign(ncnnIn.c, 0.0f);
+    std::vector<float> ncnn_mean_vals = args.mean_vals;
+    if (ncnn_mean_vals.empty() && !ncnn_norm_vals.empty()) {
+      ncnn_mean_vals.assign(ncnn_in.c, 0.0f);
     }
 
-    ncnnIn.substract_mean_normalize(
-        ncnnMeanVals.empty() ? nullptr : ncnnMeanVals.data(),
-        ncnnNormVals.empty() ? nullptr : ncnnNormVals.data());
+    ncnn_in.substract_mean_normalize(
+        ncnn_mean_vals.empty() ? nullptr : ncnn_mean_vals.data(),
+        ncnn_norm_vals.empty() ? nullptr : ncnn_norm_vals.data());
   }
 
-  if (ncnnIn.elemsize != sizeof(float)) {
+  if (ncnn_in.elemsize != sizeof(float)) {
     LOG_ERROR_S << "NCNN Mat elemsize is not float. Unexpected data format.";
     throw std::runtime_error("NCNN Mat elemsize is not float.");
   }
 
-  const size_t byteSize = ncnnIn.total() * sizeof(float);
-  const uint8_t *ncnnDataPtr = reinterpret_cast<const uint8_t *>(ncnnIn.data);
+  const size_t byte_size = ncnn_in.total() * sizeof(float);
+  const uint8_t *ncnn_data_ptr = reinterpret_cast<const uint8_t *>(ncnn_in.data);
 
-  std::vector<uint8_t> cpuDataVec(ncnnDataPtr, ncnnDataPtr + byteSize);
+  std::vector<uint8_t> cpu_data_vec(ncnn_data_ptr, ncnn_data_ptr + byte_size);
 
-  TypedBuffer outputBuffer =
-      TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(cpuDataVec));
-  return outputBuffer;
+  TypedBuffer output_buffer =
+      TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(cpu_data_vec));
+  return output_buffer;
 }
 
 TypedBuffer NcnnGenericPreprocessor::batchProcess(
     const FramePreprocessArg &args, const std::vector<FrameInput> &input,
-    std::vector<FrameTransformContext> &runtimeContext) const {
+    std::vector<FrameTransformContext> &runtime_context) const {
   LOG_ERROR_S << "NCNN batch preprocessor not implemented.";
   throw std::runtime_error("NCNN batch preprocessor not implemented.");
 }

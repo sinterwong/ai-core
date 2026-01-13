@@ -1,5 +1,5 @@
 /**
- * @file algo_postproc_impl.hpp
+ * @file algo_postprocessor.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,37 +8,39 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef ALGO_POSTPROC_IMPL_HPP
-#define ALGO_POSTPROC_IMPL_HPP
+#ifndef AI_CORE_ALGO_POSTPROC_HPP
+#define AI_CORE_ALGO_POSTPROC_HPP
 
-#include "ai_core/algo_postprocessor.hpp"
-#include "ai_core/i_postprocess.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/error_code.hpp"
+#include "ai_core/tensor_data.hpp"
 #include <memory>
 
 namespace ai_core::dnn {
 
-class AlgoPostproc::Impl {
+class AlgoPostproc {
 public:
-  Impl(const std::string &module_name);
+  AlgoPostproc(const std::string &module_name);
 
-  ~Impl() = default;
+  ~AlgoPostproc();
 
   InferErrorCode initialize();
 
-  InferErrorCode process(const TensorData &model_output, AlgoOutput &output,
+  InferErrorCode process(const TensorData &model_output,
                          const AlgoPostprocParams &postproc_params,
+                         AlgoOutput &output,
                          std::shared_ptr<RuntimeContext> &runtime_context);
 
   InferErrorCode batchProcess(const TensorData &model_output,
-                              std::vector<AlgoOutput> &output,
                               const AlgoPostprocParams &postproc_params,
+                              std::vector<AlgoOutput> &output,
                               std::shared_ptr<RuntimeContext> &runtime_context);
 
   InferErrorCode terminate();
 
 private:
-  std::string m_moduleName;
-  std::shared_ptr<IPostprocssPlugin> m_postprocessor;
+  class Impl;
+  std::unique_ptr<Impl> m_pImpl;
 };
 } // namespace ai_core::dnn
 #endif

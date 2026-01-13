@@ -9,31 +9,31 @@
  *
  */
 
-#include "ai_core/algo_preproc.hpp"
+#include "ai_core/algo_preprocessor.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "algo_preproc_impl.hpp"
 
 namespace ai_core::dnn {
 
-AlgoPreproc::AlgoPreproc(const std::string &moduleName)
-    : pImpl(std::make_unique<Impl>(moduleName)) {}
+AlgoPreproc::AlgoPreproc(const std::string &module_name)
+    : m_pImpl(std::make_unique<Impl>(module_name)) {}
 
 AlgoPreproc::~AlgoPreproc() = default;
 
-InferErrorCode AlgoPreproc::initialize() { return pImpl->initialize(); }
+InferErrorCode AlgoPreproc::initialize() { return m_pImpl->initialize(); }
 
 InferErrorCode AlgoPreproc::process(
-    const AlgoInput &input, const AlgoPreprocParams &preprocParams,
-    TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
-  return pImpl->process(input, preprocParams, modelInput, runtimeContext);
+    const AlgoInput &input, const AlgoPreprocParams &preproc_params,
+    TensorData &model_input, std::shared_ptr<RuntimeContext> &runtime_context) {
+  return m_pImpl->process(input, preproc_params, model_input, runtime_context);
 }
 
 InferErrorCode AlgoPreproc::batchProcess(
-    const std::vector<AlgoInput> &input, const AlgoPreprocParams &preprocParams,
-    TensorData &modelInput, std::shared_ptr<RuntimeContext> &runtimeContext) {
-  return pImpl->batchProcess(input, preprocParams, modelInput, runtimeContext);
+    const std::vector<AlgoInput> &input, const AlgoPreprocParams &preproc_params,
+    TensorData &model_input, std::shared_ptr<RuntimeContext> &runtime_context) {
+  return m_pImpl->batchProcess(input, preproc_params, model_input, runtime_context);
 }
 
-InferErrorCode AlgoPreproc::terminate() { return pImpl->terminate(); }
+InferErrorCode AlgoPreproc::terminate() { return m_pImpl->terminate(); }
 
 } // namespace ai_core::dnn

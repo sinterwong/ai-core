@@ -1,6 +1,6 @@
-#include "ai_core/algo_infer.hpp"
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/algo_inference.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/infer_config.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <opencv2/opencv.hpp>
@@ -10,14 +10,14 @@ namespace fs = std::filesystem;
 using namespace ai_core;
 using namespace ai_core::dnn;
 
-void CheckResults(const DetRet *detRet) {
-  EXPECT_NE(detRet, nullptr);
-  ASSERT_EQ(detRet->bboxes.size(), 2);
+void checkResults(const DetRet *det_ret) {
+  EXPECT_NE(det_ret, nullptr);
+  ASSERT_EQ(det_ret->bboxes.size(), 2);
 
   const auto &box0 =
-      (detRet->bboxes[0].label == 0) ? detRet->bboxes[0] : detRet->bboxes[1];
+      (det_ret->bboxes[0].label == 0) ? det_ret->bboxes[0] : det_ret->bboxes[1];
   const auto &box7 =
-      (detRet->bboxes[0].label == 7) ? detRet->bboxes[0] : detRet->bboxes[1];
+      (det_ret->bboxes[0].label == 7) ? det_ret->bboxes[0] : det_ret->bboxes[1];
 
   EXPECT_EQ(box7.label, 7);
   EXPECT_NEAR(box7.score, 0.54, 1e-2);
@@ -27,27 +27,27 @@ void CheckResults(const DetRet *detRet) {
 }
 
 TEST(AlgoInferenceTest, YoloDet) {
-  fs::path resourceDir = fs::path("assets");
-  fs::path dataDir = resourceDir / "data";
-  std::string imagePath = (dataDir / "yolov11/image.png").string();
+  fs::path resource_dir = fs::path("assets");
+  fs::path data_dir = resource_dir / "data";
+  std::string image_path = (data_dir / "yolov11/image.png").string();
 
-  cv::Mat image = cv::imread(imagePath);
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
+  cv::Mat image = cv::imread(image_path);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
-  AlgoModuleTypes moduleTypes;
-  moduleTypes.preprocModule = "FramePreprocess";
-  moduleTypes.postprocModule = "AnchorDetPostproc";
+  AlgoModuleTypes module_types;
+  module_types.preproc_module = "FramePreprocess";
+  module_types.postproc_module = "AnchorDetPostproc";
 
-  AlgoInferParams inferParams;
+  AlgoInferParams infer_params;
 #ifdef WITH_ORT
-  moduleTypes.inferModule = "OrtAlgoInference";
-  inferParams.dataType = DataType::FLOAT16;
-  inferParams.modelPath = "assets/models/yolov11n-fp16.onnx";
-  inferParams.name = "yolov11n";
-  inferParams.deviceType = DeviceType::CPU;
-  inferParams.needDecrypt = false;
+  module_types.infer_module = "OrtAlgoInference";
+  infer_params.data_type = DataType::FLOAT16;
+  infer_params.model_path = "assets/models/yolov11n-fp16.onnx";
+  infer_params.name = "yolov11n";
+  infer_params.device_type = DeviceType::CPU;
+  infer_params.need_decrypt = false;
 #elif WITH_NCNN
   moduleTypes.inferModule = "NCNNAlgoInference";
   inferParams.dataType = DataType::FLOAT32;
@@ -66,60 +66,60 @@ TEST(AlgoInferenceTest, YoloDet) {
   GTEST_SKIP() << "No inference backend enabled. Skipping test.";
 #endif
 
-  AlgoInference algoInf(moduleTypes, inferParams);
-  ASSERT_EQ(algoInf.initialize(), InferErrorCode::SUCCESS);
+  AlgoInference algo_inf(module_types, infer_params);
+  ASSERT_EQ(algo_inf.initialize(), InferErrorCode::SUCCESS);
 
-  FramePreprocessArg framePreprocessArg;
+  FramePreprocessArg frame_preprocess_arg;
 
-  AnchorDetParams anchorDetParams;
+  AnchorDetParams anchor_det_params;
 
 #ifdef WITH_ORT
-  framePreprocessArg.dataType = DataType::FLOAT16;
-  framePreprocessArg.inputNames = {"images"};
-  anchorDetParams.outputNames = {"output0"};
+  frame_preprocess_arg.data_type = DataType::FLOAT16;
+  frame_preprocess_arg.input_names = {"images"};
+  anchor_det_params.output_names = {"output0"};
 #elif WITH_NCNN
-  framePreprocessArg.dataType = DataType::FLOAT32;
-  framePreprocessArg.inputNames = {"in0"};
+  frame_preprocess_arg_ptr.dataType = DataType::FLOAT32;
+  frame_preprocess_arg_ptr.input_names = {"in0"};
   anchorDetParams.outputNames = {"output0"};
 #elif WITH_TRT
-  framePreprocessArg.dataType = DataType::FLOAT32;
-  framePreprocessArg.inputNames = {"images"};
+  frame_preprocess_arg_ptr.dataType = DataType::FLOAT32;
+  frame_preprocess_arg_ptr.input_names = {"images"};
   anchorDetParams.outputNames = {"output0"};
 #endif
-  framePreprocessArg.modelInputShape = {640, 640, 3};
-  framePreprocessArg.needResize = true;
-  framePreprocessArg.isEqualScale = true;
-  framePreprocessArg.pad = {0, 0, 0};
-  framePreprocessArg.meanVals = {0, 0, 0};
-  framePreprocessArg.normVals = {255.f, 255.f, 255.f};
-  framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.preprocTaskType =
-      FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
-  framePreprocessArg.outputLocation = BufferLocation::CPU;
+  frame_preprocess_arg.model_input_shape = {640, 640, 3};
+  frame_preprocess_arg.need_resize = true;
+  frame_preprocess_arg.is_equal_scale = true;
+  frame_preprocess_arg.pad = {0, 0, 0};
+  frame_preprocess_arg.mean_vals = {0, 0, 0};
+  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.hwc2chw = true;
+  frame_preprocess_arg.preproc_task_type =
+      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
+  frame_preprocess_arg.output_location = BufferLocation::CPU;
 
-  AlgoPreprocParams preprocParams;
-  preprocParams.setParams(framePreprocessArg);
+  AlgoPreprocParams preproc_params;
+  preproc_params.setParams(frame_preprocess_arg);
 
-  anchorDetParams.algoType = AnchorDetParams::AlgoType::YOLO_DET_V11;
-  anchorDetParams.condThre = 0.5f;
-  anchorDetParams.nmsThre = 0.45f;
+  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
+  anchor_det_params.cond_thre = 0.5f;
+  anchor_det_params.nms_thre = 0.45f;
 
-  AlgoPostprocParams postprocParams;
-  postprocParams.setParams(anchorDetParams);
+  AlgoPostprocParams postproc_params;
+  postproc_params.setParams(anchor_det_params);
 
-  AlgoInput algoInput;
-  FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  algoInput.setParams(frameInput);
+  AlgoInput algo_input;
+  FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  algo_input.setParams(frame_input);
 
-  AlgoOutput algoOutput;
-  ASSERT_EQ(algoInf.infer(algoInput, preprocParams, postprocParams, algoOutput),
+  AlgoOutput algo_output;
+  ASSERT_EQ(algo_inf.infer(algo_input, preproc_params, postproc_params, algo_output),
             InferErrorCode::SUCCESS);
 
-  auto *detRet = algoOutput.getParams<DetRet>();
-  CheckResults(detRet);
+  auto *det_ret = algo_output.getParams<DetRet>();
+  checkResults(det_ret);
 }
 
 } // namespace testing_algo_infer

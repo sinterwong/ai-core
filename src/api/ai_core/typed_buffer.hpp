@@ -12,7 +12,7 @@
 #define AI_CORE_TYPED_BUFFER_HPP
 
 #include "ai_core/accelerator_buffer_impl.hpp"
-#include "ai_core/infer_common_types.hpp"
+#include "ai_core/common_types.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -24,7 +24,7 @@ namespace ai_core {
 /**
  * @brief Memory location classification
  */
-enum class BufferLocation { CPU, GPU_DEVICE };
+enum class BufferLocation { CPU, GpuDevice };
 
 /**
  * @brief Memory type classification
@@ -74,22 +74,22 @@ public:
    * @param manageMemory If true, TypedBuffer will delete[] the pointer on
    * destruction
    */
-  static TypedBuffer createFromCpuRef(DataType type, const void *hostPtr,
-                                      size_t sizeBytes,
-                                      bool manageMemory = false);
+  static TypedBuffer createFromCpuRef(DataType type, const void *host_ptr,
+                                      size_t size_bytes,
+                                      bool manage_memory = false);
 
   /**
    * @brief Create a GPU Device buffer
    */
-  static TypedBuffer createFromGpu(DataType type, size_t sizeBytes,
-                                   int deviceId = 0);
+  static TypedBuffer createFromGpu(DataType type, size_t size_bytes,
+                                   int device_id = 0);
 
   /**
    * @brief Wrap existing GPU pointer
    */
-  static TypedBuffer createFromGpu(DataType type, void *devicePtr,
-                                   size_t sizeBytes, int deviceId,
-                                   bool manageMemory);
+  static TypedBuffer createFromGpu(DataType type, void *device_ptr,
+                                   size_t size_bytes, int device_id,
+                                   bool manage_memory);
 
   /**
    * @brief Create a Pinned (Page-locked) Host buffer
@@ -97,24 +97,24 @@ public:
    * Optimized for async H2D/D2H transfers.
    * Internally uses AcceleratorBufferImpl with HostPinned type.
    */
-  static TypedBuffer createPinnedHost(DataType type, size_t sizeBytes);
+  static TypedBuffer createPinnedHost(DataType type, size_t size_bytes);
 
   // ============================================================================
   // Property Queries
   // ============================================================================
 
-  DataType dataType() const noexcept { return mDataType; }
-  BufferLocation location() const noexcept { return mLocation; }
-  BufferMemoryType memoryType() const noexcept { return mMemoryType; }
+  DataType dataType() const noexcept { return m_dataType; }
+  BufferLocation location() const noexcept { return m_location; }
+  BufferMemoryType memoryType() const noexcept { return m_memoryType; }
 
   size_t getSizeBytes() const noexcept;
-  size_t getElementCount() const noexcept { return mElementCount; }
+  size_t getElementCount() const noexcept { return m_elementCount; }
   int getDeviceId() const noexcept;
 
   bool isPinned() const noexcept {
-    return mMemoryType == BufferMemoryType::Pinned;
+    return m_memoryType == BufferMemoryType::Pinned;
   }
-  bool isReference() const noexcept { return mIsExternalRef; }
+  bool isReference() const noexcept { return m_isExternalRef; }
 
   // ============================================================================
   // Data Access - Host
@@ -137,8 +137,8 @@ public:
   // ============================================================================
 
   void setCpuData(DataType type, const std::vector<uint8_t> &data);
-  void setGpuDataReference(DataType type, void *ptr, size_t sizeBytes,
-                           int devId = 0);
+  void setGpuDataReference(DataType type, void *ptr, size_t size_bytes,
+                           int dev_id = 0);
 
   /**
    * @brief Resize the buffer
@@ -149,7 +149,7 @@ public:
    * implementation (Current impl: destructive resize to avoid expensive
    * copies).
    */
-  void resize(size_t newElementCount);
+  void resize(size_t new_element_count);
 
   void clear();
 
@@ -159,24 +159,24 @@ private:
   // Private helper to reset state
   void reset();
 
-  DataType mDataType{DataType::FLOAT32};
-  BufferLocation mLocation{BufferLocation::CPU};
-  BufferMemoryType mMemoryType{BufferMemoryType::Pageable};
+  DataType m_dataType{DataType::FLOAT32};
+  BufferLocation m_location{BufferLocation::CPU};
+  BufferMemoryType m_memoryType{BufferMemoryType::Pageable};
 
-  size_t mElementCount{0};
+  size_t m_elementCount{0};
 
   // Standard CPU Storage
-  std::vector<uint8_t> mCpuData;
+  std::vector<uint8_t> m_cpuData;
 
   // External Reference Storage
-  void *mExternalCpuPtr{nullptr};
-  bool mIsExternalRef{false};
-  bool mManageExternalCpu{false};
+  void *m_externalCpuPtr{nullptr};
+  bool m_isExternalRef{false};
+  bool m_manageExternalCpu{false};
 
   // Unified Accelerator Storage (Handles both GPU VRAM and CPU Pinned RAM)
-  std::unique_ptr<AcceleratorBufferImpl> mAccelBuffer;
+  std::unique_ptr<AcceleratorBufferImpl> m_accelBuffer;
 
-  int mDeviceId{0};
+  int m_deviceId{0};
 };
 
 // ============================================================================
@@ -184,22 +184,22 @@ private:
 // ============================================================================
 
 template <typename T> const T *TypedBuffer::getHostPtr() const {
-  if (mLocation != BufferLocation::CPU) {
+  if (m_location != BufferLocation::CPU) {
     throw std::runtime_error(
         "Attempted to get host pointer from a non-CPU buffer.");
   }
-  if (sizeof(T) != getElementSize(mDataType) && mElementCount > 0) {
+  if (sizeof(T) != getElementSize(m_dataType) && m_elementCount > 0) {
     throw std::runtime_error("Mismatched type size for host data access.");
   }
   return reinterpret_cast<const T *>(getRawHostPtr());
 }
 
 template <typename T> T *TypedBuffer::getHostPtr() {
-  if (mLocation != BufferLocation::CPU) {
+  if (m_location != BufferLocation::CPU) {
     throw std::runtime_error(
         "Attempted to get host pointer from a non-CPU buffer.");
   }
-  if (sizeof(T) != getElementSize(mDataType) && mElementCount > 0) {
+  if (sizeof(T) != getElementSize(m_dataType) && m_elementCount > 0) {
     throw std::runtime_error("Mismatched type size for host data access.");
   }
   return reinterpret_cast<T *>(getRawHostPtr());

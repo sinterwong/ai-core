@@ -8,11 +8,11 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP__
-#define __OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP__
+#ifndef AI_CORE_OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP
+#define AI_CORE_OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP
 
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "frame_preprocessor_base.hpp"
 
@@ -34,16 +34,16 @@ public:
 
 private:
   cv::Mat preprocessSingleFrame(const FramePreprocessArg &params,
-                                const FrameInput &frameInput,
-                                FrameTransformContext &runtimeArgs) const;
+                                const FrameInput &frame_input,
+                                FrameTransformContext &runtime_args) const;
 
-  TypedBuffer preprocessFP32(const cv::Mat &normalizedImage, int inputChannels,
-                             int inputHeight, int inputWidth,
-                             bool hwc2chw) const;
+  TypedBuffer preprocessFP32(const cv::Mat &normalized_image,
+                             int input_channels, int input_height,
+                             int input_width, bool hwc2chw) const;
 
-  TypedBuffer preprocessFP16(const cv::Mat &normalizedImage, int inputChannels,
-                             int inputHeight, int inputWidth,
-                             bool hwc2chw) const;
+  TypedBuffer preprocessFP16(const cv::Mat &normalized_image,
+                             int input_channels, int input_height,
+                             int input_width, bool hwc2chw) const;
 
   void convertLayout(const cv::Mat &image, float *dst, bool hwc2chw) const;
 };

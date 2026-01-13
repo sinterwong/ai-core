@@ -9,9 +9,9 @@
  *
  */
 #ifdef WITH_TRT
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/infer_async.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "trt/trt_infer.hpp"
 #include <benchmark/benchmark.h>
@@ -29,22 +29,22 @@ using namespace ai_core::dnn;
 // ============================================================================
 
 namespace config {
-constexpr int kWarmupIterations = 10;
-constexpr const char *kModelPath = "assets/models/yolov11n_trt_fp16.engine";
-constexpr const char *kModelName = "yolov11n";
+constexpr int k_warmup_iterations = 10;
+constexpr const char *k_model_path = "assets/models/yolov11n_trt_fp16.engine";
+constexpr const char *k_model_name = "yolov11n";
 
 // Input sizes to test (batch, channels, height, width)
-const std::vector<std::vector<int64_t>> kInputShapes = {
+const std::vector<std::vector<int64_t>> k_input_shapes = {
     {1, 3, 640, 640},
     {1, 3, 320, 320},
     {1, 3, 1280, 1280},
 };
 
 // Pipeline depths to test
-const std::vector<int> kPipelineDepths = {2, 3, 4, 6};
+const std::vector<int> k_pipeline_depths = {2, 3, 4, 6};
 
 // Thread counts to test
-const std::vector<int> kThreadCounts = {1, 2, 4, 8};
+const std::vector<int> k_thread_counts = {1, 2, 4, 8};
 } // namespace config
 
 // ============================================================================
@@ -60,24 +60,24 @@ static size_t calculateSizeBytes(const std::vector<int64_t> &shape,
   for (auto dim : shape)
     elements *= dim;
 
-  size_t elementSize = 4; // Default float32
+  size_t element_size = 4; // Default float32
   switch (dtype) {
   case DataType::FLOAT16:
-    elementSize = 2;
+    element_size = 2;
     break;
   case DataType::FLOAT32:
-    elementSize = 4;
+    element_size = 4;
     break;
   case DataType::INT8:
-    elementSize = 1;
+    element_size = 1;
     break;
   case DataType::INT32:
-    elementSize = 4;
+    element_size = 4;
     break;
   default:
-    elementSize = 4;
+    element_size = 4;
   }
-  return elements * elementSize;
+  return elements * element_size;
 }
 
 /**
@@ -86,12 +86,12 @@ static size_t calculateSizeBytes(const std::vector<int64_t> &shape,
 static TensorData createPageableInput(const std::vector<int64_t> &shape,
                                       DataType dtype) {
   TensorData data;
-  size_t sizeBytes = calculateSizeBytes(shape, dtype);
+  size_t size_bytes = calculateSizeBytes(shape, dtype);
 
-  std::vector<uint8_t> buffer(sizeBytes);
+  std::vector<uint8_t> buffer(size_bytes);
   float *ptr = reinterpret_cast<float *>(buffer.data());
-  size_t numElements = sizeBytes / sizeof(float);
-  for (size_t i = 0; i < numElements; ++i) {
+  size_t num_elements = size_bytes / sizeof(float);
+  for (size_t i = 0; i < num_elements; ++i) {
     ptr[i] = static_cast<float>(i % 255) / 255.0f;
   }
 
@@ -107,13 +107,13 @@ static TensorData createPinnedInput(IAsyncInferEngine *engine,
                                     const std::vector<int64_t> &shape,
                                     DataType dtype) {
   TensorData data;
-  size_t sizeBytes = calculateSizeBytes(shape, dtype);
+  size_t size_bytes = calculateSizeBytes(shape, dtype);
 
-  auto buffer = engine->allocateAcceleratorBuffer(dtype, sizeBytes);
+  auto buffer = engine->allocateAcceleratorBuffer(dtype, size_bytes);
 
   float *ptr = buffer.getHostPtr<float>();
-  size_t numElements = sizeBytes / sizeof(float);
-  for (size_t i = 0; i < numElements; ++i) {
+  size_t num_elements = size_bytes / sizeof(float);
+  for (size_t i = 0; i < num_elements; ++i) {
     ptr[i] = static_cast<float>(i % 255) / 255.0f;
   }
 
@@ -126,7 +126,7 @@ static TensorData createPinnedInput(IAsyncInferEngine *engine,
  * @brief Perform warmup inference
  */
 static void warmup(IInferEnginePlugin *engine, const TensorData &input,
-                   int iterations = config::kWarmupIterations) {
+                   int iterations = config::k_warmup_iterations) {
   TensorData output;
   for (int i = 0; i < iterations; ++i) {
     engine->infer(input, output);
@@ -134,7 +134,7 @@ static void warmup(IInferEnginePlugin *engine, const TensorData &input,
 }
 
 static void warmupStream(IExecutionContext *stream, const TensorData &input,
-                         int iterations = config::kWarmupIterations) {
+                         int iterations = config::k_warmup_iterations) {
   for (int i = 0; i < iterations; ++i) {
     TensorData output;
     stream->inferAsync(input, output).get();
@@ -148,13 +148,17 @@ static void warmupStream(IExecutionContext *stream, const TensorData &input,
 class EngineManager {
 public:
   static EngineManager &instance() {
-    static EngineManager inst;
-    return inst;
+    // static EngineManager inst;
+    // return inst;
+
+    // 使用不朽单例
+    static EngineManager* inst = new EngineManager();
+    return *inst;
   }
 
   std::shared_ptr<TrtAlgoInference> getEngine() {
-    std::call_once(initFlag_, [this]() { initializeEngine(); });
-    return engine_;
+    std::call_once(m_initFlag, [this]() { initializeEngine(); });
+    return m_engine;
   }
 
   std::shared_ptr<IAsyncInferEngine> getAsyncEngine() {
@@ -162,10 +166,10 @@ public:
   }
 
   void reset() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (engine_) {
-      engine_->terminate();
-      engine_.reset();
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_engine) {
+      m_engine->terminate();
+      m_engine.reset();
     }
     // Reset the once_flag by recreating the manager
     // Note: In production, consider a more sophisticated approach
@@ -175,24 +179,24 @@ private:
   EngineManager() = default;
 
   void initializeEngine() {
-    AlgoConstructParams tempInferParams;
-    AlgoInferParams inferParams;
-    inferParams.modelPath = config::kModelPath;
-    inferParams.name = config::kModelName;
-    inferParams.deviceType = DeviceType::GPU;
-    inferParams.dataType = DataType::FLOAT32;
-    inferParams.needDecrypt = false;
-    tempInferParams.setParam("params", inferParams);
+    AlgoConstructParams temp_infer_params;
+    AlgoInferParams infer_params;
+    infer_params.model_path = config::k_model_path;
+    infer_params.name = config::k_model_name;
+    infer_params.device_type = DeviceType::GPU;
+    infer_params.data_type = DataType::FLOAT32;
+    infer_params.need_decrypt = false;
+    temp_infer_params.setParam("params", infer_params);
 
-    engine_ = std::make_shared<TrtAlgoInference>(tempInferParams);
-    if (engine_->initialize() != InferErrorCode::SUCCESS) {
+    m_engine = std::make_shared<TrtAlgoInference>(temp_infer_params);
+    if (m_engine->initialize() != InferErrorCode::SUCCESS) {
       throw std::runtime_error("Engine initialization failed");
     }
   }
 
-  std::shared_ptr<TrtAlgoInference> engine_;
-  std::once_flag initFlag_;
-  std::mutex mutex_;
+  std::shared_ptr<TrtAlgoInference> m_engine;
+  std::once_flag m_initFlag;
+  std::mutex m_mutex;
 };
 
 // ============================================================================
@@ -201,17 +205,17 @@ private:
 
 static void setCommonCounters(benchmark::State &state,
                               const std::vector<int64_t> &shape,
-                              int itemsPerIteration = 1) {
-  size_t inputBytes = calculateSizeBytes(shape, DataType::FLOAT32);
+                              int items_per_iteration = 1) {
+  size_t input_bytes = calculateSizeBytes(shape, DataType::FLOAT32);
   // Estimate output bytes (YOLO output: 1 x 84 x 8400 for 640x640)
-  size_t outputBytes = 84 * 8400 * sizeof(float);
-  size_t totalBytes = inputBytes + outputBytes;
+  size_t output_bytes = 84 * 8400 * sizeof(float);
+  size_t total_bytes = input_bytes + output_bytes;
 
-  state.SetItemsProcessed(state.iterations() * itemsPerIteration);
-  state.SetBytesProcessed(state.iterations() * totalBytes * itemsPerIteration);
+  state.SetItemsProcessed(state.iterations() * items_per_iteration);
+  state.SetBytesProcessed(state.iterations() * total_bytes * items_per_iteration);
 
   // Custom counters
-  state.counters["InputMB"] = inputBytes / (1024.0 * 1024.0);
+  state.counters["InputMB"] = input_bytes / (1024.0 * 1024.0);
   state.counters["Latency_us"] = benchmark::Counter(
       state.iterations(),
       benchmark::Counter::kIsRate | benchmark::Counter::kInvert,
@@ -249,8 +253,8 @@ BENCHMARK(BM_TRT_Baseline_Sync)->Unit(benchmark::kMillisecond)->Iterations(100);
  * @brief Async without CUDA Graph (measures async overhead)
  */
 static void BM_TRT_Async_NoGraph_Pageable(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createExecutionContext();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(false);
 
   auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
@@ -276,8 +280,8 @@ BENCHMARK(BM_TRT_Async_NoGraph_Pageable)
  * @brief Async with CUDA Graph (measures graph benefit)
  */
 static void BM_TRT_Async_WithGraph_Pageable(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createExecutionContext();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
@@ -303,12 +307,12 @@ BENCHMARK(BM_TRT_Async_WithGraph_Pageable)
  * @brief Async with Graph + Pinned Memory (best single-stream latency)
  */
 static void BM_TRT_Async_WithGraph_Pinned(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createExecutionContext();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input =
-      createPinnedInput(asyncEngine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
   warmupStream(stream.get(), input);
 
   for (auto _ : state) {
@@ -336,15 +340,15 @@ BENCHMARK(BM_TRT_Async_WithGraph_Pinned)
  * Arg: 0 = Pageable, 1 = Pinned
  */
 static void BM_TRT_MemoryType_Comparison(benchmark::State &state) {
-  const bool usePinned = state.range(0) == 1;
+  const bool use_pinned = state.range(0) == 1;
 
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createExecutionContext();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(false); // Disable graph to isolate memory impact
 
   TensorData input;
-  if (usePinned) {
-    input = createPinnedInput(asyncEngine.get(), {1, 3, 640, 640},
+  if (use_pinned) {
+    input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
                               DataType::FLOAT32);
   } else {
     input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
@@ -357,7 +361,7 @@ static void BM_TRT_MemoryType_Comparison(benchmark::State &state) {
     stream->inferAsync(input, output).get();
   }
 
-  state.SetLabel(usePinned ? "Pinned" : "Pageable");
+  state.SetLabel(use_pinned ? "Pinned" : "Pageable");
   setCommonCounters(state, {1, 3, 640, 640});
 }
 BENCHMARK(BM_TRT_MemoryType_Comparison)
@@ -379,34 +383,34 @@ BENCHMARK(BM_TRT_MemoryType_Comparison)
  * Tests latency hiding effectiveness
  */
 static void BM_TRT_Pipeline_Throughput(benchmark::State &state) {
-  const int pipelineDepth = state.range(0);
+  const int pipeline_depth = state.range(0);
 
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto streamPool = asyncEngine->createContextPool(pipelineDepth);
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream_pool = async_engine->createContextPool(pipeline_depth);
 
   // Enable graph for all streams
-  for (auto &s : streamPool) {
+  for (auto &s : stream_pool) {
     s->setGraphEnabled(true);
   }
 
   auto input =
-      createPinnedInput(asyncEngine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
 
   // Warmup all streams
-  for (auto &s : streamPool) {
+  for (auto &s : stream_pool) {
     warmupStream(s.get(), input, 5);
   }
 
   // Pre-allocate output containers
-  std::vector<TensorData> outputs(pipelineDepth);
+  std::vector<TensorData> outputs(pipeline_depth);
 
   for (auto _ : state) {
     std::vector<std::future<InferErrorCode>> futures;
-    futures.reserve(pipelineDepth);
+    futures.reserve(pipeline_depth);
 
     // Submit all tasks (non-blocking)
-    for (int i = 0; i < pipelineDepth; ++i) {
-      futures.push_back(streamPool[i]->inferAsync(input, outputs[i]));
+    for (int i = 0; i < pipeline_depth; ++i) {
+      futures.push_back(stream_pool[i]->inferAsync(input, outputs[i]));
     }
 
     // Wait for all completions
@@ -418,10 +422,10 @@ static void BM_TRT_Pipeline_Throughput(benchmark::State &state) {
     }
   }
 
-  state.SetLabel("Depth=" + std::to_string(pipelineDepth));
-  state.SetItemsProcessed(state.iterations() * pipelineDepth);
+  state.SetLabel("Depth=" + std::to_string(pipeline_depth));
+  state.SetItemsProcessed(state.iterations() * pipeline_depth);
   state.counters["Throughput"] = benchmark::Counter(
-      state.iterations() * pipelineDepth, benchmark::Counter::kIsRate,
+      state.iterations() * pipeline_depth, benchmark::Counter::kIsRate,
       benchmark::Counter::OneK::kIs1000);
 }
 BENCHMARK(BM_TRT_Pipeline_Throughput)
@@ -440,13 +444,13 @@ BENCHMARK(BM_TRT_Pipeline_Throughput)
  * @brief Measure CUDA Graph capture overhead (one-time cost)
  */
 static void BM_TRT_Graph_Capture_Overhead(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
   auto input =
-      createPinnedInput(asyncEngine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
 
   for (auto _ : state) {
     // Create fresh stream for each iteration
-    auto stream = asyncEngine->createExecutionContext();
+    auto stream = async_engine->createExecutionContext();
     stream->setGraphEnabled(true);
 
     // First inference captures the graph
@@ -468,12 +472,12 @@ BENCHMARK(BM_TRT_Graph_Capture_Overhead)
  * @brief Measure CUDA Graph replay latency (amortized benefit)
  */
 static void BM_TRT_Graph_Replay_Latency(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createExecutionContext();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input =
-      createPinnedInput(asyncEngine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
 
   // Capture graph during warmup
   warmupStream(stream.get(), input);
@@ -499,14 +503,14 @@ BENCHMARK(BM_TRT_Graph_Replay_Latency)
  * This simulates dynamic shape scenarios
  */
 static void BM_TRT_Graph_Recapture_Overhead(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createExecutionContext();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input640 =
-      createPinnedInput(asyncEngine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
   auto input320 =
-      createPinnedInput(asyncEngine.get(), {1, 3, 320, 320}, DataType::FLOAT32);
+      createPinnedInput(async_engine.get(), {1, 3, 320, 320}, DataType::FLOAT32);
 
   // Initial capture
   warmupStream(stream.get(), input640);
@@ -535,10 +539,10 @@ BENCHMARK(BM_TRT_Graph_Recapture_Overhead)
  * @brief Measure stream creation overhead
  */
 static void BM_TRT_Stream_Creation_Overhead(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
 
   for (auto _ : state) {
-    auto stream = asyncEngine->createExecutionContext();
+    auto stream = async_engine->createExecutionContext();
     benchmark::DoNotOptimize(stream);
   }
 
@@ -552,12 +556,12 @@ BENCHMARK(BM_TRT_Stream_Creation_Overhead)
  * @brief Measure stream creation + first inference (cold start)
  */
 static void BM_TRT_Stream_ColdStart_Latency(benchmark::State &state) {
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
+  auto async_engine = EngineManager::instance().getAsyncEngine();
   auto input =
-      createPinnedInput(asyncEngine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
 
   for (auto _ : state) {
-    auto stream = asyncEngine->createExecutionContext();
+    auto stream = async_engine->createExecutionContext();
     stream->setGraphEnabled(false);
 
     TensorData output;
@@ -579,16 +583,16 @@ BENCHMARK(BM_TRT_Stream_ColdStart_Latency)
  * Args: [GraphEnabled, PinnedMemory]
  */
 static void BM_TRT_Summary_Comparison(benchmark::State &state) {
-  const bool graphEnabled = state.range(0) == 1;
-  const bool pinnedMemory = state.range(1) == 1;
+  const bool graph_enabled = state.range(0) == 1;
+  const bool pinned_memory = state.range(1) == 1;
 
-  auto asyncEngine = EngineManager::instance().getAsyncEngine();
-  auto stream = asyncEngine->createExecutionContext();
-  stream->setGraphEnabled(graphEnabled);
+  auto async_engine = EngineManager::instance().getAsyncEngine();
+  auto stream = async_engine->createExecutionContext();
+  stream->setGraphEnabled(graph_enabled);
 
   TensorData input;
-  if (pinnedMemory) {
-    input = createPinnedInput(asyncEngine.get(), {1, 3, 640, 640},
+  if (pinned_memory) {
+    input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
                               DataType::FLOAT32);
   } else {
     input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
@@ -601,8 +605,8 @@ static void BM_TRT_Summary_Comparison(benchmark::State &state) {
     stream->inferAsync(input, output).get();
   }
 
-  std::string label = std::string(graphEnabled ? "Graph" : "NoGraph") + "_" +
-                      (pinnedMemory ? "Pinned" : "Pageable");
+  std::string label = std::string(graph_enabled ? "Graph" : "NoGraph") + "_" +
+                      (pinned_memory ? "Pinned" : "Pageable");
   state.SetLabel(label);
   setCommonCounters(state, {1, 3, 640, 640});
 }

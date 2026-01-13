@@ -2,7 +2,7 @@
 #include <benchmark/benchmark.h>
 
 // init log
-const static auto tempInitLog = []() {
+const static auto temp_init_log = []() {
   ai_core::logging::Logger::instance().setLevel(
       ai_core::logging::LogLevel::Warning);
   ai_core::logging::Logger::instance().enableConsole(true);

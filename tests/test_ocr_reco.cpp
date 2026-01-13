@@ -8,12 +8,12 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/infer_base.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/i_infer_engine.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/logger.hpp"
-#include "ai_core/postproc_base.hpp"
-#include "ai_core/preproc_base.hpp"
+#include "ai_core/i_postprocess.hpp"
+#include "ai_core/i_preprocess.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/cv_generic_postproc.hpp"
 #include "preproc/frame_prep.hpp"
@@ -44,21 +44,21 @@ using namespace ai_core;
 using namespace ai_core::dnn;
 
 struct TestConfig {
-  std::string testName;
+  std::string test_name;
 
   std::function<std::shared_ptr<IInferEnginePlugin>(
       const AlgoConstructParams &)>
-      engineFactory;
+      engine_factory;
 
-  std::string modelPath;
-  DataType inferDataType;
-  DataType preprocDataType;
-  DeviceType deviceType;
-  FramePreprocessArg::FramePreprocType preprocTaskType =
-      FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
-  BufferLocation bufferLocation = BufferLocation::CPU;
-  bool needDecrypt = false;
-  std::string decryptkeyStr = "";
+  std::string model_path;
+  DataType infer_data_type;
+  DataType preproc_data_type;
+  DeviceType device_type;
+  FramePreprocessArg::FramePreprocType preproc_task_type =
+      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
+  BufferLocation buffer_location = BufferLocation::CPU;
+  bool need_decrypt = false;
+  std::string decryptkey_str = "";
 };
 
 class OCRRecoInferTest : public ::testing::TestWithParam<TestConfig> {
@@ -71,112 +71,112 @@ protected:
     ai_core::logging::Logger::instance().enableColor(true);
     ai_core::logging::Logger::instance().enableAsync(false);
 
-    framePreproc = std::make_shared<FramePreprocess>();
-    ASSERT_NE(framePreproc, nullptr);
+    m_framePreproc = std::make_shared<FramePreprocess>();
+    ASSERT_NE(m_framePreproc, nullptr);
 
-    ocrPostproc = std::make_shared<CVGenericPostproc>();
-    ASSERT_NE(ocrPostproc, nullptr);
+    m_ocrPostproc = std::make_shared<CVGenericPostproc>();
+    ASSERT_NE(m_ocrPostproc, nullptr);
   }
 
-  void CheckResults(const SegRet *segRet) {
-    ASSERT_NE(segRet, nullptr);
-    ASSERT_EQ(segRet->clsToContours.size(), 1);
-    ASSERT_EQ(segRet->clsToContours.at(1).size(), 28);
+  void checkResults(const SegRet *seg_ret) {
+    ASSERT_NE(seg_ret, nullptr);
+    ASSERT_EQ(seg_ret->cls_to_contours.size(), 1);
+    ASSERT_EQ(seg_ret->cls_to_contours.at(1).size(), 28);
   }
 
-  fs::path resourceDir = fs::path("assets");
-  fs::path confDir = resourceDir / "conf";
-  fs::path dataDir = resourceDir / "data";
+  fs::path m_resourceDir = fs::path("assets");
+  fs::path m_confDir = m_resourceDir / "conf";
+  fs::path m_dataDir = m_resourceDir / "data";
 
-  std::string imagePath = (dataDir / "ocr_reco/image.png").string();
+  std::string m_image_path = (m_dataDir / "ocr_reco/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> framePreproc;
-  std::shared_ptr<IPostprocssPlugin> ocrPostproc;
+  std::shared_ptr<IPreprocssPlugin> m_framePreproc;
+  std::shared_ptr<IPostprocssPlugin> m_ocrPostproc;
 };
 
 TEST_P(OCRRecoInferTest, Normal) {
   const auto &config = GetParam();
 
-  AlgoConstructParams tempInferParams;
-  AlgoInferParams inferParams;
-  inferParams.dataType = config.inferDataType;
-  inferParams.modelPath = config.modelPath;
-  inferParams.name = "ocr_reco";
-  inferParams.deviceType = config.deviceType;
-  inferParams.needDecrypt = config.needDecrypt;
-  inferParams.decryptkeyStr = config.decryptkeyStr;
-  inferParams.maxOutputBufferSizes = {
+  AlgoConstructParams temp_infer_params;
+  AlgoInferParams infer_params;
+  infer_params.data_type = config.infer_data_type;
+  infer_params.model_path = config.model_path;
+  infer_params.name = "ocr_reco";
+  infer_params.device_type = config.device_type;
+  infer_params.need_decrypt = config.need_decrypt;
+  infer_params.decryptkey_str = config.decryptkey_str;
+  infer_params.max_output_buffer_sizes = {
       // 这里不设置output_lengths的最大尺寸用来测试自动分配
       // {"output_lengths", 1 * sizeof(int64_t)},
       {"argmax_output", 1 * 32 * sizeof(int32_t) * 1}};
-  tempInferParams.setParam("params", inferParams);
+  temp_infer_params.setParam("params", infer_params);
 
   std::shared_ptr<IInferEnginePlugin> engine =
-      config.engineFactory(tempInferParams);
+      config.engine_factory(temp_infer_params);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
   engine->prettyPrintModelInfos();
 
-  std::shared_ptr<RuntimeContext> runtimeContext =
+  std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
 
-  AlgoPreprocParams preprocParams;
-  FramePreprocessArg framePreprocessArg;
-  framePreprocessArg.modelInputShape = {128, 32, 1};
-  framePreprocessArg.dataType = config.preprocDataType;
-  framePreprocessArg.needResize = true;
-  framePreprocessArg.isEqualScale = false;
-  framePreprocessArg.pad = {0, 0, 0};
-  framePreprocessArg.meanVals = {0.f};
-  framePreprocessArg.normVals = {255.f};
-  framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputNames = {"x"};
-  framePreprocessArg.preprocTaskType = config.preprocTaskType;
-  framePreprocessArg.outputLocation = config.bufferLocation;
-  preprocParams.setParams(framePreprocessArg);
+  AlgoPreprocParams preproc_params;
+  FramePreprocessArg frame_preprocess_arg;
+  frame_preprocess_arg.model_input_shape = {128, 32, 1};
+  frame_preprocess_arg.data_type = config.preproc_data_type;
+  frame_preprocess_arg.need_resize = true;
+  frame_preprocess_arg.is_equal_scale = false;
+  frame_preprocess_arg.pad = {0, 0, 0};
+  frame_preprocess_arg.mean_vals = {0.f};
+  frame_preprocess_arg.norm_vals = {255.f};
+  frame_preprocess_arg.hwc2chw = true;
+  frame_preprocess_arg.input_names = {"x"};
+  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
+  frame_preprocess_arg.output_location = config.buffer_location;
+  preproc_params.setParams(frame_preprocess_arg);
 
-  cv::Mat image = cv::imread(imagePath);
+  cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat imageGray;
-  cv::cvtColor(image, imageGray, cv::COLOR_BGR2GRAY);
-  AlgoInput algoInput;
-  FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageGray);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageGray.cols, imageGray.rows);
-  algoInput.setParams(frameInput);
+  cv::Mat image_gray;
+  cv::cvtColor(image, image_gray, cv::COLOR_BGR2GRAY);
+  AlgoInput algo_input;
+  FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_gray);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_gray.cols, image_gray.rows);
+  algo_input.setParams(frame_input);
 
-  TensorData modelInput;
-  framePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
+  TensorData model_input;
+  m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
 
-  std::vector<int64_t> inputLengths = {1};
-  TypedBuffer inputLengthsTensor;
-  inputLengthsTensor.setCpuData(
+  std::vector<int64_t> input_lengths = {1};
+  TypedBuffer input_lengths_tensor;
+  input_lengths_tensor.setCpuData(
       ai_core::DataType::INT64,
       std::vector<uint8_t>(
-          reinterpret_cast<const uint8_t *>(inputLengths.data()),
-          reinterpret_cast<const uint8_t *>(inputLengths.data()) +
-              inputLengths.size() * sizeof(int64_t)));
-  modelInput.datas.insert({"input_lengths", inputLengthsTensor});
-  modelInput.shapes.insert({"input_lengths", {1}});
+          reinterpret_cast<const uint8_t *>(input_lengths.data()),
+          reinterpret_cast<const uint8_t *>(input_lengths.data()) +
+              input_lengths.size() * sizeof(int64_t)));
+  model_input.datas.insert({"input_lengths", input_lengths_tensor});
+  model_input.shapes.insert({"input_lengths", {1}});
 
-  TensorData modelOutput;
-  ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);
+  TensorData model_output;
+  ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);
 
-  AlgoPostprocParams postprocParams;
-  GenericPostParams genericPost;
-  genericPost.algoType = GenericPostParams::AlgoType::OCR_RECO;
-  genericPost.outputNames = {"output_lengths", "argmax_output"};
-  postprocParams.setParams(genericPost);
-  AlgoOutput algoOutput;
-  ASSERT_TRUE(ocrPostproc->process(modelOutput, postprocParams, algoOutput,
-                                   runtimeContext));
-  OCRRecoRet *ocrRet = algoOutput.getParams<OCRRecoRet>();
-  ASSERT_NE(ocrRet, nullptr);
-  ASSERT_EQ(ocrRet->outputs.size(), 9);
+  AlgoPostprocParams postproc_params;
+  GenericPostParams generic_post;
+  generic_post.algo_type = GenericPostParams::AlgoType::OcrReco;
+  generic_post.output_names = {"output_lengths", "argmax_output"};
+  postproc_params.setParams(generic_post);
+  AlgoOutput algo_output;
+  ASSERT_TRUE(m_ocrPostproc->process(model_output, postproc_params, algo_output,
+                                   runtime_context));
+  OCRRecoRet *ocr_ret = algo_output.getParams<OCRRecoRet>();
+  ASSERT_NE(ocr_ret, nullptr);
+  ASSERT_EQ(ocr_ret->outputs.size(), 9);
 }
 
-std::vector<TestConfig> GetTestConfigs() {
+std::vector<TestConfig> getTestConfigs() {
   std::vector<TestConfig> configs;
 #ifdef WITH_ORT
   configs.push_back({"ort",
@@ -185,7 +185,7 @@ std::vector<TestConfig> GetTestConfigs() {
                      },
                      "assets/models/cnocr136fc.onnx", DataType::FLOAT32,
                      DataType::FLOAT32, DeviceType::CPU,
-                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
 #endif
 #ifdef WITH_NCNN
@@ -197,19 +197,19 @@ std::vector<TestConfig> GetTestConfigs() {
                      },
                      "assets/models/cnocr136fc_fp16_dynamic.engine",
                      DataType::FLOAT32, DataType::FLOAT32, DeviceType::CPU,
-                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
 #endif
   return configs;
 }
 
 std::string testNameGenerator(const testing::TestParamInfo<TestConfig> &info) {
-  return info.param.testName;
+  return info.param.test_name;
 }
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OCRRecoInferTest);
 
 INSTANTIATE_TEST_SUITE_P(OCRRecoInferBackends, OCRRecoInferTest,
-                         ::testing::ValuesIn(GetTestConfigs()),
+                         ::testing::ValuesIn(getTestConfigs()),
                          testNameGenerator);
 
 } // namespace testing_ocr_reco

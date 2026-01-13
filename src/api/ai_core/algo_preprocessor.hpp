@@ -1,5 +1,5 @@
 /**
- * @file algo_preproc_impl.hpp
+ * @file algo_preprocessor.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,20 +8,21 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef ALGO_PREPROC_IMPL_HPP
-#define ALGO_PREPROC_IMPL_HPP
+#ifndef AI_CORE_ALGO_PREPROC_HPP
+#define AI_CORE_ALGO_PREPROC_HPP
 
-#include "ai_core/algo_preprocessor.hpp"
-#include "ai_core/i_preprocess.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/error_code.hpp"
+#include "ai_core/tensor_data.hpp"
 #include <memory>
 
 namespace ai_core::dnn {
 
-class AlgoPreproc::Impl {
+class AlgoPreproc {
 public:
-  Impl(const std::string &module_name);
+  AlgoPreproc(const std::string &module_name);
 
-  ~Impl() = default;
+  ~AlgoPreproc();
 
   InferErrorCode initialize();
 
@@ -38,8 +39,8 @@ public:
   InferErrorCode terminate();
 
 private:
-  std::string m_moduleName;
-  std::shared_ptr<IPreprocssPlugin> m_preprocessor;
+  class Impl;
+  std::unique_ptr<Impl> m_pImpl;
 };
 } // namespace ai_core::dnn
 #endif

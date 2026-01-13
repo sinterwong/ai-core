@@ -8,65 +8,65 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/algo_preproc.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/algo_preprocessor.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <opencv2/opencv.hpp>
 
-const static auto getFramePreprocessArg =
-    [](ai_core::DataType dataType,
-       ai_core::FramePreprocessArg::FramePreprocType preprocTaskType,
-       ai_core::BufferLocation outputLocation,
-       const std::vector<std::string> &inputNames) {
+const static auto get_frame_preprocess_arg =
+    [](ai_core::DataType data_type,
+       ai_core::FramePreprocessArg::FramePreprocType preproc_task_type,
+       ai_core::BufferLocation output_location,
+       const std::vector<std::string> &input_names) {
       ai_core::FramePreprocessArg arg;
-      arg.modelInputShape = {640, 640, 3};
-      arg.dataType = dataType;
-      arg.needResize = true;
-      arg.isEqualScale = true;
+      arg.model_input_shape = {640, 640, 3};
+      arg.data_type = data_type;
+      arg.need_resize = true;
+      arg.is_equal_scale = true;
       arg.pad = {0, 0, 0};
-      arg.meanVals = {0, 0, 0};
-      arg.normVals = {255.f, 255.f, 255.f};
+      arg.mean_vals = {0, 0, 0};
+      arg.norm_vals = {255.f, 255.f, 255.f};
       arg.hwc2chw = true;
-      arg.inputNames = inputNames;
-      arg.preprocTaskType = preprocTaskType;
-      arg.outputLocation = outputLocation;
+      arg.input_names = input_names;
+      arg.preproc_task_type = preproc_task_type;
+      arg.output_location = output_location;
       return arg;
     };
 
 static void BM_CPU_FramePreproc_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
   preproc.initialize();
-  ai_core::AlgoPreprocParams preprocParams;
-  ai_core::FramePreprocessArg framePreprocessArg = getFramePreprocessArg(
+  ai_core::AlgoPreprocParams preproc_params;
+  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
       ai_core::DataType::FLOAT32,
-      ai_core::FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+      ai_core::FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
       ai_core::BufferLocation::CPU, {"images"});
-  preprocParams.setParams(framePreprocessArg);
+  preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
-  ai_core::FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  input.setParams(frameInput);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  ai_core::FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  input.setParams(frame_input);
 
-  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+  std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
-  ai_core::TensorData modelInput;
+  ai_core::TensorData model_input;
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
   // =================================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_CPU_FramePreproc_Yolo)
@@ -80,35 +80,35 @@ static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
   preproc.initialize();
 
-  ai_core::AlgoPreprocParams preprocParams;
-  ai_core::FramePreprocessArg framePreprocessArg = getFramePreprocessArg(
+  ai_core::AlgoPreprocParams preproc_params;
+  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
       ai_core::DataType::FLOAT16,
-      ai_core::FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
-      ai_core::BufferLocation::GPU_DEVICE, {"images"});
-  preprocParams.setParams(framePreprocessArg);
+      ai_core::FramePreprocessArg::FramePreprocType::CudaGpuGeneric,
+      ai_core::BufferLocation::GpuDevice, {"images"});
+  preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
-  ai_core::FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  input.setParams(frameInput);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  ai_core::FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  input.setParams(frame_input);
 
-  ai_core::TensorData modelInput;
-  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+  ai_core::TensorData model_input;
+  std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_Yolo)
@@ -121,36 +121,36 @@ static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
   preproc.initialize();
 
-  ai_core::AlgoPreprocParams preprocParams;
-  ai_core::FramePreprocessArg framePreprocessArg = getFramePreprocessArg(
+  ai_core::AlgoPreprocParams preproc_params;
+  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
       ai_core::DataType::FLOAT16,
-      ai_core::FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
-      ai_core::BufferLocation::GPU_DEVICE, {"images"});
-  framePreprocessArg.hwc2chw = false;
-  preprocParams.setParams(framePreprocessArg);
+      ai_core::FramePreprocessArg::FramePreprocType::CudaGpuGeneric,
+      ai_core::BufferLocation::GpuDevice, {"images"});
+  frame_preprocess_arg.hwc2chw = false;
+  preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
-  ai_core::FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  input.setParams(frameInput);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  ai_core::FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  input.setParams(frame_input);
 
-  ai_core::TensorData modelInput;
+  ai_core::TensorData model_input;
 
-  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+  std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_HWC_Yolo)
@@ -163,36 +163,36 @@ static void BM_GPU_FramePreproc_No_FP16_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
   preproc.initialize();
 
-  ai_core::AlgoPreprocParams preprocParams;
-  ai_core::FramePreprocessArg framePreprocessArg = getFramePreprocessArg(
+  ai_core::AlgoPreprocParams preproc_params;
+  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
       ai_core::DataType::FLOAT32,
-      ai_core::FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
-      ai_core::BufferLocation::GPU_DEVICE, {"images"});
-  preprocParams.setParams(framePreprocessArg);
+      ai_core::FramePreprocessArg::FramePreprocType::CudaGpuGeneric,
+      ai_core::BufferLocation::GpuDevice, {"images"});
+  preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
-  ai_core::FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  input.setParams(frameInput);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  ai_core::FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  input.setParams(frame_input);
 
-  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+  std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
-  ai_core::TensorData modelInput;
+  ai_core::TensorData model_input;
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_FP16_Yolo)
@@ -205,37 +205,37 @@ static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
   preproc.initialize();
 
-  ai_core::AlgoPreprocParams preprocParams;
-  ai_core::FramePreprocessArg framePreprocessArg = getFramePreprocessArg(
+  ai_core::AlgoPreprocParams preproc_params;
+  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
       ai_core::DataType::FLOAT32,
-      ai_core::FramePreprocessArg::FramePreprocType::CUDA_GPU_GENERIC,
-      ai_core::BufferLocation::GPU_DEVICE, {"images"});
-  framePreprocessArg.hwc2chw = false;
-  preprocParams.setParams(framePreprocessArg);
+      ai_core::FramePreprocessArg::FramePreprocType::CudaGpuGeneric,
+      ai_core::BufferLocation::GpuDevice, {"images"});
+  frame_preprocess_arg.hwc2chw = false;
+  preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat imageRGB;
-  cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
-  ai_core::FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageRGB);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageRGB.cols, imageRGB.rows);
-  input.setParams(frameInput);
+  cv::Mat image_rgb;
+  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  ai_core::FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  input.setParams(frame_input);
 
-  ai_core::TensorData modelInput;
+  ai_core::TensorData model_input;
 
-  std::shared_ptr<ai_core::RuntimeContext> runtimeContext =
+  std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preprocParams, modelInput, runtimeContext);
+    preproc.process(input, preproc_params, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_HWC_FP16_Yolo)

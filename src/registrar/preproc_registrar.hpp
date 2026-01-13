@@ -32,7 +32,7 @@ private:
 };
 
 [[maybe_unused]] inline const static DefaultPreprocPluginRegistrar
-    &__temp_preproc_registrar_ = DefaultPreprocPluginRegistrar::getInstance();
+    &temp_preproc_registrar = DefaultPreprocPluginRegistrar::getInstance();
 } // namespace ai_core::dnn
 
 #endif

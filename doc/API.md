@@ -36,7 +36,7 @@
 
 这是框架最主要的入口类，封装了完整的 **预处理 -> 推理 -> 后处理** 流水线。
 
-**头文件:** `#include "ai_core/algo_infer.hpp"`
+**头文件:** `#include "ai_core/algo_inference.hpp"`
 
 ### 1.1. 概述
 
@@ -65,15 +65,15 @@ AlgoInference(const AlgoModuleTypes &moduleTypes,
   初始化整个推理流水线，包括加载和初始化所有指定的插件。必须在调用 `infer` 之前成功调用。
   - **返回:** `InferErrorCode::SUCCESS` 表示成功。
 
-- **`InferErrorCode infer(const AlgoInput &input, const AlgoPreprocParams &preprocParams, const AlgoPostprocParams &postprocParams, AlgoOutput &output)`**
+- **`InferErrorCode infer(const AlgoInput &input, const AlgoPreprocParams &preproc_params, const AlgoPostprocParams &postproc_params, AlgoOutput &output)`**
   执行单次推理。
   - `input`: 算法输入数据 (`AlgoInput`)。
-  - `preprocParams`: 预处理参数 (`AlgoPreprocParams`)。
-  - `postprocParams`: 后处理参数 (`AlgoPostprocParams`)。
+  - `preproc_params`: 预处理参数 (`AlgoPreprocParams`)。
+  - `postproc_params`: 后处理参数 (`AlgoPostprocParams`)。
   - `output`: 用于接收算法输出结果 (`AlgoOutput`)。
   - **返回:** `InferErrorCode::SUCCESS` 表示成功。
 
-- **`InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs, const AlgoPreprocParams &preprocParams, const AlgoPostprocParams &postprocParams, std::vector<AlgoOutput> &outputs)`**
+- **`InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs, const AlgoPreprocParams &preproc_params, const AlgoPostprocParams &postproc_params, std::vector<AlgoOutput> &outputs)`**
   执行批量推理。
   - `inputs`: 一组算法输入数据。
   - `outputs`: 用于接收一组算法输出结果。
@@ -89,7 +89,7 @@ AlgoInference(const AlgoModuleTypes &moduleTypes,
 ### 1.4. 完整使用示例
 
 ```cpp
-#include "ai_core/algo_infer.hpp"
+#include "ai_core/algo_inference.hpp"
 
 // ...
 
@@ -144,7 +144,7 @@ pipeline.terminate();
 
 **示例:**
 ```cpp
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 
 ai_core::AlgoInput input;
 auto image = std::make_shared<cv::Mat>(cv::imread("test.jpg"));
@@ -266,7 +266,7 @@ struct TensorData {
   ```cpp
   struct FrameInput {
     std::shared_ptr<cv::Mat> image;      // 原始图像
-    std::shared_ptr<cv::Rect> inputRoi; // 感兴趣区域 (可选)
+    std::shared_ptr<cv::Rect> input_roi; // 感兴趣区域 (可选)
   };
   ```
 
@@ -304,7 +304,7 @@ struct TensorData {
 - **`FramePreprocessArg`** (`preproc_types.hpp`)
   定义了图像预处理的所有参数，如目标尺寸、均值/归一化系数、颜色通道顺序等。
 - **`AnchorDetParams`** (`postproc_types.hpp`)
-  定义了 Anchor-based 检测算法的后处理参数，如置信度阈值、NMS 阈值等。
+  定义了 Anchor-based 检测算法的后处理参数，如置信度阈值、nms 阈值等。
 - **`GenericPostParams`** (`postproc_types.hpp`)
   定义了通用后处理算法（如 Softmax）的参数。
 - ... 更多请参考 `ai_core/preproc_types.hpp` 和 `ai_core/postproc_types.hpp`。
@@ -322,7 +322,7 @@ struct TensorData {
 - `INIT_FAILED = 100`: 初始化失败。
 - `INIT_MODEL_LOAD_FAILED = 102`: 模型加载失败。
 - `INFER_FAILED = 200`: 推理执行失败。
-- `INFER_INPUT_ERROR = 201`: 推理输入数据错误。
+- `InferInputError = 201`: 推理输入数据错误。
 - `ALGO_NOT_FOUND = 400`: 找不到指定的算法插件。
 - ... 更多请参考头文件。
 
@@ -375,7 +375,7 @@ struct TensorData {
 **示例：** 在你的 `my_postproc.cpp` 文件末尾添加：
 
 ```cpp
-#include "ai_core/ai_core_registrar.hpp"
+#include "ai_core/plugin_registrar.hpp"
 #include "my_postproc.hpp" // 包含你的插件类定义
 
 // 假设你的后处理插件类名为 MyYoloPostproc

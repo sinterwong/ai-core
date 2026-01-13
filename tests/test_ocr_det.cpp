@@ -8,11 +8,11 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/infer_base.hpp"
-#include "ai_core/infer_params_types.hpp"
-#include "ai_core/postproc_base.hpp"
-#include "ai_core/preproc_base.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/i_infer_engine.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/i_postprocess.hpp"
+#include "ai_core/i_preprocess.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/confidence_filter_postproc.hpp"
 #include "preproc/frame_prep.hpp"
@@ -42,130 +42,130 @@ using namespace ai_core;
 using namespace ai_core::dnn;
 
 struct TestConfig {
-  std::string testName;
+  std::string test_name;
 
   std::function<std::shared_ptr<IInferEnginePlugin>(
       const AlgoConstructParams &)>
-      engineFactory;
+      engine_factory;
 
-  std::string modelPath;
-  DataType inferDataType;
-  DataType preprocDataType;
-  DeviceType deviceType;
-  std::string inputName;
-  FramePreprocessArg::FramePreprocType preprocTaskType =
-      FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC;
-  BufferLocation bufferLocation = BufferLocation::CPU;
-  bool needDecrypt = false;
-  std::string decryptkeyStr = "";
+  std::string model_path;
+  DataType infer_data_type;
+  DataType preproc_data_type;
+  DeviceType device_type;
+  std::string input_name;
+  FramePreprocessArg::FramePreprocType preproc_task_type =
+      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
+  BufferLocation buffer_location = BufferLocation::CPU;
+  bool need_decrypt = false;
+  std::string decryptkey_str = "";
 };
 
 class OCRDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
 protected:
   void SetUp() override {
-    framePreproc = std::make_shared<FramePreprocess>();
-    ASSERT_NE(framePreproc, nullptr);
+    m_m_framePreproc = std::make_shared<FramePreprocess>();
+    ASSERT_NE(m_m_framePreproc, nullptr);
 
-    confidenceFilterPostproc = std::make_shared<ConfidenceFilterPostproc>();
-    ASSERT_NE(confidenceFilterPostproc, nullptr);
+    m_confidenceFilterPostproc = std::make_shared<ConfidenceFilterPostproc>();
+    ASSERT_NE(m_confidenceFilterPostproc, nullptr);
   }
 
-  void CheckResults(const SegRet *segRet) {
-    ASSERT_NE(segRet, nullptr);
-    ASSERT_EQ(segRet->clsToContours.size(), 1);
-    ASSERT_EQ(segRet->clsToContours.at(1).size(), 28);
+  void checkResults(const SegRet *seg_ret) {
+    ASSERT_NE(seg_ret, nullptr);
+    ASSERT_EQ(seg_ret->cls_to_contours.size(), 1);
+    ASSERT_EQ(seg_ret->cls_to_contours.at(1).size(), 28);
   }
 
-  fs::path resourceDir = fs::path("assets");
-  fs::path confDir = resourceDir / "conf";
-  fs::path dataDir = resourceDir / "data";
+  fs::path m_resourceDir = fs::path("assets");
+  fs::path m_confDir = m_resourceDir / "conf";
+  fs::path m_dataDir = m_resourceDir / "data";
 
-  std::string imagePath = (dataDir / "ocr_det/image.png").string();
+  std::string m_image_path = (m_dataDir / "ocr_det/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> framePreproc;
-  std::shared_ptr<IPostprocssPlugin> confidenceFilterPostproc;
+  std::shared_ptr<IPreprocssPlugin> m_m_framePreproc;
+  std::shared_ptr<IPostprocssPlugin> m_confidenceFilterPostproc;
 };
 
 TEST_P(OCRDetInferenceTest, Normal) {
   const auto &config = GetParam();
 
-  AlgoConstructParams tempInferParams;
-  AlgoInferParams inferParams;
-  inferParams.dataType = config.inferDataType;
-  inferParams.modelPath = config.modelPath;
-  inferParams.name = "ocr_det";
-  inferParams.deviceType = config.deviceType;
-  inferParams.needDecrypt = config.needDecrypt;
-  inferParams.decryptkeyStr = config.decryptkeyStr;
-  tempInferParams.setParam("params", inferParams);
+  AlgoConstructParams temp_infer_params;
+  AlgoInferParams infer_params;
+  infer_params.data_type = config.infer_data_type;
+  infer_params.model_path = config.model_path;
+  infer_params.name = "ocr_det";
+  infer_params.device_type = config.device_type;
+  infer_params.need_decrypt = config.need_decrypt;
+  infer_params.decryptkey_str = config.decryptkey_str;
+  temp_infer_params.setParam("params", infer_params);
 
   std::shared_ptr<IInferEnginePlugin> engine =
-      config.engineFactory(tempInferParams);
+      config.engine_factory(temp_infer_params);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
   engine->prettyPrintModelInfos();
 
-  cv::Mat image = cv::imread(imagePath);
+  cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
 
-  std::shared_ptr<RuntimeContext> runtimeContext =
+  std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
 
-  AlgoPreprocParams preprocParams;
-  FramePreprocessArg framePreprocessArg;
-  framePreprocessArg.modelInputShape = {512, 512, 3};
-  framePreprocessArg.dataType = config.preprocDataType;
-  framePreprocessArg.needResize = true;
-  framePreprocessArg.isEqualScale = true;
-  framePreprocessArg.pad = {0, 0, 0};
-  framePreprocessArg.meanVals = {123.675f, 116.28f, 103.53f};
-  framePreprocessArg.normVals = {58.395f, 57.12f, 57.375f};
-  framePreprocessArg.hwc2chw = true;
-  framePreprocessArg.inputNames = {config.inputName};
-  framePreprocessArg.preprocTaskType = config.preprocTaskType;
-  framePreprocessArg.outputLocation = config.bufferLocation;
-  preprocParams.setParams(framePreprocessArg);
+  AlgoPreprocParams preproc_params;
+  FramePreprocessArg frame_preprocess_arg;
+  frame_preprocess_arg.model_input_shape = {512, 512, 3};
+  frame_preprocess_arg.data_type = config.preproc_data_type;
+  frame_preprocess_arg.need_resize = true;
+  frame_preprocess_arg.is_equal_scale = true;
+  frame_preprocess_arg.pad = {0, 0, 0};
+  frame_preprocess_arg.mean_vals = {123.675f, 116.28f, 103.53f};
+  frame_preprocess_arg.norm_vals = {58.395f, 57.12f, 57.375f};
+  frame_preprocess_arg.hwc2chw = true;
+  frame_preprocess_arg.input_names = {config.input_name};
+  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
+  frame_preprocess_arg.output_location = config.buffer_location;
+  preproc_params.setParams(frame_preprocess_arg);
 
-  AlgoPostprocParams postprocParams;
-  ConfidenceFilterParams confidenceFilterParams;
-  confidenceFilterParams.algoType =
-      ConfidenceFilterParams::AlgoType::SEMANTIC_SEG;
-  confidenceFilterParams.condThre = 0.3f;
-  confidenceFilterParams.outputNames = {"sigmoid_0.tmp_0"};
-  postprocParams.setParams(confidenceFilterParams);
+  AlgoPostprocParams postproc_params;
+  ConfidenceFilterParams confidence_filter_params;
+  confidence_filter_params.algo_type =
+      ConfidenceFilterParams::AlgoType::SemanticSeg;
+  confidence_filter_params.cond_thre = 0.3f;
+  confidence_filter_params.output_names = {"sigmoid_0.tmp_0"};
+  postproc_params.setParams(confidence_filter_params);
 
-  AlgoInput algoInput;
-  FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(image);
-  frameInput.inputRoi =
+  AlgoInput algo_input;
+  FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image);
+  frame_input.input_roi =
       std::make_shared<cv::Rect>(0, 0, image.cols, image.rows);
-  algoInput.setParams(frameInput);
+  algo_input.setParams(frame_input);
 
-  TensorData modelInput;
-  framePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
+  TensorData model_input;
+  m_m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
 
-  TensorData modelOutput;
-  ASSERT_EQ(engine->infer(modelInput, modelOutput), InferErrorCode::SUCCESS);
+  TensorData model_output;
+  ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);
 
-  AlgoOutput algoOutput;
-  ASSERT_TRUE(confidenceFilterPostproc->process(modelOutput, postprocParams,
-                                                algoOutput, runtimeContext));
+  AlgoOutput algo_output;
+  ASSERT_TRUE(m_confidenceFilterPostproc->process(model_output, postproc_params,
+                                                algo_output, runtime_context));
 
-  auto *segRet = algoOutput.getParams<SegRet>();
-  CheckResults(segRet);
+  auto *seg_ret = algo_output.getParams<SegRet>();
+  checkResults(seg_ret);
 
-  cv::Mat visImage = image.clone();
-  for (const auto &pair : segRet->clsToContours) {
+  cv::Mat vis_image = image.clone();
+  for (const auto &pair : seg_ret->cls_to_contours) {
     for (const auto &contour : pair.second) {
-      cv::drawContours(visImage, std::vector<std::vector<cv::Point>>{contour},
+      cv::drawContours(vis_image, std::vector<std::vector<cv::Point>>{contour},
                        -1, cv::Scalar(0, 255, 0), 2);
     }
   }
-  std::string output_filename = "vis_ocr_det_" + config.testName + ".png";
-  cv::imwrite(output_filename, visImage);
+  std::string output_filename = "vis_ocr_det_" + config.test_name + ".png";
+  cv::imwrite(output_filename, vis_image);
 }
 
-std::vector<TestConfig> GetTestConfigs() {
+std::vector<TestConfig> getTestConfigs() {
   std::vector<TestConfig> configs;
 #ifdef WITH_ORT
   configs.push_back({"ort",
@@ -174,7 +174,7 @@ std::vector<TestConfig> GetTestConfigs() {
                      },
                      "assets/models/ch_PP_ocr_det.onnx", DataType::FLOAT32,
                      DataType::FLOAT32, DeviceType::CPU, "x",
-                     FramePreprocessArg::FramePreprocType::OPENCV_CPU_GENERIC,
+                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
 #endif
 #ifdef WITH_NCNN
@@ -185,13 +185,13 @@ std::vector<TestConfig> GetTestConfigs() {
 }
 
 std::string testNameGenerator(const testing::TestParamInfo<TestConfig> &info) {
-  return info.param.testName;
+  return info.param.test_name;
 }
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OCRDetInferenceTest);
 
 INSTANTIATE_TEST_SUITE_P(OCRDetInferenceBackends, OCRDetInferenceTest,
-                         ::testing::ValuesIn(GetTestConfigs()),
+                         ::testing::ValuesIn(getTestConfigs()),
                          testNameGenerator);
 
 } // namespace testing_ocr_det

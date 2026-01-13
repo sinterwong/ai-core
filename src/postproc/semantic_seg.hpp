@@ -17,10 +17,10 @@ class SemanticSeg : public IConfidencePostprocessor {
 public:
   explicit SemanticSeg() {}
 
-  virtual bool process(const TensorData &modelOutput,
-                       const FrameTransformContext &prepArgs,
+  virtual bool process(const TensorData &model_output,
+                       const FrameTransformContext &prep_args,
                        const ConfidenceFilterParams &params,
-                       AlgoOutput &algoOutput) const override;
+                       AlgoOutput &algo_output) const override;
 
   virtual bool batchProcess(const TensorData &,
                             const std::vector<FrameTransformContext> &,
@@ -28,9 +28,9 @@ public:
                             std::vector<AlgoOutput> &) const override;
 
 private:
-  SegRet processSingleItem(const float *data, int numClasses, int height,
-                           int width, const FrameTransformContext &prepArgs,
-                           const ConfidenceFilterParams &postArgs) const;
+  SegRet processSingleItem(const float *data, int num_classes, int height,
+                           int width, const FrameTransformContext &prep_args,
+                           const ConfidenceFilterParams &post_args) const;
 };
 } // namespace ai_core::dnn
 

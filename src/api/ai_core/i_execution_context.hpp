@@ -1,5 +1,5 @@
 /**
- * @file execution_context.hpp
+ * @file i_execution_context.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief Abstract interface for asynchronous inference execution context
  * @version 0.2
@@ -11,7 +11,7 @@
 #ifndef AI_CORE_EXECUTION_CONTEXT_HPP
 #define AI_CORE_EXECUTION_CONTEXT_HPP
 
-#include "ai_core/infer_error_code.hpp"
+#include "ai_core/error_code.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <future>
 #include <typeinfo>
@@ -74,7 +74,7 @@ private:
  *
  * Usage Pattern:
  * @code
- * auto context = asyncEngine->createExecutionContext();
+ * auto context = async_engine->createExecutionContext();
  *
  * // Submit async task
  * auto future = context->inferAsync(inputs, outputs);

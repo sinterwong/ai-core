@@ -11,8 +11,8 @@
 #ifndef AI_CORE_I_CONFIDENCE_FILTER_POST_BASE_HPP
 #define AI_CORE_I_CONFIDENCE_FILTER_POST_BASE_HPP
 
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/postproc_types.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/postprocess_types.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core {
@@ -35,4 +35,4 @@ public:
 
 } // namespace ai_core
 
-#endif // __I_IMAGE_PREPROCESSOR_HPP__
+#endif

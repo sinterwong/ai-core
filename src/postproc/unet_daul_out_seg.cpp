@@ -14,102 +14,102 @@
 #include <opencv2/core/mat.hpp>
 
 namespace ai_core::dnn {
-bool UNetDaulOutputSeg::process(const TensorData &modelOutput,
-                                const FrameTransformContext &prepArgs,
-                                const GenericPostParams &postArgs,
-                                AlgoOutput &algoOutput) const {
-  if (postArgs.outputNames.size() != 2) {
+bool UNetDaulOutputSeg::process(const TensorData &model_output,
+                                const FrameTransformContext &prep_args,
+                                const GenericPostParams &post_args,
+                                AlgoOutput &algo_output) const {
+  if (post_args.output_names.size() != 2) {
     LOG_ERROR_S
         << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
     return false;
   }
-  const auto &probOutputName = postArgs.outputNames.at(0);
-  const auto &maskOutputName = postArgs.outputNames.at(1);
+  const auto &prob_output_name = post_args.output_names.at(0);
+  const auto &mask_output_name = post_args.output_names.at(1);
 
-  auto probOutput = modelOutput.datas.at(probOutputName);
-  auto maskOutput = modelOutput.datas.at(maskOutputName);
-  const auto &probShape = modelOutput.shapes.at(probOutputName);
-  const auto &maskShape = modelOutput.shapes.at(maskOutputName);
+  auto prob_output = model_output.datas.at(prob_output_name);
+  auto mask_output = model_output.datas.at(mask_output_name);
+  const auto &prob_shape = model_output.shapes.at(prob_output_name);
+  const auto &mask_shape = model_output.shapes.at(mask_output_name);
 
   DaulRawSegRet ret =
-      processSingleItem(probOutput.getHostPtr<float>(), probShape,
-                        maskOutput.getHostPtr<float>(), maskShape, prepArgs);
+      processSingleItem(prob_output.getHostPtr<float>(), prob_shape,
+                        mask_output.getHostPtr<float>(), mask_shape, prep_args);
 
-  algoOutput.setParams(ret);
+  algo_output.setParams(ret);
   return true;
 }
 
 bool UNetDaulOutputSeg::batchProcess(
-    const TensorData &modelOutput,
-    const std::vector<FrameTransformContext> &prepArgs,
-    const GenericPostParams &postArgs,
-    std::vector<AlgoOutput> &algoOutput) const {
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const GenericPostParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
 
-  if (postArgs.outputNames.size() != 2) {
+  if (post_args.output_names.size() != 2) {
     LOG_ERROR_S
         << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
     return false;
   }
-  const auto &probOutputName = postArgs.outputNames.at(0);
-  const auto &maskOutputName = postArgs.outputNames.at(1);
+  const auto &prob_output_name = post_args.output_names.at(0);
+  const auto &mask_output_name = post_args.output_names.at(1);
 
-  auto probOutput = modelOutput.datas.at(probOutputName);
-  auto maskOutput = modelOutput.datas.at(maskOutputName);
-  const auto &probShape = modelOutput.shapes.at(probOutputName);
-  const auto &maskShape = modelOutput.shapes.at(maskOutputName);
+  auto prob_output = model_output.datas.at(prob_output_name);
+  auto mask_output = model_output.datas.at(mask_output_name);
+  const auto &prob_shape = model_output.shapes.at(prob_output_name);
+  const auto &mask_shape = model_output.shapes.at(mask_output_name);
 
-  int batchSize = probShape.at(0);
-  if (batchSize != prepArgs.size()) {
-    LOG_ERROR_S << "Batch size from model output (" << batchSize
-                << ") does not match prepArgs size (" << prepArgs.size()
+  int batch_size = prob_shape.at(0);
+  if (batch_size != prep_args.size()) {
+    LOG_ERROR_S << "Batch size from model output (" << batch_size
+                << ") does not match prep_args size (" << prep_args.size()
                 << ").";
     return false;
   }
 
   // 计算单个样本的元素数量
-  size_t probItemSize = probOutput.getElementCount() / batchSize;
-  size_t maskItemSize = maskOutput.getElementCount() / batchSize;
+  size_t prob_item_size = prob_output.getElementCount() / batch_size;
+  size_t mask_item_size = mask_output.getElementCount() / batch_size;
 
-  const float *probDataPtr = probOutput.getHostPtr<float>();
-  const float *maskDataPtr = maskOutput.getHostPtr<float>();
+  const float *prob_data_ptr = prob_output.getHostPtr<float>();
+  const float *mask_data_ptr = mask_output.getHostPtr<float>();
 
-  algoOutput.resize(batchSize);
+  algo_output.resize(batch_size);
 
-  for (int i = 0; i < batchSize; ++i) {
-    const float *currentProbData = probDataPtr + i * probItemSize;
-    const float *currentMaskData = maskDataPtr + i * maskItemSize;
+  for (int i = 0; i < batch_size; ++i) {
+    const float *current_prob_data = prob_data_ptr + i * prob_item_size;
+    const float *current_mask_data = mask_data_ptr + i * mask_item_size;
 
     // 在循环中调用辅助函数
     DaulRawSegRet ret = processSingleItem(
-        currentProbData, probShape, currentMaskData, maskShape, prepArgs[i]);
-    algoOutput[i].setParams(ret);
+        current_prob_data, prob_shape, current_mask_data, mask_shape, prep_args[i]);
+    algo_output[i].setParams(ret);
   }
 
   return true;
 }
 
 DaulRawSegRet UNetDaulOutputSeg::processSingleItem(
-    const float *probData, const std::vector<int> &probShape,
-    const float *maskData, const std::vector<int> &maskShape,
-    const FrameTransformContext &prepArgs) const {
+    const float *prob_data, const std::vector<int> &prob_shape,
+    const float *mask_data, const std::vector<int> &mask_shape,
+    const FrameTransformContext &prep_args) const {
 
-  int height = probShape[2];
-  int width = probShape[1];
-  cv::Mat probCvMat(height, width, CV_32FC1, const_cast<float *>(probData));
+  int height = prob_shape[2];
+  int width = prob_shape[1];
+  cv::Mat prob_cv_mat(height, width, CV_32FC1, const_cast<float *>(prob_data));
 
-  height = maskShape[2];
-  width = maskShape[1];
-  cv::Mat maskCvMat(height, width, CV_32FC1, const_cast<float *>(maskData));
+  height = mask_shape[2];
+  width = mask_shape[1];
+  cv::Mat mask_cv_mat(height, width, CV_32FC1, const_cast<float *>(mask_data));
 
   DaulRawSegRet ret;
-  ret.prob = std::make_shared<cv::Mat>(probCvMat);
-  ret.mask = std::make_shared<cv::Mat>(maskCvMat);
+  ret.prob = std::make_shared<cv::Mat>(prob_cv_mat);
+  ret.mask = std::make_shared<cv::Mat>(mask_cv_mat);
 
-  ret.roi = prepArgs.roi;
+  ret.roi = prep_args.roi;
   ret.ratio =
-      static_cast<float>(prepArgs.modelInputShape.w) / prepArgs.originShape.w;
-  ret.leftShift = prepArgs.leftPad;
-  ret.topShift = prepArgs.topPad;
+      static_cast<float>(prep_args.model_input_shape.w) / prep_args.origin_shape.w;
+  ret.left_shift = prep_args.left_pad;
+  ret.top_shift = prep_args.top_pad;
   return ret;
 }
 } // namespace ai_core::dnn

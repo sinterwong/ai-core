@@ -1,7 +1,7 @@
 function(ai_core_extract_version)
     set(possible_paths 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/api/ai_core/ai_core_version.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/api/ai_core/ai_core_version.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/api/ai_core/version.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/api/ai_core/version.hpp"
     )
     
     set(target_ver_file "")

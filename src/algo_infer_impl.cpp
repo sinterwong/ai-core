@@ -10,163 +10,163 @@
  */
 #include <chrono>
 
-#include "ai_core/infer_error_code.hpp"
+#include "ai_core/error_code.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "algo_infer_impl.hpp"
 
 namespace ai_core::dnn {
-AlgoInference::Impl::Impl(const AlgoModuleTypes &algoModuleTypes,
-                          const AlgoInferParams &inferParams)
-    : algoModuleTypes_(algoModuleTypes), inferParams_(inferParams) {
-  preprocessor_ = std::make_shared<AlgoPreproc>(algoModuleTypes_.preprocModule);
-  engine_ = std::make_shared<AlgoInferEngine>(algoModuleTypes_.inferModule,
-                                              inferParams_);
-  postprocessor_ =
-      std::make_shared<AlgoPostproc>(algoModuleTypes_.postprocModule);
+AlgoInference::Impl::Impl(const AlgoModuleTypes &algo_module_types,
+                          const AlgoInferParams &infer_params)
+    : m_algoModuleTypes(algo_module_types), m_inferParams(infer_params) {
+  m_preprocessor = std::make_shared<AlgoPreproc>(m_algoModuleTypes.preproc_module);
+  m_engine = std::make_shared<AlgoInferEngine>(m_algoModuleTypes.infer_module,
+                                              m_inferParams);
+  m_postprocessor =
+      std::make_shared<AlgoPostproc>(m_algoModuleTypes.postproc_module);
 };
 
 InferErrorCode AlgoInference::Impl::initialize() {
-  if (preprocessor_->initialize() != InferErrorCode::SUCCESS) {
+  if (m_preprocessor->initialize() != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to initialize preprocessor.";
-    return InferErrorCode::INIT_FAILED;
+    return InferErrorCode::InitFailed;
   }
-  if (engine_->initialize() != InferErrorCode::SUCCESS) {
+  if (m_engine->initialize() != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to initialize inference engine.";
-    return InferErrorCode::INIT_FAILED;
+    return InferErrorCode::InitFailed;
   }
-  if (postprocessor_->initialize() != InferErrorCode::SUCCESS) {
+  if (m_postprocessor->initialize() != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to initialize postprocessor.";
-    return InferErrorCode::INIT_FAILED;
+    return InferErrorCode::InitFailed;
   }
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode AlgoInference::Impl::infer(
-    const AlgoInput &input, const AlgoPreprocParams &preprocParams,
-    const AlgoPostprocParams &postprocParams, AlgoOutput &output) {
+    const AlgoInput &input, const AlgoPreprocParams &preproc_params,
+    const AlgoPostprocParams &postproc_params, AlgoOutput &output) {
 
-  if (engine_ == nullptr || preprocessor_ == nullptr ||
-      postprocessor_ == nullptr) {
+  if (m_engine == nullptr || m_preprocessor == nullptr ||
+      m_postprocessor == nullptr) {
     LOG_ERROR_S << "Please initialize first";
-    return InferErrorCode::INIT_FAILED;
+    return InferErrorCode::InitFailed;
   }
 
-  std::shared_ptr<RuntimeContext> runtimeContext =
+  std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
 
   // prep const time
-  auto startPre = std::chrono::steady_clock::now();
-  TensorData modelInput;
-  if (preprocessor_->process(input, preprocParams, modelInput,
-                             runtimeContext) != InferErrorCode::SUCCESS) {
+  auto start_pre = std::chrono::steady_clock::now();
+  TensorData model_input;
+  if (m_preprocessor->process(input, preproc_params, model_input,
+                             runtime_context) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to preprocess input.";
-    return InferErrorCode::INFER_PREPROCESS_FAILED;
+    return InferErrorCode::InferPreprocessFailed;
   }
-  auto endPre = std::chrono::steady_clock::now();
-  auto durationPre =
-      std::chrono::duration_cast<std::chrono::milliseconds>(endPre - startPre);
+  auto end_pre = std::chrono::steady_clock::now();
+  auto duration_pre =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end_pre - start_pre);
 
   // infer cost time
-  auto startInfer = std::chrono::steady_clock::now();
-  TensorData modelOutput;
-  auto ret = engine_->infer(modelInput, modelOutput);
+  auto start_infer = std::chrono::steady_clock::now();
+  TensorData model_output;
+  auto ret = m_engine->infer(model_input, model_output);
   if (ret != InferErrorCode::SUCCESS) {
     return ret;
   }
-  auto endInfer = std::chrono::steady_clock::now();
-  auto durationInfer = std::chrono::duration_cast<std::chrono::milliseconds>(
-      endInfer - startInfer);
+  auto end_infer = std::chrono::steady_clock::now();
+  auto duration_infer = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_infer - start_infer);
 
   // post cost time
-  auto startPost = std::chrono::steady_clock::now();
-  if (postprocessor_->process(modelOutput, postprocParams, output,
-                              runtimeContext) != InferErrorCode::SUCCESS) {
+  auto start_post = std::chrono::steady_clock::now();
+  if (m_postprocessor->process(model_output, postproc_params, output,
+                              runtime_context) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to postprocess output.";
-    return InferErrorCode::INFER_OUTPUT_ERROR;
+    return InferErrorCode::InferOutputError;
   }
-  auto endPost = std::chrono::steady_clock::now();
-  auto durationPost = std::chrono::duration_cast<std::chrono::milliseconds>(
-      endPost - startPost);
+  auto end_post = std::chrono::steady_clock::now();
+  auto duration_post = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_post - start_post);
 
-  LOG_TRACE_S << "Preprocess time: " << durationPre.count()
-              << " ms, Infer time: " << durationInfer.count()
-              << " ms, Postprocess time: " << durationPost.count() << " ms.";
+  LOG_TRACE_S << "Preprocess time: " << duration_pre.count()
+              << " ms, Infer time: " << duration_infer.count()
+              << " ms, Postprocess time: " << duration_post.count() << " ms.";
 
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode
 AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
-                                const AlgoPreprocParams &preprocParams,
-                                const AlgoPostprocParams &postprocParams,
+                                const AlgoPreprocParams &preproc_params,
+                                const AlgoPostprocParams &postproc_params,
                                 std::vector<AlgoOutput> &outputs) {
-  if (engine_ == nullptr || preprocessor_ == nullptr ||
-      postprocessor_ == nullptr) {
+  if (m_engine == nullptr || m_preprocessor == nullptr ||
+      m_postprocessor == nullptr) {
     LOG_ERROR_S << "Please initialize first";
-    return InferErrorCode::INIT_FAILED;
+    return InferErrorCode::InitFailed;
   }
 
-  std::shared_ptr<RuntimeContext> runtimeContext =
+  std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
 
   // prep const time
-  auto startPre = std::chrono::steady_clock::now();
-  TensorData modelInput;
-  if (preprocessor_->batchProcess(inputs, preprocParams, modelInput,
-                                  runtimeContext) != InferErrorCode::SUCCESS) {
+  auto start_pre = std::chrono::steady_clock::now();
+  TensorData model_input;
+  if (m_preprocessor->batchProcess(inputs, preproc_params, model_input,
+                                  runtime_context) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to batch preprocess input.";
-    return InferErrorCode::INFER_PREPROCESS_FAILED;
+    return InferErrorCode::InferPreprocessFailed;
   }
-  auto endPre = std::chrono::steady_clock::now();
-  auto durationPre =
-      std::chrono::duration_cast<std::chrono::milliseconds>(endPre - startPre);
+  auto end_pre = std::chrono::steady_clock::now();
+  auto duration_pre =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end_pre - start_pre);
 
   // infer cost time
-  auto startInfer = std::chrono::steady_clock::now();
-  TensorData modelOutput;
-  auto ret = engine_->infer(modelInput, modelOutput);
+  auto start_infer = std::chrono::steady_clock::now();
+  TensorData model_output;
+  auto ret = m_engine->infer(model_input, model_output);
   if (ret != InferErrorCode::SUCCESS) {
     return ret;
   }
-  auto endInfer = std::chrono::steady_clock::now();
-  auto durationInfer = std::chrono::duration_cast<std::chrono::milliseconds>(
-      endInfer - startInfer);
+  auto end_infer = std::chrono::steady_clock::now();
+  auto duration_infer = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_infer - start_infer);
 
   // post cost time
-  auto startPost = std::chrono::steady_clock::now();
-  if (postprocessor_->batchProcess(modelOutput, postprocParams, outputs,
-                                   runtimeContext) != InferErrorCode::SUCCESS) {
+  auto start_post = std::chrono::steady_clock::now();
+  if (m_postprocessor->batchProcess(model_output, postproc_params, outputs,
+                                   runtime_context) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to batch postprocess output.";
-    return InferErrorCode::INFER_OUTPUT_ERROR;
+    return InferErrorCode::InferOutputError;
   }
-  auto endPost = std::chrono::steady_clock::now();
-  auto durationPost = std::chrono::duration_cast<std::chrono::milliseconds>(
-      endPost - startPost);
-  LOG_TRACE_S << "Batch Preprocess time: " << durationPre.count()
-              << " ms, Batch Infer time: " << durationInfer.count()
-              << " ms, Batch Postprocess time: " << durationPost.count()
+  auto end_post = std::chrono::steady_clock::now();
+  auto duration_post = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_post - start_post);
+  LOG_TRACE_S << "Batch Preprocess time: " << duration_pre.count()
+              << " ms, Batch Infer time: " << duration_infer.count()
+              << " ms, Batch Postprocess time: " << duration_post.count()
               << " ms.";
 
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode AlgoInference::Impl::terminate() {
-  engine_->terminate();
+  m_engine->terminate();
   return InferErrorCode::SUCCESS;
 }
 
 const ModelInfo &AlgoInference::Impl::getModelInfo() const noexcept {
-  if (engine_ == nullptr) {
+  if (m_engine == nullptr) {
     LOG_ERROR_S << "Please initialize first";
-    static ModelInfo modelInfo;
-    return modelInfo;
+    static ModelInfo model_info;
+    return model_info;
   }
-  return engine_->getModelInfo();
+  return m_engine->getModelInfo();
 }
 
 const AlgoModuleTypes &AlgoInference::Impl::getModuleTypes() const noexcept {
-  return algoModuleTypes_;
+  return m_algoModuleTypes;
 };
 
 } // namespace ai_core::dnn

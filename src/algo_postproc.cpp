@@ -9,34 +9,34 @@
  *
  */
 
-#include "ai_core/algo_postproc.hpp"
+#include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "algo_postproc_impl.hpp"
 
 namespace ai_core::dnn {
 
-AlgoPostproc::AlgoPostproc(const std::string &moduleName)
-    : pImpl(std::make_unique<Impl>(moduleName)) {}
+AlgoPostproc::AlgoPostproc(const std::string &module_name)
+    : m_pImpl(std::make_unique<Impl>(module_name)) {}
 
 AlgoPostproc::~AlgoPostproc() = default;
 
-InferErrorCode AlgoPostproc::initialize() { return pImpl->initialize(); }
+InferErrorCode AlgoPostproc::initialize() { return m_pImpl->initialize(); }
 
 InferErrorCode AlgoPostproc::process(
-    const TensorData &modelOutput, const AlgoPostprocParams &postprocParams,
-    AlgoOutput &output, std::shared_ptr<RuntimeContext> &runtimeContext) {
-  return pImpl->process(modelOutput, output, postprocParams, runtimeContext);
+    const TensorData &model_output, const AlgoPostprocParams &postproc_params,
+    AlgoOutput &output, std::shared_ptr<RuntimeContext> &runtime_context) {
+  return m_pImpl->process(model_output, output, postproc_params, runtime_context);
 }
 
 InferErrorCode
-AlgoPostproc::batchProcess(const TensorData &modelOutput,
-                           const AlgoPostprocParams &postprocParams,
+AlgoPostproc::batchProcess(const TensorData &model_output,
+                           const AlgoPostprocParams &postproc_params,
                            std::vector<AlgoOutput> &output,
-                           std::shared_ptr<RuntimeContext> &runtimeContext) {
-  return pImpl->batchProcess(modelOutput, output, postprocParams,
-                             runtimeContext);
+                           std::shared_ptr<RuntimeContext> &runtime_context) {
+  return m_pImpl->batchProcess(model_output, output, postproc_params,
+                             runtime_context);
 }
 
-InferErrorCode AlgoPostproc::terminate() { return pImpl->terminate(); }
+InferErrorCode AlgoPostproc::terminate() { return m_pImpl->terminate(); }
 
 } // namespace ai_core::dnn

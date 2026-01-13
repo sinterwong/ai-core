@@ -1,5 +1,5 @@
 /**
- * @file ai_core_registrar.hpp
+ * @file plugin_registrar.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -11,9 +11,9 @@
 
 #ifndef AI_CORE_REGISTRAR_HPP
 #define AI_CORE_REGISTRAR_HPP
-#include "ai_core/infer_base.hpp"
-#include "ai_core/postproc_base.hpp"
-#include "ai_core/preproc_base.hpp"
+#include "ai_core/i_infer_engine.hpp"
+#include "ai_core/i_postprocess.hpp"
+#include "ai_core/i_preprocess.hpp"
 #include "ai_core/type_safe_factory.hpp"
 
 namespace ai_core::dnn {

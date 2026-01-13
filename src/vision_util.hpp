@@ -8,25 +8,25 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_UTILS_HPP_
-#define __INFERENCE_VISION_UTILS_HPP_
+#ifndef AI_CORE_INFERENCE_VISION_UTILS_HPP
+#define AI_CORE_INFERENCE_VISION_UTILS_HPP
 
-#include "ai_core/algo_output_types.hpp"
-#include "ai_core/infer_common_types.hpp"
+#include "ai_core/output_types.hpp"
+#include "ai_core/common_types.hpp"
 #include <opencv2/core/types.hpp>
 
 namespace ai_core::utils {
 
-std::pair<float, float> scaleRatio(Shape const &originShape,
-                                   Shape const &inputShape, bool isScale);
+std::pair<float, float> scaleRatio(Shape const &origin_shape,
+                                   Shape const &input_shape, bool is_scale);
 
 float calculateIoU(const BBox &bbox1, const BBox &bbox2);
 
-std::vector<BBox> NMS(const std::vector<BBox> &results, float nmsThre,
-                      float confThre);
+std::vector<BBox> nms(const std::vector<BBox> &results, float nms_thre,
+                      float conf_thre);
 
-Shape escaleResizeWithPad(const cv::Mat &src, cv::Mat &dst, int targetWidth,
-                          int targetHeight, const cv::Scalar &pad);
+Shape escaleResizeWithPad(const cv::Mat &src, cv::Mat &dst, int target_width,
+                          int target_height, const cv::Scalar &pad);
 
 template <typename T>
 cv::Scalar createScalarFromVector(const std::vector<T> &values) {

@@ -28,7 +28,7 @@ public:
   std::vector<cv::Rect> detect(const cv::Mat &frame,
                                const cv::Rect &roi = cv::Rect{});
 
-  std::vector<std::string> recognize(const cv::Mat &imageGray);
+  std::vector<std::string> recognize(const cv::Mat &image_gray);
 
   cv::Rect expandBox(const cv::Rect &box, float expandRatioX,
                      float expandRatioY, const cv::Size &frameSize);

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "nlohmann/json.hpp"
-#include <ai_core/algo_data_types.hpp>
-#include <ai_core/infer_params_types.hpp>
+#include "ai_core/algo_types.hpp"
+#include "ai_core/infer_config.hpp"
 #include <string>
 
 namespace ai_core::example::utils {
@@ -10,9 +10,9 @@ namespace ai_core::example::utils {
 struct AlgoConfigData {
   std::string moduleName;
   ai_core::AlgoModuleTypes modelTypes;
-  ai_core::AlgoPreprocParams preprocParams;
+  ai_core::AlgoPreprocParams preproc_params;
   ai_core::AlgoInferParams inferParams;
-  ai_core::AlgoPostprocParams postprocParams;
+  ai_core::AlgoPostprocParams postproc_params;
 };
 
 class AlgoConfigParser {

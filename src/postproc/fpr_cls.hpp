@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __INFERENCE_VISION_FPR_CLS_HPP_
-#define __INFERENCE_VISION_FPR_CLS_HPP_
+#ifndef AI_CORE_INFERENCE_VISION_FPR_CLS_HPP
+#define AI_CORE_INFERENCE_VISION_FPR_CLS_HPP
 
 #include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
@@ -26,8 +26,8 @@ public:
                             std::vector<AlgoOutput> &) const override;
 
 private:
-  FprClsRet processSingleItem(const float *scoresData, int numClasses,
-                              const float *biradsData, int numBirads) const;
+  FprClsRet processSingleItem(const float *scores_data, int num_classes,
+                              const float *birads_data, int num_birads) const;
 };
 } // namespace ai_core::dnn
 

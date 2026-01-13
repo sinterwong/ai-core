@@ -1,6 +1,6 @@
 #include "ocr_rec.hpp"
 #include "ai_core/logger.hpp"
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include "algo_config_parser.hpp"
 #include <cstdint>
 #include <filesystem>
@@ -11,61 +11,61 @@
 namespace ai_core::example {
 namespace fs = std::filesystem;
 
-OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
-  if (!fs::exists(configPath)) {
-    LOG_ERROR_S << "config file not found: " << configPath;
-    throw std::runtime_error("Config file not found: " + configPath);
+OCRRec::OCRRec(const std::string &config_path, const std::string &dict_path) {
+  if (!fs::exists(config_path)) {
+    LOG_ERROR_S << "config file not found: " << config_path;
+    throw std::runtime_error("Config file not found: " + config_path);
   }
 
-  if (!dictPath.empty()) {
-    LOG_INFO_S << "Dictionary file found: " << dictPath;
-    if (!fs::exists(fs::path(dictPath))) {
-      LOG_ERROR_S << "Dictionary file not found: " << dictPath;
-      throw std::runtime_error("Dictionary file not found: " + dictPath);
+  if (!dict_path.empty()) {
+    LOG_INFO_S << "Dictionary file found: " << dict_path;
+    if (!fs::exists(fs::path(dict_path))) {
+      LOG_ERROR_S << "Dictionary file not found: " << dict_path;
+      throw std::runtime_error("Dictionary file not found: " + dict_path);
     }
 
-    std::ifstream dictFile(dictPath);
-    if (!dictFile.is_open()) {
-      LOG_ERROR_S << "Failed to open dictionary file: " << dictPath;
-      throw std::runtime_error("Failed to open dictionary file: " + dictPath);
+    std::ifstream dict_file(dict_path);
+    if (!dict_file.is_open()) {
+      LOG_ERROR_S << "Failed to open dictionary file: " << dict_path;
+      throw std::runtime_error("Failed to open dictionary file: " + dict_path);
     }
 
     std::string line;
-    while (std::getline(dictFile, line)) {
+    while (std::getline(dict_file, line)) {
       if (!line.empty()) {
-        size_t charLen = 1; // 默认 ASCII
+        size_t char_len = 1; // 默认 ASCII
         // 获取第一个 UTF-8 字符
-        unsigned char firstByte = static_cast<unsigned char>(line[0]);
+        unsigned char first_byte = static_cast<unsigned char>(line[0]);
         // UTF-8是变长编码，一个字符占1~4 byte。用首字符判断该字符占用多少byte
-        if (firstByte >= 0xF0)
-          charLen = 4;
-        else if (firstByte >= 0xE0)
-          charLen = 3;
-        else if (firstByte >= 0xC0)
-          charLen = 2;
+        if (first_byte >= 0xF0)
+          char_len = 4;
+        else if (first_byte >= 0xE0)
+          char_len = 3;
+        else if (first_byte >= 0xC0)
+          char_len = 2;
 
-        if (charLen <= line.length()) {
-          mDict.push_back(line.substr(0, charLen));
+        if (char_len <= line.length()) {
+          mDict.push_back(line.substr(0, char_len));
         }
       }
     }
-    dictFile.close();
+    dict_file.close();
   }
 
   try {
-    mParams = ai_core::example::utils::AlgoConfigParser(configPath).parse();
+    mParams = ai_core::example::utils::AlgoConfigParser(config_path).parse();
   } catch (const std::exception &e) {
     throw std::runtime_error("Failed to load OCR config: " +
                              std::string(e.what()));
   }
 
   mFramePreproc = std::make_shared<ai_core::dnn::AlgoPreproc>(
-      mParams.modelTypes.preprocModule);
+      mParams.modelTypes.preproc_module);
   mOcrPostproc = std::make_shared<ai_core::dnn::AlgoPostproc>(
-      mParams.modelTypes.postprocModule);
+      mParams.modelTypes.postproc_module);
 
   mEngine = std::make_shared<ai_core::dnn::AlgoInferEngine>(
-      mParams.modelTypes.inferModule, mParams.inferParams);
+      mParams.modelTypes.infer_module, mParams.inferParams);
 
   if (mEngine->initialize() != ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec engine initialize failed";
@@ -85,69 +85,69 @@ OCRRec::OCRRec(const std::string &configPath, const std::string &dictPath) {
 
 OCRRec::~OCRRec() {}
 
-ai_core::OCRRecoRet OCRRec::process(const cv::Mat &imageGray) {
-  ai_core::AlgoPreprocParams preprocParams;
+ai_core::OCRRecoRet OCRRec::process(const cv::Mat &image_gray) {
+  ai_core::AlgoPreprocParams preproc_params;
 
-  auto framePreprocessArgPtr =
-      mParams.preprocParams.getParams<ai_core::FramePreprocessArg>();
+  auto frame_preprocess_arg_ptr =
+      mParams.preproc_params.getParams<ai_core::FramePreprocessArg>();
 
-  if (framePreprocessArgPtr == nullptr) {
+  if (frame_preprocess_arg_ptr == nullptr) {
     LOG_ERROR_S << "FramePreprocessArg is nullptr";
     throw std::runtime_error("FramePreprocessArg is nullptr");
   }
 
-  auto framePreprocessArg = *framePreprocessArgPtr;
+  auto frame_preprocess_arg = *frame_preprocess_arg_ptr;
 
-  auto inputNames = framePreprocessArg.inputNames;
-  framePreprocessArg.inputNames = {inputNames.at(0)};
-  preprocParams.setParams(framePreprocessArg);
+  auto input_names = frame_preprocess_arg_ptr->input_names;
+  frame_preprocess_arg.input_names = {input_names.at(0)};
+  preproc_params.setParams(frame_preprocess_arg);
 
-  ai_core::AlgoInput algoInput;
-  ai_core::FrameInput frameInput;
-  frameInput.image = std::make_shared<cv::Mat>(imageGray);
-  frameInput.inputRoi =
-      std::make_shared<cv::Rect>(0, 0, imageGray.cols, imageGray.rows);
-  algoInput.setParams(frameInput);
+  ai_core::AlgoInput algo_input;
+  ai_core::FrameInput frame_input;
+  frame_input.image = std::make_shared<cv::Mat>(image_gray);
+  frame_input.input_roi =
+      std::make_shared<cv::Rect>(0, 0, image_gray.cols, image_gray.rows);
+  algo_input.setParams(frame_input);
 
-  auto runtimeContext = std::make_shared<ai_core::RuntimeContext>();
-  ai_core::TensorData modelInput;
-  mFramePreproc->process(algoInput, preprocParams, modelInput, runtimeContext);
+  auto runtime_context = std::make_shared<ai_core::RuntimeContext>();
+  ai_core::TensorData model_input;
+  mFramePreproc->process(algo_input, preproc_params, model_input, runtime_context);
 
-  std::vector<int64_t> inputLengths = {1};
-  ai_core::TypedBuffer inputLengthsTensor;
-  inputLengthsTensor.setCpuData(
+  std::vector<int64_t> input_lengths = {1};
+  ai_core::TypedBuffer input_lengths_tensor;
+  input_lengths_tensor.setCpuData(
       ai_core::DataType::INT64,
       std::vector<uint8_t>(
-          reinterpret_cast<const uint8_t *>(inputLengths.data()),
-          reinterpret_cast<const uint8_t *>(inputLengths.data()) +
-              inputLengths.size() * sizeof(int64_t)));
-  modelInput.datas.insert({inputNames.at(1), inputLengthsTensor});
-  modelInput.shapes.insert({inputNames.at(1), {1}});
+          reinterpret_cast<const uint8_t *>(input_lengths.data()),
+          reinterpret_cast<const uint8_t *>(input_lengths.data()) +
+              input_lengths.size() * sizeof(int64_t)));
+  model_input.datas.insert({input_names.at(1), input_lengths_tensor});
+  model_input.shapes.insert({input_names.at(1), {1}});
 
-  ai_core::TensorData modelOutput;
-  if (mEngine->infer(modelInput, modelOutput) !=
+  ai_core::TensorData model_output;
+  if (mEngine->infer(model_input, model_output) !=
       ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec engine infer failed";
     return {};
   }
 
-  ai_core::AlgoOutput algoOutput;
-  if (mOcrPostproc->process(modelOutput, mParams.postprocParams, algoOutput,
-                            runtimeContext) !=
+  ai_core::AlgoOutput algo_output;
+  if (mOcrPostproc->process(model_output, mParams.postproc_params, algo_output,
+                            runtime_context) !=
       ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec postprocess failed";
     return {};
   }
 
-  auto ocrRet = algoOutput.getParams<ai_core::OCRRecoRet>();
-  if (ocrRet == nullptr) {
+  auto ocr_ret = algo_output.getParams<ai_core::OCRRecoRet>();
+  if (ocr_ret == nullptr) {
     LOG_ERROR_S << "OCRRecoRet is nullptr";
     return {};
   }
-  return *ocrRet;
+  return *ocr_ret;
 }
 
-std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
+std::string OCRRec::mapToString(const std::vector<int64_t> &rec_result) {
   if (mDict.empty()) {
     LOG_WARNING_S
         << "Dictionary is empty, cannot map recognition results to string.";
@@ -155,7 +155,7 @@ std::string OCRRec::mapToString(const std::vector<int64_t> &recResult) {
   }
 
   std::string ret;
-  for (int64_t index : recResult) {
+  for (int64_t index : rec_result) {
     if (index >= 0 && index < static_cast<int64_t>(mDict.size())) {
       ret += mDict[index];
     } else if (index > static_cast<int64_t>(mDict.size())) {
