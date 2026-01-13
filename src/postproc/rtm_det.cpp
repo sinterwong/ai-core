@@ -83,16 +83,18 @@ bool RTMDet::batchProcess(const TensorData &model_output,
     const float *current_cls_data = cls_data_ptr + i * anchor_num * num_classes;
     const auto &current_prep_args = prep_args[i];
 
-    DetRet det_ret = processSingle(current_det_data, current_cls_data, anchor_num,
-                                  num_classes, current_prep_args, post_args);
+    DetRet det_ret =
+        processSingle(current_det_data, current_cls_data, anchor_num,
+                      num_classes, current_prep_args, post_args);
 
     algo_output[i].setParams(det_ret);
   }
   return true;
 }
 
-DetRet RTMDet::processSingle(const float *det_data_ptr, const float *cls_data_ptr,
-                             int anchor_num, int num_classes,
+DetRet RTMDet::processSingle(const float *det_data_ptr,
+                             const float *cls_data_ptr, int anchor_num,
+                             int num_classes,
                              const FrameTransformContext &prep_args,
                              const AnchorDetParams &post_args) const {
   const auto &input_shape = prep_args.model_input_shape;

@@ -329,8 +329,8 @@ InferErrorCode TrtAlgoInference::setupBindings() {
   int least_priority, greatest_priority;
   CHECK_CUDA_ERROR(
       cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
-  CHECK_CUDA_ERROR(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking,
-                                                greatest_priority));
+  CHECK_CUDA_ERROR(cudaStreamCreateWithPriority(
+      &m_stream, cudaStreamNonBlocking, greatest_priority));
 
   m_managedBuffers.clear();
   m_tensorAddressMap.clear();
@@ -371,7 +371,7 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     auto trt_dtype = m_engine->getTensorDataType(name);
 
     auto dims = m_engine->getProfileShape(name, profile_index,
-                                         nvinfer1::OptProfileSelector::kMAX);
+                                          nvinfer1::OptProfileSelector::kMAX);
 
     int64_t volume = -1;
     size_t buffer_size = 0;
@@ -391,7 +391,7 @@ InferErrorCode TrtAlgoInference::setupBindings() {
 
           if (deduced_volume > 0) {
             buffer_size = static_cast<size_t>(deduced_volume) *
-                         trt_utils::getTrtElementSize(trt_dtype);
+                          trt_utils::getTrtElementSize(trt_dtype);
           } else {
             LOG_ERROR_S << "Could not deduce max size for dynamic output: "
                         << name;
@@ -424,7 +424,8 @@ InferErrorCode TrtAlgoInference::setupBindings() {
     tensor_info.name = name;
 
     auto binding_dims = m_engine->getTensorShape(name);
-    tensor_info.shape.assign(binding_dims.d, binding_dims.d + binding_dims.nbDims);
+    tensor_info.shape.assign(binding_dims.d,
+                             binding_dims.d + binding_dims.nbDims);
     tensor_info.data_type = trt_utils::trtDataTypeToAiCore(trt_dtype);
 
     if (m_engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
@@ -481,10 +482,11 @@ bool TrtAlgoInference::updateInputShapesIfNeeded(const TensorData &inputs) {
     }
 
     const std::vector<int64_t> new_shape(shape_it->second.begin(),
-                                        shape_it->second.end());
+                                         shape_it->second.end());
     auto cache_it = m_cachedInputShapes.find(name);
 
-    if (cache_it == m_cachedInputShapes.end() || cache_it->second != new_shape) {
+    if (cache_it == m_cachedInputShapes.end() ||
+        cache_it->second != new_shape) {
       nvinfer1::Dims actual_dims;
       actual_dims.nbDims = new_shape.size();
       std::copy(new_shape.begin(), new_shape.end(), actual_dims.d);
@@ -512,8 +514,8 @@ void TrtAlgoInference::copyInputsToDevice(const TensorData &inputs) {
     if (input_buffer.location() == BufferLocation::CPU) {
       const void *src_host_ptr = input_buffer.getRawHostPtr();
       CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_host_ptr,
-                                       actual_size_bytes, cudaMemcpyHostToDevice,
-                                       m_stream));
+                                       actual_size_bytes,
+                                       cudaMemcpyHostToDevice, m_stream));
     } else if (input_buffer.location() == BufferLocation::GpuDevice) {
       void *src_device_ptr = input_buffer.getRawDevicePtr();
       CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_device_ptr,
@@ -551,8 +553,8 @@ void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
                                      actual_output_size_bytes,
                                      cudaMemcpyDeviceToHost, m_stream));
 
-    outputs.shapes[name].assign(actual_output_dims.d,
-                                actual_output_dims.d + actual_output_dims.nbDims);
+    outputs.shapes[name].assign(
+        actual_output_dims.d, actual_output_dims.d + actual_output_dims.nbDims);
   }
 
   CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));

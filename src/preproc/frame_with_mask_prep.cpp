@@ -132,10 +132,12 @@ bool FrameWithMaskPreprocess::process(
 
     std::vector<int> shape;
     if (params_ptr->hwc2chw) {
-      shape = {1, params_ptr->model_input_shape.c, params_ptr->model_input_shape.h,
+      shape = {1, params_ptr->model_input_shape.c,
+               params_ptr->model_input_shape.h,
                params_ptr->model_input_shape.w};
     } else {
-      shape = {1, params_ptr->model_input_shape.h, params_ptr->model_input_shape.w,
+      shape = {1, params_ptr->model_input_shape.h,
+               params_ptr->model_input_shape.w,
                params_ptr->model_input_shape.c};
     }
     output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
@@ -152,7 +154,8 @@ bool FrameWithMaskPreprocess::process(
 
 bool FrameWithMaskPreprocess::batchProcess(
     const std::vector<AlgoInput> &input, const AlgoPreprocParams &params,
-    TensorData &output, std::shared_ptr<RuntimeContext> &runtime_context) const {
+    TensorData &output,
+    std::shared_ptr<RuntimeContext> &runtime_context) const {
   auto params_ptr = params.getParams<FramePreprocessArg>();
   if (params_ptr == nullptr) {
     LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
@@ -231,8 +234,8 @@ bool FrameWithMaskPreprocess::batchProcess(
         std::make_unique<cpu::CpuGenericCvPreprocessor>();
 
     std::vector<FrameTransformContext> batch_runtime_args(input.size());
-    TypedBuffer processed_frames =
-        processor->batchProcess(new_params, masked_frame_inputs, batch_runtime_args);
+    TypedBuffer processed_frames = processor->batchProcess(
+        new_params, masked_frame_inputs, batch_runtime_args);
     for (size_t i = 0; i < batch_runtime_args.size(); ++i) {
       batch_runtime_args[i].model_input_shape = params_ptr->model_input_shape;
       batch_runtime_args[i].is_equal_scale = params_ptr->is_equal_scale;

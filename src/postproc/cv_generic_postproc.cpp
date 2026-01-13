@@ -38,17 +38,20 @@ bool CVGenericPostproc::process(
   case GenericPostParams::AlgoType::SoftmaxCls: {
     FrameTransformContext prep_runtime_args;
     SoftmaxCls postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   case GenericPostParams::AlgoType::FprCls: {
     FrameTransformContext prep_runtime_args;
     FprCls postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   case GenericPostParams::AlgoType::RawModelOutput: {
     FrameTransformContext prep_runtime_args;
     RawModelOutput postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   case GenericPostParams::AlgoType::UnetDualOutput: {
     if (!runtime_context->has<FrameTransformContext>("preproc_runtime_args")) {
@@ -56,14 +59,17 @@ bool CVGenericPostproc::process(
       throw std::runtime_error("FramePreprocessArg is nullptr");
     }
     const auto &prep_runtime_args =
-        runtime_context->getParam<FrameTransformContext>("preproc_runtime_args");
+        runtime_context->getParam<FrameTransformContext>(
+            "preproc_runtime_args");
     UNetDaulOutputSeg postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   case GenericPostParams::AlgoType::OcrReco: {
     FrameTransformContext prep_runtime_args;
     OCRReco postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   default: {
     LOG_ERROR_S << "Unknown generic algorithm type: "

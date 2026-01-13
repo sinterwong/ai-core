@@ -18,7 +18,7 @@ namespace ai_core::dnn {
 
 class IPostprocssPlugin {
 public:
-  virtual ~IPostprocssPlugin(){};
+  virtual ~IPostprocssPlugin() {};
 
   virtual bool process(const TensorData &, const AlgoPostprocParams &,
                        AlgoOutput &,

@@ -86,7 +86,7 @@ bool NanoDet::batchProcess(const TensorData &model_output,
     const auto &current_item_prep_args = prep_args.at(i);
 
     DetRet det_ret = processSingle(current_item_data, num_anchors, stride,
-                                  current_item_prep_args, post_args);
+                                   current_item_prep_args, post_args);
 
     algo_output[i].setParams(det_ret);
   }
@@ -95,9 +95,11 @@ bool NanoDet::batchProcess(const TensorData &model_output,
 }
 
 DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
-                              int stride, const FrameTransformContext &prep_args,
+                              int stride,
+                              const FrameTransformContext &prep_args,
                               const AnchorDetParams &post_args) const {
-  cv::Mat raw_data(num_anchors, stride, CV_32F, const_cast<float *>(output_data));
+  cv::Mat raw_data(num_anchors, stride, CV_32F,
+                   const_cast<float *>(output_data));
   int num_classes = stride - 4;
 
   const auto &input_roi = *prep_args.roi;

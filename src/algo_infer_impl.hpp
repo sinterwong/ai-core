@@ -11,14 +11,14 @@
 #ifndef AI_CORE_INFERENCE_VISION_INFER_HPP
 #define AI_CORE_INFERENCE_VISION_INFER_HPP
 
-#include "ai_core/algo_types.hpp"
 #include "ai_core/algo_inference.hpp"
-#include "ai_core/infer_engine_wrapper.hpp"
 #include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/common_types.hpp"
 #include "ai_core/error_code.hpp"
 #include "ai_core/infer_config.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
 #include <memory>
 
 namespace ai_core::dnn {

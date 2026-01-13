@@ -9,8 +9,8 @@
  *
  */
 #include "preproc_registrar.hpp"
-#include "ai_core/plugin_registrar.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/plugin_registrar.hpp"
 #include "preproc/frame_prep.hpp"
 #include "preproc/frame_with_mask_prep.hpp"
 

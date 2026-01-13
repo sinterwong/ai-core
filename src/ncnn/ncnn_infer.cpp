@@ -267,7 +267,8 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
       memcpy(output_buffer.getRawHostPtr(), ncnn_out.data,
              output_buffer.getSizeBytes());
 
-      outputs.datas.insert(std::make_pair(output_name, std::move(output_buffer)));
+      outputs.datas.insert(
+          std::make_pair(output_name, std::move(output_buffer)));
 
       std::vector<int> shape_vec;
       if (ncnn_out.dims == 1) { // Typically (Features) or (Width)
@@ -277,8 +278,8 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
       } else if (ncnn_out.dims == 3) { // Typically (Channels, Height, Width)
         shape_vec = {ncnn_out.c, ncnn_out.h, ncnn_out.w};
       } else if (ncnn_out.dims == 4) { // (Channels, Depth, Height, Width)
-        shape_vec = {ncnn_out.c, static_cast<int>(ncnn_out.elemsize), ncnn_out.h,
-                    ncnn_out.w};
+        shape_vec = {ncnn_out.c, static_cast<int>(ncnn_out.elemsize),
+                     ncnn_out.h, ncnn_out.w};
         // representation
         // A common interpretation for ncnn output with dims=4 is (N, C, H, W)
         // where N=1 and d is used for C if cdim is implicit.
@@ -316,8 +317,8 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
     }
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
-    LOG_ERROR_S << "Std Exception during inference for " << m_params.name << ": "
-                << e.what();
+    LOG_ERROR_S << "Std Exception during inference for " << m_params.name
+                << ": " << e.what();
     return InferErrorCode::InferFailed;
   } catch (...) {
     LOG_ERROR_S << "Unknown exception during NCNN inference for "

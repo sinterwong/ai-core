@@ -13,8 +13,8 @@ public:
       CHECK_CUDA_ERROR(cudaStreamCreateWithFlags(&m_stream, flags));
     } else {
       int least_priority, greatest_priority;
-      CHECK_CUDA_ERROR(
-          cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+      CHECK_CUDA_ERROR(cudaDeviceGetStreamPriorityRange(&least_priority,
+                                                        &greatest_priority));
 
       int stream_priority =
           (priority == Priority::High) ? greatest_priority : least_priority;

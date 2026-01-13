@@ -34,9 +34,10 @@ public:
     }
   }
 
-  CudaAcceleratorBuffer(void *ptr, size_t size_bytes, AcceleratorMemoryType type,
-                        bool manage)
-      : m_ptr(ptr), m_sizeBytes(size_bytes), m_type(type), m_ownsMemory(manage) {}
+  CudaAcceleratorBuffer(void *ptr, size_t size_bytes,
+                        AcceleratorMemoryType type, bool manage)
+      : m_ptr(ptr), m_sizeBytes(size_bytes), m_type(type),
+        m_ownsMemory(manage) {}
 
   ~CudaAcceleratorBuffer() override {
     if (m_ptr && m_ownsMemory) {
@@ -54,7 +55,8 @@ public:
 
   // Clone constructor helper
   CudaAcceleratorBuffer(const CudaAcceleratorBuffer &other, bool)
-      : m_sizeBytes(other.m_sizeBytes), m_type(other.m_type), m_ownsMemory(true) {
+      : m_sizeBytes(other.m_sizeBytes), m_type(other.m_type),
+        m_ownsMemory(true) {
 
     if (m_sizeBytes == 0)
       return;
@@ -63,8 +65,8 @@ public:
     if (m_type == AcceleratorMemoryType::Device) {
       CHECK_CUDA_ERROR(cudaMalloc(&m_ptr, m_sizeBytes));
       // Copy (Device to Device)
-      CHECK_CUDA_ERROR(
-          cudaMemcpy(m_ptr, other.m_ptr, m_sizeBytes, cudaMemcpyDeviceToDevice));
+      CHECK_CUDA_ERROR(cudaMemcpy(m_ptr, other.m_ptr, m_sizeBytes,
+                                  cudaMemcpyDeviceToDevice));
     } else {
       CHECK_CUDA_ERROR(cudaMallocHost(&m_ptr, m_sizeBytes));
       // Copy (Host to Host)

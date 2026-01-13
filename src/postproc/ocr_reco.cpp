@@ -63,11 +63,12 @@ bool OCRReco::batchProcess(const TensorData &model_output,
 
   for (int i = 0; i < batch_size; ++i) {
     // 计算当前样本在内存块中的起始位置
-    const int64_t *current_argmax_data = argmax_data + (size_t)i * sequence_length;
+    const int64_t *current_argmax_data =
+        argmax_data + (size_t)i * sequence_length;
     const int64_t current_output_length = lengths_data[i];
 
     OCRRecoRet ocr_ret = processSingleItem(current_argmax_data, sequence_length,
-                                          current_output_length);
+                                           current_output_length);
 
     algo_output[i].setParams(ocr_ret);
   }
@@ -81,7 +82,7 @@ OCRRecoRet OCRReco::processSingleItem(const int64_t *argmax_data,
   OCRRecoRet ocr_ret;
   ocr_ret.output_lengths = output_length;
   std::vector<int64_t> argmax_outputs_vec(argmax_data,
-                                        argmax_data + sequence_length);
+                                          argmax_data + sequence_length);
   ocr_ret.outputs = ctcProcess(argmax_outputs_vec);
   return ocr_ret;
 }

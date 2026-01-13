@@ -1,9 +1,9 @@
 #ifndef AI_CORE_ALGO_MANAGER_IMPL_HPP
 #define AI_CORE_ALGO_MANAGER_IMPL_HPP
 
-#include "ai_core/algo_types.hpp"
 #include "ai_core/algo_inference.hpp"
 #include "ai_core/algo_manager.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/error_code.hpp"
 #include <memory>
 #include <shared_mutex>

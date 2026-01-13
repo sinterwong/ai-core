@@ -77,7 +77,7 @@ InferErrorCode OrtAlgoInference::initialize() {
     LOG_INFO_S << "Initializing model: " << m_params.name;
 
     m_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
-                                      m_params.name.c_str());
+                                       m_params.name.c_str());
 
     Ort::SessionOptions session_options;
     session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
@@ -102,7 +102,8 @@ InferErrorCode OrtAlgoInference::initialize() {
 
     if (engine_data.empty()) {
       m_session = std::make_unique<Ort::Session>(
-          *m_env, adaPlatformPath(m_params.model_path).c_str(), session_options);
+          *m_env, adaPlatformPath(m_params.model_path).c_str(),
+          session_options);
     } else {
       m_session = std::make_unique<Ort::Session>(
           *m_env, engine_data.data(), engine_data.size(), session_options);
@@ -304,8 +305,8 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
 
       // Create a copy of the output data
       std::vector<uint8_t> byte_data(static_cast<const uint8_t *>(raw_data),
-                                    static_cast<const uint8_t *>(raw_data) +
-                                        byte_size);
+                                     static_cast<const uint8_t *>(raw_data) +
+                                         byte_size);
 
       DataType output_type = ortDataTypeToAiCore(tensor_info.GetElementType());
       TypedBuffer output_buffer =
@@ -314,7 +315,7 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
       outputs.datas[m_outputNames[i]] = std::move(output_buffer);
       auto output_shape_int64 = tensor_info.GetShape();
       std::vector<int> output_shape(output_shape_int64.begin(),
-                                   output_shape_int64.end());
+                                    output_shape_int64.end());
       outputs.shapes[m_outputNames[i]] = std::move(output_shape);
     }
 

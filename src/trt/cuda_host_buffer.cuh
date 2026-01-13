@@ -516,7 +516,8 @@ public:
    * @brief 从 Device buffer 读取指定范围
    */
   void readFromDevice(const CudaDeviceBuffer<T> &src, size_t src_offset,
-                      size_t dst_offset, size_t count, cudaStream_t stream = 0) {
+                      size_t dst_offset, size_t count,
+                      cudaStream_t stream = 0) {
     if (count == 0)
       return;
 

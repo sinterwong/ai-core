@@ -18,7 +18,7 @@ namespace kernel {
 #define FP16_MAX_VAL 65504.0f
 
 __global__ void hwcToChwKernel(const float *src, float *dst, int height,
-                                  int width, int channels) {
+                               int width, int channels) {
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -30,8 +30,7 @@ __global__ void hwcToChwKernel(const float *src, float *dst, int height,
   }
 }
 
-__global__ void fp32ToFp16ClampKernel(const float *src, uint16_t *dst,
-                                          int n) {
+__global__ void fp32ToFp16ClampKernel(const float *src, uint16_t *dst, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
     // clamp the numerical values to the representational range of fp16
@@ -41,10 +40,11 @@ __global__ void fp32ToFp16ClampKernel(const float *src, uint16_t *dst,
 }
 
 // crop + resize + normal
-__global__ void cropResizeNormalizeBilinearKernel(
-    const uint8_t *src, float *dst, int src_h, int src_w, int src_c, int crop_x,
-    int crop_y, int crop_h, int crop_w, int dst_h, int dst_w, const float *mean,
-    const float *std) {
+__global__ void
+cropResizeNormalizeBilinearKernel(const uint8_t *src, float *dst, int src_h,
+                                  int src_w, int src_c, int crop_x, int crop_y,
+                                  int crop_h, int crop_w, int dst_h, int dst_w,
+                                  const float *mean, const float *std) {
 
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -146,9 +146,8 @@ __global__ void escaleResizeNormalizeBilinearKernel(
   }
 }
 
-__global__ void batchHwcToChwKernel(const float *src, float *dst,
-                                        int height, int width, int channels,
-                                        int batch_size) {
+__global__ void batchHwcToChwKernel(const float *src, float *dst, int height,
+                                    int width, int channels, int batch_size) {
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int y = blockIdx.y * blockDim.y + threadIdx.y;
   int b = blockIdx.z; // Batch index
@@ -305,26 +304,25 @@ __global__ void batchEscaleResizeNormalizeBilinearKernel(
 } // namespace kernel
 
 void hwcToChwGpu(const float *src, float *dst, int height, int width,
-                    int channels, cudaStream_t stream) {
+                 int channels, cudaStream_t stream) {
   dim3 block(32, 32);
   dim3 grid((width + block.x - 1) / block.x, (height + block.y - 1) / block.y);
   kernel::hwcToChwKernel<<<grid, block, 0, stream>>>(src, dst, height, width,
-                                                        channels);
+                                                     channels);
 }
 
 void fp32ToFp16Gpu(const float *src, uint16_t *dst, int n,
-                      cudaStream_t stream) {
+                   cudaStream_t stream) {
   int threads = 256;
   int blocks = (n + threads - 1) / threads;
-  kernel::fp32ToFp16ClampKernel<<<blocks, threads, 0, stream>>>(src, dst,
-                                                                    n);
+  kernel::fp32ToFp16ClampKernel<<<blocks, threads, 0, stream>>>(src, dst, n);
 }
 
 void cropResizeNormalizeGpu(const uint8_t *src, float *dst, int src_h,
-                               int src_w, int src_c, int crop_x, int crop_y,
-                               int crop_h, int crop_w, int dst_h, int dst_w,
-                               const float *mean, const float *std,
-                               cudaStream_t stream) {
+                            int src_w, int src_c, int crop_x, int crop_y,
+                            int crop_h, int crop_w, int dst_h, int dst_w,
+                            const float *mean, const float *std,
+                            cudaStream_t stream) {
   dim3 block(32, 32);
   dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y);
   kernel::cropResizeNormalizeBilinearKernel<<<grid, block, 0, stream>>>(
@@ -332,11 +330,10 @@ void cropResizeNormalizeGpu(const uint8_t *src, float *dst, int src_h,
       dst_w, mean, std);
 }
 
-void escaleResizeNormalizeGpu(const uint8_t *src, float *dst,
-                                 int full_image_w, int src_c,
-                                 const ROIData &roi, int dst_h, int dst_w,
-                                 const float *mean, const float *std,
-                                 const int *pad_val, cudaStream_t stream) {
+void escaleResizeNormalizeGpu(const uint8_t *src, float *dst, int full_image_w,
+                              int src_c, const ROIData &roi, int dst_h,
+                              int dst_w, const float *mean, const float *std,
+                              const int *pad_val, cudaStream_t stream) {
   float scale = fminf((float)dst_w / roi.w, (float)dst_h / roi.h);
   int new_w = (int)(roi.w * scale);
   int new_h = (int)(roi.h * scale);
@@ -352,7 +349,7 @@ void escaleResizeNormalizeGpu(const uint8_t *src, float *dst,
 }
 
 void batchHwcToChwGpu(const float *src, float *dst, int height, int width,
-                          int channels, int batch_size, cudaStream_t stream) {
+                      int channels, int batch_size, cudaStream_t stream) {
   dim3 block(32, 32);
   dim3 grid((width + block.x - 1) / block.x, (height + block.y - 1) / block.y,
             batch_size);
@@ -360,18 +357,19 @@ void batchHwcToChwGpu(const float *src, float *dst, int height, int width,
       src, dst, height, width, channels, batch_size);
 }
 
-void batchCropResizeNormalizeGpu(
-    const uint8_t *const *d_src_ptrs, float *d_batch_dst, const int *d_src_hs,
-    const int *d_src_ws, int src_c, const ROIData *d_rois, int dst_h, int dst_w,
-    const float *mean, const float *std, int batch_size, cudaStream_t stream) {
+void batchCropResizeNormalizeGpu(const uint8_t *const *d_src_ptrs,
+                                 float *d_batch_dst, const int *d_src_hs,
+                                 const int *d_src_ws, int src_c,
+                                 const ROIData *d_rois, int dst_h, int dst_w,
+                                 const float *mean, const float *std,
+                                 int batch_size, cudaStream_t stream) {
 
   dim3 block(32, 32);
   dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y,
             batch_size);
-  kernel::
-      batchCropResizeNormalizeBilinearKernel<<<grid, block, 0, stream>>>(
-          d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h,
-          dst_w, mean, std, batch_size);
+  kernel::batchCropResizeNormalizeBilinearKernel<<<grid, block, 0, stream>>>(
+      d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h, dst_w,
+      mean, std, batch_size);
 }
 
 void batchEscaleResizeNormalizeGpu(
@@ -384,10 +382,8 @@ void batchEscaleResizeNormalizeGpu(
   dim3 block(32, 32);
   dim3 grid((dst_w + block.x - 1) / block.x, (dst_h + block.y - 1) / block.y,
             batch_size);
-  kernel::
-      batchEscaleResizeNormalizeBilinearKernel<<<grid, block, 0, stream>>>(
-          d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h,
-          dst_w, mean, std, pad_val, d_new_hs, d_new_ws, d_pad_ys, d_pad_xs,
-          batch_size);
+  kernel::batchEscaleResizeNormalizeBilinearKernel<<<grid, block, 0, stream>>>(
+      d_src_ptrs, d_batch_dst, d_src_hs, d_src_ws, src_c, d_rois, dst_h, dst_w,
+      mean, std, pad_val, d_new_hs, d_new_ws, d_pad_ys, d_pad_xs, batch_size);
 }
 } // namespace ai_core::dnn::gpu::cuda_op

@@ -19,9 +19,10 @@ namespace ai_core::dnn {
 AlgoInference::Impl::Impl(const AlgoModuleTypes &algo_module_types,
                           const AlgoInferParams &infer_params)
     : m_algoModuleTypes(algo_module_types), m_inferParams(infer_params) {
-  m_preprocessor = std::make_shared<AlgoPreproc>(m_algoModuleTypes.preproc_module);
+  m_preprocessor =
+      std::make_shared<AlgoPreproc>(m_algoModuleTypes.preproc_module);
   m_engine = std::make_shared<AlgoInferEngine>(m_algoModuleTypes.infer_module,
-                                              m_inferParams);
+                                               m_inferParams);
   m_postprocessor =
       std::make_shared<AlgoPostproc>(m_algoModuleTypes.postproc_module);
 };
@@ -59,13 +60,13 @@ InferErrorCode AlgoInference::Impl::infer(
   auto start_pre = std::chrono::steady_clock::now();
   TensorData model_input;
   if (m_preprocessor->process(input, preproc_params, model_input,
-                             runtime_context) != InferErrorCode::SUCCESS) {
+                              runtime_context) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to preprocess input.";
     return InferErrorCode::InferPreprocessFailed;
   }
   auto end_pre = std::chrono::steady_clock::now();
-  auto duration_pre =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end_pre - start_pre);
+  auto duration_pre = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_pre - start_pre);
 
   // infer cost time
   auto start_infer = std::chrono::steady_clock::now();
@@ -81,7 +82,7 @@ InferErrorCode AlgoInference::Impl::infer(
   // post cost time
   auto start_post = std::chrono::steady_clock::now();
   if (m_postprocessor->process(model_output, postproc_params, output,
-                              runtime_context) != InferErrorCode::SUCCESS) {
+                               runtime_context) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to postprocess output.";
     return InferErrorCode::InferOutputError;
   }
@@ -114,13 +115,14 @@ AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
   auto start_pre = std::chrono::steady_clock::now();
   TensorData model_input;
   if (m_preprocessor->batchProcess(inputs, preproc_params, model_input,
-                                  runtime_context) != InferErrorCode::SUCCESS) {
+                                   runtime_context) !=
+      InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to batch preprocess input.";
     return InferErrorCode::InferPreprocessFailed;
   }
   auto end_pre = std::chrono::steady_clock::now();
-  auto duration_pre =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end_pre - start_pre);
+  auto duration_pre = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_pre - start_pre);
 
   // infer cost time
   auto start_infer = std::chrono::steady_clock::now();
@@ -136,7 +138,8 @@ AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
   // post cost time
   auto start_post = std::chrono::steady_clock::now();
   if (m_postprocessor->batchProcess(model_output, postproc_params, outputs,
-                                   runtime_context) != InferErrorCode::SUCCESS) {
+                                    runtime_context) !=
+      InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to batch postprocess output.";
     return InferErrorCode::InferOutputError;
   }

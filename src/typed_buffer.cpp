@@ -113,7 +113,8 @@ TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept
       m_externalCpuPtr(other.m_externalCpuPtr),
       m_isExternalRef(other.m_isExternalRef),
       m_manageExternalCpu(other.m_manageExternalCpu),
-      m_accelBuffer(std::move(other.m_accelBuffer)), m_deviceId(other.m_deviceId) {
+      m_accelBuffer(std::move(other.m_accelBuffer)),
+      m_deviceId(other.m_deviceId) {
 
   // Neutralize other
   other.m_externalCpuPtr = nullptr;
@@ -179,7 +180,8 @@ TypedBuffer TypedBuffer::createFromCpu(DataType type,
 }
 
 TypedBuffer TypedBuffer::createFromCpuRef(DataType type, const void *host_ptr,
-                                          size_t size_bytes, bool manage_memory) {
+                                          size_t size_bytes,
+                                          bool manage_memory) {
   TypedBuffer buf;
   buf.m_dataType = type;
   buf.m_location = BufferLocation::CPU;
@@ -204,8 +206,8 @@ TypedBuffer TypedBuffer::createFromGpu(DataType type, size_t size_bytes,
   buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
 
   if (size_bytes > 0) {
-    buf.m_accelBuffer =
-        AcceleratorBufferImpl::create(size_bytes, AcceleratorMemoryType::Device);
+    buf.m_accelBuffer = AcceleratorBufferImpl::create(
+        size_bytes, AcceleratorMemoryType::Device);
   }
   return buf;
 }
@@ -368,7 +370,8 @@ void TypedBuffer::resize(size_t new_element_count) {
     // for output buffers. If needed, clone-and-copy logic would go here.
     // Current Strategy: Destructive Resize (Reallocate)
 
-    auto current_type = m_accelBuffer->getType(); // Needs getType() in interface
+    auto current_type =
+        m_accelBuffer->getType(); // Needs getType() in interface
     m_accelBuffer = AcceleratorBufferImpl::create(new_size_bytes, current_type);
   }
 

@@ -37,10 +37,12 @@ bool ConfidenceFilterPostproc::process(
       throw std::runtime_error("FramePreprocessArg is nullptr");
     }
     const auto &prep_runtime_args =
-        runtime_context->getParam<FrameTransformContext>("preproc_runtime_args");
+        runtime_context->getParam<FrameTransformContext>(
+            "preproc_runtime_args");
 
     SemanticSeg postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   default: {
     LOG_ERROR_S << "Unknown generic algorithm type: "

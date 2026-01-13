@@ -31,7 +31,8 @@ bool Yolov11Det::process(const TensorData &model_output,
   }
   auto output = outputs.at(post_args.output_names.at(0));
 
-  std::vector<int> output_shape = output_shapes.at(post_args.output_names.at(0));
+  std::vector<int> output_shape =
+      output_shapes.at(post_args.output_names.at(0));
   int signal_result_num = output_shape.at(output_shape.size() - 2);
   int stride_num = output_shape.at(output_shape.size() - 1);
 
@@ -45,12 +46,13 @@ bool Yolov11Det::process(const TensorData &model_output,
     cv::Mat half_mat(1, output.getElementCount(), CV_16F, (void *)fp16_data);
     cv::Mat float_mat(1, output.getElementCount(), CV_32F);
     half_mat.convertTo(float_mat, CV_32F);
-    cv::transpose(cv::Mat(signal_result_num, stride_num, CV_32F, float_mat.data),
-                  raw_data);
+    cv::transpose(
+        cv::Mat(signal_result_num, stride_num, CV_32F, float_mat.data),
+        raw_data);
   }
 
-  std::vector<BBox> results = processRawOutput(raw_data, input_shape, prep_args,
-                                               post_args, signal_result_num - 4);
+  std::vector<BBox> results = processRawOutput(
+      raw_data, input_shape, prep_args, post_args, signal_result_num - 4);
 
   DetRet det_ret;
   det_ret.bboxes = utils::nms(results, post_args.nms_thre, post_args.cond_thre);
@@ -71,7 +73,8 @@ bool Yolov11Det::batchProcess(
         "Yolov11Det::batchProcess expects only 1 output tensor.");
   }
   const auto &output_tensor = outputs.at(post_args.output_names.at(0));
-  const auto &output_shape = model_output.shapes.at(post_args.output_names.at(0));
+  const auto &output_shape =
+      model_output.shapes.at(post_args.output_names.at(0));
 
   if (output_shape.size() != 3) {
     LOG_ERROR_S << "Yolov11Det::batchProcess unexpected output dimensions: "
@@ -103,7 +106,7 @@ bool Yolov11Det::batchProcess(
   } else if (output_tensor.dataType() == DataType::FLOAT16) {
     const uint16_t *fp16_data = output_tensor.getHostPtr<uint16_t>();
     cv::Mat half_mat(1, output_tensor.getElementCount(), CV_16F,
-                    const_cast<uint16_t *>(fp16_data));
+                     const_cast<uint16_t *>(fp16_data));
     half_mat.convertTo(full_float_mat, CV_32F);
     batched_float_data = full_float_mat.ptr<float>();
   } else {
@@ -112,21 +115,24 @@ bool Yolov11Det::batchProcess(
   }
 
   for (int i = 0; i < batch_size; ++i) {
-    const float *current_sample_data = batched_float_data + i * elements_per_sample;
+    const float *current_sample_data =
+        batched_float_data + i * elements_per_sample;
 
     cv::Mat single_output_mat(stride_num, signal_result_num, CV_32F,
-                            const_cast<float *>(current_sample_data));
+                              const_cast<float *>(current_sample_data));
     cv::Mat transposed_output;
     cv::transpose(single_output_mat, transposed_output);
 
     const auto &current_prep_args = prep_args[i];
     const auto &input_shape = current_prep_args.model_input_shape;
 
-    std::vector<BBox> results = processRawOutput(
-        transposed_output, input_shape, current_prep_args, post_args, num_classes);
+    std::vector<BBox> results =
+        processRawOutput(transposed_output, input_shape, current_prep_args,
+                         post_args, num_classes);
 
     DetRet det_ret;
-    det_ret.bboxes = utils::nms(results, post_args.nms_thre, post_args.cond_thre);
+    det_ret.bboxes =
+        utils::nms(results, post_args.nms_thre, post_args.cond_thre);
     algo_output[i].setParams(det_ret);
   }
   return true;

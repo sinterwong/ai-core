@@ -26,7 +26,8 @@ public:
                             std::vector<AlgoOutput> &) const override;
 
 private:
-  OCRRecoRet processSingleItem(const int64_t *argmax_data, size_t sequence_length,
+  OCRRecoRet processSingleItem(const int64_t *argmax_data,
+                               size_t sequence_length,
                                int64_t output_length) const;
 
   std::vector<int64_t> ctcProcess(const std::vector<int64_t> &outputs) const;

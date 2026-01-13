@@ -52,8 +52,8 @@ public:
     try {
       return it->second(params);
     } catch (const std::exception &e) {
-      throw std::runtime_error("Factory error: Failed to create '" + class_name +
-                               "': " + e.what());
+      throw std::runtime_error("Factory error: Failed to create '" +
+                               class_name + "': " + e.what());
     }
   }
 

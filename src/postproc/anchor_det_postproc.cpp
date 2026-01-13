@@ -43,15 +43,18 @@ bool AnchorDetPostproc::process(
   switch (params->algo_type) {
   case AnchorDetParams::AlgoType::YoloDetV11: {
     Yolov11Det postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   case AnchorDetParams::AlgoType::RtmDet: {
     RTMDet postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   case AnchorDetParams::AlgoType::NanoDet: {
     NanoDet postproc;
-    return postproc.process(model_output, prep_runtime_args, *params, algo_output);
+    return postproc.process(model_output, prep_runtime_args, *params,
+                            algo_output);
   }
   default: {
     LOG_ERROR_S << "Unknown detection algorithm type: "

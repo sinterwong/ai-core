@@ -313,10 +313,11 @@ bool TrtInferStream::updateInputShapesIfNeeded(const TensorData &inputs) {
     }
 
     const std::vector<int64_t> new_shape(shape_it->second.begin(),
-                                        shape_it->second.end());
+                                         shape_it->second.end());
     auto cache_it = m_cachedInputShapes.find(name);
 
-    if (cache_it == m_cachedInputShapes.end() || cache_it->second != new_shape) {
+    if (cache_it == m_cachedInputShapes.end() ||
+        cache_it->second != new_shape) {
       nvinfer1::Dims actual_dims;
       actual_dims.nbDims = new_shape.size();
       std::copy(new_shape.begin(), new_shape.end(), actual_dims.d);
@@ -358,8 +359,8 @@ InferErrorCode TrtInferStream::copyInputsToDevice(const TensorData &inputs) {
     if (input_buffer.location() == BufferLocation::CPU) {
       const void *src_host_ptr = input_buffer.getRawHostPtr();
       CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_host_ptr,
-                                       actual_size_bytes, cudaMemcpyHostToDevice,
-                                       m_cudaStream));
+                                       actual_size_bytes,
+                                       cudaMemcpyHostToDevice, m_cudaStream));
     } else if (input_buffer.location() == BufferLocation::GpuDevice) {
       void *src_device_ptr = input_buffer.getRawDevicePtr();
       CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_device_ptr, src_device_ptr,
@@ -380,7 +381,8 @@ InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
     void *src_device_ptr = m_tensorAddressMap.at(name);
 
     nvinfer1::Dims actual_output_dims = m_context->getTensorShape(name.c_str());
-    int64_t actual_volume = TrtAlgoInference::calculateVolume(actual_output_dims);
+    int64_t actual_volume =
+        TrtAlgoInference::calculateVolume(actual_output_dims);
 
     size_t actual_output_size_bytes =
         static_cast<size_t>(actual_volume) *
@@ -401,8 +403,8 @@ InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
                                      cudaMemcpyDeviceToHost, m_cudaStream));
 
     // Store output shapes immediately (available from context)
-    outputs.shapes[name].assign(actual_output_dims.d,
-                                actual_output_dims.d + actual_output_dims.nbDims);
+    outputs.shapes[name].assign(
+        actual_output_dims.d, actual_output_dims.d + actual_output_dims.nbDims);
   }
 
   // NOTE: No synchronization here! Caller is responsible for sync.

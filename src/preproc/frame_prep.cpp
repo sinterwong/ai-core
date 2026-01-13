@@ -54,11 +54,11 @@ bool FramePreprocess::process(
 
   std::vector<int> shape;
   if (params_ptr->hwc2chw) {
-    shape = {1, params_ptr->model_input_shape.c, params_ptr->model_input_shape.h,
-             params_ptr->model_input_shape.w};
+    shape = {1, params_ptr->model_input_shape.c,
+             params_ptr->model_input_shape.h, params_ptr->model_input_shape.w};
   } else {
-    shape = {1, params_ptr->model_input_shape.h, params_ptr->model_input_shape.w,
-             params_ptr->model_input_shape.c};
+    shape = {1, params_ptr->model_input_shape.h,
+             params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
   output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
   return true;
@@ -66,7 +66,8 @@ bool FramePreprocess::process(
 
 bool FramePreprocess::batchProcess(
     const std::vector<AlgoInput> &input, const AlgoPreprocParams &params,
-    TensorData &output, std::shared_ptr<RuntimeContext> &runtime_context) const {
+    TensorData &output,
+    std::shared_ptr<RuntimeContext> &runtime_context) const {
   auto params_ptr = params.getParams<FramePreprocessArg>();
   if (params_ptr == nullptr) {
     LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";

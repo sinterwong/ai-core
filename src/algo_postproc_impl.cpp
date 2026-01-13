@@ -9,8 +9,8 @@
  *
  */
 #include "algo_postproc_impl.hpp"
-#include "ai_core/plugin_registrar.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/plugin_registrar.hpp"
 
 namespace ai_core::dnn {
 AlgoPostproc::Impl::Impl(const std::string &module_name)
@@ -38,7 +38,7 @@ AlgoPostproc::Impl::process(const TensorData &model_output, AlgoOutput &output,
                             const AlgoPostprocParams &postproc_params,
                             std::shared_ptr<RuntimeContext> &runtime_context) {
   if (!m_postprocessor->process(model_output, postproc_params, output,
-                               runtime_context)) {
+                                runtime_context)) {
     LOG_ERROR_S << "Failed to postprocess output.";
     return InferErrorCode::InferOutputError;
   }
@@ -50,7 +50,7 @@ InferErrorCode AlgoPostproc::Impl::batchProcess(
     const AlgoPostprocParams &postproc_params,
     std::shared_ptr<RuntimeContext> &runtime_context) {
   if (!m_postprocessor->batchProcess(model_output, postproc_params, output,
-                                    runtime_context)) {
+                                     runtime_context)) {
     LOG_ERROR_S << "Failed to batch postprocess output.";
     return InferErrorCode::InferOutputError;
   }

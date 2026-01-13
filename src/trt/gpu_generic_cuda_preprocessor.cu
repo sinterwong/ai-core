@@ -57,7 +57,7 @@ GpuGenericCudaPreprocessor::GpuGenericCudaPreprocessor(const Config &config)
   if (!config.enable_parallel) {
     m_stream = std::make_unique<CudaStream>(
         config.use_high_priority_stream ? CudaStream::Priority::High
-                                     : CudaStream::Priority::Default);
+                                        : CudaStream::Priority::Default);
   }
 }
 
@@ -102,7 +102,8 @@ void GpuGenericCudaPreprocessor::validatePreprocessArgs(
     LOG_ERROR_S << "Invalid model_input_shape: c=" << args.model_input_shape.c
                 << ", h=" << args.model_input_shape.h
                 << ", w=" << args.model_input_shape.w;
-    throw std::invalid_argument("model_input_shape dimensions must be positive.");
+    throw std::invalid_argument(
+        "model_input_shape dimensions must be positive.");
   }
 
   if (args.mean_vals.empty()) {
@@ -201,7 +202,8 @@ void GpuGenericCudaPreprocessor::updateParameterBuffers(
 void GpuGenericCudaPreprocessor::ensureWorkingBufferCapacity(
     const FramePreprocessArg &args, int batch_size, cudaStream_t stream) const {
   size_t single_image_elements = static_cast<size_t>(args.model_input_shape.c) *
-                               args.model_input_shape.h * args.model_input_shape.w;
+                                 args.model_input_shape.h *
+                                 args.model_input_shape.w;
   size_t batch_elements = single_image_elements * batch_size;
   size_t hwc_byte_size_f_p32 = batch_elements * sizeof(float);
 
@@ -266,7 +268,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
     runtime_args.roi = input.input_roi;
   }
   runtime_args.origin_shape = {input.image->cols, input.image->rows,
-                             input.image->channels()};
+                               input.image->channels()};
 
   const auto &image = *input.image;
   const auto &roi = *runtime_args.roi;
@@ -285,12 +287,12 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
   if (m_cache.d_input_image.capacity() < input_image_size) {
     m_cache.d_input_image.reserve(input_image_size, stream);
   }
-  CHECK_CUDA_ERROR(cudaMemcpyAsync(m_cache.d_input_image.unsafePtr(), image.data,
-                                   input_image_size, cudaMemcpyHostToDevice,
-                                   stream));
+  CHECK_CUDA_ERROR(cudaMemcpyAsync(m_cache.d_input_image.unsafePtr(),
+                                   image.data, input_image_size,
+                                   cudaMemcpyHostToDevice, stream));
 
   size_t total_elements = static_cast<size_t>(args.model_input_shape.c) *
-                         args.model_input_shape.h * args.model_input_shape.w;
+                          args.model_input_shape.h * args.model_input_shape.w;
   size_t byte_size_f_p32 = total_elements * sizeof(float);
   size_t final_byte_size =
       total_elements * TypedBuffer::getElementSize(args.data_type);
@@ -299,8 +301,9 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
       m_cache.d_hwc_buffer.writePtr(byte_size_f_p32, stream));
 
   if (args.is_equal_scale) {
-    float scale = std::min(static_cast<float>(args.model_input_shape.w) / src_w,
-                           static_cast<float>(args.model_input_shape.h) / src_h);
+    float scale =
+        std::min(static_cast<float>(args.model_input_shape.w) / src_w,
+                 static_cast<float>(args.model_input_shape.h) / src_h);
     int new_w = static_cast<int>(src_w * scale);
     int new_h = static_cast<int>(src_h * scale);
     runtime_args.left_pad = (args.model_input_shape.w - new_w) / 2;
@@ -308,14 +311,14 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
 
     cuda_op::ROIData roi_data = {roi.x, roi.y, roi.height, roi.width};
     cuda_op::escaleResizeNormalizeGpu(
-        static_cast<const uint8_t *>(m_cache.d_input_image.unsafePtr()), hwc_ptr,
-        image.cols, src_c, roi_data, args.model_input_shape.h,
+        static_cast<const uint8_t *>(m_cache.d_input_image.unsafePtr()),
+        hwc_ptr, image.cols, src_c, roi_data, args.model_input_shape.h,
         args.model_input_shape.w, m_cache.d_mean.readPtr(),
         m_cache.d_std.readPtr(), m_cache.d_pad.readPtr(), stream);
   } else {
     cuda_op::cropResizeNormalizeGpu(
-        static_cast<const uint8_t *>(m_cache.d_input_image.unsafePtr()), hwc_ptr,
-        image.rows, image.cols, src_c, roi.x, roi.y, src_h, src_w,
+        static_cast<const uint8_t *>(m_cache.d_input_image.unsafePtr()),
+        hwc_ptr, image.rows, image.cols, src_c, roi.x, roi.y, src_h, src_w,
         args.model_input_shape.h, args.model_input_shape.w,
         m_cache.d_mean.readPtr(), m_cache.d_std.readPtr(), stream);
   }
@@ -325,8 +328,8 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
     float *chw_ptr = reinterpret_cast<float *>(
         m_cache.d_chw_buffer.writePtr(byte_size_f_p32, stream));
     cuda_op::hwcToChwGpu(hwc_ptr, chw_ptr, args.model_input_shape.h,
-                            args.model_input_shape.w, args.model_input_shape.c,
-                            stream);
+                         args.model_input_shape.w, args.model_input_shape.c,
+                         stream);
     source_ptr = chw_ptr;
   }
 
@@ -335,7 +338,8 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
 
   if (args.data_type == DataType::FLOAT16) {
     cuda_op::fp32ToFp16Gpu(
-        source_ptr, static_cast<uint16_t *>(final_device_buffer.getRawDevicePtr()),
+        source_ptr,
+        static_cast<uint16_t *>(final_device_buffer.getRawDevicePtr()),
         total_elements, stream);
   } else {
     CHECK_CUDA_ERROR(cudaMemcpyAsync(final_device_buffer.getRawDevicePtr(),
@@ -411,7 +415,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
 
     if (input.input_roi == nullptr) {
       runtime_args[i].roi = std::make_shared<cv::Rect>(0, 0, input.image->cols,
-                                                      input.image->rows);
+                                                       input.image->rows);
     } else {
       runtime_args[i].roi = input.input_roi;
     }
@@ -429,9 +433,9 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
     if (m_cache.d_batch_input_images[i].capacity() < image_size) {
       m_cache.d_batch_input_images[i].reserve(image_size, stream);
     }
-    CHECK_CUDA_ERROR(cudaMemcpyAsync(m_cache.d_batch_input_images[i].unsafePtr(),
-                                     input.image->data, image_size,
-                                     cudaMemcpyHostToDevice, stream));
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(
+        m_cache.d_batch_input_images[i].unsafePtr(), input.image->data,
+        image_size, cudaMemcpyHostToDevice, stream));
 
     h_src_ptrs[i] =
         static_cast<uint8_t *>(m_cache.d_batch_input_images[i].unsafePtr());
@@ -439,7 +443,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
     h_src_widths[i] = input.image->cols;
     h_rois[i] = {roi.x, roi.y, roi.height, roi.width};
     runtime_args[i].origin_shape = {input.image->cols, input.image->rows,
-                                  input.image->channels()};
+                                    input.image->channels()};
   }
 
   m_cache.d_src_ptrs.initFromHost(h_src_ptrs, stream);
@@ -448,7 +452,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
   m_cache.d_rois.initFromHost(h_rois, stream);
 
   size_t single_image_elements = static_cast<size_t>(args.model_input_shape.c) *
-                               args.model_input_shape.h * args.model_input_shape.w;
+                                 args.model_input_shape.h *
+                                 args.model_input_shape.w;
   size_t total_elements = single_image_elements * batch_size;
   size_t byte_size_f_p32 = total_elements * sizeof(float);
   size_t final_byte_size =
@@ -513,7 +518,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
 
   if (args.data_type == DataType::FLOAT16) {
     cuda_op::fp32ToFp16Gpu(
-        source_ptr, static_cast<uint16_t *>(final_device_buffer.getRawDevicePtr()),
+        source_ptr,
+        static_cast<uint16_t *>(final_device_buffer.getRawDevicePtr()),
         total_elements, stream);
   } else {
     CHECK_CUDA_ERROR(cudaMemcpyAsync(final_device_buffer.getRawDevicePtr(),
@@ -561,7 +567,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
     runtime_args.roi = input.input_roi;
   }
   runtime_args.origin_shape = {input.image->cols, input.image->rows,
-                             input.image->channels()};
+                               input.image->channels()};
 
   const auto &image = *input.image;
   const auto &roi = *runtime_args.roi;
@@ -587,7 +593,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
   d_std.initFromHost(args.norm_vals);
 
   size_t total_elements = static_cast<size_t>(args.model_input_shape.c) *
-                         args.model_input_shape.h * args.model_input_shape.w;
+                          args.model_input_shape.h * args.model_input_shape.w;
   size_t byte_size_f_p32 = total_elements * sizeof(float);
   size_t final_byte_size =
       total_elements * TypedBuffer::getElementSize(args.data_type);
@@ -596,8 +602,9 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
       TypedBuffer::createFromGpu(DataType::FLOAT32, byte_size_f_p32);
 
   if (args.is_equal_scale) {
-    float scale = std::min(static_cast<float>(args.model_input_shape.w) / src_w,
-                           static_cast<float>(args.model_input_shape.h) / src_h);
+    float scale =
+        std::min(static_cast<float>(args.model_input_shape.w) / src_w,
+                 static_cast<float>(args.model_input_shape.h) / src_h);
     int new_w = static_cast<int>(src_w * scale);
     int new_h = static_cast<int>(src_h * scale);
     runtime_args.left_pad = (args.model_input_shape.w - new_w) / 2;
@@ -631,8 +638,8 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
     cuda_op::hwcToChwGpu(
         static_cast<const float *>(hwc_buffer.getRawDevicePtr()),
         static_cast<float *>(chw_buffer.getRawDevicePtr()),
-        args.model_input_shape.h, args.model_input_shape.w, args.model_input_shape.c,
-        stream);
+        args.model_input_shape.h, args.model_input_shape.w,
+        args.model_input_shape.c, stream);
     source_buffer = &chw_buffer;
   }
 
@@ -643,8 +650,8 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
         total_elements, stream);
   } else {
     CHECK_CUDA_ERROR(cudaMemcpy(final_device_buffer.getRawDevicePtr(),
-                                source_buffer->getRawDevicePtr(), final_byte_size,
-                                cudaMemcpyDeviceToDevice));
+                                source_buffer->getRawDevicePtr(),
+                                final_byte_size, cudaMemcpyDeviceToDevice));
   }
 
   CHECK_CUDA_ERROR(cudaDeviceSynchronize());
@@ -705,7 +712,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
 
     if (input.input_roi == nullptr) {
       runtime_args[i].roi = std::make_shared<cv::Rect>(0, 0, input.image->cols,
-                                                      input.image->rows);
+                                                       input.image->rows);
     } else {
       runtime_args[i].roi = input.input_roi;
     }
@@ -729,7 +736,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
     h_src_widths[i] = input.image->cols;
     h_rois[i] = {roi.x, roi.y, roi.height, roi.width};
     runtime_args[i].origin_shape = {input.image->cols, input.image->rows,
-                                  input.image->channels()};
+                                    input.image->channels()};
   }
 
   cuda_utils::CudaDeviceBuffer<float> d_mean(args.mean_vals.size());
@@ -748,7 +755,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
   d_rois.initFromHost(h_rois);
 
   size_t single_image_elements = static_cast<size_t>(args.model_input_shape.c) *
-                               args.model_input_shape.h * args.model_input_shape.w;
+                                 args.model_input_shape.h *
+                                 args.model_input_shape.w;
   size_t total_elements = single_image_elements * batch_size;
   size_t byte_size_f_p32 = total_elements * sizeof(float);
   size_t final_byte_size =
@@ -789,18 +797,19 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
     cuda_op::batchEscaleResizeNormalizeGpu(
         reinterpret_cast<const uint8_t *const *>(d_src_ptrs.readPtr()),
         static_cast<float *>(hwc_batch_buffer.getRawDevicePtr()),
-        d_src_heights.readPtr(), d_src_widths.readPtr(), args.model_input_shape.c,
-        d_rois.readPtr(), args.model_input_shape.h, args.model_input_shape.w,
-        d_mean.readPtr(), d_std.readPtr(), d_pad.readPtr(),
-        d_new_heights.readPtr(), d_new_widths.readPtr(), d_pad_ys.readPtr(),
-        d_pad_xs.readPtr(), batch_size, stream);
+        d_src_heights.readPtr(), d_src_widths.readPtr(),
+        args.model_input_shape.c, d_rois.readPtr(), args.model_input_shape.h,
+        args.model_input_shape.w, d_mean.readPtr(), d_std.readPtr(),
+        d_pad.readPtr(), d_new_heights.readPtr(), d_new_widths.readPtr(),
+        d_pad_ys.readPtr(), d_pad_xs.readPtr(), batch_size, stream);
   } else {
     cuda_op::batchCropResizeNormalizeGpu(
         reinterpret_cast<const uint8_t *const *>(d_src_ptrs.readPtr()),
         static_cast<float *>(hwc_batch_buffer.getRawDevicePtr()),
-        d_src_heights.readPtr(), d_src_widths.readPtr(), args.model_input_shape.c,
-        d_rois.readPtr(), args.model_input_shape.h, args.model_input_shape.w,
-        d_mean.readPtr(), d_std.readPtr(), batch_size, stream);
+        d_src_heights.readPtr(), d_src_widths.readPtr(),
+        args.model_input_shape.c, d_rois.readPtr(), args.model_input_shape.h,
+        args.model_input_shape.w, d_mean.readPtr(), d_std.readPtr(), batch_size,
+        stream);
   }
 
   TypedBuffer final_device_buffer =
@@ -815,8 +824,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
     cuda_op::batchHwcToChwGpu(
         static_cast<const float *>(hwc_batch_buffer.getRawDevicePtr()),
         static_cast<float *>(chw_batch_buffer.getRawDevicePtr()),
-        args.model_input_shape.h, args.model_input_shape.w, args.model_input_shape.c,
-        batch_size, stream);
+        args.model_input_shape.h, args.model_input_shape.w,
+        args.model_input_shape.c, batch_size, stream);
     source_buffer = &chw_batch_buffer;
   }
 
@@ -827,8 +836,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
         total_elements, stream);
   } else {
     CHECK_CUDA_ERROR(cudaMemcpy(final_device_buffer.getRawDevicePtr(),
-                                source_buffer->getRawDevicePtr(), final_byte_size,
-                                cudaMemcpyDeviceToDevice));
+                                source_buffer->getRawDevicePtr(),
+                                final_byte_size, cudaMemcpyDeviceToDevice));
   }
 
   CHECK_CUDA_ERROR(cudaDeviceSynchronize());

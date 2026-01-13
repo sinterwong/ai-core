@@ -9,8 +9,8 @@
  *
  */
 #include "infer_engine_registrar.hpp"
-#include "ai_core/plugin_registrar.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/plugin_registrar.hpp"
 
 #ifdef WITH_ORT
 #include "ort/ort_infer.hpp"

@@ -80,8 +80,9 @@ bool UNetDaulOutputSeg::batchProcess(
     const float *current_mask_data = mask_data_ptr + i * mask_item_size;
 
     // 在循环中调用辅助函数
-    DaulRawSegRet ret = processSingleItem(
-        current_prob_data, prob_shape, current_mask_data, mask_shape, prep_args[i]);
+    DaulRawSegRet ret =
+        processSingleItem(current_prob_data, prob_shape, current_mask_data,
+                          mask_shape, prep_args[i]);
     algo_output[i].setParams(ret);
   }
 
@@ -106,8 +107,8 @@ DaulRawSegRet UNetDaulOutputSeg::processSingleItem(
   ret.mask = std::make_shared<cv::Mat>(mask_cv_mat);
 
   ret.roi = prep_args.roi;
-  ret.ratio =
-      static_cast<float>(prep_args.model_input_shape.w) / prep_args.origin_shape.w;
+  ret.ratio = static_cast<float>(prep_args.model_input_shape.w) /
+              prep_args.origin_shape.w;
   ret.left_shift = prep_args.left_pad;
   ret.top_shift = prep_args.top_pad;
   return ret;

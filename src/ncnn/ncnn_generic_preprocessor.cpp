@@ -43,12 +43,13 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
     runtime_args.roi = input.input_roi;
   }
   runtime_args.origin_shape = {input.image->cols, input.image->rows,
-                             input.image->channels()};
+                               input.image->channels()};
 
   const auto &cv_image_orig = *input.image;
   const auto &input_roi = *runtime_args.roi;
   if (input_roi.x < 0 || input_roi.y < 0 || input_roi.width <= 0 ||
-      input_roi.height <= 0 || input_roi.x + input_roi.width > cv_image_orig.cols ||
+      input_roi.height <= 0 ||
+      input_roi.x + input_roi.width > cv_image_orig.cols ||
       input_roi.y + input_roi.height > cv_image_orig.rows) {
     LOG_ERROR_S << "Invalid ROI: " << input_roi
                 << " for image size: " << cv_image_orig.size();
@@ -132,13 +133,13 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
       int right_pad = target_width - scaled_width - runtime_args.left_pad;
       int bottom_pad = target_height - scaled_height - runtime_args.top_pad;
 
-      ncnn::copy_make_border(temp_ncnn_mat, ncnn_in, runtime_args.top_pad, bottom_pad,
-                             runtime_args.left_pad, right_pad,
+      ncnn::copy_make_border(temp_ncnn_mat, ncnn_in, runtime_args.top_pad,
+                             bottom_pad, runtime_args.left_pad, right_pad,
                              ncnn::BORDER_CONSTANT, (float)args.pad[0]);
       if (ncnn_in.w != target_width || ncnn_in.h != target_height) {
-        LOG_WARNING_S << "Padded NCNN Mat size (" << ncnn_in.w << "x" << ncnn_in.h
-                      << ") mismatch target (" << target_width << "x"
-                      << target_height
+        LOG_WARNING_S << "Padded NCNN Mat size (" << ncnn_in.w << "x"
+                      << ncnn_in.h << ") mismatch target (" << target_width
+                      << "x" << target_height
                       << "). This is unexpected after ncnn::copy_make_border.";
       }
 
@@ -148,7 +149,8 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
           current_cv_mat.rows, target_width, target_height);
     }
   } else {
-    if (current_cv_mat.cols != target_width || current_cv_mat.rows != target_height) {
+    if (current_cv_mat.cols != target_width ||
+        current_cv_mat.rows != target_height) {
       LOG_WARNING_S << "NeedResize is false, but image dimensions ("
                     << current_cv_mat.cols << "x" << current_cv_mat.rows
                     << ") do not match target (" << target_width << "x"
@@ -158,8 +160,9 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
           current_cv_mat.data, ncnn_pixel_type, current_cv_mat.cols,
           current_cv_mat.rows, target_width, target_height);
     } else {
-      ncnn_in = ncnn::Mat::from_pixels(current_cv_mat.data, ncnn_pixel_type,
-                                      current_cv_mat.cols, current_cv_mat.rows);
+      ncnn_in =
+          ncnn::Mat::from_pixels(current_cv_mat.data, ncnn_pixel_type,
+                                 current_cv_mat.cols, current_cv_mat.rows);
     }
   }
 
@@ -210,7 +213,8 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
   }
 
   const size_t byte_size = ncnn_in.total() * sizeof(float);
-  const uint8_t *ncnn_data_ptr = reinterpret_cast<const uint8_t *>(ncnn_in.data);
+  const uint8_t *ncnn_data_ptr =
+      reinterpret_cast<const uint8_t *>(ncnn_in.data);
 
   std::vector<uint8_t> cpu_data_vec(ncnn_data_ptr, ncnn_data_ptr + byte_size);
 

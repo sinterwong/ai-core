@@ -67,7 +67,8 @@ bool SemanticSeg::batchProcess(
 
   if (batch_size != prep_args.size()) {
     LOG_ERROR_S << "Batch size mismatch between model output (" << batch_size
-                << ") and preprocessing arguments (" << prep_args.size() << ").";
+                << ") and preprocessing arguments (" << prep_args.size()
+                << ").";
     return false;
   }
 
@@ -80,8 +81,9 @@ bool SemanticSeg::batchProcess(
     const float *current_item_data = base_data + i * item_step;
     const FrameTransformContext &current_item_prep_args = prep_args[i];
 
-    SegRet seg_ret = processSingleItem(current_item_data, num_classes, height,
-                                      width, current_item_prep_args, post_args);
+    SegRet seg_ret =
+        processSingleItem(current_item_data, num_classes, height, width,
+                          current_item_prep_args, post_args);
 
     algo_output[i].setParams(seg_ret);
   }
@@ -91,7 +93,8 @@ bool SemanticSeg::batchProcess(
 
 SegRet
 SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
-                               int width, const FrameTransformContext &prep_args,
+                               int width,
+                               const FrameTransformContext &prep_args,
                                const ConfidenceFilterParams &post_args) const {
   const size_t channel_step = static_cast<size_t>(height) * width;
   cv::Mat class_map(height, width, CV_8UC1);
@@ -99,7 +102,8 @@ SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
   if (num_classes == 1) {
     cv::Mat prob_map(height, width, CV_32FC1, const_cast<float *>(data));
     // 大于阈值的设为1，否则为0
-    cv::threshold(prob_map, class_map, post_args.cond_thre, 1, cv::THRESH_BINARY);
+    cv::threshold(prob_map, class_map, post_args.cond_thre, 1,
+                  cv::THRESH_BINARY);
     class_map.convertTo(class_map, CV_8U); // 确保是 8 位
   } else {
     // 第一个通道作为初始最大概率图
@@ -109,7 +113,7 @@ SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
     // 从第二个通道开始遍历，更新 maxProbs 和 classMap
     for (int c = 1; c < num_classes; ++c) {
       cv::Mat current_probs(height, width, CV_32F,
-                           const_cast<float *>(data + c * channel_step));
+                            const_cast<float *>(data + c * channel_step));
       cv::Mat update_mask;
       cv::compare(current_probs, max_probs, update_mask, cv::CMP_GT);
 
@@ -118,7 +122,8 @@ SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
     }
 
     cv::Mat low_confidence_mask;
-    cv::compare(max_probs, post_args.cond_thre, low_confidence_mask, cv::CMP_LT);
+    cv::compare(max_probs, post_args.cond_thre, low_confidence_mask,
+                cv::CMP_LT);
     class_map.setTo(0, low_confidence_mask);
   }
 

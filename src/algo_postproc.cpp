@@ -25,7 +25,8 @@ InferErrorCode AlgoPostproc::initialize() { return m_pImpl->initialize(); }
 InferErrorCode AlgoPostproc::process(
     const TensorData &model_output, const AlgoPostprocParams &postproc_params,
     AlgoOutput &output, std::shared_ptr<RuntimeContext> &runtime_context) {
-  return m_pImpl->process(model_output, output, postproc_params, runtime_context);
+  return m_pImpl->process(model_output, output, postproc_params,
+                          runtime_context);
 }
 
 InferErrorCode
@@ -34,7 +35,7 @@ AlgoPostproc::batchProcess(const TensorData &model_output,
                            std::vector<AlgoOutput> &output,
                            std::shared_ptr<RuntimeContext> &runtime_context) {
   return m_pImpl->batchProcess(model_output, output, postproc_params,
-                             runtime_context);
+                               runtime_context);
 }
 
 InferErrorCode AlgoPostproc::terminate() { return m_pImpl->terminate(); }

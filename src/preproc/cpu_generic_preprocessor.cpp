@@ -36,12 +36,12 @@ CpuGenericCvPreprocessor::process(const FramePreprocessArg &params,
   switch (params.data_type) {
   case DataType::FLOAT32:
     return preprocessFP32(normalized_image, input_channels,
-                          params.model_input_shape.h, params.model_input_shape.w,
-                          params.hwc2chw);
+                          params.model_input_shape.h,
+                          params.model_input_shape.w, params.hwc2chw);
   case DataType::FLOAT16:
     return preprocessFP16(normalized_image, input_channels,
-                          params.model_input_shape.h, params.model_input_shape.w,
-                          params.hwc2chw);
+                          params.model_input_shape.h,
+                          params.model_input_shape.w, params.hwc2chw);
   default:
     LOG_ERROR_S << "Unsupported data type: "
                 << static_cast<int>(params.data_type);
@@ -109,7 +109,7 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
     }
 
     cv::Mat float_mat(1, static_cast<int>(total_elements), CV_32F,
-                     batch_data_f_p32.data());
+                      batch_data_f_p32.data());
     cv::Mat half_mat;
     float_mat.convertTo(half_mat, CV_16F);
 
@@ -120,7 +120,8 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
     return TypedBuffer::createFromCpu(DataType::FLOAT16, std::move(final_data));
   }
   default:
-    LOG_ERROR_S << "Unsupported data type: " << static_cast<int>(args.data_type);
+    LOG_ERROR_S << "Unsupported data type: "
+                << static_cast<int>(args.data_type);
     throw std::runtime_error("Unsupported data type");
   }
 }
@@ -135,12 +136,12 @@ cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
 
   if (frame_input.input_roi == nullptr) {
     runtime_args.roi = std::make_shared<cv::Rect>(0, 0, frame_input.image->cols,
-                                                 frame_input.image->rows);
+                                                  frame_input.image->rows);
   } else {
     runtime_args.roi = frame_input.input_roi;
   }
   runtime_args.origin_shape = {frame_input.image->cols, frame_input.image->rows,
-                             frame_input.image->channels()};
+                               frame_input.image->channels()};
 
   const auto &image = *frame_input.image;
   const auto &roi = *runtime_args.roi;
@@ -166,15 +167,16 @@ cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
                          "first 4 will be used.";
       }
       cv::Scalar pad = utils::createScalarFromVector(params.pad);
-      auto pad_ret = utils::escaleResizeWithPad(cropped_image, resized_image,
-                                               params.model_input_shape.h,
-                                               params.model_input_shape.w, pad);
+      auto pad_ret = utils::escaleResizeWithPad(
+          cropped_image, resized_image, params.model_input_shape.h,
+          params.model_input_shape.w, pad);
       runtime_args.top_pad = pad_ret.h;
       runtime_args.left_pad = pad_ret.w;
     } else {
-      cv::resize(cropped_image, resized_image,
-                 cv::Size(params.model_input_shape.w, params.model_input_shape.h),
-                 0, 0, cv::INTER_LINEAR);
+      cv::resize(
+          cropped_image, resized_image,
+          cv::Size(params.model_input_shape.w, params.model_input_shape.h), 0,
+          0, cv::INTER_LINEAR);
     }
   } else {
     resized_image = cropped_image;
@@ -266,7 +268,7 @@ CpuGenericCvPreprocessor::preprocessFP16(const cv::Mat &normalized_image,
   }
 
   cv::Mat float_mat(1, static_cast<int>(total_elements), CV_32F,
-                   tensor_data_f_p32.data());
+                    tensor_data_f_p32.data());
   cv::Mat half_mat;
   float_mat.convertTo(half_mat, CV_16F);
 

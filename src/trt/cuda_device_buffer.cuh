@@ -571,7 +571,8 @@ private:
     m_size = count;
   }
 
-  void reallocate(size_t new_capacity, bool preserve_data, cudaStream_t stream) {
+  void reallocate(size_t new_capacity, bool preserve_data,
+                  cudaStream_t stream) {
     T *new_ptr = nullptr;
     CHECK_CUDA_ERROR(cudaMalloc(&new_ptr, new_capacity * sizeof(T)));
 
