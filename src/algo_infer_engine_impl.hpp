@@ -11,9 +11,9 @@
 #ifndef ALGO_INFER_ENGINE_IMPL_HPP
 #define ALGO_INFER_ENGINE_IMPL_HPP
 
-#include "ai_core/algo_infer_engine.hpp"
-#include "ai_core/infer_base.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
+#include "ai_core/i_infer_engine.hpp"
+#include "ai_core/infer_config.hpp"
 #include <memory>
 #include <string>
 

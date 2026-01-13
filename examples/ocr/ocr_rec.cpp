@@ -1,6 +1,6 @@
 #include "ocr_rec.hpp"
 #include "ai_core/logger.hpp"
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include "algo_config_parser.hpp"
 #include <cstdint>
 #include <filesystem>

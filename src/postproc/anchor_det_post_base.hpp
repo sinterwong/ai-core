@@ -11,7 +11,7 @@
 #ifndef AI_CORE_I_ANCHOR_DET_POSTPROCESSOR_HPP
 #define AI_CORE_I_ANCHOR_DET_POSTPROCESSOR_HPP
 
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core {

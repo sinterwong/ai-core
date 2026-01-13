@@ -36,7 +36,7 @@
 
 这是框架最主要的入口类，封装了完整的 **预处理 -> 推理 -> 后处理** 流水线。
 
-**头文件:** `#include "ai_core/algo_infer.hpp"`
+**头文件:** `#include "ai_core/algo_inference.hpp"`
 
 ### 1.1. 概述
 
@@ -89,7 +89,7 @@ AlgoInference(const AlgoModuleTypes &moduleTypes,
 ### 1.4. 完整使用示例
 
 ```cpp
-#include "ai_core/algo_infer.hpp"
+#include "ai_core/algo_inference.hpp"
 
 // ...
 
@@ -144,7 +144,7 @@ pipeline.terminate();
 
 **示例:**
 ```cpp
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 
 ai_core::AlgoInput input;
 auto image = std::make_shared<cv::Mat>(cv::imread("test.jpg"));
@@ -375,7 +375,7 @@ struct TensorData {
 **示例：** 在你的 `my_postproc.cpp` 文件末尾添加：
 
 ```cpp
-#include "ai_core/ai_core_registrar.hpp"
+#include "ai_core/plugin_registrar.hpp"
 #include "my_postproc.hpp" // 包含你的插件类定义
 
 // 假设你的后处理插件类名为 MyYoloPostproc

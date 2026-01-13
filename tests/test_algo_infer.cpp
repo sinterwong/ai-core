@@ -1,6 +1,6 @@
-#include "ai_core/algo_infer.hpp"
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/algo_inference.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/infer_config.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <opencv2/opencv.hpp>

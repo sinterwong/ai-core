@@ -1,5 +1,5 @@
 /**
- * @file postproc_base.hpp
+ * @file i_postprocess.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -11,7 +11,7 @@
 #ifndef AI_CORE_POSTPROC_BASE_HPP
 #define AI_CORE_POSTPROC_BASE_HPP
 
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {

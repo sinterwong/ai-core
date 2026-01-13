@@ -1,5 +1,5 @@
 /**
- * @file infer_common_types.hpp
+ * @file common_types.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1

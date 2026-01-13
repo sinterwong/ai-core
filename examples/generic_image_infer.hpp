@@ -1,7 +1,7 @@
 #pragma once
 
 #include "algo_config_parser.hpp"
-#include <ai_core/algo_infer.hpp>
+#include "ai_core/algo_inference.hpp"
 #include <opencv2/opencv.hpp>
 #include <string>
 

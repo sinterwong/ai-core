@@ -17,8 +17,8 @@
 #ifndef GPU_GENERIC_CUDA_PREPROCESSOR_HPP
 #define GPU_GENERIC_CUDA_PREPROCESSOR_HPP
 
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "cuda_device_buffer.cuh"
 #include "cuda_stream.cuh"

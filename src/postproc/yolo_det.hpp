@@ -11,7 +11,7 @@
 #ifndef AI_CORE_INFERENCE_VISION_YOLOV11_DETECTION_HPP
 #define AI_CORE_INFERENCE_VISION_YOLOV11_DETECTION_HPP
 
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include "anchor_det_post_base.hpp"
 namespace ai_core::dnn {
 class Yolov11Det : public IAnchorDetPostprocessor {

@@ -17,9 +17,9 @@
 #include <mutex>
 #include <vector>
 
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/infer_base.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/i_infer_engine.hpp"
+#include "ai_core/infer_config.hpp"
 #include <ncnn/allocator.h>
 #include <ncnn/net.h>
 

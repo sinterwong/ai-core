@@ -1,5 +1,5 @@
 /**
- * @file infer_params_types.hpp
+ * @file infer_config.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -12,7 +12,7 @@
 #ifndef AI_CORE_INFER_PARAMS_TYPES_HPP
 #define AI_CORE_INFER_PARAMS_TYPES_HPP
 
-#include "ai_core/infer_common_types.hpp"
+#include "ai_core/common_types.hpp"
 #include <map>
 #include <string>
 

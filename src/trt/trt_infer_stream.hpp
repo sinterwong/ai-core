@@ -11,7 +11,7 @@
 #ifndef AI_CORE_TRT_INFER_STREAM_HPP
 #define AI_CORE_TRT_INFER_STREAM_HPP
 
-#include "ai_core/execution_context.hpp"
+#include "ai_core/i_execution_context.hpp"
 #include "cuda_device_buffer.cuh"
 #include "cuda_host_buffer.cuh"
 #include <NvInfer.h>

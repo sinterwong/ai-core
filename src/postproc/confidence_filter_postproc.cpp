@@ -10,7 +10,7 @@
  */
 #include "confidence_filter_postproc.hpp"
 #include "ai_core/logger.hpp"
-#include "ai_core/postproc_types.hpp"
+#include "ai_core/postprocess_types.hpp"
 #include "semantic_seg.hpp"
 #include <opencv2/core.hpp>
 

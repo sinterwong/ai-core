@@ -8,11 +8,11 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/infer_base.hpp"
-#include "ai_core/infer_params_types.hpp"
-#include "ai_core/postproc_base.hpp"
-#include "ai_core/preproc_base.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/i_infer_engine.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/i_postprocess.hpp"
+#include "ai_core/i_preprocess.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/confidence_filter_postproc.hpp"
 #include "preproc/frame_prep.hpp"

@@ -9,7 +9,7 @@
  *
  */
 #include "postproc_registrar.hpp"
-#include "ai_core/ai_core_registrar.hpp"
+#include "ai_core/plugin_registrar.hpp"
 #include "ai_core/logger.hpp"
 #include "postproc/anchor_det_postproc.hpp"
 #include "postproc/confidence_filter_postproc.hpp"

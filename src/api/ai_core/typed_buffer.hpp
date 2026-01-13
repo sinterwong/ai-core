@@ -12,7 +12,7 @@
 #define AI_CORE_TYPED_BUFFER_HPP
 
 #include "ai_core/accelerator_buffer_impl.hpp"
-#include "ai_core/infer_common_types.hpp"
+#include "ai_core/common_types.hpp"
 
 #include <cstdint>
 #include <memory>

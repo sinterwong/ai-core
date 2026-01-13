@@ -1,5 +1,5 @@
 /**
- * @file algo_postproc.hpp
+ * @file algo_postprocessor.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -11,8 +11,8 @@
 #ifndef AI_CORE_ALGO_POSTPROC_HPP
 #define AI_CORE_ALGO_POSTPROC_HPP
 
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/infer_error_code.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/error_code.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <memory>
 

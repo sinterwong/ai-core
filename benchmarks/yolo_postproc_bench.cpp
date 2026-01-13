@@ -8,11 +8,11 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/algo_infer_engine.hpp"
-#include "ai_core/algo_postproc.hpp"
-#include "ai_core/algo_preproc.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
+#include "ai_core/algo_postprocessor.hpp"
+#include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <memory>

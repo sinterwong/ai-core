@@ -10,7 +10,7 @@
  */
 #include <iostream>
 
-#include "ai_core/infer_base.hpp"
+#include "ai_core/i_infer_engine.hpp"
 namespace ai_core::dnn {
 
 void IInferEnginePlugin::prettyPrintModelInfos() {

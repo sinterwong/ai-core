@@ -9,9 +9,9 @@
  *
  */
 #ifdef WITH_TRT
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/infer_async.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "trt/trt_infer.hpp"
 #include <benchmark/benchmark.h>

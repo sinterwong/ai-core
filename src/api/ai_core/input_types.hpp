@@ -1,5 +1,5 @@
 /**
- * @file algo_input_types.hpp
+ * @file input_types.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1

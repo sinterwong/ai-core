@@ -9,7 +9,7 @@
  *
  */
 
-#include "ai_core/algo_postproc.hpp"
+#include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "algo_postproc_impl.hpp"
 

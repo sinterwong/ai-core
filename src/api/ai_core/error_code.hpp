@@ -1,3 +1,13 @@
+/**
+ * @file error_code.hpp
+ * @author Sinter Wong (sintercver@gmail.com)
+ * @brief 
+ * @version 0.1
+ * @date 2026-01-13
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
 #ifndef AI_CORE_INFER_ERROR_CODE_HPP
 #define AI_CORE_INFER_ERROR_CODE_HPP
 #include <cstdint>

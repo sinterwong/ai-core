@@ -9,7 +9,7 @@
  *
  */
 #include "frame_prep.hpp"
-#include "ai_core/algo_data_types.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/logger.hpp"
 #include "cpu_generic_preprocessor.hpp"
 #include "frame_preprocessor_base.hpp"

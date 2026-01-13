@@ -9,7 +9,7 @@
  *
  */
 
-#include "ai_core/algo_infer_engine.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
 #include "algo_infer_engine_impl.hpp"
 #include <string>
 

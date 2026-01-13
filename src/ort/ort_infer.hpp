@@ -11,9 +11,9 @@
 #ifndef AI_CORE_ONNXRUNTIME_INFERENCE_HPP
 #define AI_CORE_ONNXRUNTIME_INFERENCE_HPP
 
-#include "ai_core/algo_data_types.hpp"
-#include "ai_core/infer_base.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/algo_types.hpp"
+#include "ai_core/i_infer_engine.hpp"
+#include "ai_core/infer_config.hpp"
 #include <memory>
 #include <onnxruntime_cxx_api.h>
 #include <unordered_set>

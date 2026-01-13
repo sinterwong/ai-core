@@ -9,7 +9,7 @@
  *
  */
 #include "ocr_reco.hpp"
-#include "ai_core/algo_output_types.hpp"
+#include "ai_core/output_types.hpp"
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {

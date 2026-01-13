@@ -1,6 +1,6 @@
 #include "algo_config_parser.hpp"
 #include "ai_core/logger.hpp"
-#include <ai_core/infer_params_types.hpp>
+#include "ai_core/infer_config.hpp"
 #include <cstddef>
 #include <fstream>
 #include <map>

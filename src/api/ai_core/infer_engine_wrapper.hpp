@@ -11,9 +11,9 @@
 #ifndef AI_CORE_ALGO_INFER_ENGINE_HPP
 #define AI_CORE_ALGO_INFER_ENGINE_HPP
 
-#include "ai_core/infer_common_types.hpp"
-#include "ai_core/infer_error_code.hpp"
-#include "ai_core/infer_params_types.hpp"
+#include "ai_core/common_types.hpp"
+#include "ai_core/error_code.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <memory>
 

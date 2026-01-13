@@ -9,7 +9,7 @@
  *
  */
 
-#include "ai_core/algo_infer.hpp"
+#include "ai_core/algo_inference.hpp"
 #include "algo_infer_impl.hpp"
 
 namespace ai_core::dnn {

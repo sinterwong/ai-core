@@ -11,8 +11,8 @@
 #ifndef ALGO_PREPROC_IMPL_HPP
 #define ALGO_PREPROC_IMPL_HPP
 
-#include "ai_core/algo_preproc.hpp"
-#include "ai_core/preproc_base.hpp"
+#include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/i_preprocess.hpp"
 #include <memory>
 
 namespace ai_core::dnn {

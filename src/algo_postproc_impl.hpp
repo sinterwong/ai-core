@@ -11,8 +11,8 @@
 #ifndef ALGO_POSTPROC_IMPL_HPP
 #define ALGO_POSTPROC_IMPL_HPP
 
-#include "ai_core/algo_postproc.hpp"
-#include "ai_core/postproc_base.hpp"
+#include "ai_core/algo_postprocessor.hpp"
+#include "ai_core/i_postprocess.hpp"
 #include <memory>
 
 namespace ai_core::dnn {

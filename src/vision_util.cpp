@@ -11,8 +11,8 @@
 #ifndef AI_CORE_INFERENCE_VISION_UTILS_HPP
 #define AI_CORE_INFERENCE_VISION_UTILS_HPP
 
-#include "ai_core/algo_output_types.hpp"
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/output_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include <opencv2/opencv.hpp>
 #include <unordered_map>
 

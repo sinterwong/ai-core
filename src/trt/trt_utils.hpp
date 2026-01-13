@@ -11,7 +11,7 @@
 #ifndef AI_CORE_TRT_UTILS_HPP
 #define AI_CORE_TRT_UTILS_HPP
 
-#include "ai_core/infer_common_types.hpp"
+#include "ai_core/common_types.hpp"
 #include <NvInfer.h>
 #include <cuda_runtime_api.h>
 

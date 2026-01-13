@@ -10,7 +10,7 @@
  */
 
 #include "trt_infer.hpp"
-#include "ai_core/infer_error_code.hpp"
+#include "ai_core/error_code.hpp"
 #include "crypto.hpp"
 #include "trt_infer_stream.hpp"
 #include "trt_utils.hpp"

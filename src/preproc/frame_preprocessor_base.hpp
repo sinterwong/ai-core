@@ -12,8 +12,8 @@
 #ifndef AI_CORE_I_FRAME_PREPROCESSOR_HPP
 #define AI_CORE_I_FRAME_PREPROCESSOR_HPP
 
-#include "ai_core/algo_input_types.hpp"
-#include "ai_core/preproc_types.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 
 namespace ai_core {
