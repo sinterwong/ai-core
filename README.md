@@ -11,9 +11,9 @@
 [English](README_EN.md) | [简体中文](README.md)
 ---
 
-![Version](https://img.shields.io/badge/version-1.1.2-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![C++ Standard](https://img.shields.io/badge/C++-17-blue.svg)
+![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)
 
 **AI Core** 是一个现代化、高性能、可扩展的 C++ AI 推理框架。旨在简化 AI 模型在多种硬件后端上的部署流程，提供从数据预处理、模型推理到结果后处理的端到端解决方案。
 
