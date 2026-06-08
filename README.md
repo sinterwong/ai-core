@@ -1,35 +1,20 @@
 # AI Core
-<p align="center">
-  <img src="assets/icon/logo.jpeg" alt="ai-core Logo" width="500"> <br/>
-</p>
 
 <p align="center">
-  一个高可扩展的 AI 算法库。
+  <img src="assets/icon/logo.jpeg" alt="ai-core Logo" width="500"><br/>
 </p>
 
----
+<p align="center">C++ AI 推理框架</p>
+
 [English](README_EN.md) | [简体中文](README.md)
----
 
 ![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)
 
-**AI Core** 是一个现代化、高性能、可扩展的 C++ AI 推理框架。旨在简化 AI 模型在多种硬件后端上的部署流程，提供从数据预处理、模型推理到结果后处理的端到端解决方案。
+AI Core 是一个用于在多种推理后端（ONNX Runtime、NCNN、TensorRT）上部署模型的 C++ 库。流水线由三段组成：预处理、推理、后处理。每一段都通过插件方式注册，按名称拼装，便于扩展。
 
-## 核心特性
-
-*   **📦 模块化流程 (Modular Pipeline):** 采用 **预处理 -> 推理 -> 后处理** 三段式流水线设计，每个阶段都可以独立实现和替换。
-*   **🔌 可扩展插件系统 (Extensible Plugin System):** 基于工厂模式，您可以轻松地自定义预处理、推理引擎和后处理插件，并注册到框架中。
-*   **🔒 类型安全的数据处理 (Type-Safe Data Handling):** 使用 `std::variant` 和自定义的 `TypedBuffer` 来管理不同类型的数据和参数，极大地提高了代码的健壮性和可维护性。
-*   **🚀 硬件抽象与加速 (Hardware Abstraction & Acceleration):** 通过 `TypedBuffer` 统一管理 CPU 和 GPU 内存，无缝支持在不同设备间的数据流转与计算。
-*   **✨ 简洁易用的高级 API (High-Level, Easy-to-Use API):** 提供了 `AlgoInference` 类作为统一入口，封装了复杂的底层调用，让开发者可以专注于业务逻辑。
-*   **🔧 现代 C++ 设计 (Modern C++ Design):** 广泛采用 C++17/20 特性，保证了代码的高性能、高质量和安全性。
-
-
-## 核心架构
-
-AI Core 的核心是一个清晰的数据流管道。数据从输入 (`AlgoInput`) 开始，经过一系列处理模块，最终生成算法输出 (`AlgoOutput`)。
+## 数据流
 
 ```
 +-----------+     +-----------------+     +-----------------+
@@ -52,53 +37,119 @@ AI Core 的核心是一个清晰的数据流管道。数据从输入 (`AlgoInput
 |           |     | (e.g. YOLO_DET ) |     |                  |
 +-----------+     +------------------+     +------------------+
 ```
-- **数据容器:** `TensorData` 是流水线内部的核心数据结构，用于在各个阶段之间传递张量数据。
-- **插件:** 每个处理阶段（预处理、推理、后处理）都是一个可插拔的插件，通过字符串名称在运行时动态加载。
 
-## 快速开始
+`TensorData` 是插件之间传递的张量集合。`AlgoInput` / `AlgoOutput` 是流水线两端的输入/输出。
 
-### 环境要求
+## 编译
 
-- C++20 兼容的编译器 (GCC 11+)
-- CMake 3.15+
-- (可选) CUDA Toolkit 11.x+
-- (可选) OpenCV 4.x+
+### 依赖
 
+- C++20 兼容的编译器（GCC 11+、Clang 14+、MSVC 19.30+）
+- CMake 3.18+
+- OpenCV 4.x
+- ONNX Runtime（默认启用）
+- 可选：NCNN、TensorRT、CUDA Toolkit
 
-### 编译与安装
+### 拉取与构建
 
-1.  **Clone the repository:**
-    ```bash
-    git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
-    cd ai-core
-    mkdir -p 3rdparty/target/
-    curl -L https://github.com/sinterwong/ai-core/releases/download/v1.1.1-alpha/dependency-Linux_x86_64.tgz -o dependency.tgz
-    tar -xzf dependency.tgz -C 3rdparty/target/
-    ```
+```bash
+git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
+cd ai-core
+mkdir -p 3rdparty/target/
 
-2.  **Configure with CMake:**
-    ```bash
-    mkdir build && cd build
-    cmake .. -DBUILD_AI_CORE_TESTS=ON -DBUILD_AI_CORE_EXAMPLES=ON -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
-    ```
-    *   Use `-DWITH_ORT_ENGINE=ON`, `-DWITH_NCNN_ENGINE=ON`, and `-DWITH_TRT_ENGINE=ON` to enable the respective inference engines.
+# 下载预编译的第三方依赖
+curl -L https://github.com/sinterwong/ai-core/releases/download/v1.1.1-alpha/dependency-Linux_x86_64.tgz -o dependency.tgz
+tar -xzf dependency.tgz -C 3rdparty/target/
 
-3.  **Build the project:**
-    ```bash
-    cmake --build .
-    ```
-    
-4. **Install:**
-    ```bash
-    cmake --install .
-    ```
+mkdir build && cd build
+cmake .. -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
+         -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
 
-### 使用示例
+cmake --build . -j
+cmake --install .
+```
 
-暂时可以参考**tests**和**examples**目录中的内容。
+CMake 选项：
+
+| 选项 | 默认值 | 说明 |
+| --- | --- | --- |
+| `BUILD_AI_CORE_TESTS` | OFF | 构建单元测试 |
+| `BUILD_AI_CORE_BENCHMARKS` | OFF | 构建 benchmark |
+| `BUILD_AI_CORE_EXAMPLES` | OFF | 构建示例 |
+| `WITH_ORT_ENGINE` | ON | ONNX Runtime 后端 |
+| `WITH_NCNN_ENGINE` | OFF | NCNN 后端 |
+| `WITH_TRT_ENGINE` | OFF | TensorRT 后端 |
+
+## 使用
+
+`AlgoInference` 是流水线入口，构造时给出三段插件的名字和推理参数：
+
+```cpp
+#include "ai_core/algo_inference.hpp"
+#include "ai_core/algo_types.hpp"
+
+using namespace ai_core;
+
+AlgoModuleTypes modules{
+    "FramePreprocess",     // 预处理插件
+    "OrtAlgoInference",    // 推理后端
+    "AnchorDetPostproc"    // 后处理插件
+};
+
+AlgoInferParams params;
+params.name = "yolov11";
+params.model_path = "models/yolov11.onnx";
+params.device_type = DeviceType::CPU;
+params.data_type = DataType::FLOAT32;
+
+dnn::AlgoInference algo(modules, params);
+algo.initialize();
+
+AlgoInput input;
+input.setParams(FrameInput{
+    std::make_shared<cv::Mat>(cv::imread("test.jpg")),
+    std::make_shared<cv::Rect>(0, 0, 0, 0)
+});
+
+AlgoPreprocParams preproc_params;
+FramePreprocessArg arg;
+arg.model_input_shape = {640, 640, 3};
+arg.mean_vals = {0.f, 0.f, 0.f};
+arg.norm_vals = {1.f, 1.f, 1.f};
+arg.hwc2chw = true;
+arg.data_type = DataType::FLOAT32;
+preproc_params.setParams(arg);
+
+AlgoPostprocParams postproc_params;
+AnchorDetParams det_arg;
+det_arg.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
+det_arg.cond_thre = 0.25f;
+det_arg.nms_thre = 0.45f;
+det_arg.output_names = {"output0"};
+postproc_params.setParams(det_arg);
+
+AlgoOutput output;
+if (algo.infer(input, preproc_params, postproc_params, output)
+    != InferErrorCode::SUCCESS) {
+    // 处理错误
+}
+
+if (auto* det = output.getParams<DetRet>()) {
+    for (const auto& box : det->bboxes) {
+        // ...
+    }
+}
+
+algo.terminate();
+```
+
+更完整的例子参考 `examples/generic_image_infer.cpp`、`examples/ocr/` 和 `tests/`。
 
 ## 文档
 
-- **[框架设计与核心概念](./doc/Framework.md):** 解析 AI Core 的架构设计、核心组件和设计哲学。
-- **[API 参考手册](./doc/API.md):** 详细介绍所有公开的类、函数和数据类型，并提供使用示例。
-- **[快速入门](./doc/Quickstart.md):** (即将推出) 手把手教您如何使用 AI Core 完整地构建一个 AI 应用。
+- [doc/Framework.md](doc/Framework.md) — 框架结构与设计
+- [doc/API.md](doc/API.md) — 公共 API
+
+## 许可
+
+MIT

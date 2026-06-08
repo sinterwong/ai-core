@@ -1,385 +1,456 @@
-# AI Core API 参考手册
+# AI Core API 参考
 
-欢迎使用 AI Core 框架的 API 参考手册。本文档详细介绍了用于构建 AI 推理应用的所有核心组件、数据类型和函数。
+API 按使用频率自上而下组织。先看「核心入口」一节跑通一次推理，再按需查「数据结构」「枚举」「插件开发」。
 
-## 目录
+所有类型位于 `ai_core` 或 `ai_core::dnn` 命名空间。
 
-- [1. 核心推理流程 - `AlgoInference`](#1-核心推理流程---algoinference)
-  - [1.1. 概述](#11-概述)
-  - [1.2. 构造函数](#12-构造函数)
-  - [1.3. 核心方法](#13-核心方法)
-  - [1.4. 完整使用示例](#14-完整使用示例)
-- [2. 核心数据类型](#2-核心数据类型)
-  - [2.1. `AlgoInput` - 算法输入](#21-algoinput---算法输入)
-  - [2.2. `AlgoOutput` - 算法输出](#22-algooutput---算法输出)
-  - [2.3. `AlgoPreprocParams` - 预处理参数](#23-algopreprocparams---预处理参数)
-  - [2.4. `AlgoPostprocParams` - 后处理参数](#24-algopostprocparams---后处理参数)
-- [3. 核心数据容器](#3-核心数据容器)
-  - [3.1. `TypedBuffer` - 类型化内存缓冲区](#31-typedbuffer---类型化内存缓冲区)
-  - [3.2. `TensorData` - 张量数据集合](#32-tensordata---张量数据集合)
-- [4. 通用数据结构](#4-通用数据结构)
-  - [4.1. 输入数据结构](#41-输入数据结构)
-  - [4.2. 输出数据结构](#42-输出数据结构)
-  - [4.3. 参数数据结构](#43-参数数据结构)
-- [5. 枚举类型](#5-枚举类型)
-  - [5.1. `InferErrorCode` - 错误码](#51-infererrorcode---错误码)
-  - [5.2. `DeviceType` - 设备类型](#52-devicetype---设备类型)
-  - [5.3. `DataType` - 数据类型](#53-datatype---数据类型)
-  - [5.4. `BufferLocation` - 缓冲区位置](#54-bufferlocation---缓冲区位置)
-- [6. 框架扩展 (插件开发)](#6-框架扩展-插件开发)
-  - [6.1. 插件接口](#61-插件接口)
-  - [6.2. 插件注册](#62-插件注册)
+## 1. 核心入口
 
----
+### `ai_core::dnn::AlgoInference`
 
-## 1. 核心推理流程 - `AlgoInference`
-
-这是框架最主要的入口类，封装了完整的 **预处理 -> 推理 -> 后处理** 流水线。
-
-**头文件:** `#include "ai_core/algo_inference.hpp"`
-
-### 1.1. 概述
-
-`AlgoInference` 负责管理整个推理生命周期，包括加载插件、初始化引擎、执行推理和释放资源。
-
-### 1.2. 构造函数
+三段流水线的统一入口，定义于 `<ai_core/algo_inference.hpp>`。
 
 ```cpp
-AlgoInference(const AlgoModuleTypes &moduleTypes,
-              const AlgoInferParams &inferParams);
+class AlgoInference {
+public:
+  AlgoInference(const AlgoModuleTypes& module_types,
+                const AlgoInferParams& infer_params);
+  ~AlgoInference();
+
+  InferErrorCode initialize();
+  InferErrorCode terminate();
+
+  InferErrorCode infer(const AlgoInput& input,
+                       const AlgoPreprocParams& preproc_params,
+                       const AlgoPostprocParams& postproc_params,
+                       AlgoOutput& output);
+
+  InferErrorCode batchInfer(const std::vector<AlgoInput>& inputs,
+                            const AlgoPreprocParams& preproc_params,
+                            const AlgoPostprocParams& postproc_params,
+                            std::vector<AlgoOutput>& outputs);
+
+  const ModelInfo& getModelInfo() const noexcept;
+  const AlgoModuleTypes& getModuleTypes() const noexcept;
+};
 ```
 
-- `moduleTypes`: 一个 `AlgoModuleTypes` 结构体，用于指定流水线中每个阶段所使用的插件名称（字符串）。
-  ```cpp
-  struct AlgoModuleTypes {
-    std::string preprocModule;
-    std::string inferModule;
-    std::string postprocModule;
-  };
-  ```
-- `inferParams`: 一个 `AlgoInferParams` 结构体，用于配置推理引擎，如模型路径、设备类型等。
+调用顺序：`initialize` → 多次 `infer` / `batchInfer` → `terminate`。未初始化就调用 `infer` 会得到 `InferErrorCode::NotInitialized`。
 
-### 1.3. 核心方法
+### `ai_core::dnn::AlgoManager`
 
-- **`InferErrorCode initialize()`**
-  初始化整个推理流水线，包括加载和初始化所有指定的插件。必须在调用 `infer` 之前成功调用。
-  - **返回:** `InferErrorCode::SUCCESS` 表示成功。
-
-- **`InferErrorCode infer(const AlgoInput &input, const AlgoPreprocParams &preproc_params, const AlgoPostprocParams &postproc_params, AlgoOutput &output)`**
-  执行单次推理。
-  - `input`: 算法输入数据 (`AlgoInput`)。
-  - `preproc_params`: 预处理参数 (`AlgoPreprocParams`)。
-  - `postproc_params`: 后处理参数 (`AlgoPostprocParams`)。
-  - `output`: 用于接收算法输出结果 (`AlgoOutput`)。
-  - **返回:** `InferErrorCode::SUCCESS` 表示成功。
-
-- **`InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs, const AlgoPreprocParams &preproc_params, const AlgoPostprocParams &postproc_params, std::vector<AlgoOutput> &outputs)`**
-  执行批量推理。
-  - `inputs`: 一组算法输入数据。
-  - `outputs`: 用于接收一组算法输出结果。
-  - **返回:** `InferErrorCode::SUCCESS` 表示成功。
-
-- **`InferErrorCode terminate()`**
-  释放所有资源，终止推理流水线。
-  - **返回:** `InferErrorCode::SUCCESS` 表示成功。
-
-- **`const ModelInfo &getModelInfo() const noexcept`**
-  获取当前加载模型的信息，包括输入输出张量的名称、形状和数据类型。
-
-### 1.4. 完整使用示例
+进程内管理多个 `AlgoInference` 实例：
 
 ```cpp
-#include "ai_core/algo_inference.hpp"
+class AlgoManager {
+public:
+  InferErrorCode registerAlgo(const std::string& name,
+                              const std::shared_ptr<AlgoInference>& algo);
+  InferErrorCode unregisterAlgo(const std::string& name);
 
-// ...
+  InferErrorCode infer(const std::string& name,
+                       AlgoInput& input,
+                       AlgoPreprocParams& preproc_params,
+                       AlgoOutput& output,
+                       AlgoPostprocParams& postproc_params);
 
-// 1. 定义模块和算法参数
-ai_core::AlgoModuleTypes modules = {"MyPreproc", "MyInferEngine", "MyPostproc"};
-ai_core::AlgoInferParams params = {/* ... */};
-
-// 2. 创建和初始化
-ai_core::dnn::AlgoInference pipeline(modules, params);
-if (pipeline.initialize() != ai_core::InferErrorCode::SUCCESS) {
-    // 错误处理
-}
-
-// 3. 准备数据
-ai_core::AlgoInput input;
-input.setParams(ai_core::FrameInput{...});
-
-ai_core::AlgoPreprocParams preproc_args;
-preproc_args.setParams(ai_core::FramePreprocessArg{...});
-
-ai_core::AlgoPostprocParams postproc_args;
-postproc_args.setParams(ai_core::AnchorDetParams{...});
-
-// 4. 推理
-ai_core::AlgoOutput output;
-pipeline.infer(input, preproc_args, postproc_args, output);
-
-// 5. 解析结果
-if (auto* result = output.getParams<ai_core::DetRet>()) {...}
-
-// 6. 释放资源
-pipeline.terminate();
+  std::shared_ptr<AlgoInference> getAlgo(const std::string& name) const;
+  bool hasAlgo(const std::string& name) const;
+  void clear();
+};
 ```
 
----
+`AlgoManager` 不可拷贝，可移动。
 
-## 2. 核心数据类型
+### 单组件直接使用
 
-这些类型是 `AlgoInference::infer` 方法的参数，它们使用 `ParamCenter` 模板和 `std::variant` 来实现类型安全和灵活性。
+如果不想要 `AlgoInference` 的串联，也可以单独用：
 
-**核心思想:** 使用 `setParams<T>(...)` 存入具体类型的参数，使用 `getParams<T>()` 取出。
+- `ai_core::dnn::AlgoPreproc(const std::string& module_name)`
+- `ai_core::dnn::AlgoInferEngine(const std::string& module_name, const AlgoInferParams& infer_params)`
+- `ai_core::dnn::AlgoPostproc(const std::string& module_name)`
 
-### 2.1. `AlgoInput` - 算法输入
+三者的接口分别是 `process / batchProcess`、`infer`、`process / batchProcess`，全部需要先 `initialize()`。
 
-**定义:** `using AlgoInput = ParamCenter<std::variant<std::monostate, FrameInput, FrameInputWithMask>>;`
+## 2. 配置与参数
 
-用于包装实际的输入数据。
+### `AlgoModuleTypes`
 
-- **可包含类型:**
-  - `FrameInput`: 单帧图像输入。
-  - `FrameInputWithMask`: 带掩码区域的单帧图像输入。
-
-**示例:**
 ```cpp
-#include "ai_core/algo_types.hpp"
-
-ai_core::AlgoInput input;
-auto image = std::make_shared<cv::Mat>(cv::imread("test.jpg"));
-input.setParams(ai_core::FrameInput{image, nullptr});
+struct AlgoModuleTypes {
+  std::string preproc_module;
+  std::string infer_module;
+  std::string postproc_module;
+};
 ```
 
-### 2.2. `AlgoOutput` - 算法输出
+三个字段是已注册插件的名字。
 
-**定义:** `using AlgoOutput = ParamCenter<std::variant<std::monostate, ClsRet, DetRet, ...>>;`
+### `AlgoInferParams`
 
-用于接收算法的输出结果。
-
-- **可包含类型:**
-  - `ClsRet`: 分类结果。
-  - `DetRet`: 检测结果。
-  - `RawModelOutput`: 原始模型输出。
-  - `SegRet`: 分割结果。
-  - ... (更多请参见 [4.2. 输出数据结构](#42-输出数据结构))
-
-**示例:**
 ```cpp
-ai_core::AlgoOutput output;
-// ... 调用 infer 填充 output ...
-
-// 尝试获取 DetRet 类型的结果
-if (auto* det_result = output.getParams<ai_core::DetRet>()) {
-    std::cout << "Found " << det_result->bboxes.size() << " objects." << std::endl;
-} else if (auto* cls_result = output.getParams<ai_core::ClsRet>()) {
-    std::cout << "Class: " << cls_result->label << ", Score: " << cls_result->score << std::endl;
-}
+struct AlgoInferParams {
+  std::string name;
+  std::string model_path;
+  bool need_decrypt = false;
+  std::string decryptkey_str;
+  DeviceType device_type;
+  DataType   data_type;
+  std::map<std::string, size_t> max_output_buffer_sizes;
+};
 ```
 
-### 2.3. `AlgoPreprocParams` - 预处理参数
+`max_output_buffer_sizes` 用来预分配输出缓冲，键是张量名。GPU 后端推荐填，CPU 后端可以空着。
 
-**定义:** `using AlgoPreprocParams = ParamCenter<std::variant<std::monostate, FramePreprocessArg>>;`
+### `AlgoPreprocParams` / `AlgoPostprocParams`
 
-- **可包含类型:**
-  - `FramePreprocessArg`: 通用的图像预处理参数。
+每次 `infer` 调用都传一份，覆盖一些按需调整的参数。底层是 `ParamCenter<std::variant<...>>`，详见第 4 节。
 
-### 2.4. `AlgoPostprocParams` - 后处理参数
+## 3. 输入 / 输出结构
 
-**定义:** `using AlgoPostprocParams = ParamCenter<std::variant<std::monostate, AnchorDetParams, GenericPostParams, ConfidenceFilterParams>>;`
+### 输入
 
-- **可包含类型:**
-  - `AnchorDetParams`: 用于基于 Anchor 的目标检测算法的后处理参数。
-  - `GenericPostParams`: 通用后处理参数，如 Softmax 分类。
-  - `ConfidenceFilterParams`: 用于分割等任务的置信度过滤参数。
-
----
-
-## 3. 核心数据容器
-
-### 3.1. `TypedBuffer` - 类型化内存缓冲区
-
-**头文件:** `#include "ai_core/typed_buffer.hpp"`
-
-`TypedBuffer` 是一个强大的数据容器，它抽象了 CPU 和 GPU 内存，并关联了数据类型。
-
-- **创建 (静态工厂方法):**
-  - `static TypedBuffer createFromCpu(DataType type, const std::vector<uint8_t>& data)`: 从已有的 CPU 数据创建（拷贝）。
-  - `static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t>&& data)`: 从已有的 CPU 数据创建（移动）。
-  - `static TypedBuffer createFromGpu(DataType type, size_t sizeBytes, int deviceId = 0)`: 在 GPU 上分配指定大小的内存。
-  - `static TypedBuffer createFromGpu(DataType type, void* devicePtr, ..., bool manageMemory)`: 从一个外部 GPU 指针创建，可选择是否让 `TypedBuffer` 管理该内存的生命周期。
-
-- **数据访问:**
-  - `template <typename T> const T* getHostPtr() const`: 获取 CPU 数据的只读指针。如果数据在 GPU 上或类型不匹配，会抛出异常。
-  - `template <typename T> T* getHostPtr()`: 获取 CPU 数据的可写指针。
-  - `void* getRawDevicePtr() const`: 获取 GPU 数据的 `void*` 指针。
-
-- **属性查询:**
-  - `DataType dataType() const`: 获取数据类型。
-  - `BufferLocation location() const`: 获取数据位置 (CPU/GPU)。
-  - `size_t getSizeBytes() const`: 获取缓冲区总字节数。
-  - `size_t getElementCount() const`: 获取缓冲区内的元素数量。
-  - `int getDeviceId() const`: 获取 GPU 设备 ID。
-
-**示例:**
 ```cpp
-// 从 vector 创建一个 float32 类型的 CPU buffer
-std::vector<float> my_floats = {1.0f, 2.0f, 3.0f};
-std::vector<uint8_t> my_bytes(
-    reinterpret_cast<uint8_t*>(my_floats.data()),
-    reinterpret_cast<uint8_t*>(my_floats.data()) + my_floats.size() * sizeof(float)
-);
-auto cpu_buffer = ai_core::TypedBuffer::createFromCpu(ai_core::DataType::FLOAT32, std::move(my_bytes));
+struct FrameInput {
+  std::shared_ptr<cv::Mat> image;
+  std::shared_ptr<cv::Rect> input_roi;  // 可选，nullptr 表示全图
+};
 
-// 访问数据
-const float* data_ptr = cpu_buffer.getHostPtr<float>();
-std::cout << "First element: " << data_ptr[0] << std::endl;
-
-// 创建一个 1MB 大小的 GPU buffer
-auto gpu_buffer = ai_core::TypedBuffer::createFromGpu(ai_core::DataType::INT8, 1024 * 1024, 0);
-void* device_ptr = gpu_buffer.getRawDevicePtr();
+struct FrameInputWithMask {
+  FrameInput frame_input;
+  std::vector<cv::Rect> mask_regions;
+};
 ```
 
-### 3.2. `TensorData` - 张量数据集合
+### 输出
 
-**头文件:** `#include "ai_core/tensor_data.hpp"`
+```cpp
+struct BBox {
+  std::shared_ptr<cv::Rect> rect;
+  float score;
+  int   label;
+};
 
-`TensorData` 是流水线内部用于传递数据的标准格式，它代表了一组命名的张量。
+struct ClsRet { float score; int label; };
+
+struct FprClsRet {
+  float score;
+  int   label;
+  int   birad;
+  std::vector<float> score_probs;
+};
+
+struct DetRet { std::vector<BBox> bboxes; };
+
+struct SegRet { std::map<int, std::vector<Contour>> cls_to_contours; };
+
+struct DaulRawSegRet {
+  std::shared_ptr<cv::Mat> mask;
+  std::shared_ptr<cv::Mat> prob;
+  std::shared_ptr<cv::Rect> roi;
+  float ratio;
+  int   left_shift;
+  int   top_shift;
+};
+
+struct OCRRecoRet {
+  int64_t output_lengths;
+  std::vector<int64_t> outputs;
+};
+
+using RawModelOutput = TensorData;
+```
+
+`Contour` 是 `std::vector<cv::Point>`，定义在 `<ai_core/common_types.hpp>`。
+
+## 4. 参数包装：`ParamCenter<T>`
+
+```cpp
+template <typename P> class ParamCenter {
+public:
+  template <typename T> void setParams(T params);
+  template <typename T> T* getParams();
+  template <typename T> const T* getParams() const;
+  template <typename Func> void visitParams(Func&& func);
+};
+```
+
+`setParams<T>()` 会覆盖之前的值。`getParams<T>()` 返回 `nullptr` 表示当前装的是别的类型。
+
+## 5. 内存：`TypedBuffer`
+
+定义于 `<ai_core/typed_buffer.hpp>`。统一管理 CPU 内存、GPU 显存、Pinned Host 内存。
+
+### 创建
+
+```cpp
+static TypedBuffer createFromCpu(DataType type, const std::vector<uint8_t>& data);
+static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t>&& data);
+
+static TypedBuffer createFromCpuRef(DataType type, const void* host_ptr,
+                                    size_t size_bytes, bool manage_memory = false);
+
+static TypedBuffer createFromGpu(DataType type, size_t size_bytes, int device_id = 0);
+static TypedBuffer createFromGpu(DataType type, void* device_ptr,
+                                 size_t size_bytes, int device_id, bool manage_memory);
+
+static TypedBuffer createPinnedHost(DataType type, size_t size_bytes);
+```
+
+`createFrom*Ref` 是零拷贝包装，缓冲区生命周期由外部管理。`manage_memory=true` 时 `TypedBuffer` 在析构时释放该指针。
+
+### 访问
+
+```cpp
+template <typename T> const T* getHostPtr() const;
+template <typename T> T*       getHostPtr();
+const void* getRawHostPtr() const;
+void*       getRawHostPtr();
+void*       getRawDevicePtr() const;
+```
+
+`getHostPtr<T>()` 在位置不是 CPU、或 `sizeof(T)` 与 `dataType` 不匹配时抛 `std::runtime_error`。
+
+### 元信息
+
+```cpp
+DataType        dataType() const noexcept;
+BufferLocation  location() const noexcept;   // CPU / GpuDevice
+BufferMemoryType memoryType() const noexcept; // Pageable / Pinned / Managed
+size_t getSizeBytes()   const noexcept;
+size_t getElementCount() const noexcept;
+int    getDeviceId()    const noexcept;
+bool   isPinned()       const noexcept;
+bool   isReference()    const noexcept;
+```
+
+### 修改
+
+```cpp
+void resize(size_t new_element_count);  // CPU 保留数据，Pinned/GPU 重新分配
+void clear();
+void setCpuData(DataType type, const std::vector<uint8_t>& data);
+void setGpuDataReference(DataType type, void* ptr, size_t size_bytes, int dev_id = 0);
+```
+
+## 6. 张量集合：`TensorData`
 
 ```cpp
 struct TensorData {
-  // 张量名到数据缓冲区的映射
   std::map<std::string, TypedBuffer> datas;
-  // 张量名到形状的映射
   std::map<std::string, std::vector<int>> shapes;
 };
 ```
-> **注意:** 应用开发者通常不需要直接创建 `TensorData`，它主要由预处理、推理和后处理插件在内部使用和传递。
 
----
+应用层一般不需要直接构造 `TensorData`，由预处理、推理、后处理插件在内部维护。
 
-## 4. 通用数据结构
+## 7. 上下文：`DataPacket`
 
-### 4.1. 输入数据结构
+```cpp
+struct DataPacket {
+  DataPacketId id;
+  std::map<std::string, std::any> params;
 
-- **`FrameInput`** (`algo_input_types.hpp`)
-  ```cpp
-  struct FrameInput {
-    std::shared_ptr<cv::Mat> image;      // 原始图像
-    std::shared_ptr<cv::Rect> input_roi; // 感兴趣区域 (可选)
+  template <typename T> T getParam(const std::string& key) const;
+  template <typename T> std::optional<T> getOptionalParam(const std::string& key) const;
+  template <typename T> void setParam(const std::string& key, T value);
+  bool has(const std::string& key) const;
+};
+```
+
+`getParam` 在 key 不存在或类型不匹配时抛 `std::runtime_error`。框架里 `AlgoConstructParams` 和 `RuntimeContext` 都是 `DataPacket` 的别名。
+
+## 8. 异步接口
+
+### `IAsyncInferEngine`
+
+后端支持时，推理引擎插件可以额外实现 `IAsyncInferEngine`（继承自 `IInferEnginePlugin`）：
+
+```cpp
+class IAsyncInferEngine : public IInferEnginePlugin {
+public:
+  virtual std::shared_ptr<IExecutionContext> createExecutionContext() = 0;
+  virtual TypedBuffer allocateAcceleratorBuffer(DataType type, size_t size_bytes) = 0;
+
+  struct ContextPackage {
+    std::shared_ptr<IExecutionContext> context;
+    TensorData inputs;
+    TensorData outputs;
   };
-  ```
+  virtual ContextPackage createContextPackage();
+  virtual std::vector<std::shared_ptr<IExecutionContext>> createContextPool(size_t count);
+};
+```
 
-### 4.2. 输出数据结构
+`allocateAcceleratorBuffer` 在不同后端下行为不同：CUDA/HIP 下分配 Pinned Host 内存；集成 GPU/NPU 下可能分配 Shared Memory；纯 CPU 下返回对齐内存。`ContextPackage` 用于 Zero-Copy 或 CUDA Graph 这类输入/输出地址不能变的场景。
 
-- **`BBox`** (`algo_output_types.hpp`)
-  ```cpp
-  struct BBox {
-    std::shared_ptr<cv::Rect> rect; // 边界框
-    float score;                    // 置信度
-    int label;                      // 类别标签
+## 9. 枚举
+
+### `InferErrorCode`
+
+```cpp
+enum class InferErrorCode : int32_t {
+  SUCCESS = 0,
+
+  InitFailed = 100,
+  InitConfigFailed = 101,
+  InitModelLoadFailed = 102,
+  InitDeviceFailed = 103,
+  InitMemoryAllocFailed = 104,
+  InitDecryptionFailed = 105,
+  NotInitialized = 106,
+  InitRuntimeFailed = 107,
+  InitEngineFailed = 108,
+  InitContextFailed = 109,
+  InitBindingFailed = 110,
+
+  InferFailed = 200,
+  InferInputError = 201,
+  InferOutputError = 202,
+  InferDeviceError = 203,
+  InferPreprocessFailed = 204,
+  InferMemoryError = 205,
+  InferSetInputFailed = 206,
+  InferExtractFailed = 207,
+  InferUnsupportedOutputType = 208,
+  InferTypeMismatch = 209,
+  InferSizeMismatch = 210,
+  InferInvalidInput = 211,
+  InferExecutionFailed = 212,
+  InferBindingError = 213,
+
+  StreamCreationFailed = 250,
+  StreamSyncFailed = 251,
+  GraphCaptureFailed = 252,
+  GraphLaunchFailed = 253,
+  AsyncOperationPending = 254,
+
+  TerminateFailed = 300,
+
+  AlgoNotFound = 400,
+  AlgoRegisterFailed = 401,
+  AlgoUnregisterFailed = 402,
+  AlgoInferFailed = 403,
+};
+```
+
+### `DeviceType`
+
+```cpp
+enum class DeviceType { CPU = 0, GPU = 1 };
+```
+
+### `DataType`
+
+```cpp
+enum class DataType : u_char {
+  FLOAT32 = 0, FLOAT16, INT32, INT64, INT8,
+};
+```
+
+### `BufferLocation` / `BufferMemoryType`
+
+```cpp
+enum class BufferLocation  { CPU, GpuDevice };
+enum class BufferMemoryType { Pageable, Pinned, Managed };
+```
+
+## 10. 模型信息
+
+```cpp
+struct ModelInfo {
+  std::string name;
+
+  struct TensorInfo {
+    std::string name;
+    std::vector<int64_t> shape;
+    DataType data_type;
   };
-  ```
-- **`DetRet`** (`algo_output_types.hpp`)
-  ```cpp
-  struct DetRet {
-    std::vector<BBox> bboxes; // 检测到的所有边界框
-  };
-  ```
-- **`ClsRet`** (`algo_output_types.hpp`)
-  ```cpp
-  struct ClsRet {
-    float score; // 置信度
-    int label;   // 类别标签
-  };
-  ```
-- **`RawModelOutput`** (`algo_output_types.hpp`)
-  ```cpp
-  using RawModelOutput = TensorData 
-  ```
-- ... 更多请参考 `ai_core/algo_output_types.hpp`。
 
-### 4.3. 参数数据结构
+  std::vector<TensorInfo> inputs;
+  std::vector<TensorInfo> outputs;
+};
+```
 
-- **`FramePreprocessArg`** (`preproc_types.hpp`)
-  定义了图像预处理的所有参数，如目标尺寸、均值/归一化系数、颜色通道顺序等。
-- **`AnchorDetParams`** (`postproc_types.hpp`)
-  定义了 Anchor-based 检测算法的后处理参数，如置信度阈值、nms 阈值等。
-- **`GenericPostParams`** (`postproc_types.hpp`)
-  定义了通用后处理算法（如 Softmax）的参数。
-- ... 更多请参考 `ai_core/preproc_types.hpp` 和 `ai_core/postproc_types.hpp`。
+通过 `AlgoInference::getModelInfo()` 拿到，能用来核对当前模型的输入输出是否和你的代码假设一致。
 
----
+## 11. 插件开发
 
-## 5. 枚举类型
+### 接口
 
-### 5.1. `InferErrorCode` - 错误码
+```cpp
+class IPreprocssPlugin {
+public:
+  virtual ~IPreprocssPlugin() = default;
+  virtual bool process(const AlgoInput&,
+                       const AlgoPreprocParams&,
+                       TensorData&,
+                       std::shared_ptr<RuntimeContext>&) const = 0;
+  virtual bool batchProcess(const std::vector<AlgoInput>&,
+                            const AlgoPreprocParams&,
+                            TensorData&,
+                            std::shared_ptr<RuntimeContext>&) const = 0;
+};
 
-**头文件:** `ai_core/infer_error_code.hpp`
-定义了框架中所有可能返回的错误码。
+class IPostprocssPlugin {
+public:
+  virtual ~IPostprocssPlugin() = default;
+  virtual bool process(const TensorData&,
+                       const AlgoPostprocParams&,
+                       AlgoOutput&,
+                       std::shared_ptr<RuntimeContext>&) const = 0;
+  virtual bool batchProcess(const TensorData&,
+                            const AlgoPostprocParams&,
+                            std::vector<AlgoOutput>&,
+                            std::shared_ptr<RuntimeContext>&) const = 0;
+};
 
-- `SUCCESS = 0`: 操作成功。
-- `INIT_FAILED = 100`: 初始化失败。
-- `INIT_MODEL_LOAD_FAILED = 102`: 模型加载失败。
-- `INFER_FAILED = 200`: 推理执行失败。
-- `InferInputError = 201`: 推理输入数据错误。
-- `ALGO_NOT_FOUND = 400`: 找不到指定的算法插件。
-- ... 更多请参考头文件。
+class IInferEnginePlugin {
+public:
+  virtual InferErrorCode initialize() = 0;
+  virtual InferErrorCode infer(const TensorData& inputs, TensorData& outputs) = 0;
+  virtual InferErrorCode terminate() = 0;
+  virtual const ModelInfo& getModelInfo() = 0;
+  virtual void prettyPrintModelInfos();
+};
+```
 
-### 5.2. `DeviceType` - 设备类型
+注意：预处理和后处理插件用 `bool` 表示成功失败，推理引擎插件用 `InferErrorCode`。
 
-**头文件:** `ai_core/infer_common_types.hpp`
-- `CPU = 0`
-- `GPU = 1`
-
-### 5.3. `DataType` - 数据类型
-
-**头文件:** `ai_core/infer_common_types.hpp`
-- `FLOAT32 = 0`
-- `FLOAT16`
-- `INT32`
-- `INT64`
-- `INT8`
-
-### 5.4. `BufferLocation` - 缓冲区位置
-
-**头文件:** `ai_core/typed_buffer.hpp`
-- `CPU`
-- `GPU_DEVICE`
-
----
-
-## 6. 自定义插件开发
-
-本节面向希望自定义插件的开发者。
-
-### 6.1. 插件接口
-
-要扩展框架，你需要实现以下接口之一：
-- `ai_core::dnn::IPreprocssPlugin`: 预处理插件接口。
-- `ai_core::dnn::IInferEnginePlugin`: 推理引擎插件接口。
-- `ai_core::dnn::IPostprocssPlugin`: 后处理插件接口。
-
-你需要继承相应的基类并实现其纯虚函数，例如 `process()` 或 `infer()`。
-
-### 6.2. 插件注册
-
-实现插件后，需要使用注册宏将其注册到框架的工厂中，以便 `AlgoInference` 可以通过名称找到它。
-
-**头文件:** `ai_core/ai_core_registrar.hpp`
-
-- **`REGISTER_PREPROCESS_ALGO(ClassName)`**
-- **`REGISTER_INFER_ENGINE(ClassName)`**
-- **`REGISTER_POSTPROCESS_ALGO(ClassName)`**
-
-**示例：** 在你的 `my_postproc.cpp` 文件末尾添加：
+### 注册
 
 ```cpp
 #include "ai_core/plugin_registrar.hpp"
-#include "my_postproc.hpp" // 包含你的插件类定义
 
-// 假设你的后处理插件类名为 MyYoloPostproc
-// 这行代码会将 "MyYoloPostproc" 这个字符串名称和你的类关联起来
-REGISTER_POSTPROCESS_ALGO(MyYoloPostproc);
+REGISTER_PREPROCESS_ALGO(MyPreproc);
+REGISTER_INFER_ENGINE(MyEngine);
+REGISTER_POSTPROCESS_ALGO(MyPostproc);
 ```
-之后，在 `AlgoModuleTypes` 中设置 `postprocModule = "MyYoloPostproc"` 即可使用你的新插件。
+
+宏把字符串 `"MyPreproc"` 等与默认构造函数 / `AlgoConstructParams` 构造函数绑定。默认注册在 `src/registrar/` 下，链接主库即可生效。注册自己的插件时，把上述宏放到对应 `.cpp` 末尾即可。
+
+### 内置插件一览
+
+| 阶段 | 名字 | 用途 |
+| --- | --- | --- |
+| 预处理 | `FramePreprocess` | 单帧图通用预处理 |
+| 预处理 | `FrameWithMaskPreprocess` | 带掩码区域的图 |
+| 推理 | `OrtAlgoInference` | ONNX Runtime |
+| 推理 | `NCNNAlgoInference` | NCNN |
+| 推理 | `TrtAlgoInference` | TensorRT |
+| 后处理 | `AnchorDetPostproc` | YoloDetV11 / RtmDet / NanoDet |
+| 后处理 | `CVGenericPostproc` | SoftmaxCls / FprCls / RawModelOutput / UnetDualOutput / OcrReco |
+| 后处理 | `ConfidenceFilterPostproc` | SemanticSeg |
+
+后处理插件内部的算法选择由 `AlgoPostprocParams` 中的 `algo_type` 字段决定。
+
+## 12. 日志
+
+`<ai_core/logger.hpp>` 提供流式和格式化两种用法：
+
+```cpp
+LOG_INFO_S << "load model: " << path;
+LOG_ERROR_FMT("infer failed, code = %d", static_cast<int>(code));
+```
+
+日志级别（`LogLevel`）：`Trace / Debug / Info / Warning / Error / Fatal / Off`。运行时通过 `ai_core::logging::Logger::instance().setLevel(...)` 调整。`LOG_*` 宏在编译期会按 `AI_CORE_LOG_LEVEL` 过滤，不会把禁用级别的字符串拼进二进制。

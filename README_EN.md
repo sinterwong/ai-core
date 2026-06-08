@@ -1,31 +1,20 @@
 # AI Core
-<p align="center">
-  <img src="assets/icon/logo.jpeg" alt="ai-core Logo" width="500"> <br/>
-</p>
 
 <p align="center">
-  A highly extensible AI algorithm library.
+  <img src="assets/icon/logo.jpeg" alt="ai-core Logo" width="500"><br/>
 </p>
 
-![Version](https://img.shields.io/badge/version-1.1.2-blue)
+<p align="center">A C++ AI inference framework</p>
+
+[English](README_EN.md) | [简体中文](README.md)
+
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![C++ Standard](https://img.shields.io/badge/C++-17-blue.svg)
+![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)
 
-**AI Core** is a modern, high-performance, and extensible C++ AI inference framework. It is designed to streamline the deployment of AI models across multiple hardware backends, offering an end-to-end solution that covers data preprocessing, model inference, and result post-processing.
+AI Core is a C++ library for running AI models on multiple backends (ONNX Runtime, NCNN, TensorRT). A pipeline is built from three pluggable stages — preprocessor, inference engine, postprocessor — that you register by name and assemble at runtime.
 
-## Core Features
-
-*   **📦 Modular Pipeline:** Adopts a three-stage pipeline design: **Preprocessing -> Inference -> Post-processing**. Each stage can be implemented and replaced independently.
-*   **🔌 Extensible Plugin System:** Based on the factory pattern, you can easily customize and register preprocessing, inference engine, and post-processing plugins within the framework.
-*   **🔒 Type-Safe Data Handling:** Utilizes `std::variant` and a custom `TypedBuffer` to manage different types of data and parameters, significantly enhancing code robustness and maintainability.
-*   **🚀 Hardware Abstraction & Acceleration:** Manages CPU and GPU memory uniformly through `TypedBuffer`, enabling seamless data transfer and computation across different devices.
-*   **✨ High-Level, Easy-to-Use API:** Provides the `AlgoInference` class as a unified entry point, encapsulating complex low-level calls and allowing developers to focus on their application logic.
-*   **🔧 Modern C++ Design:** Makes extensive use of C++17/20 features to ensure high performance, quality, and code safety.
-
-
-## Core Architecture
-
-The core of AI Core is a clear data flow pipeline. Data starts from the input (`AlgoInput`), passes through a series of processing modules, and finally generates the algorithm output (`AlgoOutput`).
+## Pipeline
 
 ```
 +-----------+     +-----------------+     +-----------------+
@@ -48,53 +37,119 @@ The core of AI Core is a clear data flow pipeline. Data starts from the input (`
 |           |     | (e.g. YOLO_DET ) |     |                  |
 +-----------+     +------------------+     +------------------+
 ```
-- **Data Container:** `TensorData` is the core data structure within the pipeline, used to pass tensor data between stages.
-- **Plugins:** Each processing stage (preprocessing, inference, post-processing) is a pluggable component, dynamically loaded at runtime using its string name.
 
-## Quick Start
+`TensorData` is the named-tensor map that moves between stages. `AlgoInput` and `AlgoOutput` are the user-facing types at the ends of the pipeline.
 
-### Prerequisites
+## Build
 
-- A C++20 compatible compiler (e.g., GCC 11+)
-- CMake 3.15+
-- (Optional) CUDA Toolkit 11.x+
-- (Optional) OpenCV 4.x+
+### Requirements
 
+- A C++20 compiler (GCC 11+, Clang 14+, MSVC 19.30+)
+- CMake 3.18+
+- OpenCV 4.x
+- ONNX Runtime (enabled by default)
+- Optional: NCNN, TensorRT, CUDA Toolkit
 
-### Build and Install
+### Clone and build
 
-1.  **Clone the repository:**
-    ```bash
-    git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
-    cd ai-core
-    mkdir -p 3rdparty/target/
-    curl -L https://github.com/sinterwong/ai-core/releases/download/v1.1.1-alpha/dependency-Linux_x86_64.tgz -o dependency.tgz
-    tar -xzf dependency.tgz -C 3rdparty/target/
-    ```
+```bash
+git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
+cd ai-core
+mkdir -p 3rdparty/target/
 
-2.  **Configure with CMake:**
-    ```bash
-    mkdir build && cd build
-    cmake .. -DBUILD_AI_CORE_TESTS=ON -DBUILD_AI_CORE_EXAMPLES=ON -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
-    ```
-    *   Use `-DWITH_ORT_ENGINE=ON`, `-DWITH_NCNN_ENGINE=ON`, and `-DWITH_TRT_ENGINE=ON` to enable the respective inference engines.
+# Pre-built third-party dependencies
+curl -L https://github.com/sinterwong/ai-core/releases/download/v1.1.1-alpha/dependency-Linux_x86_64.tgz -o dependency.tgz
+tar -xzf dependency.tgz -C 3rdparty/target/
 
-3.  **Build the project:**
-    ```bash
-    cmake --build .
-    ```
-    
-4. **Install:**
-    ```bash
-    cmake --install .
-    ```
+mkdir build && cd build
+cmake .. -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
+         -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
 
-### Usage Example
+cmake --build . -j
+cmake --install .
+```
 
-For now, please refer to the content in the **tests** and **examples** directories.
+CMake options:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `BUILD_AI_CORE_TESTS` | OFF | Build unit tests |
+| `BUILD_AI_CORE_BENCHMARKS` | OFF | Build benchmarks |
+| `BUILD_AI_CORE_EXAMPLES` | OFF | Build examples |
+| `WITH_ORT_ENGINE` | ON | ONNX Runtime backend |
+| `WITH_NCNN_ENGINE` | OFF | NCNN backend |
+| `WITH_TRT_ENGINE` | OFF | TensorRT backend |
+
+## Usage
+
+`AlgoInference` is the pipeline entry point. Pass it the three plugin names and the inference parameters:
+
+```cpp
+#include "ai_core/algo_inference.hpp"
+#include "ai_core/algo_types.hpp"
+
+using namespace ai_core;
+
+AlgoModuleTypes modules{
+    "FramePreprocess",     // preprocessor
+    "OrtAlgoInference",    // backend
+    "AnchorDetPostproc"    // postprocessor
+};
+
+AlgoInferParams params;
+params.name = "yolov11";
+params.model_path = "models/yolov11.onnx";
+params.device_type = DeviceType::CPU;
+params.data_type = DataType::FLOAT32;
+
+dnn::AlgoInference algo(modules, params);
+algo.initialize();
+
+AlgoInput input;
+input.setParams(FrameInput{
+    std::make_shared<cv::Mat>(cv::imread("test.jpg")),
+    std::make_shared<cv::Rect>(0, 0, 0, 0)
+});
+
+AlgoPreprocParams preproc_params;
+FramePreprocessArg arg;
+arg.model_input_shape = {640, 640, 3};
+arg.mean_vals = {0.f, 0.f, 0.f};
+arg.norm_vals = {1.f, 1.f, 1.f};
+arg.hwc2chw = true;
+arg.data_type = DataType::FLOAT32;
+preproc_params.setParams(arg);
+
+AlgoPostprocParams postproc_params;
+AnchorDetParams det_arg;
+det_arg.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
+det_arg.cond_thre = 0.25f;
+det_arg.nms_thre = 0.45f;
+det_arg.output_names = {"output0"};
+postproc_params.setParams(det_arg);
+
+AlgoOutput output;
+if (algo.infer(input, preproc_params, postproc_params, output)
+    != InferErrorCode::SUCCESS) {
+    // handle error
+}
+
+if (auto* det = output.getParams<DetRet>()) {
+    for (const auto& box : det->bboxes) {
+        // ...
+    }
+}
+
+algo.terminate();
+```
+
+More complete samples are in `examples/generic_image_infer.cpp`, `examples/ocr/`, and `tests/`.
 
 ## Documentation
 
-- **[Framework Design and Core Concepts](./doc/Framework.md):** An explanation of AI Core's architecture, core components, and design philosophy.
-- **[API Reference](./doc/API.md):** A detailed guide to all public classes, functions, and data types, including usage examples.
-- **[Quick Start Guide](./doc/Quickstart.md):** (Coming soon) A step-by-step tutorial on building a complete AI application with AI Core.
+- [doc/Framework.md](doc/Framework.md) — framework structure and design
+- [doc/API.md](doc/API.md) — public API reference
+
+## License
+
+MIT
