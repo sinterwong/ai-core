@@ -8,11 +8,11 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/input_types.hpp"
 #include "ai_core/i_infer_engine.hpp"
-#include "ai_core/infer_config.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/input_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/semantic_seg.hpp"
 #include "preproc/cpu_generic_preprocess.hpp"
@@ -137,7 +137,8 @@ TEST_P(OCRDetInferenceTest, Normal) {
   algo_input.setParams(frame_input);
 
   TensorData model_input;
-  m_m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
+  m_m_framePreproc->process(algo_input, preproc_params, model_input,
+                            runtime_context);
 
   TensorData model_output;
   ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);

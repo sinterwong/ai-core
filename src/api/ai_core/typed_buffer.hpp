@@ -11,8 +11,8 @@
 #ifndef AI_CORE_TYPED_BUFFER_HPP
 #define AI_CORE_TYPED_BUFFER_HPP
 
-#include "ai_core/i_accelerator_buffer.hpp"
 #include "ai_core/common_types.hpp"
+#include "ai_core/i_accelerator_buffer.hpp"
 
 #include <cstdint>
 #include <memory>

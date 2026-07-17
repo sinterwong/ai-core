@@ -83,8 +83,8 @@ InferErrorCode GenericFramePreprocBase::batchProcess(
   }
 
   std::vector<FrameTransformContext> batch_runtime_args(inputs.size());
-  auto data = kernel().batchProcess(*params_ptr, frame_inputs,
-                                    batch_runtime_args);
+  auto data =
+      kernel().batchProcess(*params_ptr, frame_inputs, batch_runtime_args);
   runtime_context->frame_transform_batch = batch_runtime_args;
   output.datas.insert(std::make_pair(params_ptr->input_names[0], data));
 

@@ -24,9 +24,11 @@ OCRUtils::OCRUtils(const std::string &det_config_path,
   LOG_INFO_S << "OCRUtils initialized successfully.";
 }
 
-std::vector<std::string>
-OCRUtils::process(const cv::Mat &frame, const cv::Rect &roi, bool need_merge_row,
-                  float expand_ratio_x, float expand_ratio_y) {
+std::vector<std::string> OCRUtils::process(const cv::Mat &frame,
+                                           const cv::Rect &roi,
+                                           bool need_merge_row,
+                                           float expand_ratio_x,
+                                           float expand_ratio_y) {
   if (!m_ocrDetector || !m_ocrRec) {
     LOG_ERROR_S << "OCR not initialized.";
     return {};
@@ -134,11 +136,12 @@ std::vector<cv::Rect> OCRUtils::mergeRowBoxes(std::vector<cv::Rect> boxes) {
       int new_x = std::min(current_merged_box.x, next_box.x);
       int new_y = std::min(current_merged_box.y, next_box.y);
       int new_width = std::max(current_merged_box.x + current_merged_box.width,
-                              next_box.x + next_box.width) -
-                     new_x;
-      int new_height = std::max(current_merged_box.y + current_merged_box.height,
-                               next_box.y + next_box.height) -
-                      new_y;
+                               next_box.x + next_box.width) -
+                      new_x;
+      int new_height =
+          std::max(current_merged_box.y + current_merged_box.height,
+                   next_box.y + next_box.height) -
+          new_y;
 
       current_merged_box = cv::Rect(new_x, new_y, new_width, new_height);
     } else {

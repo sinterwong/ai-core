@@ -8,15 +8,14 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_types.hpp"
 #include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <opencv2/opencv.hpp>
 
 const static auto get_frame_preprocess_arg =
-    [](ai_core::DataType data_type,
-       ai_core::BufferLocation output_location,
+    [](ai_core::DataType data_type, ai_core::BufferLocation output_location,
        const std::vector<std::string> &input_names) {
       ai_core::FramePreprocessArg arg;
       arg.model_input_shape = {640, 640, 3};
@@ -37,8 +36,7 @@ static void BM_CPU_FramePreproc_Yolo(benchmark::State &state) {
   preproc.initialize();
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
-      ai_core::DataType::FLOAT32,
-      ai_core::BufferLocation::CPU, {"images"});
+      ai_core::DataType::FLOAT32, ai_core::BufferLocation::CPU, {"images"});
   preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
@@ -78,9 +76,9 @@ static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
   preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
-  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
-      ai_core::DataType::FLOAT16,
-      ai_core::BufferLocation::GpuDevice, {"images"});
+  ai_core::FramePreprocessArg frame_preprocess_arg =
+      get_frame_preprocess_arg(ai_core::DataType::FLOAT16,
+                               ai_core::BufferLocation::GpuDevice, {"images"});
   preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
@@ -118,9 +116,9 @@ static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
   preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
-  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
-      ai_core::DataType::FLOAT16,
-      ai_core::BufferLocation::GpuDevice, {"images"});
+  ai_core::FramePreprocessArg frame_preprocess_arg =
+      get_frame_preprocess_arg(ai_core::DataType::FLOAT16,
+                               ai_core::BufferLocation::GpuDevice, {"images"});
   frame_preprocess_arg.hwc2chw = false;
   preproc_params.setParams(frame_preprocess_arg);
 
@@ -159,9 +157,9 @@ static void BM_GPU_FramePreproc_No_FP16_Yolo(benchmark::State &state) {
   preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
-  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
-      ai_core::DataType::FLOAT32,
-      ai_core::BufferLocation::GpuDevice, {"images"});
+  ai_core::FramePreprocessArg frame_preprocess_arg =
+      get_frame_preprocess_arg(ai_core::DataType::FLOAT32,
+                               ai_core::BufferLocation::GpuDevice, {"images"});
   preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::AlgoInput input;
@@ -200,9 +198,9 @@ static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
   preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
-  ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
-      ai_core::DataType::FLOAT32,
-      ai_core::BufferLocation::GpuDevice, {"images"});
+  ai_core::FramePreprocessArg frame_preprocess_arg =
+      get_frame_preprocess_arg(ai_core::DataType::FLOAT32,
+                               ai_core::BufferLocation::GpuDevice, {"images"});
   frame_preprocess_arg.hwc2chw = false;
   preproc_params.setParams(frame_preprocess_arg);
 

@@ -14,9 +14,9 @@
 
 namespace ai_core::dnn {
 bool OCRReco::processTyped(const TensorData &model_output,
-                      const FrameTransformContext &prep_args,
-                      const GenericPostParams &post_args,
-                      AlgoOutput &algo_output) const {
+                           const FrameTransformContext &prep_args,
+                           const GenericPostParams &post_args,
+                           AlgoOutput &algo_output) const {
   const auto &output_lengths_name = post_args.output_names.at(0);
   const auto &argmax_output_name = post_args.output_names.at(1);
 
@@ -35,10 +35,11 @@ bool OCRReco::processTyped(const TensorData &model_output,
   return true;
 }
 
-bool OCRReco::batchProcessTyped(const TensorData &model_output,
-                           const std::vector<FrameTransformContext> &prep_args,
-                           const GenericPostParams &post_args,
-                           std::vector<AlgoOutput> &algo_output) const {
+bool OCRReco::batchProcessTyped(
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const GenericPostParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
   const auto &output_lengths_name = post_args.output_names.at(0);
   const auto &argmax_output_name = post_args.output_names.at(1);
 

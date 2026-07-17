@@ -39,8 +39,8 @@ public:
   /**
    * @brief Factory method to create specific memory type
    */
-  static std::unique_ptr<IAcceleratorBuffer>
-  create(size_t size_bytes, AcceleratorMemoryType type);
+  static std::unique_ptr<IAcceleratorBuffer> create(size_t size_bytes,
+                                                    AcceleratorMemoryType type);
 
   /**
    * @brief Factory wrapper for wrapping existing pointers (advanced use)

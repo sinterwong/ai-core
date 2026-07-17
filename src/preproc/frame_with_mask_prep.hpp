@@ -21,13 +21,13 @@ public:
   FrameWithMaskPreprocess() = default;
   ~FrameWithMaskPreprocess() = default;
 
-  virtual InferErrorCode process(const AlgoInput &, const AlgoPreprocParams &,
-                       TensorData &,
-                       std::shared_ptr<RuntimeContext> &) const override;
+  virtual InferErrorCode
+  process(const AlgoInput &, const AlgoPreprocParams &, TensorData &,
+          std::shared_ptr<RuntimeContext> &) const override;
 
-  virtual InferErrorCode batchProcess(const std::vector<AlgoInput> &,
-                            const AlgoPreprocParams &, TensorData &,
-                            std::shared_ptr<RuntimeContext> &) const override;
+  virtual InferErrorCode
+  batchProcess(const std::vector<AlgoInput> &, const AlgoPreprocParams &,
+               TensorData &, std::shared_ptr<RuntimeContext> &) const override;
 };
 } // namespace ai_core::dnn
 

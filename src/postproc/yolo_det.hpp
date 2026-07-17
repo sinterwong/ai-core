@@ -19,12 +19,13 @@ public:
   explicit Yolov11Det() {}
 
   virtual bool processTyped(const TensorData &, const FrameTransformContext &,
-                       const AnchorDetParams &, AlgoOutput &) const override;
+                            const AnchorDetParams &,
+                            AlgoOutput &) const override;
 
   virtual bool batchProcessTyped(const TensorData &,
-                            const std::vector<FrameTransformContext> &,
-                            const AnchorDetParams &,
-                            std::vector<AlgoOutput> &) const override;
+                                 const std::vector<FrameTransformContext> &,
+                                 const AnchorDetParams &,
+                                 std::vector<AlgoOutput> &) const override;
 
 private:
   std::vector<BBox> processRawOutput(const cv::Mat &transposed_output,

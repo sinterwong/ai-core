@@ -18,12 +18,13 @@ public:
   explicit RawModelOutput() {}
 
   virtual bool processTyped(const TensorData &, const FrameTransformContext &,
-                       const GenericPostParams &, AlgoOutput &) const override;
+                            const GenericPostParams &,
+                            AlgoOutput &) const override;
 
   virtual bool batchProcessTyped(const TensorData &,
-                            const std::vector<FrameTransformContext> &,
-                            const GenericPostParams &,
-                            std::vector<AlgoOutput> &) const override;
+                                 const std::vector<FrameTransformContext> &,
+                                 const GenericPostParams &,
+                                 std::vector<AlgoOutput> &) const override;
 };
 } // namespace ai_core::dnn
 

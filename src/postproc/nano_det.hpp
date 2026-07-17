@@ -18,12 +18,13 @@ public:
   explicit NanoDet() {}
 
   virtual bool processTyped(const TensorData &, const FrameTransformContext &,
-                       const AnchorDetParams &, AlgoOutput &) const override;
+                            const AnchorDetParams &,
+                            AlgoOutput &) const override;
 
   virtual bool batchProcessTyped(const TensorData &,
-                            const std::vector<FrameTransformContext> &,
-                            const AnchorDetParams &,
-                            std::vector<AlgoOutput> &) const override;
+                                 const std::vector<FrameTransformContext> &,
+                                 const AnchorDetParams &,
+                                 std::vector<AlgoOutput> &) const override;
 
 private:
   DetRet processSingle(const float *output_data, int num_anchors, int stride,

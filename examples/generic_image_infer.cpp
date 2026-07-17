@@ -34,7 +34,8 @@ AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;
-  if (mEngine->infer(algo_input, mParams.preproc_params, mParams.postproc_params,
+  if (mEngine->infer(algo_input, mParams.preproc_params,
+                     mParams.postproc_params,
                      algo_output) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "engine infer failed";
     return {};

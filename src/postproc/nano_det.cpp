@@ -15,9 +15,9 @@
 
 namespace ai_core::dnn {
 bool NanoDet::processTyped(const TensorData &model_output,
-                      const FrameTransformContext &prep_args,
-                      const AnchorDetParams &post_args,
-                      AlgoOutput &algo_output) const {
+                           const FrameTransformContext &prep_args,
+                           const AnchorDetParams &post_args,
+                           AlgoOutput &algo_output) const {
   if (model_output.datas.empty()) {
     return false;
   }
@@ -43,10 +43,11 @@ bool NanoDet::processTyped(const TensorData &model_output,
   return true;
 }
 
-bool NanoDet::batchProcessTyped(const TensorData &model_output,
-                           const std::vector<FrameTransformContext> &prep_args,
-                           const AnchorDetParams &post_args,
-                           std::vector<AlgoOutput> &algo_output) const {
+bool NanoDet::batchProcessTyped(
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const AnchorDetParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
   if (model_output.datas.empty()) {
     return false;
   }

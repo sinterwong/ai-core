@@ -1,9 +1,9 @@
-#include "ai_core/input_types.hpp"
 #include "ai_core/i_infer_engine.hpp"
-#include "ai_core/infer_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/logger.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/cpu_generic_preprocess.hpp"
@@ -66,8 +66,8 @@ protected:
     ASSERT_NE(det_ret, nullptr);
     ASSERT_EQ(det_ret->bboxes.size(), 1);
 
-    const auto &box0 =
-        (det_ret->bboxes[0].label == 0) ? det_ret->bboxes[0] : det_ret->bboxes[1];
+    const auto &box0 = (det_ret->bboxes[0].label == 0) ? det_ret->bboxes[0]
+                                                       : det_ret->bboxes[1];
 
     ASSERT_EQ(box0.label, 0);
     ASSERT_NEAR(box0.score, 0.811, 1e-2);
@@ -138,14 +138,15 @@ TEST_P(YoloDetInferenceTest, Normal) {
   std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
   TensorData model_input;
-  m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
+  m_framePreproc->process(algo_input, preproc_params, model_input,
+                          runtime_context);
 
   TensorData model_output;
   ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);
 
   AlgoOutput algo_output;
-  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context),
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                       algo_output, runtime_context),
             InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
@@ -222,7 +223,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
 
       TensorData model_input;
       m_framePreproc->process(algo_input, preproc_params, model_input,
-                            runtime_context);
+                              runtime_context);
 
       TensorData model_output;
       ASSERT_EQ(engine->infer(model_input, model_output),
@@ -231,7 +232,7 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
       AlgoOutput algo_output;
       ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
                                            algo_output, runtime_context),
-            InferErrorCode::SUCCESS);
+                InferErrorCode::SUCCESS);
 
       auto *det_ret = algo_output.getParams<DetRet>();
       checkResults(det_ret);
@@ -261,8 +262,7 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/enc_models/yolov11n-fp16.enc.onnx",
                      DataType::FLOAT16, DataType::FLOAT16, DeviceType::CPU,
-                     "images",
-                     BufferLocation::CPU, true});
+                     "images", BufferLocation::CPU, true});
 #endif
 #ifdef WITH_NCNN
   configs.push_back({"ncnn",

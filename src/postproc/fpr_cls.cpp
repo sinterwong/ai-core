@@ -14,9 +14,9 @@
 
 namespace ai_core::dnn {
 bool FprCls::processTyped(const TensorData &model_output,
-                     const FrameTransformContext &prep_args,
-                     const GenericPostParams &post_args,
-                     AlgoOutput &algo_output) const {
+                          const FrameTransformContext &prep_args,
+                          const GenericPostParams &post_args,
+                          AlgoOutput &algo_output) const {
   const auto &score_output_name = post_args.output_names.at(0);
   const auto &birad_output_name = post_args.output_names.at(1);
 
@@ -38,10 +38,11 @@ bool FprCls::processTyped(const TensorData &model_output,
   return true;
 }
 
-bool FprCls::batchProcessTyped(const TensorData &model_output,
-                          const std::vector<FrameTransformContext> &prep_args,
-                          const GenericPostParams &post_args,
-                          std::vector<AlgoOutput> &algo_output) const {
+bool FprCls::batchProcessTyped(
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const GenericPostParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
   const auto &score_output_name = post_args.output_names.at(0);
   const auto &birad_output_name = post_args.output_names.at(1);
 

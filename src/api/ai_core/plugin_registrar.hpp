@@ -28,7 +28,7 @@ using PostprocFactory = Factory<IPostprocessPlugin>;
   PreprocFactory::instance().registerCreator(                                  \
       #AlgoName,                                                               \
       [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<IPreprocessPlugin> {                               \
+          -> std::shared_ptr<IPreprocessPlugin> {                              \
         return std::make_shared<AlgoName>();                                   \
       });
 
@@ -44,7 +44,7 @@ using PostprocFactory = Factory<IPostprocessPlugin>;
   PostprocFactory::instance().registerCreator(                                 \
       #AlgoName,                                                               \
       [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<IPostprocessPlugin> {                              \
+          -> std::shared_ptr<IPostprocessPlugin> {                             \
         return std::make_shared<AlgoName>();                                   \
       });
 

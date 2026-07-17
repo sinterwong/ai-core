@@ -1,6 +1,6 @@
 #include "ai_core/algo_inference.hpp"
-#include "ai_core/input_types.hpp"
 #include "ai_core/infer_config.hpp"
+#include "ai_core/input_types.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <opencv2/opencv.hpp>
@@ -111,8 +111,9 @@ TEST(AlgoInferenceTest, YoloDet) {
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;
-  ASSERT_EQ(algo_inf.infer(algo_input, preproc_params, postproc_params, algo_output),
-            InferErrorCode::SUCCESS);
+  ASSERT_EQ(
+      algo_inf.infer(algo_input, preproc_params, postproc_params, algo_output),
+      InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);

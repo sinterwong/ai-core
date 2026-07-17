@@ -8,11 +8,11 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_types.hpp"
-#include "ai_core/infer_engine_wrapper.hpp"
 #include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/infer_config.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <memory>
@@ -123,12 +123,14 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    postproc.process(model_output, postproc_params, algo_output, runtime_context);
+    postproc.process(model_output, postproc_params, algo_output,
+                     runtime_context);
   }
   // =================================================
 
   for (auto _ : state) {
-    postproc.process(model_output, postproc_params, algo_output, runtime_context);
+    postproc.process(model_output, postproc_params, algo_output,
+                     runtime_context);
   }
 }
 BENCHMARK(BM_CPU_YoloDetPostproc)

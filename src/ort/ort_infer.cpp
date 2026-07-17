@@ -24,11 +24,11 @@ namespace ai_core::dnn {
 
 inline auto adaPlatformPath(const std::string &path) {
 #ifdef _WIN32
-  const int len = MultiByteToWideChar(CP_UTF8, 0, path.c_str(),
-                                      static_cast<int>(path.size()), nullptr, 0);
+  const int len = MultiByteToWideChar(
+      CP_UTF8, 0, path.c_str(), static_cast<int>(path.size()), nullptr, 0);
   std::wstring wpath(static_cast<size_t>(len), L'\0');
-  MultiByteToWideChar(CP_UTF8, 0, path.c_str(),
-                      static_cast<int>(path.size()), wpath.data(), len);
+  MultiByteToWideChar(CP_UTF8, 0, path.c_str(), static_cast<int>(path.size()),
+                      wpath.data(), len);
   return wpath;
 #else
   return path;

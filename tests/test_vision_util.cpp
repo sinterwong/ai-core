@@ -96,8 +96,8 @@ TEST(CoordinateRestorationTest, RoundTripThroughLetterbox) {
 
   cv::Mat src(origin_shape.h, origin_shape.w, CV_8UC3, cv::Scalar(0, 0, 0));
   cv::Mat dst;
-  Shape pad_ret = escaleResizeWithPad(src, dst, input_shape.w, input_shape.h,
-                                      {0, 0, 0});
+  Shape pad_ret =
+      escaleResizeWithPad(src, dst, input_shape.w, input_shape.h, {0, 0, 0});
 
   auto [scaleX, scaleY] = scaleRatio(origin_shape, input_shape, true);
   EXPECT_FLOAT_EQ(scaleX, scaleY); // equal-scale mode

@@ -18,14 +18,14 @@ public:
   explicit SemanticSeg() {}
 
   virtual bool processTyped(const TensorData &model_output,
-                       const FrameTransformContext &prep_args,
-                       const ConfidenceFilterParams &params,
-                       AlgoOutput &algo_output) const override;
+                            const FrameTransformContext &prep_args,
+                            const ConfidenceFilterParams &params,
+                            AlgoOutput &algo_output) const override;
 
   virtual bool batchProcessTyped(const TensorData &,
-                            const std::vector<FrameTransformContext> &,
-                            const ConfidenceFilterParams &,
-                            std::vector<AlgoOutput> &) const override;
+                                 const std::vector<FrameTransformContext> &,
+                                 const ConfidenceFilterParams &,
+                                 std::vector<AlgoOutput> &) const override;
 
 private:
   SegRet processSingleItem(const float *data, int num_classes, int height,

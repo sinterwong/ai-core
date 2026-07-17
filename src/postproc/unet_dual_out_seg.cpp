@@ -15,9 +15,9 @@
 
 namespace ai_core::dnn {
 bool UNetDualOutputSeg::processTyped(const TensorData &model_output,
-                                const FrameTransformContext &prep_args,
-                                const GenericPostParams &post_args,
-                                AlgoOutput &algo_output) const {
+                                     const FrameTransformContext &prep_args,
+                                     const GenericPostParams &post_args,
+                                     AlgoOutput &algo_output) const {
   if (post_args.output_names.size() != 2) {
     LOG_ERROR_S
         << "UNetDualOutputSeg expects exactly two output names: prob and mask.";

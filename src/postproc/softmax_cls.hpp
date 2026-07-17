@@ -18,12 +18,13 @@ public:
   explicit SoftmaxCls() {}
 
   virtual bool processTyped(const TensorData &, const FrameTransformContext &,
-                       const GenericPostParams &, AlgoOutput &) const override;
+                            const GenericPostParams &,
+                            AlgoOutput &) const override;
 
   virtual bool batchProcessTyped(const TensorData &,
-                            const std::vector<FrameTransformContext> &,
-                            const GenericPostParams &,
-                            std::vector<AlgoOutput> &) const override;
+                                 const std::vector<FrameTransformContext> &,
+                                 const GenericPostParams &,
+                                 std::vector<AlgoOutput> &) const override;
 
 private:
   ClsRet processSingleItem(const float *logits, int num_classes) const;

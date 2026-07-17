@@ -1,10 +1,10 @@
 #include "ai_core/algo_types.hpp"
-#include "ai_core/input_types.hpp"
 #include "ai_core/i_infer_engine.hpp"
-#include "ai_core/infer_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/logger.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/cuda_generic_preprocess.hpp"
 #include "gtest/gtest.h"
@@ -84,14 +84,15 @@ protected:
     AlgoInput algo_input;
     FrameInput frame_input;
     frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-    frame_input.input_roi =
-        std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4, image_rgb.rows - 4);
+    frame_input.input_roi = std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4,
+                                                       image_rgb.rows - 4);
     algo_input.setParams(frame_input);
 
     std::shared_ptr<RuntimeContext> runtime_context =
         std::make_shared<RuntimeContext>();
     TensorData model_input;
-    m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
+    m_framePreproc->process(algo_input, preproc_params, model_input,
+                            runtime_context);
 
     return {model_input, runtime_context};
   }
@@ -176,8 +177,8 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   postproc_params.setParams(getPostprocParams());
 
   AlgoOutput algo_output;
-  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context),
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                       algo_output, runtime_context),
             InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
@@ -227,7 +228,7 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
       AlgoOutput algo_output;
       ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
                                            algo_output, runtime_context),
-            InferErrorCode::SUCCESS);
+                InferErrorCode::SUCCESS);
       auto *det_ret = algo_output.getParams<DetRet>();
       checkResults(det_ret);
     }
@@ -486,8 +487,8 @@ TEST_F(TrtInferenceTest, BackwardCompatibilityInfer) {
   postproc_params.setParams(getPostprocParams());
 
   AlgoOutput algo_output;
-  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context),
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                       algo_output, runtime_context),
             InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();

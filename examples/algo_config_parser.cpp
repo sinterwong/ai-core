@@ -1,6 +1,6 @@
 #include "algo_config_parser.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/infer_config.hpp"
+#include "ai_core/logger.hpp"
 #include <cstddef>
 #include <fstream>
 #include <map>
@@ -56,8 +56,9 @@ AlgoConfigParser::parseInferParams(const nlohmann::json &infer_json) {
   infer_params.need_decrypt = infer_json.at("needDecrypt").get<bool>();
   infer_params.name =
       getOptional<std::string>(infer_json, "name", "default_infer_name");
-  infer_params.max_output_buffer_sizes = getOptional<std::map<std::string, size_t>>(
-      infer_json, "maxOutputBufferSizes", {});
+  infer_params.max_output_buffer_sizes =
+      getOptional<std::map<std::string, size_t>>(infer_json,
+                                                 "maxOutputBufferSizes", {});
 
   std::string security_key = SECURITY_KEY;
   infer_params.decryptkey_str = security_key;
@@ -104,7 +105,8 @@ AlgoConfigParser::parsePostprocParams(const nlohmann::json &post_proc_json,
     ai_core::AnchorDetParams anchor_det_params;
     anchor_det_params.cond_thre =
         getOptional<float>(post_proc_json, "condThre", 0.f);
-    anchor_det_params.nms_thre = getOptional<float>(post_proc_json, "nmsThre", 0.f);
+    anchor_det_params.nms_thre =
+        getOptional<float>(post_proc_json, "nmsThre", 0.f);
     anchor_det_params.output_names = output_names;
     params.setParams(anchor_det_params);
   } else if (kGenericPlugins.count(postproc_type)) {
@@ -145,7 +147,8 @@ ai_core::FramePreprocessArg AlgoConfigParser::parsePreprocFramePreprocessParams(
       getOptional<int>(preproc_json, "buffer_location",
                        static_cast<int>(ai_core::BufferLocation::CPU)));
 
-  arg.input_names = preproc_json.at("input_names").get<std::vector<std::string>>();
+  arg.input_names =
+      preproc_json.at("input_names").get<std::vector<std::string>>();
   return arg;
 }
 
@@ -160,8 +163,10 @@ ai_core::GenericPostParams AlgoConfigParser::parsePostprocGenericParams(
 ai_core::AnchorDetParams AlgoConfigParser::parsePostprocAnchorDetParams(
     const nlohmann::json &post_proc_json) {
   ai_core::AnchorDetParams anchor_det_params;
-  anchor_det_params.cond_thre = getOptional<float>(post_proc_json, "condThre", 0.5f);
-  anchor_det_params.nms_thre = getOptional<float>(post_proc_json, "nmsThre", 0.5f);
+  anchor_det_params.cond_thre =
+      getOptional<float>(post_proc_json, "condThre", 0.5f);
+  anchor_det_params.nms_thre =
+      getOptional<float>(post_proc_json, "nmsThre", 0.5f);
   anchor_det_params.output_names =
       post_proc_json.at("outputNames").get<std::vector<std::string>>();
   return anchor_det_params;

@@ -92,8 +92,7 @@ public:
       prep_contexts = runtime_context->frame_transform_batch;
     }
 
-    return batchProcessTyped(model_output, prep_contexts, *params,
-                             algo_outputs)
+    return batchProcessTyped(model_output, prep_contexts, *params, algo_outputs)
                ? InferErrorCode::SUCCESS
                : InferErrorCode::InferOutputError;
   }

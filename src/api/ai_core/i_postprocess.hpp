@@ -21,8 +21,8 @@ class IPostprocessPlugin {
 public:
   virtual ~IPostprocessPlugin() {};
 
-  virtual InferErrorCode process(const TensorData &,
-                                 const AlgoPostprocParams &, AlgoOutput &,
+  virtual InferErrorCode process(const TensorData &, const AlgoPostprocParams &,
+                                 AlgoOutput &,
                                  std::shared_ptr<RuntimeContext> &) const = 0;
 
   virtual InferErrorCode

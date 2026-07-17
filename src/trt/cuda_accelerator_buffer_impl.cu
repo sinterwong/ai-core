@@ -96,8 +96,8 @@ IAcceleratorBuffer::create(size_t size_bytes, AcceleratorMemoryType type) {
 
 std::unique_ptr<IAcceleratorBuffer>
 IAcceleratorBuffer::createReference(void *ptr, size_t size_bytes,
-                                       AcceleratorMemoryType type,
-                                       bool manage_memory) {
+                                    AcceleratorMemoryType type,
+                                    bool manage_memory) {
   return std::make_unique<CudaAcceleratorBuffer>(ptr, size_bytes, type,
                                                  manage_memory);
 }

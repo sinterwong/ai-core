@@ -15,9 +15,9 @@
 
 namespace ai_core::dnn {
 bool Yolov11Det::processTyped(const TensorData &model_output,
-                         const FrameTransformContext &prep_args,
-                         const AnchorDetParams &post_args,
-                         AlgoOutput &algo_output) const {
+                              const FrameTransformContext &prep_args,
+                              const AnchorDetParams &post_args,
+                              AlgoOutput &algo_output) const {
   const auto &output_shapes = model_output.shapes;
   const auto &input_shape = prep_args.model_input_shape;
   const auto &outputs = model_output.datas;

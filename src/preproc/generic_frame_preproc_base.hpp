@@ -25,16 +25,15 @@ namespace ai_core::dnn {
  */
 class GenericFramePreprocBase : public IPreprocessPlugin {
 public:
-  InferErrorCode process(const AlgoInput &input,
-                         const AlgoPreprocParams &params, TensorData &output,
-                         std::shared_ptr<RuntimeContext> &runtime_context)
-      const final;
+  InferErrorCode
+  process(const AlgoInput &input, const AlgoPreprocParams &params,
+          TensorData &output,
+          std::shared_ptr<RuntimeContext> &runtime_context) const final;
 
-  InferErrorCode batchProcess(const std::vector<AlgoInput> &inputs,
-                              const AlgoPreprocParams &params,
-                              TensorData &output,
-                              std::shared_ptr<RuntimeContext> &runtime_context)
-      const final;
+  InferErrorCode
+  batchProcess(const std::vector<AlgoInput> &inputs,
+               const AlgoPreprocParams &params, TensorData &output,
+               std::shared_ptr<RuntimeContext> &runtime_context) const final;
 
 protected:
   virtual const IFramePreprocessor &kernel() const = 0;
