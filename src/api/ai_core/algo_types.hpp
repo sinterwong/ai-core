@@ -17,6 +17,7 @@
 #include "ai_core/param_center.hpp"
 #include "ai_core/postprocess_types.hpp"
 #include "ai_core/preprocess_types.hpp"
+#include <optional>
 
 namespace ai_core {
 // Algo input
@@ -26,7 +27,7 @@ using AlgoInput =
 // Algo output
 using AlgoOutput = ParamCenter<
     std::variant<std::monostate, ClsRet, DetRet, FprClsRet, RawModelOutput,
-                 SegRet, DaulRawSegRet, OCRRecoRet>>;
+                 SegRet, DualRawSegRet, OCRRecoRet>>;
 
 // Algo preproc params
 using AlgoPreprocParams =
@@ -40,8 +41,18 @@ using AlgoPostprocParams =
 // Algo construct params
 using AlgoConstructParams = DataPacket;
 
-// Runtime Context
-using RuntimeContext = DataPacket;
+/**
+ * @brief Per-inference context flowing from preprocessor to postprocessor.
+ *
+ * The frame transform slots are typed: frame preprocessors fill them, and
+ * postprocessors that map results back to source coordinates read them.
+ * `extras` is the free-form extension space for custom plugins.
+ */
+struct RuntimeContext {
+  std::optional<FrameTransformContext> frame_transform;
+  std::vector<FrameTransformContext> frame_transform_batch;
+  DataPacket extras;
+};
 
 // Algo module types
 struct AlgoModuleTypes {

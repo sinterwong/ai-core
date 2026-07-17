@@ -69,7 +69,7 @@ TypedBuffer::TypedBuffer(const TypedBuffer &other)
 
   // Handle Accelerator Data (GPU or Pinned)
   if (other.m_accelBuffer) {
-    m_accelBuffer = AcceleratorBufferImpl::clone(*other.m_accelBuffer);
+    m_accelBuffer = IAcceleratorBuffer::clone(*other.m_accelBuffer);
   }
 }
 
@@ -99,7 +99,7 @@ TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
 
     // Handle Accelerator Data
     if (other.m_accelBuffer) {
-      m_accelBuffer = AcceleratorBufferImpl::clone(*other.m_accelBuffer);
+      m_accelBuffer = IAcceleratorBuffer::clone(*other.m_accelBuffer);
     }
   }
   return *this;
@@ -206,7 +206,7 @@ TypedBuffer TypedBuffer::createFromGpu(DataType type, size_t size_bytes,
   buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
 
   if (size_bytes > 0) {
-    buf.m_accelBuffer = AcceleratorBufferImpl::create(
+    buf.m_accelBuffer = IAcceleratorBuffer::create(
         size_bytes, AcceleratorMemoryType::Device);
   }
   return buf;
@@ -224,7 +224,7 @@ TypedBuffer TypedBuffer::createFromGpu(DataType type, void *device_ptr,
   buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
 
   if (size_bytes > 0 && device_ptr) {
-    buf.m_accelBuffer = AcceleratorBufferImpl::createReference(
+    buf.m_accelBuffer = IAcceleratorBuffer::createReference(
         device_ptr, size_bytes, AcceleratorMemoryType::Device, manage_memory);
   }
   return buf;
@@ -239,7 +239,7 @@ TypedBuffer TypedBuffer::createPinnedHost(DataType type, size_t size_bytes) {
   buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
 
   if (size_bytes > 0) {
-    buf.m_accelBuffer = AcceleratorBufferImpl::create(
+    buf.m_accelBuffer = IAcceleratorBuffer::create(
         size_bytes, AcceleratorMemoryType::HostPinned);
   }
   return buf;
@@ -372,7 +372,7 @@ void TypedBuffer::resize(size_t new_element_count) {
 
     auto current_type =
         m_accelBuffer->getType(); // Needs getType() in interface
-    m_accelBuffer = AcceleratorBufferImpl::create(new_size_bytes, current_type);
+    m_accelBuffer = IAcceleratorBuffer::create(new_size_bytes, current_type);
   }
 
   m_elementCount = new_element_count;

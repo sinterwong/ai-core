@@ -91,9 +91,9 @@ CMake 选项：
 using namespace ai_core;
 
 AlgoModuleTypes modules{
-    "FramePreprocess",     // 预处理插件
-    "OrtAlgoInference",    // 推理后端
-    "AnchorDetPostproc"    // 后处理插件
+    "CpuGenericPreprocess", // 预处理插件
+    "OrtAlgoInference",     // 推理后端
+    "Yolov11Det"            // 后处理插件
 };
 
 AlgoInferParams params;
@@ -122,7 +122,6 @@ preproc_params.setParams(arg);
 
 AlgoPostprocParams postproc_params;
 AnchorDetParams det_arg;
-det_arg.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
 det_arg.cond_thre = 0.25f;
 det_arg.nms_thre = 0.45f;
 det_arg.output_names = {"output0"};

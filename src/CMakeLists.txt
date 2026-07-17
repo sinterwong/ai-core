@@ -96,8 +96,13 @@ if(WITH_TRT_ENGINE)
     load_cuda()
     load_tensorrt()
 
-    # Set CUDA architectures for TensorRT
-    set(CMAKE_CUDA_ARCHITECTURES 87 86)
+    # CUDA architectures: overridable via AI_CORE_CUDA_ARCHITECTURES,
+    # defaults to the GPUs present on the build machine.
+    if(AI_CORE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES ${AI_CORE_CUDA_ARCHITECTURES})
+    else()
+        set(CMAKE_CUDA_ARCHITECTURES native)
+    endif()
 
     add_subdirectory(trt)
 
@@ -143,7 +148,11 @@ target_include_directories(ai_core
 )
 
 # Link dependencies
-target_link_libraries(ai_core PRIVATE ${DEPENDENCY_LIBS})
+# opencv_core is public: the API headers expose cv::Rect / cv::Mat types
+target_link_libraries(ai_core
+    PUBLIC opencv_core
+    PRIVATE ${DEPENDENCY_LIBS}
+)
 
 # ============================================================================
 # Compile Definitions

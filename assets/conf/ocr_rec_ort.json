@@ -2,9 +2,9 @@
     "algorithm": {
         "name": "chinese-ocr-reco",
         "types": {
-            "preproc": "FramePreprocess",
+            "preproc": "CpuGenericPreprocess",
             "infer": "OrtAlgoInference",
-            "postproc": "CVGenericPostproc"
+            "postproc": "OCRReco"
         },
         "preprocParams": {
             "inputShape": {
@@ -30,8 +30,7 @@
             "inputNames": [
                 "x",
                 "input_lengths"
-            ],
-            "preprocTaskType": 0
+            ]
         },
         "inferParams": {
             "modelPath": "models/cnocr136fc.onnx",
@@ -44,7 +43,6 @@
             }
         },
         "postprocParams": {
-            "algoType": 4,
             "outputNames": [
                 "output_lengths",
                 "argmax_output"

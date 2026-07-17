@@ -12,21 +12,22 @@
 #define AI_CORE_PREPROC_BASE_HPP
 
 #include "ai_core/algo_types.hpp"
+#include "ai_core/error_code.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {
 
-class IPreprocssPlugin {
+class IPreprocessPlugin {
 public:
-  virtual ~IPreprocssPlugin() {};
+  virtual ~IPreprocessPlugin() {};
 
-  virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
-                       TensorData &,
-                       std::shared_ptr<RuntimeContext> &) const = 0;
+  virtual InferErrorCode process(const AlgoInput &, const AlgoPreprocParams &,
+                                 TensorData &,
+                                 std::shared_ptr<RuntimeContext> &) const = 0;
 
-  virtual bool batchProcess(const std::vector<AlgoInput> &,
-                            const AlgoPreprocParams &, TensorData &,
-                            std::shared_ptr<RuntimeContext> &) const = 0;
+  virtual InferErrorCode
+  batchProcess(const std::vector<AlgoInput> &, const AlgoPreprocParams &,
+               TensorData &, std::shared_ptr<RuntimeContext> &) const = 0;
 };
 } // namespace ai_core::dnn
 

@@ -111,7 +111,8 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &image_gray) {
 
   auto runtime_context = std::make_shared<ai_core::RuntimeContext>();
   ai_core::TensorData model_input;
-  mFramePreproc->process(algo_input, preproc_params, model_input, runtime_context);
+  mFramePreproc->process(algo_input, preproc_params, model_input,
+                         runtime_context);
 
   std::vector<int64_t> input_lengths = {1};
   ai_core::TypedBuffer input_lengths_tensor;

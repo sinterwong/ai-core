@@ -126,7 +126,7 @@ struct FrameInputWithMask {
 
 ```cpp
 struct BBox {
-  std::shared_ptr<cv::Rect> rect;
+  cv::Rect rect;
   float score;
   int   label;
 };
@@ -144,7 +144,7 @@ struct DetRet { std::vector<BBox> bboxes; };
 
 struct SegRet { std::map<int, std::vector<Contour>> cls_to_contours; };
 
-struct DaulRawSegRet {
+struct DualRawSegRet {
   std::shared_ptr<cv::Mat> mask;
   std::shared_ptr<cv::Mat> prob;
   std::shared_ptr<cv::Rect> roi;
@@ -258,7 +258,15 @@ struct DataPacket {
 };
 ```
 
-`getParam` 在 key 不存在或类型不匹配时抛 `std::runtime_error`。框架里 `AlgoConstructParams` 和 `RuntimeContext` 都是 `DataPacket` 的别名。
+`getParam` 在 key 不存在或类型不匹配时抛 `std::runtime_error`。框架里 `AlgoConstructParams` 是 `DataPacket` 的别名；`RuntimeContext` 是独立结构，预处理→后处理的变换信息走类型化槽位：
+
+```cpp
+struct RuntimeContext {
+  std::optional<FrameTransformContext> frame_transform;       // 单帧
+  std::vector<FrameTransformContext> frame_transform_batch;   // batch
+  DataPacket extras;                                          // 自由扩展
+};
+```
 
 ## 8. 异步接口
 
@@ -343,7 +351,7 @@ enum class DeviceType { CPU = 0, GPU = 1 };
 ### `DataType`
 
 ```cpp
-enum class DataType : u_char {
+enum class DataType : uint8_t {
   FLOAT32 = 0, FLOAT16, INT32, INT64, INT8,
 };
 ```
@@ -379,27 +387,27 @@ struct ModelInfo {
 ### 接口
 
 ```cpp
-class IPreprocssPlugin {
+class IPreprocessPlugin {
 public:
-  virtual ~IPreprocssPlugin() = default;
-  virtual bool process(const AlgoInput&,
+  virtual ~IPreprocessPlugin() = default;
+  virtual InferErrorCode process(const AlgoInput&,
                        const AlgoPreprocParams&,
                        TensorData&,
                        std::shared_ptr<RuntimeContext>&) const = 0;
-  virtual bool batchProcess(const std::vector<AlgoInput>&,
+  virtual InferErrorCode batchProcess(const std::vector<AlgoInput>&,
                             const AlgoPreprocParams&,
                             TensorData&,
                             std::shared_ptr<RuntimeContext>&) const = 0;
 };
 
-class IPostprocssPlugin {
+class IPostprocessPlugin {
 public:
-  virtual ~IPostprocssPlugin() = default;
-  virtual bool process(const TensorData&,
+  virtual ~IPostprocessPlugin() = default;
+  virtual InferErrorCode process(const TensorData&,
                        const AlgoPostprocParams&,
                        AlgoOutput&,
                        std::shared_ptr<RuntimeContext>&) const = 0;
-  virtual bool batchProcess(const TensorData&,
+  virtual InferErrorCode batchProcess(const TensorData&,
                             const AlgoPostprocParams&,
                             std::vector<AlgoOutput>&,
                             std::shared_ptr<RuntimeContext>&) const = 0;
@@ -427,22 +435,25 @@ REGISTER_INFER_ENGINE(MyEngine);
 REGISTER_POSTPROCESS_ALGO(MyPostproc);
 ```
 
-宏把字符串 `"MyPreproc"` 等与默认构造函数 / `AlgoConstructParams` 构造函数绑定。默认注册在 `src/registrar/` 下，链接主库即可生效。注册自己的插件时，把上述宏放到对应 `.cpp` 末尾即可。
+宏把字符串 `"MyPreproc"` 等与默认构造函数 / `AlgoConstructParams` 构造函数绑定。
+
+内置插件由 `ai_core::dnn::registerDefaultPlugins()`（`<ai_core/default_plugins.hpp>`）显式注册；facade 的 `initialize()` 会自动调用，静态/动态链接皆可用。绕过 facade 直接用工厂时先手动调用一次。注册自己的插件时，在自己的代码里执行上述宏即可（例如放在插件 `.cpp` 的一个初始化函数中）。
 
 ### 内置插件一览
 
 | 阶段 | 名字 | 用途 |
 | --- | --- | --- |
-| 预处理 | `FramePreprocess` | 单帧图通用预处理 |
-| 预处理 | `FrameWithMaskPreprocess` | 带掩码区域的图 |
+| 预处理 | `CpuGenericPreprocess` | 单帧图通用预处理（OpenCV CPU） |
+| 预处理 | `CudaGenericPreprocess` | 单帧图通用预处理（CUDA，需 `WITH_TRT_ENGINE`） |
+| 预处理 | `FrameWithMaskPreprocess` | 带掩码区域的图（CPU） |
 | 推理 | `OrtAlgoInference` | ONNX Runtime |
 | 推理 | `NCNNAlgoInference` | NCNN |
 | 推理 | `TrtAlgoInference` | TensorRT |
-| 后处理 | `AnchorDetPostproc` | YoloDetV11 / RtmDet / NanoDet |
-| 后处理 | `CVGenericPostproc` | SoftmaxCls / FprCls / RawModelOutput / UnetDualOutput / OcrReco |
-| 后处理 | `ConfidenceFilterPostproc` | SemanticSeg |
+| 后处理 | `Yolov11Det` / `RTMDet` / `NanoDet` | 锚框检测，参数 `AnchorDetParams` |
+| 后处理 | `SoftmaxCls` / `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` | 通用后处理，参数 `GenericPostParams` |
+| 后处理 | `SemanticSeg` | 语义分割，参数 `ConfidenceFilterParams` |
 
-后处理插件内部的算法选择由 `AlgoPostprocParams` 中的 `algo_type` 字段决定。
+算法由插件名直接选择：`AlgoModuleTypes::postproc_module` 填上表中的名字即可，参数结构里不再有 `algo_type` 字段。
 
 ## 12. 日志
 

@@ -14,10 +14,10 @@
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
-bool RawModelOutput::process(const TensorData &model_output,
-                             const FrameTransformContext &prep_args,
-                             const GenericPostParams &post_args,
-                             AlgoOutput &algo_output) const {
+bool RawModelOutput::processTyped(const TensorData &model_output,
+                                  const FrameTransformContext &prep_args,
+                                  const GenericPostParams &post_args,
+                                  AlgoOutput &algo_output) const {
 
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
@@ -27,7 +27,7 @@ bool RawModelOutput::process(const TensorData &model_output,
   return true;
 }
 
-bool RawModelOutput::batchProcess(
+bool RawModelOutput::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const GenericPostParams &post_args,

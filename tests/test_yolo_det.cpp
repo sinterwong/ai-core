@@ -1,12 +1,12 @@
-#include "ai_core/input_types.hpp"
 #include "ai_core/i_infer_engine.hpp"
-#include "ai_core/infer_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/logger.hpp"
 #include "ai_core/typed_buffer.hpp"
-#include "postproc/anchor_det_postproc.hpp"
-#include "preproc/frame_prep.hpp"
+#include "postproc/yolo_det.hpp"
+#include "preproc/cpu_generic_preprocess.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
@@ -41,8 +41,6 @@ struct TestConfig {
   DataType preproc_data_type;
   DeviceType device_type;
   std::string input_name;
-  FramePreprocessArg::FramePreprocType preproc_task_type =
-      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
   BufferLocation buffer_location = BufferLocation::CPU;
   bool need_decrypt = false;
   std::string decryptkey_str = "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25";
@@ -57,10 +55,10 @@ protected:
     ai_core::logging::Logger::instance().enableFile(false);
     ai_core::logging::Logger::instance().enableColor(true);
 
-    m_framePreproc = std::make_shared<FramePreprocess>();
+    m_framePreproc = std::make_shared<CpuGenericPreprocess>();
     ASSERT_NE(m_framePreproc, nullptr);
 
-    m_yoloDetPostproc = std::make_shared<AnchorDetPostproc>();
+    m_yoloDetPostproc = std::make_shared<Yolov11Det>();
     ASSERT_NE(m_yoloDetPostproc, nullptr);
   }
 
@@ -68,8 +66,8 @@ protected:
     ASSERT_NE(det_ret, nullptr);
     ASSERT_EQ(det_ret->bboxes.size(), 1);
 
-    const auto &box0 =
-        (det_ret->bboxes[0].label == 0) ? det_ret->bboxes[0] : det_ret->bboxes[1];
+    const auto &box0 = (det_ret->bboxes[0].label == 0) ? det_ret->bboxes[0]
+                                                       : det_ret->bboxes[1];
 
     ASSERT_EQ(box0.label, 0);
     ASSERT_NEAR(box0.score, 0.811, 1e-2);
@@ -81,8 +79,8 @@ protected:
 
   std::string m_image_path = (m_dataDir / "yolov11/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> m_framePreproc;
-  std::shared_ptr<IPostprocssPlugin> m_yoloDetPostproc;
+  std::shared_ptr<IPreprocessPlugin> m_framePreproc;
+  std::shared_ptr<IPostprocessPlugin> m_yoloDetPostproc;
 };
 
 TEST_P(YoloDetInferenceTest, Normal) {
@@ -120,13 +118,11 @@ TEST_P(YoloDetInferenceTest, Normal) {
   frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
-  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
   frame_preprocess_arg.output_location = config.buffer_location;
   preproc_params.setParams(frame_preprocess_arg);
 
   AlgoPostprocParams postproc_params;
   AnchorDetParams anchor_det_params;
-  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
   anchor_det_params.cond_thre = 0.5f;
   anchor_det_params.nms_thre = 0.45f;
   anchor_det_params.output_names = {"output0"};
@@ -142,24 +138,26 @@ TEST_P(YoloDetInferenceTest, Normal) {
   std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
   TensorData model_input;
-  m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
+  m_framePreproc->process(algo_input, preproc_params, model_input,
+                          runtime_context);
 
   TensorData model_output;
   ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);
 
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context));
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                       algo_output, runtime_context),
+            InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);
 
   cv::Mat vis_image = image.clone();
   for (const auto &bbox : det_ret->bboxes) {
-    cv::rectangle(vis_image, *bbox.rect, cv::Scalar(0, 255, 0), 2);
+    cv::rectangle(vis_image, bbox.rect, cv::Scalar(0, 255, 0), 2);
     std::stringstream ss;
     ss << bbox.label << ":" << std::fixed << std::setprecision(2) << bbox.score;
-    cv::putText(vis_image, ss.str(), bbox.rect->tl(), cv::FONT_HERSHEY_SIMPLEX,
+    cv::putText(vis_image, ss.str(), bbox.rect.tl(), cv::FONT_HERSHEY_SIMPLEX,
                 1, cv::Scalar(0, 0, 255), 2);
   }
   std::string output_filename = "vis_yolodet_" + config.test_name + ".png";
@@ -200,13 +198,11 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
-  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
   frame_preprocess_arg.output_location = config.buffer_location;
   preproc_params.setParams(frame_preprocess_arg);
 
   AlgoPostprocParams postproc_params;
   AnchorDetParams anchor_det_params;
-  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
   anchor_det_params.cond_thre = 0.5f;
   anchor_det_params.nms_thre = 0.45f;
   anchor_det_params.output_names = {"output0"};
@@ -227,15 +223,16 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
 
       TensorData model_input;
       m_framePreproc->process(algo_input, preproc_params, model_input,
-                            runtime_context);
+                              runtime_context);
 
       TensorData model_output;
       ASSERT_EQ(engine->infer(model_input, model_output),
                 InferErrorCode::SUCCESS);
 
       AlgoOutput algo_output;
-      ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params,
-                                           algo_output, runtime_context));
+      ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                           algo_output, runtime_context),
+                InferErrorCode::SUCCESS);
 
       auto *det_ret = algo_output.getParams<DetRet>();
       checkResults(det_ret);
@@ -258,7 +255,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/models/yolov11n-fp16.onnx", DataType::FLOAT16,
                      DataType::FLOAT16, DeviceType::CPU, "images",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
   configs.push_back({"ort_enc",
                      [](const AlgoConstructParams &p) {
@@ -266,9 +262,7 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/enc_models/yolov11n-fp16.enc.onnx",
                      DataType::FLOAT16, DataType::FLOAT16, DeviceType::CPU,
-                     "images",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
-                     BufferLocation::CPU, true});
+                     "images", BufferLocation::CPU, true});
 #endif
 #ifdef WITH_NCNN
   configs.push_back({"ncnn",
@@ -277,7 +271,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/models/yolov11n.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
   configs.push_back({"ncnn_enc",
                      [](const AlgoConstructParams &p) {
@@ -285,7 +278,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/enc_models/yolov11n.enc.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, true});
 #endif
   return configs;

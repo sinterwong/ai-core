@@ -152,7 +152,7 @@ public:
     // return inst;
 
     // 使用不朽单例
-    static EngineManager* inst = new EngineManager();
+    static EngineManager *inst = new EngineManager();
     return *inst;
   }
 
@@ -212,7 +212,8 @@ static void setCommonCounters(benchmark::State &state,
   size_t total_bytes = input_bytes + output_bytes;
 
   state.SetItemsProcessed(state.iterations() * items_per_iteration);
-  state.SetBytesProcessed(state.iterations() * total_bytes * items_per_iteration);
+  state.SetBytesProcessed(state.iterations() * total_bytes *
+                          items_per_iteration);
 
   // Custom counters
   state.counters["InputMB"] = input_bytes / (1024.0 * 1024.0);
@@ -311,8 +312,8 @@ static void BM_TRT_Async_WithGraph_Pinned(benchmark::State &state) {
   auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
-  auto input =
-      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+  auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
+                                 DataType::FLOAT32);
   warmupStream(stream.get(), input);
 
   for (auto _ : state) {
@@ -393,8 +394,8 @@ static void BM_TRT_Pipeline_Throughput(benchmark::State &state) {
     s->setGraphEnabled(true);
   }
 
-  auto input =
-      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+  auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
+                                 DataType::FLOAT32);
 
   // Warmup all streams
   for (auto &s : stream_pool) {
@@ -445,8 +446,8 @@ BENCHMARK(BM_TRT_Pipeline_Throughput)
  */
 static void BM_TRT_Graph_Capture_Overhead(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
-  auto input =
-      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+  auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
+                                 DataType::FLOAT32);
 
   for (auto _ : state) {
     // Create fresh stream for each iteration
@@ -476,8 +477,8 @@ static void BM_TRT_Graph_Replay_Latency(benchmark::State &state) {
   auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
-  auto input =
-      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+  auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
+                                 DataType::FLOAT32);
 
   // Capture graph during warmup
   warmupStream(stream.get(), input);
@@ -507,10 +508,10 @@ static void BM_TRT_Graph_Recapture_Overhead(benchmark::State &state) {
   auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
-  auto input640 =
-      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
-  auto input320 =
-      createPinnedInput(async_engine.get(), {1, 3, 320, 320}, DataType::FLOAT32);
+  auto input640 = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
+                                    DataType::FLOAT32);
+  auto input320 = createPinnedInput(async_engine.get(), {1, 3, 320, 320},
+                                    DataType::FLOAT32);
 
   // Initial capture
   warmupStream(stream.get(), input640);
@@ -557,8 +558,8 @@ BENCHMARK(BM_TRT_Stream_Creation_Overhead)
  */
 static void BM_TRT_Stream_ColdStart_Latency(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
-  auto input =
-      createPinnedInput(async_engine.get(), {1, 3, 640, 640}, DataType::FLOAT32);
+  auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
+                                 DataType::FLOAT32);
 
   for (auto _ : state) {
     auto stream = async_engine->createExecutionContext();

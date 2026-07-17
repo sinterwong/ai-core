@@ -1,13 +1,13 @@
 /**
- * @file accelerator_buffer_impl.hpp
+ * @file i_accelerator_buffer.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief Unified interface for backend-managed memory (Device & Pinned)
  * @version 0.2
  * @date 2026-01-06
  */
 
-#ifndef AI_CORE_ACCELERATOR_BUFFER_IMPL_HPP
-#define AI_CORE_ACCELERATOR_BUFFER_IMPL_HPP
+#ifndef AI_CORE_I_ACCELERATOR_BUFFER_HPP
+#define AI_CORE_I_ACCELERATOR_BUFFER_HPP
 #include <memory>
 
 namespace ai_core {
@@ -28,9 +28,9 @@ enum class AcceleratorMemoryType {
  * 1. Device Memory (VRAM)
  * 2. Pinned Host Memory (RAM registered with Driver)
  */
-class AcceleratorBufferImpl {
+class IAcceleratorBuffer {
 public:
-  virtual ~AcceleratorBufferImpl() = default;
+  virtual ~IAcceleratorBuffer() = default;
 
   virtual void *get() const = 0;
   virtual size_t getSizeBytes() const = 0;
@@ -39,21 +39,21 @@ public:
   /**
    * @brief Factory method to create specific memory type
    */
-  static std::unique_ptr<AcceleratorBufferImpl>
-  create(size_t size_bytes, AcceleratorMemoryType type);
+  static std::unique_ptr<IAcceleratorBuffer> create(size_t size_bytes,
+                                                    AcceleratorMemoryType type);
 
   /**
    * @brief Factory wrapper for wrapping existing pointers (advanced use)
    */
-  static std::unique_ptr<AcceleratorBufferImpl>
+  static std::unique_ptr<IAcceleratorBuffer>
   createReference(void *ptr, size_t size_bytes, AcceleratorMemoryType type,
                   bool manage_memory);
 
   /**
    * @brief Clone factory
    */
-  static std::unique_ptr<AcceleratorBufferImpl>
-  clone(const AcceleratorBufferImpl &other);
+  static std::unique_ptr<IAcceleratorBuffer>
+  clone(const IAcceleratorBuffer &other);
 };
 
 } // namespace ai_core

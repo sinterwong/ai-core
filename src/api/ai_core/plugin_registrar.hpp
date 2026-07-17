@@ -18,17 +18,17 @@
 
 namespace ai_core::dnn {
 
-using PreprocFactory = Factory<IPreprocssPlugin>;
+using PreprocFactory = Factory<IPreprocessPlugin>;
 
 using InferEngineFactory = Factory<IInferEnginePlugin>;
 
-using PostprocFactory = Factory<IPostprocssPlugin>;
+using PostprocFactory = Factory<IPostprocessPlugin>;
 
 #define REGISTER_PREPROCESS_ALGO(AlgoName)                                     \
   PreprocFactory::instance().registerCreator(                                  \
       #AlgoName,                                                               \
       [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<IPreprocssPlugin> {                               \
+          -> std::shared_ptr<IPreprocessPlugin> {                              \
         return std::make_shared<AlgoName>();                                   \
       });
 
@@ -44,7 +44,7 @@ using PostprocFactory = Factory<IPostprocssPlugin>;
   PostprocFactory::instance().registerCreator(                                 \
       #AlgoName,                                                               \
       [](const AlgoConstructParams &cparams)                                   \
-          -> std::shared_ptr<IPostprocssPlugin> {                              \
+          -> std::shared_ptr<IPostprocessPlugin> {                             \
         return std::make_shared<AlgoName>();                                   \
       });
 

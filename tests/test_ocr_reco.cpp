@@ -8,15 +8,15 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/input_types.hpp"
 #include "ai_core/i_infer_engine.hpp"
-#include "ai_core/infer_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/logger.hpp"
 #include "ai_core/typed_buffer.hpp"
-#include "postproc/cv_generic_postproc.hpp"
-#include "preproc/frame_prep.hpp"
+#include "postproc/ocr_reco.hpp"
+#include "preproc/cpu_generic_preprocess.hpp"
 #include "gtest/gtest.h"
 #include <cstdint>
 #include <filesystem>
@@ -54,8 +54,6 @@ struct TestConfig {
   DataType infer_data_type;
   DataType preproc_data_type;
   DeviceType device_type;
-  FramePreprocessArg::FramePreprocType preproc_task_type =
-      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
   BufferLocation buffer_location = BufferLocation::CPU;
   bool need_decrypt = false;
   std::string decryptkey_str = "";
@@ -71,10 +69,10 @@ protected:
     ai_core::logging::Logger::instance().enableColor(true);
     ai_core::logging::Logger::instance().enableAsync(false);
 
-    m_framePreproc = std::make_shared<FramePreprocess>();
+    m_framePreproc = std::make_shared<CpuGenericPreprocess>();
     ASSERT_NE(m_framePreproc, nullptr);
 
-    m_ocrPostproc = std::make_shared<CVGenericPostproc>();
+    m_ocrPostproc = std::make_shared<OCRReco>();
     ASSERT_NE(m_ocrPostproc, nullptr);
   }
 
@@ -90,8 +88,8 @@ protected:
 
   std::string m_image_path = (m_dataDir / "ocr_reco/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> m_framePreproc;
-  std::shared_ptr<IPostprocssPlugin> m_ocrPostproc;
+  std::shared_ptr<IPreprocessPlugin> m_framePreproc;
+  std::shared_ptr<IPostprocessPlugin> m_ocrPostproc;
 };
 
 TEST_P(OCRRecoInferTest, Normal) {
@@ -131,7 +129,6 @@ TEST_P(OCRRecoInferTest, Normal) {
   frame_preprocess_arg.norm_vals = {255.f};
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {"x"};
-  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
   frame_preprocess_arg.output_location = config.buffer_location;
   preproc_params.setParams(frame_preprocess_arg);
 
@@ -147,7 +144,8 @@ TEST_P(OCRRecoInferTest, Normal) {
   algo_input.setParams(frame_input);
 
   TensorData model_input;
-  m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
+  m_framePreproc->process(algo_input, preproc_params, model_input,
+                          runtime_context);
 
   std::vector<int64_t> input_lengths = {1};
   TypedBuffer input_lengths_tensor;
@@ -165,12 +163,12 @@ TEST_P(OCRRecoInferTest, Normal) {
 
   AlgoPostprocParams postproc_params;
   GenericPostParams generic_post;
-  generic_post.algo_type = GenericPostParams::AlgoType::OcrReco;
   generic_post.output_names = {"output_lengths", "argmax_output"};
   postproc_params.setParams(generic_post);
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_ocrPostproc->process(model_output, postproc_params, algo_output,
-                                   runtime_context));
+  ASSERT_EQ(m_ocrPostproc->process(model_output, postproc_params, algo_output,
+                                   runtime_context),
+            InferErrorCode::SUCCESS);
   OCRRecoRet *ocr_ret = algo_output.getParams<OCRRecoRet>();
   ASSERT_NE(ocr_ret, nullptr);
   ASSERT_EQ(ocr_ret->outputs.size(), 9);
@@ -184,9 +182,8 @@ std::vector<TestConfig> getTestConfigs() {
                        return std::make_shared<OrtAlgoInference>(p);
                      },
                      "assets/models/cnocr136fc.onnx", DataType::FLOAT32,
-                     DataType::FLOAT32, DeviceType::CPU,
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
-                     BufferLocation::CPU, false});
+                     DataType::FLOAT32, DeviceType::CPU, BufferLocation::CPU,
+                     false});
 #endif
 #ifdef WITH_NCNN
 #endif
@@ -197,7 +194,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/models/cnocr136fc_fp16_dynamic.engine",
                      DataType::FLOAT32, DataType::FLOAT32, DeviceType::CPU,
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
 #endif
   return configs;

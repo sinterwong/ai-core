@@ -15,10 +15,10 @@
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
-bool SemanticSeg::process(const TensorData &model_output,
-                          const FrameTransformContext &prep_args,
-                          const ConfidenceFilterParams &post_args,
-                          AlgoOutput &algo_output) const {
+bool SemanticSeg::processTyped(const TensorData &model_output,
+                               const FrameTransformContext &prep_args,
+                               const ConfidenceFilterParams &post_args,
+                               AlgoOutput &algo_output) const {
   const auto &feat_map_output_name = post_args.output_names.at(0);
   const auto &feat_map_output = model_output.datas.at(feat_map_output_name);
   const auto &feat_map_shape = model_output.shapes.at(feat_map_output_name);
@@ -40,7 +40,7 @@ bool SemanticSeg::process(const TensorData &model_output,
   return true;
 }
 
-bool SemanticSeg::batchProcess(
+bool SemanticSeg::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const ConfidenceFilterParams &post_args,

@@ -8,19 +8,17 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "ai_core/algo_types.hpp"
-#include "ai_core/infer_engine_wrapper.hpp"
 #include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/algo_types.hpp"
 #include "ai_core/common_types.hpp"
 #include "ai_core/infer_config.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <opencv2/opencv.hpp>
 
 const static auto get_frame_preprocess_arg =
-    [](ai_core::DataType data_type,
-       ai_core::FramePreprocessArg::FramePreprocType preproc_task_type,
-       ai_core::BufferLocation output_location,
+    [](ai_core::DataType data_type, ai_core::BufferLocation output_location,
        const std::vector<std::string> &input_names) {
       ai_core::FramePreprocessArg arg;
       arg.model_input_shape = {640, 640, 3};
@@ -32,7 +30,6 @@ const static auto get_frame_preprocess_arg =
       arg.norm_vals = {255.f, 255.f, 255.f};
       arg.hwc2chw = true;
       arg.input_names = input_names;
-      arg.preproc_task_type = preproc_task_type;
       arg.output_location = output_location;
       return arg;
     };
@@ -63,12 +60,10 @@ static void BM_ORT_CPU_DATA_YoloInfer(benchmark::State &state) {
 
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
-      ai_core::DataType::FLOAT16,
-      ai_core::FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
-      ai_core::BufferLocation::CPU, {"images"});
+      ai_core::DataType::FLOAT16, ai_core::BufferLocation::CPU, {"images"});
   preproc_params.setParams(frame_preprocess_arg);
 
-  ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
+  ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
   preproc.initialize();
 
   ai_core::AlgoInput input = algo_input;
@@ -108,12 +103,10 @@ static void BM_NCNN_CPU_DATA_YoloInfer(benchmark::State &state) {
 
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
-      ai_core::DataType::FLOAT32,
-      ai_core::FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
-      ai_core::BufferLocation::CPU, {"in0"});
+      ai_core::DataType::FLOAT32, ai_core::BufferLocation::CPU, {"in0"});
   preproc_params.setParams(frame_preprocess_arg);
 
-  ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
+  ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
   preproc.initialize();
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =

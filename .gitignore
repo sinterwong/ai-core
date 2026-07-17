@@ -13,6 +13,7 @@ build/
 build*/
 3rdparty/target
 install/
+install-*/
 conf/nginx
 scripts/log*
 release/

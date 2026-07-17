@@ -11,8 +11,8 @@
 #ifndef AI_CORE_TYPED_BUFFER_HPP
 #define AI_CORE_TYPED_BUFFER_HPP
 
-#include "ai_core/accelerator_buffer_impl.hpp"
 #include "ai_core/common_types.hpp"
+#include "ai_core/i_accelerator_buffer.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -45,7 +45,7 @@ enum class BufferMemoryType {
  * Internal Architecture:
  * - CPU Pageable: Managed via std::vector<uint8_t>
  * - CPU External: Managed via raw pointers
- * - CPU Pinned / GPU Device: Managed via unified AcceleratorBufferImpl
+ * - CPU Pinned / GPU Device: Managed via unified IAcceleratorBuffer
  */
 class TypedBuffer {
 public:
@@ -95,7 +95,7 @@ public:
    * @brief Create a Pinned (Page-locked) Host buffer
    *
    * Optimized for async H2D/D2H transfers.
-   * Internally uses AcceleratorBufferImpl with HostPinned type.
+   * Internally uses IAcceleratorBuffer with HostPinned type.
    */
   static TypedBuffer createPinnedHost(DataType type, size_t size_bytes);
 
@@ -174,7 +174,7 @@ private:
   bool m_manageExternalCpu{false};
 
   // Unified Accelerator Storage (Handles both GPU VRAM and CPU Pinned RAM)
-  std::unique_ptr<AcceleratorBufferImpl> m_accelBuffer;
+  std::unique_ptr<IAcceleratorBuffer> m_accelBuffer;
 
   int m_deviceId{0};
 };

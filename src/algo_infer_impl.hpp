@@ -19,6 +19,7 @@
 #include "ai_core/error_code.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/infer_engine_wrapper.hpp"
+#include <atomic>
 #include <memory>
 
 namespace ai_core::dnn {
@@ -54,6 +55,7 @@ private:
   std::shared_ptr<AlgoPreproc> m_preprocessor;
   std::shared_ptr<AlgoInferEngine> m_engine;
   std::shared_ptr<AlgoPostproc> m_postprocessor;
+  std::atomic<bool> m_initialized{false};
 };
 } // namespace ai_core::dnn
 #endif

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "nlohmann/json.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/infer_config.hpp"
+#include "nlohmann/json.hpp"
 #include <string>
 
 namespace ai_core::example::utils {

@@ -16,13 +16,13 @@
 AlgoInput -> AlgoPreproc -> TensorData -> AlgoInferEngine -> TensorData -> AlgoPostproc -> AlgoOutput
 ```
 
-`RuntimeContext` 是一个 `DataPacket`，在 `infer` 调用的整个生命周期里向下游传递。预处理可以把原始尺寸、缩放系数、padding 等信息塞进去，后处理再读出来做坐标还原。
+`RuntimeContext` 在 `infer` 调用的整个生命周期里向下游传递。预处理把变换信息（原始尺寸、缩放系数、padding 等）写入类型化槽位 `frame_transform` / `frame_transform_batch`（`FrameTransformContext`），后处理读出来做坐标还原；自定义插件的自由扩展数据放 `extras`（`DataPacket`）。
 
 ## 关键数据结构
 
 ### `AlgoInput` / `AlgoOutput`
 
-`AlgoInput` 当前可装 `FrameInput`（单帧图）或 `FrameInputWithMask`（带掩码区域）。`AlgoOutput` 可装 `ClsRet`、`DetRet`、`SegRet`、`DaulRawSegRet`、`OCRRecoRet`、`FprClsRet`、`RawModelOutput` 等。
+`AlgoInput` 当前可装 `FrameInput`（单帧图）或 `FrameInputWithMask`（带掩码区域）。`AlgoOutput` 可装 `ClsRet`、`DetRet`、`SegRet`、`DualRawSegRet`、`OCRRecoRet`、`FprClsRet`、`RawModelOutput` 等。
 
 它们都是 `ParamCenter<std::variant<...>>`。用 `setParams<T>()` 存，用 `getParams<T>()` 取。类型不对就拿不到指针，不需要写 type cast。
 
@@ -82,11 +82,10 @@ struct AlgoInferParams {
 
 构造时传插件名。`initialize()` 阶段从 `PreprocFactory` 取出对应实现。`process()` 内部把任务转给该插件。
 
-内置：`FramePreprocess`（单帧）、`FrameWithMaskPreprocess`（带掩码）。
+内置：`CpuGenericPreprocess`（单帧，OpenCV CPU）、`CudaGenericPreprocess`（单帧，CUDA，需 `WITH_TRT_ENGINE`）、`FrameWithMaskPreprocess`（带掩码，CPU）。执行设备由插件名决定，不再有运行期分发字段。
 
 参数见 `FramePreprocessArg`：
 
-- `preproc_task_type` — `OpencvCpuGeneric` / `NcnnGeneric` / `CudaGpuGeneric` / `OpencvCpuConcatMask`
 - `model_input_shape` — `{w, h, c}`
 - `need_resize`、`is_equal_scale`、`pad`
 - `mean_vals`、`norm_vals`
@@ -106,25 +105,27 @@ struct AlgoInferParams {
 
 构造时传插件名。`process()` 把模型输出解析成 `AlgoOutput` 中的一种类型。
 
-内置：
+内置（每个算法就是一个插件，按名字直接注册到工厂）：
 
-- `AnchorDetPostproc` —— YoloDetV11 / RtmDet / NanoDet
-- `CVGenericPostproc` —— SoftmaxCls / FprCls / RawModelOutput / UnetDualOutput / OcrReco
-- `ConfidenceFilterPostproc` —— SemanticSeg
+- `Yolov11Det` / `RTMDet` / `NanoDet` —— 锚框检测家族，参数 `AnchorDetParams`
+- `SoftmaxCls` / `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` —— 通用家族，参数 `GenericPostParams`
+- `SemanticSeg` —— 置信度过滤家族，参数 `ConfidenceFilterParams`
 
 参数：
 
-- `AnchorDetParams`：`algo_type`、`cond_thre`、`nms_thre`、`output_names`
-- `GenericPostParams`：`algo_type`、`output_names`
-- `ConfidenceFilterParams`：`algo_type`、`cond_thre`、`output_names`
+- `AnchorDetParams`：`cond_thre`、`nms_thre`、`output_names`
+- `GenericPostParams`：`output_names`
+- `ConfidenceFilterParams`：`cond_thre`、`output_names`
+
+新增一个后处理算法 = 一个继承 `FramePostprocBase<ParamsT, RequiresPrepContext>` 的新 `.cpp` + 一行注册宏。
 
 ## 工厂与注册
 
 插件在编译期通过宏挂到三个全局工厂里：
 
-- `PreprocFactory = Factory<IPreprocssPlugin>`
+- `PreprocFactory = Factory<IPreprocessPlugin>`
 - `InferEngineFactory = Factory<IInferEnginePlugin>`
-- `PostprocFactory = Factory<IPostprocssPlugin>`
+- `PostprocFactory = Factory<IPostprocessPlugin>`
 
 注册宏：
 
@@ -136,13 +137,13 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 
 宏的副作用是把字符串 `"MyPreproc"` 和对应的构造器放进工厂的 map。`AlgoModuleTypes` 写哪个名字，就调用哪个。
 
-默认注册在 `src/registrar/` 下，链接库时自动生效。
+内置插件通过 `ai_core::dnn::registerDefaultPlugins()`（`<ai_core/default_plugins.hpp>`）显式注册。该函数幂等且线程安全，`AlgoPreproc` / `AlgoInferEngine` / `AlgoPostproc` 的 `initialize()` 会自动调用它，静态链接与动态链接行为一致；只有在绕过 facade 直接使用工厂时才需要手动调用。
 
 ## 自定义插件
 
 要加新的算法或后端，按以下步骤：
 
-1. 继承 `IPreprocssPlugin`、`IInferEnginePlugin` 或 `IPostprocssPlugin`，实现纯虚函数。
+1. 继承 `IPreprocessPlugin`、`IInferEnginePlugin` 或 `IPostprocessPlugin`，实现纯虚函数。
 2. 在 `.cpp` 末尾用对应宏注册。
 3. 链接到主程序。
 4. 在 `AlgoModuleTypes` 里写新插件的名字。

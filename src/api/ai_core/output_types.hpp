@@ -16,11 +16,12 @@
 #include "ai_core/tensor_data.hpp"
 #include <map>
 #include <memory>
+#include <opencv2/core/types.hpp>
 #include <vector>
 
 namespace ai_core {
 struct BBox {
-  std::shared_ptr<cv::Rect> rect;
+  cv::Rect rect;
   float score;
   int label;
 };
@@ -47,7 +48,7 @@ struct SegRet {
   std::map<int, std::vector<Contour>> cls_to_contours;
 };
 
-struct DaulRawSegRet {
+struct DualRawSegRet {
   std::shared_ptr<cv::Mat> mask;
   std::shared_ptr<cv::Mat> prob;
   std::shared_ptr<cv::Rect> roi;

@@ -14,10 +14,10 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool Yolov11Det::process(const TensorData &model_output,
-                         const FrameTransformContext &prep_args,
-                         const AnchorDetParams &post_args,
-                         AlgoOutput &algo_output) const {
+bool Yolov11Det::processTyped(const TensorData &model_output,
+                              const FrameTransformContext &prep_args,
+                              const AnchorDetParams &post_args,
+                              AlgoOutput &algo_output) const {
   const auto &output_shapes = model_output.shapes;
   const auto &input_shape = prep_args.model_input_shape;
   const auto &outputs = model_output.datas;
@@ -60,7 +60,7 @@ bool Yolov11Det::process(const TensorData &model_output,
   return true;
 }
 
-bool Yolov11Det::batchProcess(
+bool Yolov11Det::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const AnchorDetParams &post_args,
@@ -186,9 +186,8 @@ std::vector<BBox> Yolov11Det::processRawOutput(
       h = h / scaleY;
       x += input_roi.x;
       y += input_roi.y;
-      result.rect =
-          std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
-                                     static_cast<int>(w), static_cast<int>(h));
+      result.rect = cv::Rect(static_cast<int>(x), static_cast<int>(y),
+                             static_cast<int>(w), static_cast<int>(h));
 
       results.push_back(result);
     }

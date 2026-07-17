@@ -13,10 +13,10 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool SoftmaxCls::process(const TensorData &model_output,
-                         const FrameTransformContext &prep_args,
-                         const GenericPostParams &post_args,
-                         AlgoOutput &algo_output) const {
+bool SoftmaxCls::processTyped(const TensorData &model_output,
+                              const FrameTransformContext &prep_args,
+                              const GenericPostParams &post_args,
+                              AlgoOutput &algo_output) const {
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.datas is empty";
     return false;
@@ -36,7 +36,7 @@ bool SoftmaxCls::process(const TensorData &model_output,
   return true;
 }
 
-bool SoftmaxCls::batchProcess(
+bool SoftmaxCls::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const GenericPostParams &post_args,

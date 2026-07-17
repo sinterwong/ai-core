@@ -40,6 +40,7 @@ InferErrorCode AlgoInference::Impl::initialize() {
     LOG_ERROR_S << "Failed to initialize postprocessor.";
     return InferErrorCode::InitFailed;
   }
+  m_initialized = true;
   return InferErrorCode::SUCCESS;
 }
 
@@ -47,10 +48,9 @@ InferErrorCode AlgoInference::Impl::infer(
     const AlgoInput &input, const AlgoPreprocParams &preproc_params,
     const AlgoPostprocParams &postproc_params, AlgoOutput &output) {
 
-  if (m_engine == nullptr || m_preprocessor == nullptr ||
-      m_postprocessor == nullptr) {
+  if (!m_initialized) {
     LOG_ERROR_S << "Please initialize first";
-    return InferErrorCode::InitFailed;
+    return InferErrorCode::NotInitialized;
   }
 
   std::shared_ptr<RuntimeContext> runtime_context =
@@ -102,10 +102,9 @@ AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
                                 const AlgoPreprocParams &preproc_params,
                                 const AlgoPostprocParams &postproc_params,
                                 std::vector<AlgoOutput> &outputs) {
-  if (m_engine == nullptr || m_preprocessor == nullptr ||
-      m_postprocessor == nullptr) {
+  if (!m_initialized) {
     LOG_ERROR_S << "Please initialize first";
-    return InferErrorCode::InitFailed;
+    return InferErrorCode::NotInitialized;
   }
 
   std::shared_ptr<RuntimeContext> runtime_context =
@@ -155,12 +154,12 @@ AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
 }
 
 InferErrorCode AlgoInference::Impl::terminate() {
-  m_engine->terminate();
-  return InferErrorCode::SUCCESS;
+  m_initialized = false;
+  return m_engine->terminate();
 }
 
 const ModelInfo &AlgoInference::Impl::getModelInfo() const noexcept {
-  if (m_engine == nullptr) {
+  if (!m_initialized) {
     LOG_ERROR_S << "Please initialize first";
     static ModelInfo model_info;
     return model_info;

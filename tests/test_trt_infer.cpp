@@ -1,12 +1,12 @@
 #include "ai_core/algo_types.hpp"
-#include "ai_core/input_types.hpp"
 #include "ai_core/i_infer_engine.hpp"
-#include "ai_core/infer_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
-#include "postproc/anchor_det_postproc.hpp"
-#include "preproc/frame_prep.hpp"
+#include "ai_core/infer_config.hpp"
+#include "ai_core/input_types.hpp"
+#include "ai_core/logger.hpp"
+#include "postproc/yolo_det.hpp"
+#include "preproc/cuda_generic_preprocess.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <opencv2/imgcodecs.hpp>
@@ -31,10 +31,10 @@ protected:
     ai_core::logging::Logger::instance().enableFile(false);
     ai_core::logging::Logger::instance().enableColor(true);
 
-    m_framePreproc = std::make_shared<FramePreprocess>();
+    m_framePreproc = std::make_shared<CudaGenericPreprocess>();
     ASSERT_NE(m_framePreproc, nullptr);
 
-    m_yoloDetPostproc = std::make_shared<AnchorDetPostproc>();
+    m_yoloDetPostproc = std::make_shared<Yolov11Det>();
     ASSERT_NE(m_yoloDetPostproc, nullptr);
   }
 
@@ -64,15 +64,12 @@ protected:
     frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
     frame_preprocess_arg.hwc2chw = true;
     frame_preprocess_arg.input_names = {"images"};
-    frame_preprocess_arg.preproc_task_type =
-        FramePreprocessArg::FramePreprocType::CudaGpuGeneric;
     frame_preprocess_arg.output_location = BufferLocation::GpuDevice;
     return frame_preprocess_arg;
   }
 
   AnchorDetParams getPostprocParams() {
     AnchorDetParams anchor_det_params;
-    anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
     anchor_det_params.cond_thre = 0.5f;
     anchor_det_params.nms_thre = 0.45f;
     anchor_det_params.output_names = {"output0"};
@@ -87,14 +84,15 @@ protected:
     AlgoInput algo_input;
     FrameInput frame_input;
     frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-    frame_input.input_roi =
-        std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4, image_rgb.rows - 4);
+    frame_input.input_roi = std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4,
+                                                       image_rgb.rows - 4);
     algo_input.setParams(frame_input);
 
     std::shared_ptr<RuntimeContext> runtime_context =
         std::make_shared<RuntimeContext>();
     TensorData model_input;
-    m_framePreproc->process(algo_input, preproc_params, model_input, runtime_context);
+    m_framePreproc->process(algo_input, preproc_params, model_input,
+                            runtime_context);
 
     return {model_input, runtime_context};
   }
@@ -116,8 +114,8 @@ protected:
   fs::path m_dataDir = m_resourceDir / "data";
   std::string m_image_path = (m_dataDir / "yolov11/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> m_framePreproc;
-  std::shared_ptr<IPostprocssPlugin> m_yoloDetPostproc;
+  std::shared_ptr<IPreprocessPlugin> m_framePreproc;
+  std::shared_ptr<IPostprocessPlugin> m_yoloDetPostproc;
 };
 
 TEST_F(TrtInferenceTest, AsyncCapabilityDetection) {
@@ -179,8 +177,9 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   postproc_params.setParams(getPostprocParams());
 
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context));
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                       algo_output, runtime_context),
+            InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);
@@ -227,8 +226,9 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
       postproc_params.setParams(getPostprocParams());
 
       AlgoOutput algo_output;
-      ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params,
-                                           algo_output, runtime_context));
+      ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                           algo_output, runtime_context),
+                InferErrorCode::SUCCESS);
       auto *det_ret = algo_output.getParams<DetRet>();
       checkResults(det_ret);
     }
@@ -487,8 +487,9 @@ TEST_F(TrtInferenceTest, BackwardCompatibilityInfer) {
   postproc_params.setParams(getPostprocParams());
 
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context));
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                       algo_output, runtime_context),
+            InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);

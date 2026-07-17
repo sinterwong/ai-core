@@ -31,8 +31,6 @@ private:
   DefaultPostprocPluginRegistrar();
 };
 
-[[maybe_unused]] inline const static DefaultPostprocPluginRegistrar
-    &temp_postproc_registrar = DefaultPostprocPluginRegistrar::getInstance();
 } // namespace ai_core::dnn
 
 #endif

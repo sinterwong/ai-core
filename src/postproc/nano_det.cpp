@@ -14,10 +14,10 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool NanoDet::process(const TensorData &model_output,
-                      const FrameTransformContext &prep_args,
-                      const AnchorDetParams &post_args,
-                      AlgoOutput &algo_output) const {
+bool NanoDet::processTyped(const TensorData &model_output,
+                           const FrameTransformContext &prep_args,
+                           const AnchorDetParams &post_args,
+                           AlgoOutput &algo_output) const {
   if (model_output.datas.empty()) {
     return false;
   }
@@ -43,10 +43,11 @@ bool NanoDet::process(const TensorData &model_output,
   return true;
 }
 
-bool NanoDet::batchProcess(const TensorData &model_output,
-                           const std::vector<FrameTransformContext> &prep_args,
-                           const AnchorDetParams &post_args,
-                           std::vector<AlgoOutput> &algo_output) const {
+bool NanoDet::batchProcessTyped(
+    const TensorData &model_output,
+    const std::vector<FrameTransformContext> &prep_args,
+    const AnchorDetParams &post_args,
+    std::vector<AlgoOutput> &algo_output) const {
   if (model_output.datas.empty()) {
     return false;
   }
@@ -140,9 +141,8 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
       float x = (x1 - prep_args.left_pad) / scaleX + input_roi.x;
       float y = (y1 - prep_args.top_pad) / scaleY + input_roi.y;
 
-      result.rect =
-          std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
-                                     static_cast<int>(w), static_cast<int>(h));
+      result.rect = cv::Rect(static_cast<int>(x), static_cast<int>(y),
+                             static_cast<int>(w), static_cast<int>(h));
       results.push_back(result);
     }
   }

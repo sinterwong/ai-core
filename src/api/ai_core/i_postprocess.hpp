@@ -12,21 +12,23 @@
 #define AI_CORE_POSTPROC_BASE_HPP
 
 #include "ai_core/algo_types.hpp"
+#include "ai_core/error_code.hpp"
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {
 
-class IPostprocssPlugin {
+class IPostprocessPlugin {
 public:
-  virtual ~IPostprocssPlugin() {};
+  virtual ~IPostprocessPlugin() {};
 
-  virtual bool process(const TensorData &, const AlgoPostprocParams &,
-                       AlgoOutput &,
-                       std::shared_ptr<RuntimeContext> &) const = 0;
+  virtual InferErrorCode process(const TensorData &, const AlgoPostprocParams &,
+                                 AlgoOutput &,
+                                 std::shared_ptr<RuntimeContext> &) const = 0;
 
-  virtual bool batchProcess(const TensorData &, const AlgoPostprocParams &,
-                            std::vector<AlgoOutput> &,
-                            std::shared_ptr<RuntimeContext> &) const = 0;
+  virtual InferErrorCode
+  batchProcess(const TensorData &, const AlgoPostprocParams &,
+               std::vector<AlgoOutput> &,
+               std::shared_ptr<RuntimeContext> &) const = 0;
 };
 } // namespace ai_core::dnn
 

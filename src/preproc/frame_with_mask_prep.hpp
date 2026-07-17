@@ -16,18 +16,18 @@
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {
-class FrameWithMaskPreprocess : public IPreprocssPlugin {
+class FrameWithMaskPreprocess : public IPreprocessPlugin {
 public:
   FrameWithMaskPreprocess() = default;
   ~FrameWithMaskPreprocess() = default;
 
-  virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
-                       TensorData &,
-                       std::shared_ptr<RuntimeContext> &) const override;
+  virtual InferErrorCode
+  process(const AlgoInput &, const AlgoPreprocParams &, TensorData &,
+          std::shared_ptr<RuntimeContext> &) const override;
 
-  virtual bool batchProcess(const std::vector<AlgoInput> &,
-                            const AlgoPreprocParams &, TensorData &,
-                            std::shared_ptr<RuntimeContext> &) const override;
+  virtual InferErrorCode
+  batchProcess(const std::vector<AlgoInput> &, const AlgoPreprocParams &,
+               TensorData &, std::shared_ptr<RuntimeContext> &) const override;
 };
 } // namespace ai_core::dnn
 

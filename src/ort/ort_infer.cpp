@@ -17,15 +17,19 @@
 #include <thread>
 
 #ifdef _WIN32
-#include <codecvt>
+#include <windows.h>
 #endif
 
 namespace ai_core::dnn {
 
 inline auto adaPlatformPath(const std::string &path) {
 #ifdef _WIN32
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-  return converter.from_bytes(path);
+  const int len = MultiByteToWideChar(
+      CP_UTF8, 0, path.c_str(), static_cast<int>(path.size()), nullptr, 0);
+  std::wstring wpath(static_cast<size_t>(len), L'\0');
+  MultiByteToWideChar(CP_UTF8, 0, path.c_str(), static_cast<int>(path.size()),
+                      wpath.data(), len);
+  return wpath;
 #else
   return path;
 #endif
@@ -67,7 +71,7 @@ DataType OrtAlgoInference::ortDataTypeToAiCore(ONNXTensorElementDataType type) {
 }
 
 InferErrorCode OrtAlgoInference::initialize() {
-  std::lock_guard lk(m_mutex);
+  std::unique_lock lk(m_mutex);
 
   m_inputNames.clear();
   m_outputNames.clear();
@@ -176,6 +180,7 @@ InferErrorCode OrtAlgoInference::initialize() {
 
 InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
+  std::shared_lock lk(m_mutex);
   if (!m_session) {
     LOG_ERROR_S << "Session is not initialized";
     return InferErrorCode::NotInitialized;
@@ -331,7 +336,7 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
 }
 
 InferErrorCode OrtAlgoInference::terminate() {
-  std::lock_guard lk(m_mutex);
+  std::unique_lock lk(m_mutex);
   m_session.reset();
   m_env.reset();
   m_memoryInfo.reset();
@@ -342,6 +347,7 @@ InferErrorCode OrtAlgoInference::terminate() {
 }
 
 const ModelInfo &OrtAlgoInference::getModelInfo() {
+  std::shared_lock lk(m_mutex);
   if (!m_modelInfo) {
     LOG_WARNING_S << "getModelInfo() called on uninitialized or failed model.";
     // Return a static empty info to avoid null reference

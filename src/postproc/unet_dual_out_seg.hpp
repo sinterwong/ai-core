@@ -1,5 +1,5 @@
 /**
- * @file unet_daul_out_seg.hpp
+ * @file unet_dual_out_seg.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -11,22 +11,23 @@
 #ifndef AI_CORE_INFERENCE_VISION_UNET_DAUL_OUTPUTS_HPP
 #define AI_CORE_INFERENCE_VISION_UNET_DAUL_OUTPUTS_HPP
 
-#include "cv_generic_post_base.hpp"
+#include "frame_postproc_base.hpp"
 namespace ai_core::dnn {
-class UNetDaulOutputSeg : public ICVGenericPostprocessor {
+class UNetDualOutputSeg : public FramePostprocBase<GenericPostParams, true> {
 public:
-  explicit UNetDaulOutputSeg() {}
+  explicit UNetDualOutputSeg() {}
 
-  virtual bool process(const TensorData &, const FrameTransformContext &,
-                       const GenericPostParams &, AlgoOutput &) const override;
-
-  virtual bool batchProcess(const TensorData &,
-                            const std::vector<FrameTransformContext> &,
+  virtual bool processTyped(const TensorData &, const FrameTransformContext &,
                             const GenericPostParams &,
-                            std::vector<AlgoOutput> &) const override;
+                            AlgoOutput &) const override;
+
+  virtual bool batchProcessTyped(const TensorData &,
+                                 const std::vector<FrameTransformContext> &,
+                                 const GenericPostParams &,
+                                 std::vector<AlgoOutput> &) const override;
 
 private:
-  DaulRawSegRet processSingleItem(const float *prob_data,
+  DualRawSegRet processSingleItem(const float *prob_data,
                                   const std::vector<int> &prob_shape,
                                   const float *mask_data,
                                   const std::vector<int> &mask_shape,

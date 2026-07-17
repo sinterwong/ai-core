@@ -11,19 +11,20 @@
 #ifndef AI_CORE_INFERENCE_VISION_SOFTMAX_CLS_HPP
 #define AI_CORE_INFERENCE_VISION_SOFTMAX_CLS_HPP
 
-#include "cv_generic_post_base.hpp"
+#include "frame_postproc_base.hpp"
 namespace ai_core::dnn {
-class SoftmaxCls : public ICVGenericPostprocessor {
+class SoftmaxCls : public FramePostprocBase<GenericPostParams, false> {
 public:
   explicit SoftmaxCls() {}
 
-  virtual bool process(const TensorData &, const FrameTransformContext &,
-                       const GenericPostParams &, AlgoOutput &) const override;
-
-  virtual bool batchProcess(const TensorData &,
-                            const std::vector<FrameTransformContext> &,
+  virtual bool processTyped(const TensorData &, const FrameTransformContext &,
                             const GenericPostParams &,
-                            std::vector<AlgoOutput> &) const override;
+                            AlgoOutput &) const override;
+
+  virtual bool batchProcessTyped(const TensorData &,
+                                 const std::vector<FrameTransformContext> &,
+                                 const GenericPostParams &,
+                                 std::vector<AlgoOutput> &) const override;
 
 private:
   ClsRet processSingleItem(const float *logits, int num_classes) const;

@@ -1,5 +1,5 @@
 /**
- * @file unet_daul_out_seg.cpp
+ * @file unet_dual_out_seg.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -8,19 +8,19 @@
  * @copyright Copyright (c) 2025
  *
  */
-#include "unet_daul_out_seg.hpp"
+#include "unet_dual_out_seg.hpp"
 
 #include "ai_core/logger.hpp"
 #include <opencv2/core/mat.hpp>
 
 namespace ai_core::dnn {
-bool UNetDaulOutputSeg::process(const TensorData &model_output,
-                                const FrameTransformContext &prep_args,
-                                const GenericPostParams &post_args,
-                                AlgoOutput &algo_output) const {
+bool UNetDualOutputSeg::processTyped(const TensorData &model_output,
+                                     const FrameTransformContext &prep_args,
+                                     const GenericPostParams &post_args,
+                                     AlgoOutput &algo_output) const {
   if (post_args.output_names.size() != 2) {
     LOG_ERROR_S
-        << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
+        << "UNetDualOutputSeg expects exactly two output names: prob and mask.";
     return false;
   }
   const auto &prob_output_name = post_args.output_names.at(0);
@@ -31,7 +31,7 @@ bool UNetDaulOutputSeg::process(const TensorData &model_output,
   const auto &prob_shape = model_output.shapes.at(prob_output_name);
   const auto &mask_shape = model_output.shapes.at(mask_output_name);
 
-  DaulRawSegRet ret =
+  DualRawSegRet ret =
       processSingleItem(prob_output.getHostPtr<float>(), prob_shape,
                         mask_output.getHostPtr<float>(), mask_shape, prep_args);
 
@@ -39,7 +39,7 @@ bool UNetDaulOutputSeg::process(const TensorData &model_output,
   return true;
 }
 
-bool UNetDaulOutputSeg::batchProcess(
+bool UNetDualOutputSeg::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const GenericPostParams &post_args,
@@ -47,7 +47,7 @@ bool UNetDaulOutputSeg::batchProcess(
 
   if (post_args.output_names.size() != 2) {
     LOG_ERROR_S
-        << "UNetDaulOutputSeg expects exactly two output names: prob and mask.";
+        << "UNetDualOutputSeg expects exactly two output names: prob and mask.";
     return false;
   }
   const auto &prob_output_name = post_args.output_names.at(0);
@@ -80,7 +80,7 @@ bool UNetDaulOutputSeg::batchProcess(
     const float *current_mask_data = mask_data_ptr + i * mask_item_size;
 
     // 在循环中调用辅助函数
-    DaulRawSegRet ret =
+    DualRawSegRet ret =
         processSingleItem(current_prob_data, prob_shape, current_mask_data,
                           mask_shape, prep_args[i]);
     algo_output[i].setParams(ret);
@@ -89,7 +89,7 @@ bool UNetDaulOutputSeg::batchProcess(
   return true;
 }
 
-DaulRawSegRet UNetDaulOutputSeg::processSingleItem(
+DualRawSegRet UNetDualOutputSeg::processSingleItem(
     const float *prob_data, const std::vector<int> &prob_shape,
     const float *mask_data, const std::vector<int> &mask_shape,
     const FrameTransformContext &prep_args) const {
@@ -102,7 +102,7 @@ DaulRawSegRet UNetDaulOutputSeg::processSingleItem(
   width = mask_shape[1];
   cv::Mat mask_cv_mat(height, width, CV_32FC1, const_cast<float *>(mask_data));
 
-  DaulRawSegRet ret;
+  DualRawSegRet ret;
   ret.prob = std::make_shared<cv::Mat>(prob_cv_mat);
   ret.mask = std::make_shared<cv::Mat>(mask_cv_mat);
 

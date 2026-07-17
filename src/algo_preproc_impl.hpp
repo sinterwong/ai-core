@@ -39,7 +39,7 @@ public:
 
 private:
   std::string m_moduleName;
-  std::shared_ptr<IPreprocssPlugin> m_preprocessor;
+  std::shared_ptr<IPreprocessPlugin> m_preprocessor;
 };
 } // namespace ai_core::dnn
 #endif

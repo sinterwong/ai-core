@@ -1,9 +1,10 @@
 #include "algo_config_parser.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/infer_config.hpp"
+#include "ai_core/logger.hpp"
 #include <cstddef>
 #include <fstream>
 #include <map>
+#include <set>
 
 namespace ai_core::example::utils {
 void AlgoConfigParser::loadAndValidateJson() {
@@ -55,8 +56,9 @@ AlgoConfigParser::parseInferParams(const nlohmann::json &infer_json) {
   infer_params.need_decrypt = infer_json.at("needDecrypt").get<bool>();
   infer_params.name =
       getOptional<std::string>(infer_json, "name", "default_infer_name");
-  infer_params.max_output_buffer_sizes = getOptional<std::map<std::string, size_t>>(
-      infer_json, "maxOutputBufferSizes", {});
+  infer_params.max_output_buffer_sizes =
+      getOptional<std::map<std::string, size_t>>(infer_json,
+                                                 "maxOutputBufferSizes", {});
 
   std::string security_key = SECURITY_KEY;
   infer_params.decryptkey_str = security_key;
@@ -67,8 +69,14 @@ AlgoConfigParser::parseInferParams(const nlohmann::json &infer_json) {
 ai_core::AlgoPreprocParams
 AlgoConfigParser::parsePreprocParams(const nlohmann::json &preproc_json,
                                      const std::string &preproc_type) {
+  // All frame preprocessing plugins consume FramePreprocessArg; the plugin
+  // name in "types.preproc" selects the implementation.
+  static const std::set<std::string> kFramePreprocPlugins = {
+      "CpuGenericPreprocess", "CudaGenericPreprocess",
+      "FrameWithMaskPreprocess"};
+
   ai_core::AlgoPreprocParams params;
-  if (preproc_type == "FramePreprocess") {
+  if (kFramePreprocPlugins.count(preproc_type)) {
     auto frame_params = parsePreprocFramePreprocessParams(preproc_json);
     params.setParams(frame_params);
   } else {
@@ -85,27 +93,28 @@ AlgoConfigParser::parsePostprocParams(const nlohmann::json &post_proc_json,
   const auto output_names =
       post_proc_json.at("outputNames").get<std::vector<std::string>>();
 
-  if (postproc_type == "AnchorDetPostproc") {
+  // The plugin name in "types.postproc" determines which params family the
+  // plugin consumes.
+  static const std::set<std::string> kAnchorDetPlugins = {"Yolov11Det",
+                                                          "RTMDet", "NanoDet"};
+  static const std::set<std::string> kGenericPlugins = {
+      "SoftmaxCls", "FprCls", "RawModelOutput", "OCRReco", "UNetDualOutputSeg"};
+  static const std::set<std::string> kConfidenceFilterPlugins = {"SemanticSeg"};
+
+  if (kAnchorDetPlugins.count(postproc_type)) {
     ai_core::AnchorDetParams anchor_det_params;
-    anchor_det_params.algo_type = static_cast<ai_core::AnchorDetParams::AlgoType>(
-        getOptional<int>(post_proc_json, "algoType", 0));
     anchor_det_params.cond_thre =
         getOptional<float>(post_proc_json, "condThre", 0.f);
-    anchor_det_params.nms_thre = getOptional<float>(post_proc_json, "nmsThre", 0.f);
+    anchor_det_params.nms_thre =
+        getOptional<float>(post_proc_json, "nmsThre", 0.f);
     anchor_det_params.output_names = output_names;
     params.setParams(anchor_det_params);
-  } else if (postproc_type == "CVGenericPostproc") {
+  } else if (kGenericPlugins.count(postproc_type)) {
     ai_core::GenericPostParams generic_post_params;
-    generic_post_params.algo_type =
-        static_cast<ai_core::GenericPostParams::AlgoType>(
-            post_proc_json.at("algoType").get<int>());
     generic_post_params.output_names = output_names;
     params.setParams(generic_post_params);
-  } else if (postproc_type == "ConfidenceFilterPostproc") {
+  } else if (kConfidenceFilterPlugins.count(postproc_type)) {
     ai_core::ConfidenceFilterParams confidence_filter_params;
-    confidence_filter_params.algo_type =
-        static_cast<ai_core::ConfidenceFilterParams::AlgoType>(
-            getOptional<int>(post_proc_json, "algoType", 0));
     confidence_filter_params.cond_thre =
         getOptional<float>(post_proc_json, "condThre", 0.f);
     confidence_filter_params.output_names = output_names;
@@ -138,22 +147,14 @@ ai_core::FramePreprocessArg AlgoConfigParser::parsePreprocFramePreprocessParams(
       getOptional<int>(preproc_json, "buffer_location",
                        static_cast<int>(ai_core::BufferLocation::CPU)));
 
-  if (preproc_json.contains("preproc_task_type")) {
-    arg.preproc_task_type =
-        static_cast<ai_core::FramePreprocessArg::FramePreprocType>(
-            preproc_json["preproc_task_type"].get<int>());
-  }
-
-  arg.input_names = preproc_json.at("input_names").get<std::vector<std::string>>();
+  arg.input_names =
+      preproc_json.at("input_names").get<std::vector<std::string>>();
   return arg;
 }
 
 ai_core::GenericPostParams AlgoConfigParser::parsePostprocGenericParams(
     const nlohmann::json &post_proc_json) {
   ai_core::GenericPostParams generic_post_params;
-  generic_post_params.algo_type =
-      static_cast<ai_core::GenericPostParams::AlgoType>(
-          post_proc_json.at("algoType").get<int>());
   generic_post_params.output_names =
       post_proc_json.at("outputNames").get<std::vector<std::string>>();
   return generic_post_params;
@@ -162,10 +163,10 @@ ai_core::GenericPostParams AlgoConfigParser::parsePostprocGenericParams(
 ai_core::AnchorDetParams AlgoConfigParser::parsePostprocAnchorDetParams(
     const nlohmann::json &post_proc_json) {
   ai_core::AnchorDetParams anchor_det_params;
-  anchor_det_params.algo_type = static_cast<ai_core::AnchorDetParams::AlgoType>(
-      getOptional<int>(post_proc_json, "algoType", 0));
-  anchor_det_params.cond_thre = getOptional<float>(post_proc_json, "condThre", 0.5f);
-  anchor_det_params.nms_thre = getOptional<float>(post_proc_json, "nmsThre", 0.5f);
+  anchor_det_params.cond_thre =
+      getOptional<float>(post_proc_json, "condThre", 0.5f);
+  anchor_det_params.nms_thre =
+      getOptional<float>(post_proc_json, "nmsThre", 0.5f);
   anchor_det_params.output_names =
       post_proc_json.at("outputNames").get<std::vector<std::string>>();
   return anchor_det_params;
@@ -175,9 +176,6 @@ ai_core::ConfidenceFilterParams
 AlgoConfigParser::parsePostprocConfidenceFilterParams(
     const nlohmann::json &post_proc_json) {
   ai_core::ConfidenceFilterParams confidence_filter_params;
-  confidence_filter_params.algo_type =
-      static_cast<ai_core::ConfidenceFilterParams::AlgoType>(
-          getOptional<int>(post_proc_json, "algoType", 0));
   confidence_filter_params.cond_thre =
       getOptional<float>(post_proc_json, "condThre", 0.5f);
   confidence_filter_params.output_names =

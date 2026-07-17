@@ -88,7 +88,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
     if (m_params.need_decrypt) {
       int model_load_ret = -1;
       LOG_INFO_S << "Decrypting model weights: " << bin_path;
-      std::vector<u_char> model_data;
+      std::vector<uint8_t> model_data;
       auto crypto_config =
           encrypt::Crypto::deriveKeyFromCommit(m_params.decryptkey_str);
       encrypt::Crypto crypto(crypto_config);

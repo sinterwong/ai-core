@@ -1,9 +1,9 @@
 #pragma once
 
-#include "algo_config_parser.hpp"
-#include "ai_core/infer_engine_wrapper.hpp"
 #include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
+#include "algo_config_parser.hpp"
 #include <vector>
 
 namespace ai_core::example {
