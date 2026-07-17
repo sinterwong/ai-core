@@ -67,7 +67,7 @@ DataType OrtAlgoInference::ortDataTypeToAiCore(ONNXTensorElementDataType type) {
 }
 
 InferErrorCode OrtAlgoInference::initialize() {
-  std::lock_guard lk(m_mutex);
+  std::unique_lock lk(m_mutex);
 
   m_inputNames.clear();
   m_outputNames.clear();
@@ -176,6 +176,7 @@ InferErrorCode OrtAlgoInference::initialize() {
 
 InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
+  std::shared_lock lk(m_mutex);
   if (!m_session) {
     LOG_ERROR_S << "Session is not initialized";
     return InferErrorCode::NotInitialized;
@@ -331,7 +332,7 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
 }
 
 InferErrorCode OrtAlgoInference::terminate() {
-  std::lock_guard lk(m_mutex);
+  std::unique_lock lk(m_mutex);
   m_session.reset();
   m_env.reset();
   m_memoryInfo.reset();
@@ -342,6 +343,7 @@ InferErrorCode OrtAlgoInference::terminate() {
 }
 
 const ModelInfo &OrtAlgoInference::getModelInfo() {
+  std::shared_lock lk(m_mutex);
   if (!m_modelInfo) {
     LOG_WARNING_S << "getModelInfo() called on uninitialized or failed model.";
     // Return a static empty info to avoid null reference

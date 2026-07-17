@@ -16,6 +16,7 @@
 #include "ai_core/infer_config.hpp"
 #include <memory>
 #include <onnxruntime_cxx_api.h>
+#include <shared_mutex>
 #include <unordered_set>
 
 namespace ai_core::dnn {
@@ -48,7 +49,9 @@ private:
 
   std::unordered_set<std::string> m_dynamicInputTensorNames;
 
-  mutable std::mutex m_mutex;
+  // Guards session lifetime: infer/getModelInfo take shared ownership
+  // (Ort::Session::Run is thread-safe), initialize/terminate take exclusive.
+  mutable std::shared_mutex m_mutex;
 };
 } // namespace ai_core::dnn
 #endif
