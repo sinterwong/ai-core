@@ -12,14 +12,10 @@
 #ifndef AI_CORE_PREPROCESS_TYPES_HPP
 #define AI_CORE_PREPROCESS_TYPES_HPP
 
+#include "ai_core/common_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include <string>
 #include <vector>
-
-namespace cv {
-template <typename Tp> class Rect_;
-using Rect = Rect_<int>;
-} // namespace cv
 
 namespace ai_core {
 
@@ -46,7 +42,8 @@ struct FrameTransformContext {
   bool is_equal_scale;
   Shape origin_shape;
   Shape model_input_shape;
-  std::shared_ptr<cv::Rect> roi;
+  Rect roi; // region the preprocessor actually consumed (full frame if the
+            // caller passed none)
   int top_pad = 0;
   int left_pad = 0;
 };

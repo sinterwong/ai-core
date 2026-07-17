@@ -1,5 +1,6 @@
 #include "ocr_rec.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/preprocess_types.hpp"
 #include "algo_config_parser.hpp"
 #include <cstdint>
@@ -104,9 +105,8 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &image_gray) {
 
   ai_core::AlgoInput algo_input;
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_gray);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_gray.cols, image_gray.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_gray);
+  frame_input.roi = ai_core::Rect{0, 0, image_gray.cols, image_gray.rows};
   algo_input.setParams(frame_input);
 
   auto runtime_context = std::make_shared<ai_core::RuntimeContext>();

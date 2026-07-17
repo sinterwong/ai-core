@@ -1,5 +1,6 @@
 #include "generic_image_infer.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "algo_config_parser.hpp"
 
 namespace ai_core::example {
@@ -29,8 +30,8 @@ AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image);
-  frame_input.input_roi = std::make_shared<cv::Rect>(det_roi);
+  frame_input.image = ai_core::interop::viewFromMat(image);
+  frame_input.roi = ai_core::interop::fromCv(det_roi);
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;
@@ -69,8 +70,8 @@ GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
     }
 
     FrameInput frame_input;
-    frame_input.image = std::make_shared<cv::Mat>(images[i]);
-    frame_input.input_roi = std::make_shared<cv::Rect>(det_roi);
+    frame_input.image = ai_core::interop::viewFromMat(images[i]);
+    frame_input.roi = ai_core::interop::fromCv(det_roi);
     algo_inputs[i].setParams(frame_input);
   }
 

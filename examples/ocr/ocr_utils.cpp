@@ -1,4 +1,5 @@
 #include "ocr_utils.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/logger.hpp"
 #include <opencv2/imgcodecs.hpp>
 
@@ -101,7 +102,12 @@ std::vector<cv::Rect> OCRUtils::detect(const cv::Mat &frame,
   const auto &det_contour_rets = ocr_det_ret->cls_to_contours.at(1);
   std::vector<cv::Rect> bboxes;
   for (const auto &contour : det_contour_rets) {
-    bboxes.push_back(cv::boundingRect(contour));
+    std::vector<cv::Point> cv_contour;
+    cv_contour.reserve(contour.size());
+    for (const auto &pt : contour) {
+      cv_contour.push_back(ai_core::interop::toCv(pt));
+    }
+    bboxes.push_back(cv::boundingRect(cv_contour));
   }
   return bboxes;
 }

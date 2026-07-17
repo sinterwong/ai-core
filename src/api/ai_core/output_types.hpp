@@ -16,12 +16,17 @@
 #include "ai_core/tensor_data.hpp"
 #include <map>
 #include <memory>
-#include <opencv2/core/types.hpp>
 #include <vector>
+
+// TODO(v1.4 TensorData v2): mask/prob below migrate to ai_core::Tensor; this
+// forward declaration is the last cv type in the public headers.
+namespace cv {
+class Mat;
+} // namespace cv
 
 namespace ai_core {
 struct BBox {
-  cv::Rect rect;
+  Rect rect;
   float score;
   int label;
 };
@@ -51,7 +56,7 @@ struct SegRet {
 struct DualRawSegRet {
   std::shared_ptr<cv::Mat> mask;
   std::shared_ptr<cv::Mat> prob;
-  std::shared_ptr<cv::Rect> roi;
+  Rect roi;
   float ratio;
   int left_shift;
   int top_shift;

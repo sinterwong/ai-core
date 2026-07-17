@@ -1,4 +1,5 @@
 #include "ai_core/algo_types.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/i_infer_engine.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
@@ -83,9 +84,9 @@ protected:
     preproc_params.setParams(getPreprocParams());
     AlgoInput algo_input;
     FrameInput frame_input;
-    frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-    frame_input.input_roi = std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4,
-                                                       image_rgb.rows - 4);
+    frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+    frame_input.roi = ai_core::Rect{2, 2, image_rgb.cols - 4,
+                                                       image_rgb.rows - 4};
     algo_input.setParams(frame_input);
 
     std::shared_ptr<RuntimeContext> runtime_context =

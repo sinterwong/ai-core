@@ -1,4 +1,5 @@
 #include "ai_core/algo_inference.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
 #include "gtest/gtest.h"
@@ -105,9 +106,8 @@ TEST(AlgoInferenceTest, YoloDet) {
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;

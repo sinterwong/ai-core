@@ -103,7 +103,7 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
                    const_cast<float *>(output_data));
   int num_classes = stride - 4;
 
-  const auto &input_roi = *prep_args.roi;
+  const auto &input_roi = prep_args.roi;
   Shape origin_shape;
   if (input_roi.area() > 0) {
     origin_shape.w = input_roi.width;
@@ -141,8 +141,8 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
       float x = (x1 - prep_args.left_pad) / scaleX + input_roi.x;
       float y = (y1 - prep_args.top_pad) / scaleY + input_roi.y;
 
-      result.rect = cv::Rect(static_cast<int>(x), static_cast<int>(y),
-                             static_cast<int>(w), static_cast<int>(h));
+      result.rect = Rect{static_cast<int>(x), static_cast<int>(y),
+                         static_cast<int>(w), static_cast<int>(h)};
       results.push_back(result);
     }
   }

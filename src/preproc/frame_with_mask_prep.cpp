@@ -13,6 +13,7 @@
 #include "ai_core/logger.hpp"
 #include "cpu_generic_preprocessor.hpp"
 #include "frame_preprocessor_base.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
@@ -23,18 +24,16 @@ namespace {
 cv::Mat buildImageWithMaskChannel(const FrameInputWithMask &input_with_mask) {
   const auto &frame_input = input_with_mask.frame_input;
 
-  cv::Rect roi;
-  if (frame_input.input_roi == nullptr) {
-    roi = cv::Rect(0, 0, frame_input.image->cols, frame_input.image->rows);
-  } else {
-    roi = *frame_input.input_roi;
-  }
+  const cv::Mat image = interop::matFromView(frame_input.image);
+  const cv::Rect roi =
+      frame_input.roi ? interop::toCv(*frame_input.roi)
+                      : cv::Rect(0, 0, image.cols, image.rows);
 
-  cv::Mat roi_image = (*frame_input.image)(roi);
+  cv::Mat roi_image = image(roi);
   cv::Mat mask = cv::Mat::zeros(roi_image.size(), CV_8UC1);
 
   for (const auto &region : input_with_mask.mask_regions) {
-    cv::Rect intersection = region & roi;
+    cv::Rect intersection = interop::toCv(region) & roi;
     if (intersection.width <= 0 || intersection.height <= 0) {
       continue;
     }
@@ -87,18 +86,18 @@ InferErrorCode FrameWithMaskPreprocess::process(
   }
 
   const auto &frame_input = frame_input_with_mask->frame_input;
-  if (frame_input.image == nullptr) {
-    LOG_ERROR_S << "Input frame is null.";
+  if (frame_input.image.empty()) {
+    LOG_ERROR_S << "Input frame is empty.";
     return InferErrorCode::InferInvalidInput;
   }
 
   FramePreprocessArg new_params = extendParamsForMaskChannel(*params_ptr);
 
+  // ROI has already been applied while building the masked image, so the
+  // masked frame carries no ROI. The Mat must outlive the view.
+  cv::Mat masked_image = buildImageWithMaskChannel(*frame_input_with_mask);
   FrameInput masked_frame_input;
-  masked_frame_input.image = std::make_shared<cv::Mat>(
-      buildImageWithMaskChannel(*frame_input_with_mask));
-  // ROI has already been applied while building the masked image
-  masked_frame_input.input_roi = nullptr;
+  masked_frame_input.image = interop::viewFromMat(masked_image);
 
   cpu::CpuGenericCvPreprocessor processor;
   FrameTransformContext single_runtime_args;
@@ -107,7 +106,7 @@ InferErrorCode FrameWithMaskPreprocess::process(
 
   single_runtime_args.model_input_shape = params_ptr->model_input_shape;
   single_runtime_args.is_equal_scale = params_ptr->is_equal_scale;
-  single_runtime_args.roi = frame_input.input_roi;
+  single_runtime_args.roi = frame_input.roi.value_or(Rect{});
 
   runtime_context->frame_transform = single_runtime_args;
 
@@ -143,6 +142,10 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
 
   std::vector<FrameInput> masked_frame_inputs;
   masked_frame_inputs.reserve(input.size());
+  // Owning storage for the composited images; the FrameInput views point in
+  // here and must not outlive it.
+  std::vector<cv::Mat> masked_images;
+  masked_images.reserve(input.size());
 
   for (const auto &algo_input : input) {
     auto frame_input_with_mask = algo_input.getParams<FrameInputWithMask>();
@@ -151,15 +154,15 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
       return InferErrorCode::InferInvalidInput;
     }
 
-    if (frame_input_with_mask->frame_input.image == nullptr) {
-      LOG_ERROR_S << "Input frame is null in the batch.";
+    if (frame_input_with_mask->frame_input.image.empty()) {
+      LOG_ERROR_S << "Input frame is empty in the batch.";
       return InferErrorCode::InferInvalidInput;
     }
 
-    FrameInput current_masked_input;
-    current_masked_input.image = std::make_shared<cv::Mat>(
+    masked_images.push_back(
         buildImageWithMaskChannel(*frame_input_with_mask));
-    current_masked_input.input_roi = nullptr;
+    FrameInput current_masked_input;
+    current_masked_input.image = interop::viewFromMat(masked_images.back());
     masked_frame_inputs.push_back(current_masked_input);
   }
 
@@ -173,7 +176,8 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
     batch_runtime_args[i].model_input_shape = params_ptr->model_input_shape;
     batch_runtime_args[i].is_equal_scale = params_ptr->is_equal_scale;
     batch_runtime_args[i].roi =
-        input[i].getParams<FrameInputWithMask>()->frame_input.input_roi;
+        input[i].getParams<FrameInputWithMask>()->frame_input.roi.value_or(
+            Rect{});
   }
   runtime_context->frame_transform_batch = batch_runtime_args;
 

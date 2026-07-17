@@ -9,6 +9,7 @@
  *
  */
 #include "ai_core/algo_preprocessor.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
@@ -44,9 +45,8 @@ static void BM_CPU_FramePreproc_Yolo(benchmark::State &state) {
   cv::Mat image_rgb;
   cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
   input.setParams(frame_input);
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
@@ -86,9 +86,8 @@ static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
   cv::Mat image_rgb;
   cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
   input.setParams(frame_input);
 
   ai_core::TensorData model_input;
@@ -127,9 +126,8 @@ static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
   cv::Mat image_rgb;
   cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
   input.setParams(frame_input);
 
   ai_core::TensorData model_input;
@@ -167,9 +165,8 @@ static void BM_GPU_FramePreproc_No_FP16_Yolo(benchmark::State &state) {
   cv::Mat image_rgb;
   cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
   input.setParams(frame_input);
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
@@ -209,9 +206,8 @@ static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
   cv::Mat image_rgb;
   cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
   input.setParams(frame_input);
 
   ai_core::TensorData model_input;

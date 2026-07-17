@@ -10,6 +10,8 @@
  */
 #include "ncnn_generic_preprocessor.hpp"
 
+#include "ai_core/opencv_interop.hpp"
+
 #include "ai_core/logger.hpp"
 #include <algorithm>
 #include <ncnn/mat.h>
@@ -31,22 +33,18 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
         << "NCNN NcnnGenericPreprocessor requested to output to GPU_DEVICE. "
            "This is not supported. Output will be on CPU.";
   }
-  if (input.image == nullptr) {
-    LOG_ERROR_S << "Input frame is null.";
-    throw std::runtime_error("Input frame is null.");
+  if (input.image.empty()) {
+    LOG_ERROR_S << "Input frame is empty.";
+    throw std::runtime_error("Input frame is empty.");
   }
 
-  if (input.input_roi == nullptr) {
-    runtime_args.roi =
-        std::make_shared<cv::Rect>(0, 0, input.image->cols, input.image->rows);
-  } else {
-    runtime_args.roi = input.input_roi;
-  }
-  runtime_args.origin_shape = {input.image->cols, input.image->rows,
-                               input.image->channels()};
+  runtime_args.roi =
+      input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
+  runtime_args.origin_shape = {input.image.width, input.image.height,
+                               input.image.channels()};
 
-  const auto &cv_image_orig = *input.image;
-  const auto &input_roi = *runtime_args.roi;
+  const cv::Mat cv_image_orig = interop::matFromView(input.image);
+  const cv::Rect input_roi = interop::toCv(runtime_args.roi);
   if (input_roi.x < 0 || input_roi.y < 0 || input_roi.width <= 0 ||
       input_roi.height <= 0 ||
       input_roi.x + input_roi.width > cv_image_orig.cols ||

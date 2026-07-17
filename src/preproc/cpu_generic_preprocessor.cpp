@@ -10,6 +10,7 @@
  */
 #include "cpu_generic_preprocessor.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/core/types.hpp>
@@ -129,22 +130,20 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
 cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
     const FramePreprocessArg &params, const FrameInput &frame_input,
     FrameTransformContext &runtime_args) const {
-  if (frame_input.image == nullptr) {
-    LOG_ERROR_S << "Input frame is null.";
-    throw std::runtime_error("Input frame is null.");
+  if (frame_input.image.empty()) {
+    LOG_ERROR_S << "Input frame is empty.";
+    throw std::runtime_error("Input frame is empty.");
   }
 
-  if (frame_input.input_roi == nullptr) {
-    runtime_args.roi = std::make_shared<cv::Rect>(0, 0, frame_input.image->cols,
-                                                  frame_input.image->rows);
-  } else {
-    runtime_args.roi = frame_input.input_roi;
-  }
-  runtime_args.origin_shape = {frame_input.image->cols, frame_input.image->rows,
-                               frame_input.image->channels()};
+  const cv::Mat image = interop::matFromView(frame_input.image);
 
-  const auto &image = *frame_input.image;
-  const auto &roi = *runtime_args.roi;
+  runtime_args.roi = frame_input.roi.value_or(
+      Rect{0, 0, frame_input.image.width, frame_input.image.height});
+  runtime_args.origin_shape = {frame_input.image.width,
+                               frame_input.image.height,
+                               frame_input.image.channels()};
+
+  const cv::Rect roi = interop::toCv(runtime_args.roi);
   if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
       roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
     LOG_ERROR_S << "Invalid ROI: " << roi
@@ -152,12 +151,7 @@ cv::Mat CpuGenericCvPreprocessor::preprocessSingleFrame(
     throw std::runtime_error("Invalid ROI.");
   }
 
-  cv::Mat cropped_image;
-  if (roi.area() > 0) {
-    cropped_image = image(roi).clone();
-  } else {
-    cropped_image = image.clone();
-  }
+  cv::Mat cropped_image = image(roi).clone();
 
   cv::Mat resized_image;
   if (params.need_resize) {

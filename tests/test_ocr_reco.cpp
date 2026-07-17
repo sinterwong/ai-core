@@ -9,6 +9,7 @@
  *
  */
 #include "ai_core/i_infer_engine.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/infer_config.hpp"
@@ -138,9 +139,8 @@ TEST_P(OCRRecoInferTest, Normal) {
   cv::cvtColor(image, image_gray, cv::COLOR_BGR2GRAY);
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_gray);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_gray.cols, image_gray.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_gray);
+  frame_input.roi = ai_core::Rect{0, 0, image_gray.cols, image_gray.rows};
   algo_input.setParams(frame_input);
 
   TensorData model_input;

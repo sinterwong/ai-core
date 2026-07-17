@@ -1,4 +1,5 @@
 #include "ai_core/i_infer_engine.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/infer_config.hpp"
@@ -130,9 +131,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4, image_rgb.rows - 4);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{2, 2, image_rgb.cols - 4, image_rgb.rows - 4};
   algo_input.setParams(frame_input);
 
   std::shared_ptr<RuntimeContext> runtime_context =
@@ -154,10 +154,11 @@ TEST_P(YoloDetInferenceTest, Normal) {
 
   cv::Mat vis_image = image.clone();
   for (const auto &bbox : det_ret->bboxes) {
-    cv::rectangle(vis_image, bbox.rect, cv::Scalar(0, 255, 0), 2);
+    cv::rectangle(vis_image, ai_core::interop::toCv(bbox.rect),
+                  cv::Scalar(0, 255, 0), 2);
     std::stringstream ss;
     ss << bbox.label << ":" << std::fixed << std::setprecision(2) << bbox.score;
-    cv::putText(vis_image, ss.str(), bbox.rect.tl(), cv::FONT_HERSHEY_SIMPLEX,
+    cv::putText(vis_image, ss.str(), cv::Point(bbox.rect.x, bbox.rect.y), cv::FONT_HERSHEY_SIMPLEX,
                 1, cv::Scalar(0, 0, 255), 2);
   }
   std::string output_filename = "vis_yolodet_" + config.test_name + ".png";
@@ -210,9 +211,8 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(2, 2, image_rgb.cols - 4, image_rgb.rows - 4);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{2, 2, image_rgb.cols - 4, image_rgb.rows - 4};
   algo_input.setParams(frame_input);
 
   std::vector<std::thread> threads;
