@@ -343,7 +343,7 @@ enum class DeviceType { CPU = 0, GPU = 1 };
 ### `DataType`
 
 ```cpp
-enum class DataType : u_char {
+enum class DataType : uint8_t {
   FLOAT32 = 0, FLOAT16, INT32, INT64, INT8,
 };
 ```

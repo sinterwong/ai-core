@@ -26,7 +26,7 @@
 ### API 清算（一次性 break）
 
 - [x] 命名：`IPreprocssPlugin` → `IPreprocessPlugin`、`IPostprocssPlugin` → `IPostprocessPlugin`、`DaulRawSegRet` → `DualRawSegRet`、`accelerator_buffer_impl.hpp` 更名（它是接口不是 impl）。
-- [ ] 可移植性：`u_char` → `uint8_t`（公共头在 MSVC 下编译不过）；移除 deprecated 的 `std::codecvt`。
+- [x] 可移植性：`u_char` → `uint8_t`（公共头在 MSVC 下编译不过）；移除 deprecated 的 `std::codecvt`。
 - [ ] `BBox` 改值语义：去掉 `shared_ptr<cv::Rect>`（每框一次堆分配 + 原子引用计数，`DetRet` 拷贝变浅共享）。
 - [ ] **插件接口统一错误码**：`IPreprocessPlugin` / `IPostprocessPlugin` 的 `bool` 返回改为 `InferErrorCode`，异常只存在于插件内部。
 

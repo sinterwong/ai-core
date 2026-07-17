@@ -17,15 +17,19 @@
 #include <thread>
 
 #ifdef _WIN32
-#include <codecvt>
+#include <windows.h>
 #endif
 
 namespace ai_core::dnn {
 
 inline auto adaPlatformPath(const std::string &path) {
 #ifdef _WIN32
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-  return converter.from_bytes(path);
+  const int len = MultiByteToWideChar(CP_UTF8, 0, path.c_str(),
+                                      static_cast<int>(path.size()), nullptr, 0);
+  std::wstring wpath(static_cast<size_t>(len), L'\0');
+  MultiByteToWideChar(CP_UTF8, 0, path.c_str(),
+                      static_cast<int>(path.size()), wpath.data(), len);
+  return wpath;
 #else
   return path;
 #endif

@@ -11,6 +11,7 @@
 #ifndef AI_CORE_INFER_COMMON_TYPES_HPP
 #define AI_CORE_INFER_COMMON_TYPES_HPP
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -34,7 +35,7 @@ using Contourf = PointfList;
 
 enum class DeviceType { CPU = 0, GPU = 1 };
 
-enum class DataType : u_char {
+enum class DataType : uint8_t {
   FLOAT32 = 0,
   FLOAT16,
   INT32,
