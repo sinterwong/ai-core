@@ -140,9 +140,8 @@ DetRet RTMDet::processSingle(const float *det_data_ptr,
       x += input_roi.x;
       y += input_roi.y;
 
-      result.rect =
-          std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
-                                     static_cast<int>(w), static_cast<int>(h));
+      result.rect = cv::Rect(static_cast<int>(x), static_cast<int>(y),
+                             static_cast<int>(w), static_cast<int>(h));
       results.emplace_back(result);
     }
   }

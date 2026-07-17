@@ -156,10 +156,10 @@ TEST_P(YoloDetInferenceTest, Normal) {
 
   cv::Mat vis_image = image.clone();
   for (const auto &bbox : det_ret->bboxes) {
-    cv::rectangle(vis_image, *bbox.rect, cv::Scalar(0, 255, 0), 2);
+    cv::rectangle(vis_image, bbox.rect, cv::Scalar(0, 255, 0), 2);
     std::stringstream ss;
     ss << bbox.label << ":" << std::fixed << std::setprecision(2) << bbox.score;
-    cv::putText(vis_image, ss.str(), bbox.rect->tl(), cv::FONT_HERSHEY_SIMPLEX,
+    cv::putText(vis_image, ss.str(), bbox.rect.tl(), cv::FONT_HERSHEY_SIMPLEX,
                 1, cv::Scalar(0, 0, 255), 2);
   }
   std::string output_filename = "vis_yolodet_" + config.test_name + ".png";

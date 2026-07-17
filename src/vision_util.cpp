@@ -33,8 +33,8 @@ std::pair<float, float> scaleRatio(Shape const &origin_shape,
 }
 
 float calculateIoU(const BBox &bbox1, const BBox &bbox2) {
-  const auto &b1_rect = *bbox1.rect;
-  const auto &b2_rect = *bbox2.rect;
+  const auto &b1_rect = bbox1.rect;
+  const auto &b2_rect = bbox2.rect;
 
   float x1 = std::max(b1_rect.x, b2_rect.x);
   float y1 = std::max(b1_rect.y, b2_rect.y);
@@ -69,7 +69,7 @@ std::vector<BBox> nms(const std::vector<BBox> &results, float nms_thre,
     std::vector<int> indices;
 
     for (const auto &result : class_result) {
-      boxes.push_back(*result.rect);
+      boxes.push_back(result.rect);
       scores.push_back(result.score);
     }
 

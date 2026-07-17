@@ -186,9 +186,8 @@ std::vector<BBox> Yolov11Det::processRawOutput(
       h = h / scaleY;
       x += input_roi.x;
       y += input_roi.y;
-      result.rect =
-          std::make_shared<cv::Rect>(static_cast<int>(x), static_cast<int>(y),
-                                     static_cast<int>(w), static_cast<int>(h));
+      result.rect = cv::Rect(static_cast<int>(x), static_cast<int>(y),
+                             static_cast<int>(w), static_cast<int>(h));
 
       results.push_back(result);
     }

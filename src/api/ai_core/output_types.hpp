@@ -16,11 +16,12 @@
 #include "ai_core/tensor_data.hpp"
 #include <map>
 #include <memory>
+#include <opencv2/core/types.hpp>
 #include <vector>
 
 namespace ai_core {
 struct BBox {
-  std::shared_ptr<cv::Rect> rect;
+  cv::Rect rect;
   float score;
   int label;
 };
