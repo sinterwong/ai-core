@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+env:
+  ORT_VERSION: 1.20.1
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format 21
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh
+          sudo bash llvm.sh 21
+          sudo apt-get install -y clang-format-21
+      - name: Check formatting
+        run: |
+          git ls-files 'src/**/*.hpp' 'src/**/*.cpp' 'src/**/*.cu' \
+            'tests/*.cpp' 'tests/*.cc' 'examples/**/*.cpp' \
+            'examples/**/*.hpp' 'examples/**/*.cc' 'benchmarks/*.cpp' \
+            'benchmarks/*.cc' \
+            | xargs clang-format-21 --dry-run --Werror
+
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        build_type: [Release, Debug]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libopencv-dev
+
+      - name: Cache ONNX Runtime
+        id: cache-ort
+        uses: actions/cache@v4
+        with:
+          path: 3rdparty/target/Linux_x86_64/onnxruntime
+          key: onnxruntime-linux-x64-${{ env.ORT_VERSION }}
+
+      - name: Download ONNX Runtime
+        if: steps.cache-ort.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz
+          mkdir -p 3rdparty/target/Linux_x86_64
+          tar -xzf onnxruntime-linux-x64-${ORT_VERSION}.tgz
+          mv onnxruntime-linux-x64-${ORT_VERSION} 3rdparty/target/Linux_x86_64/onnxruntime
+
+      - name: Configure
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            export CC=clang CXX=clang++
+          else
+            export CC=gcc CXX=g++
+          fi
+          EXTRA_FLAGS=""
+          if [ "${{ matrix.build_type }}" = "Debug" ]; then
+            EXTRA_FLAGS="-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined -DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address,undefined"
+          fi
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_INSTALL_PREFIX=$PWD/install \
+            -DBUILD_AI_CORE_TESTS=ON \
+            -DWITH_ORT_ENGINE=ON \
+            -DWITH_NCNN_ENGINE=OFF \
+            -DWITH_TRT_ENGINE=OFF \
+            $EXTRA_FLAGS
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Install
+        run: cmake --install build
+
+      - name: Test
+        working-directory: install
+        env:
+          # ORT and OpenCV internals report leaks we do not control; UBSan
+          # failures and ASan memory errors still fail the job.
+          ASAN_OPTIONS: detect_leaks=0
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: |
+          export LD_LIBRARY_PATH=$PWD/lib:$GITHUB_WORKSPACE/3rdparty/target/Linux_x86_64/onnxruntime/lib
+          ./tests/ai_core_tests
