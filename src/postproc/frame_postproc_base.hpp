@@ -51,14 +51,12 @@ public:
     FrameTransformContext prep_context{};
     if constexpr (RequiresPrepContext) {
       if (runtime_context == nullptr ||
-          !runtime_context->has<FrameTransformContext>(
-              "preproc_runtime_args")) {
+          !runtime_context->frame_transform.has_value()) {
         LOG_ERROR_S << "Preprocessor transform context is missing from the "
                        "runtime context";
         return InferErrorCode::InferInvalidInput;
       }
-      prep_context = runtime_context->getParam<FrameTransformContext>(
-          "preproc_runtime_args");
+      prep_context = *runtime_context->frame_transform;
     }
 
     return processTyped(model_output, prep_context, *params, algo_output)
@@ -86,15 +84,12 @@ public:
     std::vector<FrameTransformContext> prep_contexts;
     if constexpr (RequiresPrepContext) {
       if (runtime_context == nullptr ||
-          !runtime_context->has<std::vector<FrameTransformContext>>(
-              "preproc_runtime_args_batch")) {
+          runtime_context->frame_transform_batch.empty()) {
         LOG_ERROR_S << "Batch preprocessor transform context is missing from "
                        "the runtime context";
         return InferErrorCode::InferInvalidInput;
       }
-      prep_contexts =
-          runtime_context->getParam<std::vector<FrameTransformContext>>(
-              "preproc_runtime_args_batch");
+      prep_contexts = runtime_context->frame_transform_batch;
     }
 
     return batchProcessTyped(model_output, prep_contexts, *params,

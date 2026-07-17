@@ -39,7 +39,7 @@ InferErrorCode GenericFramePreprocBase::process(
   single_runtime_args.model_input_shape = params_ptr->model_input_shape;
   single_runtime_args.is_equal_scale = params_ptr->is_equal_scale;
   auto data = kernel().process(*params_ptr, *frame_input, single_runtime_args);
-  runtime_context->setParam("preproc_runtime_args", single_runtime_args);
+  runtime_context->frame_transform = single_runtime_args;
   output.datas.insert(std::make_pair(params_ptr->input_names[0], data));
 
   std::vector<int> shape;
@@ -85,7 +85,7 @@ InferErrorCode GenericFramePreprocBase::batchProcess(
   std::vector<FrameTransformContext> batch_runtime_args(inputs.size());
   auto data = kernel().batchProcess(*params_ptr, frame_inputs,
                                     batch_runtime_args);
-  runtime_context->setParam("preproc_runtime_args_batch", batch_runtime_args);
+  runtime_context->frame_transform_batch = batch_runtime_args;
   output.datas.insert(std::make_pair(params_ptr->input_names[0], data));
 
   std::vector<int> shape;

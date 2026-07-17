@@ -16,7 +16,7 @@
 AlgoInput -> AlgoPreproc -> TensorData -> AlgoInferEngine -> TensorData -> AlgoPostproc -> AlgoOutput
 ```
 
-`RuntimeContext` 是一个 `DataPacket`，在 `infer` 调用的整个生命周期里向下游传递。预处理可以把原始尺寸、缩放系数、padding 等信息塞进去，后处理再读出来做坐标还原。
+`RuntimeContext` 在 `infer` 调用的整个生命周期里向下游传递。预处理把变换信息（原始尺寸、缩放系数、padding 等）写入类型化槽位 `frame_transform` / `frame_transform_batch`（`FrameTransformContext`），后处理读出来做坐标还原；自定义插件的自由扩展数据放 `extras`（`DataPacket`）。
 
 ## 关键数据结构
 

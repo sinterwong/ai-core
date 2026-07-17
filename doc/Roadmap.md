@@ -33,7 +33,7 @@
 ### 架构合一
 
 - [x] **分发机制二合一**：删除"字符串工厂 → enum switch"双层分发。`Yolov11Det` / `RTMDet` / `NanoDet` / `SoftmaxCls` / 各 preprocessor 直接注册为工厂插件，`AnchorDetPostproc` / `CVGenericPostproc` / `FramePreprocess` 这些 enum 分发壳删除。新增算法 = 新文件 + 一行注册宏。
-- [ ] **RuntimeContext 类型化**：preproc → postproc 的 `FrameTransformContext` 传递改为类型化槽位，消灭 `"preproc_runtime_args"` 魔法字符串；`DataPacket` 仅保留给自由扩展。
+- [x] **RuntimeContext 类型化**：preproc → postproc 的 `FrameTransformContext` 传递改为类型化槽位，消灭 `"preproc_runtime_args"` 魔法字符串；`DataPacket` 仅保留给自由扩展。
 - [ ] **注册机制健壮化**：提供显式 `registerDefaultPlugins()` 入口，静态/动态链接皆可用，不再依赖"恰好是 SHARED 库"才成立的静态初始化。
 
 ### 轻安全网与工程清理

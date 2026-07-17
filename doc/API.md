@@ -126,7 +126,7 @@ struct FrameInputWithMask {
 
 ```cpp
 struct BBox {
-  std::shared_ptr<cv::Rect> rect;
+  cv::Rect rect;
   float score;
   int   label;
 };
@@ -258,7 +258,15 @@ struct DataPacket {
 };
 ```
 
-`getParam` 在 key 不存在或类型不匹配时抛 `std::runtime_error`。框架里 `AlgoConstructParams` 和 `RuntimeContext` 都是 `DataPacket` 的别名。
+`getParam` 在 key 不存在或类型不匹配时抛 `std::runtime_error`。框架里 `AlgoConstructParams` 是 `DataPacket` 的别名；`RuntimeContext` 是独立结构，预处理→后处理的变换信息走类型化槽位：
+
+```cpp
+struct RuntimeContext {
+  std::optional<FrameTransformContext> frame_transform;       // 单帧
+  std::vector<FrameTransformContext> frame_transform_batch;   // batch
+  DataPacket extras;                                          // 自由扩展
+};
+```
 
 ## 8. 异步接口
 
@@ -382,11 +390,11 @@ struct ModelInfo {
 class IPreprocessPlugin {
 public:
   virtual ~IPreprocessPlugin() = default;
-  virtual bool process(const AlgoInput&,
+  virtual InferErrorCode process(const AlgoInput&,
                        const AlgoPreprocParams&,
                        TensorData&,
                        std::shared_ptr<RuntimeContext>&) const = 0;
-  virtual bool batchProcess(const std::vector<AlgoInput>&,
+  virtual InferErrorCode batchProcess(const std::vector<AlgoInput>&,
                             const AlgoPreprocParams&,
                             TensorData&,
                             std::shared_ptr<RuntimeContext>&) const = 0;
@@ -395,11 +403,11 @@ public:
 class IPostprocessPlugin {
 public:
   virtual ~IPostprocessPlugin() = default;
-  virtual bool process(const TensorData&,
+  virtual InferErrorCode process(const TensorData&,
                        const AlgoPostprocParams&,
                        AlgoOutput&,
                        std::shared_ptr<RuntimeContext>&) const = 0;
-  virtual bool batchProcess(const TensorData&,
+  virtual InferErrorCode batchProcess(const TensorData&,
                             const AlgoPostprocParams&,
                             std::vector<AlgoOutput>&,
                             std::shared_ptr<RuntimeContext>&) const = 0;

@@ -109,7 +109,7 @@ InferErrorCode FrameWithMaskPreprocess::process(
   single_runtime_args.is_equal_scale = params_ptr->is_equal_scale;
   single_runtime_args.roi = frame_input.input_roi;
 
-  runtime_context->setParam("preproc_runtime_args", single_runtime_args);
+  runtime_context->frame_transform = single_runtime_args;
 
   output.datas.insert(
       std::make_pair(params_ptr->input_names[0], processed_frame));
@@ -175,7 +175,7 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
     batch_runtime_args[i].roi =
         input[i].getParams<FrameInputWithMask>()->frame_input.input_roi;
   }
-  runtime_context->setParam("preproc_runtime_args_batch", batch_runtime_args);
+  runtime_context->frame_transform_batch = batch_runtime_args;
 
   output.datas.insert(
       std::make_pair(params_ptr->input_names[0], processed_frames));
