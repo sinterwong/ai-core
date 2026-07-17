@@ -122,8 +122,7 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &image_gray) {
           reinterpret_cast<const uint8_t *>(input_lengths.data()),
           reinterpret_cast<const uint8_t *>(input_lengths.data()) +
               input_lengths.size() * sizeof(int64_t)));
-  model_input.datas.insert({input_names.at(1), input_lengths_tensor});
-  model_input.shapes.insert({input_names.at(1), {1}});
+  model_input.set(input_names.at(1), input_lengths_tensor, {1});
 
   ai_core::TensorData model_output;
   if (mEngine->infer(model_input, model_output) !=

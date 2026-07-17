@@ -40,7 +40,6 @@ InferErrorCode GenericFramePreprocBase::process(
   single_runtime_args.is_equal_scale = params_ptr->is_equal_scale;
   auto data = kernel().process(*params_ptr, *frame_input, single_runtime_args);
   runtime_context->frame_transform = single_runtime_args;
-  output.datas.insert(std::make_pair(params_ptr->input_names[0], data));
 
   std::vector<int> shape;
   if (params_ptr->hwc2chw) {
@@ -50,7 +49,7 @@ InferErrorCode GenericFramePreprocBase::process(
     shape = {1, params_ptr->model_input_shape.h,
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
-  output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
+  output.set(params_ptr->input_names[0], std::move(data), std::move(shape));
   return InferErrorCode::SUCCESS;
 }
 
@@ -86,7 +85,6 @@ InferErrorCode GenericFramePreprocBase::batchProcess(
   auto data =
       kernel().batchProcess(*params_ptr, frame_inputs, batch_runtime_args);
   runtime_context->frame_transform_batch = batch_runtime_args;
-  output.datas.insert(std::make_pair(params_ptr->input_names[0], data));
 
   std::vector<int> shape;
   if (params_ptr->hwc2chw) {
@@ -96,7 +94,7 @@ InferErrorCode GenericFramePreprocBase::batchProcess(
     shape = {static_cast<int>(inputs.size()), params_ptr->model_input_shape.h,
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
-  output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
+  output.set(params_ptr->input_names[0], std::move(data), std::move(shape));
   return InferErrorCode::SUCCESS;
 }
 

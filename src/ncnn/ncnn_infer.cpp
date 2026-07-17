@@ -184,10 +184,9 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
   std::lock_guard<std::mutex> lock(m_mtx);
 
   try {
-    outputs.datas.clear();
-    outputs.shapes.clear();
+    outputs.clear();
 
-    if (inputs.datas.empty() && !m_inputNames.empty()) {
+    if (inputs.empty() && !m_inputNames.empty()) {
       LOG_ERROR_S << "Empty input data for NCNN model: " << m_params.name;
       return InferErrorCode::InferPreprocessFailed; // Or appropriate error
     }
@@ -196,26 +195,25 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
     ex.set_light_mode(true);
 
     for (const auto &input_name : m_inputNames) {
-      auto it = inputs.datas.find(input_name);
-      if (it == inputs.datas.end()) {
+      const Tensor *input_tensor = inputs.find(input_name);
+      if (input_tensor == nullptr) {
         LOG_ERROR_S << "Input tensor '" << input_name
                     << "' not found in provided inputs for NCNN model: "
                     << m_params.name;
         return InferErrorCode::InferFailed;
       }
-      const TypedBuffer &buffer = it->second;
+      const TypedBuffer &buffer = input_tensor->buffer;
       if (buffer.getSizeBytes() == 0) {
         LOG_ERROR_S << "Empty input data for input tensor '" << input_name;
         return InferErrorCode::InferFailed;
       }
-      auto shape_it = inputs.shapes.find(input_name);
-      if (shape_it == inputs.shapes.end() || shape_it->second.empty()) {
+      if (input_tensor->shape.empty()) {
         LOG_ERROR_S << "Shape for input tensor '" << input_name
                     << "' not found or is empty for NCNN model: "
                     << m_params.name;
         return InferErrorCode::InferFailed;
       }
-      const std::vector<int> &shape = shape_it->second;
+      const std::vector<int> &shape = input_tensor->shape;
 
       if (buffer.dataType() != DataType::FLOAT32) {
         LOG_ERROR_S << "Unsupported data type for NCNN input '" << input_name
@@ -267,8 +265,6 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
       memcpy(output_buffer.getRawHostPtr(), ncnn_out.data,
              output_buffer.getSizeBytes());
 
-      outputs.datas.insert(
-          std::make_pair(output_name, std::move(output_buffer)));
 
       std::vector<int> shape_vec;
       if (ncnn_out.dims == 1) { // Typically (Features) or (Width)
@@ -313,7 +309,8 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
         // Let's assume it's (C,D,H,W) from ncnn if dims == 4
         shape_vec = {ncnn_out.c, ncnn_out.d, ncnn_out.h, ncnn_out.w};
       }
-      outputs.shapes.insert(std::make_pair(output_name, shape_vec));
+      outputs.set(output_name, std::move(output_buffer),
+                  std::move(shape_vec));
     }
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {

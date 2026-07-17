@@ -86,14 +86,14 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
     // Validate inputs
     for (const auto &input_info : m_modelInfo->inputs) {
       const auto &name = input_info.name;
-      auto data_it = inputs.datas.find(name);
-      if (data_it == inputs.datas.end()) {
+      const Tensor *input_tensor = inputs.find(name);
+      if (input_tensor == nullptr) {
         LOG_ERROR_S << "Input tensor '" << name
                     << "' not found in provided inputs.";
         return InferErrorCode::InferInputError;
       }
 
-      const TypedBuffer &input_buffer = data_it->second;
+      const TypedBuffer &input_buffer = input_tensor->buffer;
       if (input_buffer.dataType() != input_info.data_type) {
         LOG_ERROR_S << "Mismatched data type for input tensor '" << name
                     << "'. Expected: " << static_cast<int>(input_info.data_type)
@@ -105,8 +105,7 @@ InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
       const bool is_dynamic = m_dynamicInputTensorNames.count(name);
 
       if (is_dynamic) {
-        auto shape_it = inputs.shapes.find(name);
-        if (shape_it == inputs.shapes.end()) {
+        if (input_tensor->shape.empty()) {
           LOG_ERROR_S << "Shape info for dynamic input tensor '" << name
                       << "' must be provided.";
           return InferErrorCode::InferInputError;
@@ -204,21 +203,19 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
   // Pre-allocate pinned input buffers based on max sizes
   for (const auto &input : m_modelInfo->inputs) {
     size_t size_bytes = m_tensorSizeMap.at(input.name);
-    ctx.inputs.datas[input.name] =
-        TypedBuffer::createPinnedHost(input.data_type, size_bytes);
-
     std::vector<int> shape_int(input.shape.begin(), input.shape.end());
-    ctx.inputs.shapes[input.name] = std::move(shape_int);
+    ctx.inputs.set(input.name,
+                   TypedBuffer::createPinnedHost(input.data_type, size_bytes),
+                   std::move(shape_int));
   }
 
   // Pre-allocate pinned output buffers based on max sizes
   for (const auto &output : m_modelInfo->outputs) {
     size_t size_bytes = m_tensorSizeMap.at(output.name);
-    ctx.outputs.datas[output.name] =
-        TypedBuffer::createPinnedHost(output.data_type, size_bytes);
-
     std::vector<int> shape_int(output.shape.begin(), output.shape.end());
-    ctx.outputs.shapes[output.name] = std::move(shape_int);
+    ctx.outputs.set(output.name,
+                    TypedBuffer::createPinnedHost(output.data_type, size_bytes),
+                    std::move(shape_int));
   }
 
   LOG_INFO_S << "Created stream context with pre-allocated buffers";
@@ -476,13 +473,13 @@ bool TrtAlgoInference::updateInputShapesIfNeeded(const TensorData &inputs) {
       continue;
     }
 
-    auto shape_it = inputs.shapes.find(name);
-    if (shape_it == inputs.shapes.end()) {
+    const Tensor *input_tensor = inputs.find(name);
+    if (input_tensor == nullptr || input_tensor->shape.empty()) {
       continue;
     }
 
-    const std::vector<int64_t> new_shape(shape_it->second.begin(),
-                                         shape_it->second.end());
+    const std::vector<int64_t> new_shape(input_tensor->shape.begin(),
+                                         input_tensor->shape.end());
     auto cache_it = m_cachedInputShapes.find(name);
 
     if (cache_it == m_cachedInputShapes.end() ||
@@ -507,7 +504,7 @@ bool TrtAlgoInference::updateInputShapesIfNeeded(const TensorData &inputs) {
 void TrtAlgoInference::copyInputsToDevice(const TensorData &inputs) {
   for (const auto &input_info : m_modelInfo->inputs) {
     const auto &name = input_info.name;
-    const TypedBuffer &input_buffer = inputs.datas.at(name);
+    const TypedBuffer &input_buffer = inputs.at(name).buffer;
     const size_t actual_size_bytes = input_buffer.getSizeBytes();
     void *dest_device_ptr = m_tensorAddressMap.at(name);
 
@@ -526,8 +523,7 @@ void TrtAlgoInference::copyInputsToDevice(const TensorData &inputs) {
 }
 
 void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
-  outputs.datas.clear();
-  outputs.shapes.clear();
+  outputs.clear();
 
   for (const auto &output_info : m_modelInfo->outputs) {
     const auto &name = output_info.name;
@@ -553,8 +549,10 @@ void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
                                      actual_output_size_bytes,
                                      cudaMemcpyDeviceToHost, m_stream));
 
-    outputs.shapes[name].assign(
-        actual_output_dims.d, actual_output_dims.d + actual_output_dims.nbDims);
+    outputs.set(name, TypedBuffer(),
+                std::vector<int>(actual_output_dims.d,
+                                 actual_output_dims.d +
+                                     actual_output_dims.nbDims));
   }
 
   CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));
@@ -563,7 +561,7 @@ void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
     const auto &name = output_info.name;
     auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
     std::vector<uint8_t> safe_data = pinned_buffer.toVector();
-    outputs.datas[name] =
+    outputs.find(name)->buffer =
         TypedBuffer::createFromCpu(output_info.data_type, std::move(safe_data));
   }
 }

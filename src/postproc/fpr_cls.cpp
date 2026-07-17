@@ -20,14 +20,14 @@ bool FprCls::processTyped(const TensorData &model_output,
   const auto &score_output_name = post_args.output_names.at(0);
   const auto &birad_output_name = post_args.output_names.at(1);
 
-  const auto &outputs = model_output.datas;
-  auto p_scores = outputs.at(score_output_name);
-  auto p_birads = outputs.at(birad_output_name);
+  const auto &outputs = model_output;
+  auto p_scores = outputs.at(score_output_name).buffer;
+  auto p_birads = outputs.at(birad_output_name).buffer;
 
-  std::vector<int> p_scores_shape = model_output.shapes.at(score_output_name);
+  std::vector<int> p_scores_shape = model_output.at(score_output_name).shape;
   int num_classes = p_scores_shape.at(p_scores_shape.size() - 1);
 
-  std::vector<int> p_birads_shape = model_output.shapes.at(birad_output_name);
+  std::vector<int> p_birads_shape = model_output.at(birad_output_name).shape;
   int num_birads = p_birads_shape.at(p_birads_shape.size() - 1);
 
   FprClsRet fpr_ret =
@@ -46,15 +46,15 @@ bool FprCls::batchProcessTyped(
   const auto &score_output_name = post_args.output_names.at(0);
   const auto &birad_output_name = post_args.output_names.at(1);
 
-  const auto &outputs = model_output.datas;
-  auto p_scores = outputs.at(score_output_name);
-  auto p_birads = outputs.at(birad_output_name);
+  const auto &outputs = model_output;
+  auto p_scores = outputs.at(score_output_name).buffer;
+  auto p_birads = outputs.at(birad_output_name).buffer;
 
-  std::vector<int> p_scores_shape = model_output.shapes.at(score_output_name);
+  std::vector<int> p_scores_shape = model_output.at(score_output_name).shape;
   int batch_size = p_scores_shape.at(0);
   int num_classes = p_scores_shape.at(p_scores_shape.size() - 1);
 
-  std::vector<int> p_birads_shape = model_output.shapes.at(birad_output_name);
+  std::vector<int> p_birads_shape = model_output.at(birad_output_name).shape;
   int num_birads = p_birads_shape.at(p_birads_shape.size() - 1);
 
   const float *scores_data = p_scores.getHostPtr<float>();

@@ -19,7 +19,7 @@ bool RawModelOutput::processTyped(const TensorData &model_output,
                                   const GenericPostParams &post_args,
                                   AlgoOutput &algo_output) const {
 
-  if (model_output.datas.empty()) {
+  if (model_output.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
     return false;
   }

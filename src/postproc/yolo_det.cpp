@@ -18,9 +18,8 @@ bool Yolov11Det::processTyped(const TensorData &model_output,
                               const FrameTransformContext &prep_args,
                               const AnchorDetParams &post_args,
                               AlgoOutput &algo_output) const {
-  const auto &output_shapes = model_output.shapes;
   const auto &input_shape = prep_args.model_input_shape;
-  const auto &outputs = model_output.datas;
+  const auto &outputs = model_output;
 
   // just one output
   if (outputs.size() != 1) {
@@ -29,10 +28,10 @@ bool Yolov11Det::processTyped(const TensorData &model_output,
     throw std::runtime_error(
         "AnchorDetParams(Yolov11Det)  unexpected size of outputs");
   }
-  auto output = outputs.at(post_args.output_names.at(0));
+  auto output = outputs.at(post_args.output_names.at(0)).buffer;
 
   std::vector<int> output_shape =
-      output_shapes.at(post_args.output_names.at(0));
+      model_output.at(post_args.output_names.at(0)).shape;
   int signal_result_num = output_shape.at(output_shape.size() - 2);
   int stride_num = output_shape.at(output_shape.size() - 1);
 
@@ -65,16 +64,16 @@ bool Yolov11Det::batchProcessTyped(
     const std::vector<FrameTransformContext> &prep_args,
     const AnchorDetParams &post_args,
     std::vector<AlgoOutput> &algo_output) const {
-  const auto &outputs = model_output.datas;
+  const auto &outputs = model_output;
   if (outputs.size() != 1) {
     LOG_ERROR_S << "Yolov11Det::batchProcess unexpected size of outputs: "
                 << outputs.size();
     throw std::runtime_error(
         "Yolov11Det::batchProcess expects only 1 output tensor.");
   }
-  const auto &output_tensor = outputs.at(post_args.output_names.at(0));
+  const auto &output_tensor = outputs.at(post_args.output_names.at(0)).buffer;
   const auto &output_shape =
-      model_output.shapes.at(post_args.output_names.at(0));
+      model_output.at(post_args.output_names.at(0)).shape;
 
   if (output_shape.size() != 3) {
     LOG_ERROR_S << "Yolov11Det::batchProcess unexpected output dimensions: "

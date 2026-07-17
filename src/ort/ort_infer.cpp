@@ -187,11 +187,10 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
   }
 
   try {
-    outputs.datas.clear();
-    outputs.shapes.clear();
+    outputs.clear();
 
-    if (inputs.datas.size() != m_inputNames.size()) {
-      LOG_ERROR_S << "Input data count (" << inputs.datas.size()
+    if (inputs.size() != m_inputNames.size()) {
+      LOG_ERROR_S << "Input data count (" << inputs.size()
                   << ") doesn't match model's expected input count ("
                   << m_inputNames.size() << ")";
       return InferErrorCode::InferInputError;
@@ -201,25 +200,24 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
     input_tensors.reserve(m_inputNames.size());
 
     for (const auto &name : m_inputNames) {
-      auto dataIt = inputs.datas.find(name);
-      if (dataIt == inputs.datas.end()) {
+      const Tensor *input_tensor = inputs.find(name);
+      if (input_tensor == nullptr) {
         LOG_ERROR_S << "Input tensor '" << name
                     << "' not found in provided inputs.";
         return InferErrorCode::InferInputError;
       }
-      const auto &input_buffer = dataIt->second;
+      const auto &input_buffer = input_tensor->buffer;
 
       std::vector<int64_t> inputShape;
       const bool isDynamic = m_dynamicInputTensorNames.count(name);
 
       if (isDynamic) {
-        auto shapeIt = inputs.shapes.find(name);
-        if (shapeIt == inputs.shapes.end()) {
+        if (input_tensor->shape.empty()) {
           LOG_ERROR_S << "Shape info for dynamic input tensor '" << name
                       << "' must be provided.";
           return InferErrorCode::InferInputError;
         }
-        const auto &inputShapeVecInt = shapeIt->second;
+        const auto &inputShapeVecInt = input_tensor->shape;
         inputShape.assign(inputShapeVecInt.begin(), inputShapeVecInt.end());
 
       } else {
@@ -317,11 +315,11 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
       TypedBuffer output_buffer =
           TypedBuffer::createFromCpu(output_type, std::move(byte_data));
 
-      outputs.datas[m_outputNames[i]] = std::move(output_buffer);
       auto output_shape_int64 = tensor_info.GetShape();
       std::vector<int> output_shape(output_shape_int64.begin(),
                                     output_shape_int64.end());
-      outputs.shapes[m_outputNames[i]] = std::move(output_shape);
+      outputs.set(m_outputNames[i], std::move(output_buffer),
+                  std::move(output_shape));
     }
 
     return InferErrorCode::SUCCESS;

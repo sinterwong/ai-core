@@ -36,8 +36,8 @@ public:
   process(const TensorData &model_output, const AlgoPostprocParams &post_args,
           AlgoOutput &algo_output,
           std::shared_ptr<RuntimeContext> &runtime_context) const final {
-    if (model_output.datas.empty()) {
-      LOG_ERROR_S << "model_output.datas is empty";
+    if (model_output.empty()) {
+      LOG_ERROR_S << "model_output is empty";
       return InferErrorCode::InferOutputError;
     }
 
@@ -69,8 +69,8 @@ public:
                const AlgoPostprocParams &post_args,
                std::vector<AlgoOutput> &algo_outputs,
                std::shared_ptr<RuntimeContext> &runtime_context) const final {
-    if (model_output.datas.empty()) {
-      LOG_ERROR_S << "model_output.datas is empty";
+    if (model_output.empty()) {
+      LOG_ERROR_S << "model_output is empty";
       return InferErrorCode::InferOutputError;
     }
 

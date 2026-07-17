@@ -155,8 +155,7 @@ TEST_P(OCRRecoInferTest, Normal) {
           reinterpret_cast<const uint8_t *>(input_lengths.data()),
           reinterpret_cast<const uint8_t *>(input_lengths.data()) +
               input_lengths.size() * sizeof(int64_t)));
-  model_input.datas.insert({"input_lengths", input_lengths_tensor});
-  model_input.shapes.insert({"input_lengths", {1}});
+  model_input.set("input_lengths", input_lengths_tensor, {1});
 
   TensorData model_output;
   ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);

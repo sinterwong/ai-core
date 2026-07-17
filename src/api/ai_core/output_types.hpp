@@ -18,12 +18,6 @@
 #include <memory>
 #include <vector>
 
-// TODO(v1.4 TensorData v2): mask/prob below migrate to ai_core::Tensor; this
-// forward declaration is the last cv type in the public headers.
-namespace cv {
-class Mat;
-} // namespace cv
-
 namespace ai_core {
 struct BBox {
   Rect rect;
@@ -53,9 +47,13 @@ struct SegRet {
   std::map<int, std::vector<Contour>> cls_to_contours;
 };
 
+/**
+ * @brief Raw dual-headed segmentation output. `mask` is an INT8/UINT8 class
+ * map and `prob` a FLOAT32 probability map, both shaped {h, w}.
+ */
 struct DualRawSegRet {
-  std::shared_ptr<cv::Mat> mask;
-  std::shared_ptr<cv::Mat> prob;
+  Tensor mask;
+  Tensor prob;
   Rect roi;
   float ratio;
   int left_shift;

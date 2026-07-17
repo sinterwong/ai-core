@@ -20,8 +20,8 @@ bool SemanticSeg::processTyped(const TensorData &model_output,
                                const ConfidenceFilterParams &post_args,
                                AlgoOutput &algo_output) const {
   const auto &feat_map_output_name = post_args.output_names.at(0);
-  const auto &feat_map_output = model_output.datas.at(feat_map_output_name);
-  const auto &feat_map_shape = model_output.shapes.at(feat_map_output_name);
+  const auto &feat_map_output = model_output.at(feat_map_output_name).buffer;
+  const auto &feat_map_shape = model_output.at(feat_map_output_name).shape;
 
   const int num_classes = feat_map_shape.at(feat_map_shape.size() - 3);
   const int height = feat_map_shape.at(feat_map_shape.size() - 2);
@@ -46,8 +46,8 @@ bool SemanticSeg::batchProcessTyped(
     const ConfidenceFilterParams &post_args,
     std::vector<AlgoOutput> &algo_output) const {
   const auto &feat_map_output_name = post_args.output_names.at(0);
-  const auto &feat_map_output = model_output.datas.at(feat_map_output_name);
-  const auto &feat_map_shape = model_output.shapes.at(feat_map_output_name);
+  const auto &feat_map_output = model_output.at(feat_map_output_name).buffer;
+  const auto &feat_map_shape = model_output.at(feat_map_output_name).shape;
 
   if (feat_map_shape.size() != 4) {
     LOG_ERROR_S << "Expected a 4D tensor for batch processing (NCHW), but got "

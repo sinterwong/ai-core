@@ -307,13 +307,13 @@ bool TrtInferStream::updateInputShapesIfNeeded(const TensorData &inputs) {
       continue;
     }
 
-    auto shape_it = inputs.shapes.find(name);
-    if (shape_it == inputs.shapes.end()) {
+    const Tensor *input_tensor = inputs.find(name);
+    if (input_tensor == nullptr || input_tensor->shape.empty()) {
       continue;
     }
 
-    const std::vector<int64_t> new_shape(shape_it->second.begin(),
-                                         shape_it->second.end());
+    const std::vector<int64_t> new_shape(input_tensor->shape.begin(),
+                                         input_tensor->shape.end());
     auto cache_it = m_cachedInputShapes.find(name);
 
     if (cache_it == m_cachedInputShapes.end() ||
@@ -346,13 +346,13 @@ InferErrorCode TrtInferStream::copyInputsToDevice(const TensorData &inputs) {
   for (const auto &input_info : m_engine.m_modelInfo->inputs) {
     const auto &name = input_info.name;
 
-    auto data_it = inputs.datas.find(name);
-    if (data_it == inputs.datas.end()) {
+    const Tensor *input_tensor = inputs.find(name);
+    if (input_tensor == nullptr) {
       LOG_ERROR_S << "Input tensor not found: " << name;
       return InferErrorCode::InferInputError;
     }
 
-    const TypedBuffer &input_buffer = data_it->second;
+    const TypedBuffer &input_buffer = input_tensor->buffer;
     const size_t actual_size_bytes = input_buffer.getSizeBytes();
     void *dest_device_ptr = m_tensorAddressMap.at(name);
 
@@ -373,8 +373,7 @@ InferErrorCode TrtInferStream::copyInputsToDevice(const TensorData &inputs) {
 }
 
 InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
-  outputs.datas.clear();
-  outputs.shapes.clear();
+  outputs.clear();
 
   for (const auto &output_info : m_engine.m_modelInfo->outputs) {
     const auto &name = output_info.name;
@@ -402,9 +401,12 @@ InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
                                      actual_output_size_bytes,
                                      cudaMemcpyDeviceToHost, m_cudaStream));
 
-    // Store output shapes immediately (available from context)
-    outputs.shapes[name].assign(
-        actual_output_dims.d, actual_output_dims.d + actual_output_dims.nbDims);
+    // Store output shapes immediately (available from context); the buffer
+    // is filled in by finalizeOutputs after stream sync.
+    outputs.set(name, TypedBuffer(),
+                std::vector<int>(actual_output_dims.d,
+                                 actual_output_dims.d +
+                                     actual_output_dims.nbDims));
   }
 
   // NOTE: No synchronization here! Caller is responsible for sync.
@@ -418,7 +420,13 @@ InferErrorCode TrtInferStream::finalizeOutputs(TensorData &outputs) {
     const auto &name = output_info.name;
     auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
     std::vector<uint8_t> safe_data = pinned_buffer.toVector();
-    outputs.datas[name] =
+    Tensor *out = outputs.find(name);
+    if (out == nullptr) {
+      LOG_ERROR_S << "finalizeOutputs called before submitAsyncD2H for: "
+                  << name;
+      return InferErrorCode::InferOutputError;
+    }
+    out->buffer =
         TypedBuffer::createFromCpu(output_info.data_type, std::move(safe_data));
   }
 

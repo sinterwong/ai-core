@@ -110,8 +110,6 @@ InferErrorCode FrameWithMaskPreprocess::process(
 
   runtime_context->frame_transform = single_runtime_args;
 
-  output.datas.insert(
-      std::make_pair(params_ptr->input_names[0], processed_frame));
 
   std::vector<int> shape;
   if (params_ptr->hwc2chw) {
@@ -121,7 +119,7 @@ InferErrorCode FrameWithMaskPreprocess::process(
     shape = {1, params_ptr->model_input_shape.h,
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
-  output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
+  output.set(params_ptr->input_names[0], std::move(processed_frame), std::move(shape));
   return InferErrorCode::SUCCESS;
 }
 
@@ -181,8 +179,6 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
   }
   runtime_context->frame_transform_batch = batch_runtime_args;
 
-  output.datas.insert(
-      std::make_pair(params_ptr->input_names[0], processed_frames));
 
   std::vector<int> shape;
   if (params_ptr->hwc2chw) {
@@ -192,7 +188,7 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
     shape = {static_cast<int>(input.size()), params_ptr->model_input_shape.h,
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
-  output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
+  output.set(params_ptr->input_names[0], std::move(processed_frames), std::move(shape));
 
   return InferErrorCode::SUCCESS;
 }

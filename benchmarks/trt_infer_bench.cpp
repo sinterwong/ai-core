@@ -95,8 +95,8 @@ static TensorData createPageableInput(const std::vector<int64_t> &shape,
     ptr[i] = static_cast<float>(i % 255) / 255.0f;
   }
 
-  data.datas["images"] = TypedBuffer::createFromCpu(dtype, std::move(buffer));
-  data.shapes["images"] = std::vector<int>(shape.begin(), shape.end());
+  data.set("images", TypedBuffer::createFromCpu(dtype, std::move(buffer)),
+           std::vector<int>(shape.begin(), shape.end()));
   return data;
 }
 
@@ -117,8 +117,8 @@ static TensorData createPinnedInput(IAsyncInferEngine *engine,
     ptr[i] = static_cast<float>(i % 255) / 255.0f;
   }
 
-  data.datas["images"] = std::move(buffer);
-  data.shapes["images"] = std::vector<int>(shape.begin(), shape.end());
+  data.set("images", std::move(buffer),
+           std::vector<int>(shape.begin(), shape.end()));
   return data;
 }
 

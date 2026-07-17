@@ -308,23 +308,19 @@ TEST_F(TrtInferenceTest, StreamContextPreallocatedBuffers) {
   // Verify pre-allocated buffers exist
   const auto &model_info = engine->getModelInfo();
   for (const auto &input : model_info.inputs) {
-    auto it = ctx.inputs.datas.find(input.name);
-    EXPECT_NE(it, ctx.inputs.datas.end())
+    const ai_core::Tensor *t = ctx.inputs.find(input.name);
+    ASSERT_NE(t, nullptr)
         << "Missing pre-allocated input buffer: " << input.name;
-    if (it != ctx.inputs.datas.end()) {
-      EXPECT_TRUE(it->second.isPinned())
-          << "Input buffer should be pinned: " << input.name;
-    }
+    EXPECT_TRUE(t->buffer.isPinned())
+        << "Input buffer should be pinned: " << input.name;
   }
 
   for (const auto &output : model_info.outputs) {
-    auto it = ctx.outputs.datas.find(output.name);
-    EXPECT_NE(it, ctx.outputs.datas.end())
+    const ai_core::Tensor *t = ctx.outputs.find(output.name);
+    ASSERT_NE(t, nullptr)
         << "Missing pre-allocated output buffer: " << output.name;
-    if (it != ctx.outputs.datas.end()) {
-      EXPECT_TRUE(it->second.isPinned())
-          << "Output buffer should be pinned: " << output.name;
-    }
+    EXPECT_TRUE(t->buffer.isPinned())
+        << "Output buffer should be pinned: " << output.name;
   }
 
   engine->terminate();

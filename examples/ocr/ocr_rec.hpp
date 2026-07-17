@@ -6,6 +6,10 @@
 #include "algo_config_parser.hpp"
 #include <vector>
 
+namespace cv {
+class Mat;
+} // namespace cv
+
 namespace ai_core::example {
 class OCRRec {
 
