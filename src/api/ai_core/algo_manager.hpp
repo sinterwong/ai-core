@@ -35,8 +35,7 @@ public:
   InferErrorCode unregisterAlgo(const std::string &name);
 
   InferErrorCode infer(const std::string &name, AlgoInput &input,
-                       AlgoPreprocParams &preproc_params, AlgoOutput &output,
-                       AlgoPostprocParams &postproc_params);
+                       AlgoOutput &output);
 
   std::shared_ptr<AlgoInference> getAlgo(const std::string &name) const;
 

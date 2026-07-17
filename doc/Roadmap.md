@@ -59,7 +59,7 @@
 - [x] **`ImageView` 抽象**：公共 API 以自有 `ImageView`（data ptr + shape + stride + format）替代 `cv::Mat` / `cv::Rect`，OpenCV 降为实现细节；`ai_core/opencv_interop.hpp` 提供零成本互转。这是支持非视觉模态（音频、文本、任意张量输入）的前提——"AI Core" 这个名字才名副其实。
 - [x] **`TensorData` v2**：`datas` 与 `shapes` 两个平行 map 易失同步，聚合为单一 `Tensor` 类型（buffer + shape + dtype）；容器换按插入序 small-vector + 名字查找（输入输出通常 1~3 个，`std::map` 纯浪费）。
 - [x] **`TypedBuffer` 收口**：工厂方法梳理，`resize` 的分歧语义（Pageable 保数据 / Pinned、GPU 破坏性）在类型层面显式化。
-- [ ] **配置与数据分离**：不变的 preproc/postproc 参数在 `initialize` 时绑定并校验一次，`infer()` 只带数据（保留可选 per-call override）。
+- [x] **配置与数据分离**：不变的 preproc/postproc 参数在 `initialize` 时绑定并校验一次，`infer()` 只带数据（保留可选 per-call override）。
 - [ ] **日志头瘦身**：`logger.hpp` 拆为轻接口 + 实现，公共头不再连带 `<iostream>` `<fstream>` `<thread>`。
 
 ### 验收标准

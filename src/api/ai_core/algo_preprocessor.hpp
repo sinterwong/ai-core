@@ -24,17 +24,24 @@ public:
 
   ~AlgoPreproc();
 
-  InferErrorCode initialize();
+  /**
+   * @brief Create the plugin and bind + validate the preprocess parameters
+   * once. process() calls carry data only.
+   */
+  InferErrorCode initialize(const AlgoPreprocParams &preproc_params);
 
-  InferErrorCode process(const AlgoInput &input,
-                         const AlgoPreprocParams &preproc_params,
-                         TensorData &model_input,
-                         std::shared_ptr<RuntimeContext> &runtime_context);
+  /**
+   * @param preproc_override optional per-call parameter override; pass
+   * nullptr to use the parameters bound at initialize().
+   */
+  InferErrorCode process(const AlgoInput &input, TensorData &model_input,
+                         std::shared_ptr<RuntimeContext> &runtime_context,
+                         const AlgoPreprocParams *preproc_override = nullptr);
 
-  InferErrorCode batchProcess(const std::vector<AlgoInput> &input,
-                              const AlgoPreprocParams &preproc_params,
-                              TensorData &model_input,
-                              std::shared_ptr<RuntimeContext> &runtime_context);
+  InferErrorCode
+  batchProcess(const std::vector<AlgoInput> &input, TensorData &model_input,
+               std::shared_ptr<RuntimeContext> &runtime_context,
+               const AlgoPreprocParams *preproc_override = nullptr);
 
   InferErrorCode terminate();
 

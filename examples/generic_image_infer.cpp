@@ -10,7 +10,8 @@ GenericImageInfer::GenericImageInfer(const std::string &config_path) {
   mEngine = std::make_shared<dnn::AlgoInference>(mParams.modelTypes,
                                                  mParams.inferParams);
 
-  if (mEngine->initialize() != InferErrorCode::SUCCESS) {
+  if (mEngine->initialize(mParams.preproc_params, mParams.postproc_params) !=
+      InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "engine initialize failed";
     throw std::runtime_error("Detector engine initialize failed");
   }
@@ -35,9 +36,7 @@ AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;
-  if (mEngine->infer(algo_input, mParams.preproc_params,
-                     mParams.postproc_params,
-                     algo_output) != InferErrorCode::SUCCESS) {
+  if (mEngine->infer(algo_input, algo_output) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "engine infer failed";
     return {};
   }
@@ -76,9 +75,7 @@ GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
   }
 
   std::vector<AlgoOutput> algo_outputs;
-  if (mEngine->batchInfer(algo_inputs, mParams.preproc_params,
-                          mParams.postproc_params,
-                          algo_outputs) != InferErrorCode::SUCCESS) {
+  if (mEngine->batchInfer(algo_inputs, algo_outputs) != InferErrorCode::SUCCESS) {
     LOG_ERRORS << "engine batch infer failed";
     return {};
   }

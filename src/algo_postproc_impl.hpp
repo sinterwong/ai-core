@@ -23,21 +23,22 @@ public:
 
   ~Impl() = default;
 
-  InferErrorCode initialize();
+  InferErrorCode initialize(const AlgoPostprocParams &postproc_params);
 
   InferErrorCode process(const TensorData &model_output, AlgoOutput &output,
-                         const AlgoPostprocParams &postproc_params,
-                         std::shared_ptr<RuntimeContext> &runtime_context);
+                         std::shared_ptr<RuntimeContext> &runtime_context,
+                         const AlgoPostprocParams *postproc_override);
 
   InferErrorCode batchProcess(const TensorData &model_output,
                               std::vector<AlgoOutput> &output,
-                              const AlgoPostprocParams &postproc_params,
-                              std::shared_ptr<RuntimeContext> &runtime_context);
+                              std::shared_ptr<RuntimeContext> &runtime_context,
+                              const AlgoPostprocParams *postproc_override);
 
   InferErrorCode terminate();
 
 private:
   std::string m_moduleName;
+  AlgoPostprocParams m_boundParams;
   std::shared_ptr<IPostprocessPlugin> m_postprocessor;
 };
 } // namespace ai_core::dnn

@@ -33,10 +33,8 @@ InferErrorCode AlgoManager::unregisterAlgo(const std::string &name) {
 }
 
 InferErrorCode AlgoManager::infer(const std::string &name, AlgoInput &input,
-                                  AlgoPreprocParams &preproc_params,
-                                  AlgoOutput &output,
-                                  AlgoPostprocParams &postproc_params) {
-  return m_pImpl->infer(name, input, preproc_params, output, postproc_params);
+                                  AlgoOutput &output) {
+  return m_pImpl->infer(name, input, output);
 }
 
 std::shared_ptr<AlgoInference>

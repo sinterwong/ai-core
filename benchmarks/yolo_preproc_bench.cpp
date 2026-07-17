@@ -34,11 +34,11 @@ const static auto get_frame_preprocess_arg =
 
 static void BM_CPU_FramePreproc_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
-  preproc.initialize();
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg = get_frame_preprocess_arg(
       ai_core::DataType::FLOAT32, ai_core::BufferLocation::CPU, {"images"});
   preproc_params.setParams(frame_preprocess_arg);
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
@@ -56,12 +56,12 @@ static void BM_CPU_FramePreproc_Yolo(benchmark::State &state) {
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
   // =================================================
 
   for (auto _ : state) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_CPU_FramePreproc_Yolo)
@@ -73,13 +73,13 @@ BENCHMARK(BM_CPU_FramePreproc_Yolo)
 // ============================= Normal ================================
 static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
-  preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg =
       get_frame_preprocess_arg(ai_core::DataType::FLOAT16,
                                ai_core::BufferLocation::GpuDevice, {"images"});
   preproc_params.setParams(frame_preprocess_arg);
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
@@ -96,12 +96,12 @@ static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_Yolo)
@@ -112,7 +112,6 @@ BENCHMARK(BM_GPU_FramePreproc_Yolo)
 // ========================= Without HWC2CWH ============================
 static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
-  preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg =
@@ -120,6 +119,7 @@ static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
                                ai_core::BufferLocation::GpuDevice, {"images"});
   frame_preprocess_arg.hwc2chw = false;
   preproc_params.setParams(frame_preprocess_arg);
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
@@ -136,12 +136,12 @@ static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
       std::make_shared<ai_core::RuntimeContext>();
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_HWC_Yolo)
@@ -152,13 +152,13 @@ BENCHMARK(BM_GPU_FramePreproc_No_HWC_Yolo)
 // ======================== Without FP16 ===========================
 static void BM_GPU_FramePreproc_No_FP16_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
-  preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg =
       get_frame_preprocess_arg(ai_core::DataType::FLOAT32,
                                ai_core::BufferLocation::GpuDevice, {"images"});
   preproc_params.setParams(frame_preprocess_arg);
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
@@ -176,12 +176,12 @@ static void BM_GPU_FramePreproc_No_FP16_Yolo(benchmark::State &state) {
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_FP16_Yolo)
@@ -192,7 +192,6 @@ BENCHMARK(BM_GPU_FramePreproc_No_FP16_Yolo)
 // ======================== Without HWC2CWH and FP16 ===========================
 static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
-  preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg =
@@ -200,6 +199,7 @@ static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
                                ai_core::BufferLocation::GpuDevice, {"images"});
   frame_preprocess_arg.hwc2chw = false;
   preproc_params.setParams(frame_preprocess_arg);
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
@@ -217,12 +217,12 @@ static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
   // ===============================================
 
   for (auto _ : state) {
-    preproc.process(input, preproc_params, model_input, runtime_context);
+    preproc.process(input, model_input, runtime_context);
   }
 }
 BENCHMARK(BM_GPU_FramePreproc_No_HWC_FP16_Yolo)

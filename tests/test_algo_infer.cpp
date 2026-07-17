@@ -68,7 +68,6 @@ TEST(AlgoInferenceTest, YoloDet) {
 #endif
 
   AlgoInference algo_inf(module_types, infer_params);
-  ASSERT_EQ(algo_inf.initialize(), InferErrorCode::SUCCESS);
 
   FramePreprocessArg frame_preprocess_arg;
 
@@ -104,6 +103,9 @@ TEST(AlgoInferenceTest, YoloDet) {
   AlgoPostprocParams postproc_params;
   postproc_params.setParams(anchor_det_params);
 
+  ASSERT_EQ(algo_inf.initialize(preproc_params, postproc_params),
+            InferErrorCode::SUCCESS);
+
   AlgoInput algo_input;
   FrameInput frame_input;
   frame_input.image = ai_core::interop::viewFromMat(image_rgb);
@@ -111,9 +113,8 @@ TEST(AlgoInferenceTest, YoloDet) {
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;
-  ASSERT_EQ(
-      algo_inf.infer(algo_input, preproc_params, postproc_params, algo_output),
-      InferErrorCode::SUCCESS);
+  ASSERT_EQ(algo_inf.infer(algo_input, algo_output),
+            InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);

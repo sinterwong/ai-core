@@ -66,7 +66,6 @@ const static auto engine = []() {
 #if defined(WITH_ORT) || defined(WITH_NCNN) || defined(WITH_TRT)
 static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
-  preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
   ai_core::FramePreprocessArg frame_preprocess_arg;
@@ -90,6 +89,7 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.output_location = ai_core::BufferLocation::CPU;
   preproc_params.setParams(frame_preprocess_arg);
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
@@ -104,33 +104,31 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
       std::make_shared<ai_core::RuntimeContext>();
 
   ai_core::TensorData model_input;
-  preproc.process(input, preproc_params, model_input, runtime_context);
+  preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
   engine->infer(model_input, model_output);
 
   ai_core::dnn::AlgoPostproc postproc("Yolov11Det");
-  postproc.initialize();
-
+  
   ai_core::AlgoPostprocParams postproc_params;
   ai_core::AnchorDetParams anchor_det_params;
   anchor_det_params.cond_thre = 0.5f;
   anchor_det_params.nms_thre = 0.45f;
   anchor_det_params.output_names = {"output0"};
   postproc_params.setParams(anchor_det_params);
+  postproc.initialize(postproc_params);
 
   ai_core::AlgoOutput algo_output;
 
   // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
-    postproc.process(model_output, postproc_params, algo_output,
-                     runtime_context);
+    postproc.process(model_output, algo_output, runtime_context);
   }
   // =================================================
 
   for (auto _ : state) {
-    postproc.process(model_output, postproc_params, algo_output,
-                     runtime_context);
+    postproc.process(model_output, algo_output, runtime_context);
   }
 }
 BENCHMARK(BM_CPU_YoloDetPostproc)

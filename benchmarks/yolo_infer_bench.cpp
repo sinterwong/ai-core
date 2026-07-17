@@ -64,14 +64,14 @@ static void BM_ORT_CPU_DATA_YoloInfer(benchmark::State &state) {
   preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
-  preproc.initialize();
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input = algo_input;
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
   ai_core::TensorData model_input;
-  preproc.process(input, preproc_params, model_input, runtime_context);
+  preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
   // ==================== WARM-UP ====================
@@ -107,14 +107,14 @@ static void BM_NCNN_CPU_DATA_YoloInfer(benchmark::State &state) {
   preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
-  preproc.initialize();
+  preproc.initialize(preproc_params);
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
   ai_core::AlgoInput input = algo_input;
   ai_core::TensorData model_input;
-  preproc.process(input, preproc_params, model_input, runtime_context);
+  preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
   // ==================== WARM-UP ====================

@@ -30,17 +30,17 @@ public:
 
   ~Impl() = default;
 
-  InferErrorCode initialize();
+  InferErrorCode initialize(const AlgoPreprocParams &preproc_params,
+                            const AlgoPostprocParams &postproc_params);
 
-  InferErrorCode infer(const AlgoInput &input,
-                       const AlgoPreprocParams &preproc_params,
-                       const AlgoPostprocParams &postproc_params,
-                       AlgoOutput &output);
+  InferErrorCode infer(const AlgoInput &input, AlgoOutput &output,
+                       const AlgoPreprocParams *preproc_override,
+                       const AlgoPostprocParams *postproc_override);
 
   InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs,
-                            const AlgoPreprocParams &preproc_params,
-                            const AlgoPostprocParams &postproc_params,
-                            std::vector<AlgoOutput> &outputs);
+                            std::vector<AlgoOutput> &outputs,
+                            const AlgoPreprocParams *preproc_override,
+                            const AlgoPostprocParams *postproc_override);
 
   InferErrorCode terminate();
 

@@ -20,21 +20,25 @@ AlgoInference::AlgoInference(const AlgoModuleTypes &module_types,
 
 AlgoInference::~AlgoInference() = default;
 
-InferErrorCode AlgoInference::initialize() { return m_pImpl->initialize(); }
+InferErrorCode
+AlgoInference::initialize(const AlgoPreprocParams &preproc_params,
+                          const AlgoPostprocParams &postproc_params) {
+  return m_pImpl->initialize(preproc_params, postproc_params);
+}
 
-InferErrorCode AlgoInference::infer(const AlgoInput &input,
-                                    const AlgoPreprocParams &preproc_params,
-                                    const AlgoPostprocParams &postproc_params,
-                                    AlgoOutput &output) {
-  return m_pImpl->infer(input, preproc_params, postproc_params, output);
+InferErrorCode AlgoInference::infer(const AlgoInput &input, AlgoOutput &output,
+                                    const AlgoPreprocParams *preproc_override,
+                                    const AlgoPostprocParams *postproc_override) {
+  return m_pImpl->infer(input, output, preproc_override, postproc_override);
 }
 
 InferErrorCode
 AlgoInference::batchInfer(const std::vector<AlgoInput> &inputs,
-                          const AlgoPreprocParams &preproc_params,
-                          const AlgoPostprocParams &postproc_params,
-                          std::vector<AlgoOutput> &outputs) {
-  return m_pImpl->batchInfer(inputs, preproc_params, postproc_params, outputs);
+                          std::vector<AlgoOutput> &outputs,
+                          const AlgoPreprocParams *preproc_override,
+                          const AlgoPostprocParams *postproc_override) {
+  return m_pImpl->batchInfer(inputs, outputs, preproc_override,
+                             postproc_override);
 }
 
 InferErrorCode AlgoInference::terminate() { return m_pImpl->terminate(); }

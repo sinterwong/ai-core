@@ -26,17 +26,26 @@ public:
 
   ~AlgoInference();
 
-  InferErrorCode initialize();
+  /**
+   * @brief Initialize the pipeline, binding + validating the pre/postprocess
+   * parameters once. infer() calls carry data only.
+   */
+  InferErrorCode initialize(const AlgoPreprocParams &preproc_params,
+                            const AlgoPostprocParams &postproc_params);
 
-  InferErrorCode infer(const AlgoInput &input,
-                       const AlgoPreprocParams &preproc_params,
-                       const AlgoPostprocParams &postproc_params,
-                       AlgoOutput &output);
+  /**
+   * @brief Run one inference. The overrides are optional per-call parameter
+   * replacements; pass nullptr to use the parameters bound at initialize().
+   */
+  InferErrorCode infer(const AlgoInput &input, AlgoOutput &output,
+                       const AlgoPreprocParams *preproc_override = nullptr,
+                       const AlgoPostprocParams *postproc_override = nullptr);
 
-  InferErrorCode batchInfer(const std::vector<AlgoInput> &inputs,
-                            const AlgoPreprocParams &preproc_params,
-                            const AlgoPostprocParams &postproc_params,
-                            std::vector<AlgoOutput> &outputs);
+  InferErrorCode
+  batchInfer(const std::vector<AlgoInput> &inputs,
+             std::vector<AlgoOutput> &outputs,
+             const AlgoPreprocParams *preproc_override = nullptr,
+             const AlgoPostprocParams *postproc_override = nullptr);
 
   InferErrorCode terminate();
 
