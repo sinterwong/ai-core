@@ -40,7 +40,7 @@
 
 - [ ] CI（GitHub Actions）：GCC + Clang，Debug 跑 ASan/UBSan，clang-format 检查；现有 5 个集成测试保持绿色。
 - [x] `escaleResizeWithPad` 坐标还原单测（检测框正确性的命门，且此逻辑不受 API 重塑影响，先锁住）。
-- [ ] `ai_core-config.cmake.in` 加 `find_dependency`；`CMAKE_CUDA_ARCHITECTURES` 去硬编码；`install/` 移出仓库。
+- [x] `ai_core-config.cmake.in` 加 `find_dependency`；`CMAKE_CUDA_ARCHITECTURES` 去硬编码；`install/` 移出仓库（确认从未被 git 跟踪且已在 .gitignore，无需改动）。
 
 ### 验收标准
 
