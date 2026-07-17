@@ -21,7 +21,7 @@
 
 - [x] **预处理/后处理异常泄漏**：`AlgoPreproc::Impl::process` / `batchProcess` 及 postproc 对应方法没有 try/catch，插件内部 `throw` 会穿透 `AlgoInference::infer`。facade 边界统一 catch-all 转错误码。
 - [x] **ORT 后端 `infer` / `terminate` 竞态**：`infer` 不持锁、`terminate` 持锁 reset session，并发即 use-after-free。统一锁策略。
-- [ ] **初始化检查失效**：`AlgoInference::Impl::infer` 判空的三个成员指针在构造函数就创建了，永远非空。加 `m_initialized`，未初始化 fail fast。
+- [x] **初始化检查失效**：`AlgoInference::Impl::infer` 判空的三个成员指针在构造函数就创建了，永远非空。加 `m_initialized`，未初始化 fail fast。
 
 ### API 清算（一次性 break）
 
