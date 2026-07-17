@@ -37,8 +37,8 @@ TEST(AlgoInferenceTest, YoloDet) {
   ASSERT_FALSE(image.empty());
 
   AlgoModuleTypes module_types;
-  module_types.preproc_module = "FramePreprocess";
-  module_types.postproc_module = "AnchorDetPostproc";
+  module_types.preproc_module = "CpuGenericPreprocess";
+  module_types.postproc_module = "Yolov11Det";
 
   AlgoInferParams infer_params;
 #ifdef WITH_ORT
@@ -93,14 +93,10 @@ TEST(AlgoInferenceTest, YoloDet) {
   frame_preprocess_arg.mean_vals = {0, 0, 0};
   frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
   frame_preprocess_arg.hwc2chw = true;
-  frame_preprocess_arg.preproc_task_type =
-      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
   frame_preprocess_arg.output_location = BufferLocation::CPU;
 
   AlgoPreprocParams preproc_params;
   preproc_params.setParams(frame_preprocess_arg);
-
-  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
   anchor_det_params.cond_thre = 0.5f;
   anchor_det_params.nms_thre = 0.45f;
 

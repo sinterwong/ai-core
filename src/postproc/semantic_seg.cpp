@@ -15,7 +15,7 @@
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
-bool SemanticSeg::process(const TensorData &model_output,
+bool SemanticSeg::processTyped(const TensorData &model_output,
                           const FrameTransformContext &prep_args,
                           const ConfidenceFilterParams &post_args,
                           AlgoOutput &algo_output) const {
@@ -40,7 +40,7 @@ bool SemanticSeg::process(const TensorData &model_output,
   return true;
 }
 
-bool SemanticSeg::batchProcess(
+bool SemanticSeg::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const ConfidenceFilterParams &post_args,

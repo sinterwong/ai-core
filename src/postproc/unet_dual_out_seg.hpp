@@ -11,16 +11,16 @@
 #ifndef AI_CORE_INFERENCE_VISION_UNET_DAUL_OUTPUTS_HPP
 #define AI_CORE_INFERENCE_VISION_UNET_DAUL_OUTPUTS_HPP
 
-#include "cv_generic_post_base.hpp"
+#include "frame_postproc_base.hpp"
 namespace ai_core::dnn {
-class UNetDualOutputSeg : public ICVGenericPostprocessor {
+class UNetDualOutputSeg : public FramePostprocBase<GenericPostParams, true> {
 public:
   explicit UNetDualOutputSeg() {}
 
-  virtual bool process(const TensorData &, const FrameTransformContext &,
+  virtual bool processTyped(const TensorData &, const FrameTransformContext &,
                        const GenericPostParams &, AlgoOutput &) const override;
 
-  virtual bool batchProcess(const TensorData &,
+  virtual bool batchProcessTyped(const TensorData &,
                             const std::vector<FrameTransformContext> &,
                             const GenericPostParams &,
                             std::vector<AlgoOutput> &) const override;

@@ -5,8 +5,8 @@
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/typed_buffer.hpp"
-#include "postproc/anchor_det_postproc.hpp"
-#include "preproc/frame_prep.hpp"
+#include "postproc/yolo_det.hpp"
+#include "preproc/cpu_generic_preprocess.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
@@ -41,8 +41,6 @@ struct TestConfig {
   DataType preproc_data_type;
   DeviceType device_type;
   std::string input_name;
-  FramePreprocessArg::FramePreprocType preproc_task_type =
-      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
   BufferLocation buffer_location = BufferLocation::CPU;
   bool need_decrypt = false;
   std::string decryptkey_str = "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25";
@@ -57,10 +55,10 @@ protected:
     ai_core::logging::Logger::instance().enableFile(false);
     ai_core::logging::Logger::instance().enableColor(true);
 
-    m_framePreproc = std::make_shared<FramePreprocess>();
+    m_framePreproc = std::make_shared<CpuGenericPreprocess>();
     ASSERT_NE(m_framePreproc, nullptr);
 
-    m_yoloDetPostproc = std::make_shared<AnchorDetPostproc>();
+    m_yoloDetPostproc = std::make_shared<Yolov11Det>();
     ASSERT_NE(m_yoloDetPostproc, nullptr);
   }
 
@@ -120,13 +118,11 @@ TEST_P(YoloDetInferenceTest, Normal) {
   frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
-  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
   frame_preprocess_arg.output_location = config.buffer_location;
   preproc_params.setParams(frame_preprocess_arg);
 
   AlgoPostprocParams postproc_params;
   AnchorDetParams anchor_det_params;
-  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
   anchor_det_params.cond_thre = 0.5f;
   anchor_det_params.nms_thre = 0.45f;
   anchor_det_params.output_names = {"output0"};
@@ -201,13 +197,11 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
-  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
   frame_preprocess_arg.output_location = config.buffer_location;
   preproc_params.setParams(frame_preprocess_arg);
 
   AlgoPostprocParams postproc_params;
   AnchorDetParams anchor_det_params;
-  anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
   anchor_det_params.cond_thre = 0.5f;
   anchor_det_params.nms_thre = 0.45f;
   anchor_det_params.output_names = {"output0"};
@@ -260,7 +254,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/models/yolov11n-fp16.onnx", DataType::FLOAT16,
                      DataType::FLOAT16, DeviceType::CPU, "images",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
   configs.push_back({"ort_enc",
                      [](const AlgoConstructParams &p) {
@@ -269,7 +262,6 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/enc_models/yolov11n-fp16.enc.onnx",
                      DataType::FLOAT16, DataType::FLOAT16, DeviceType::CPU,
                      "images",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, true});
 #endif
 #ifdef WITH_NCNN
@@ -279,7 +271,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/models/yolov11n.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
   configs.push_back({"ncnn_enc",
                      [](const AlgoConstructParams &p) {
@@ -287,7 +278,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/enc_models/yolov11n.enc.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, true});
 #endif
   return configs;

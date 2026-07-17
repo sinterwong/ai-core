@@ -14,7 +14,7 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool NanoDet::process(const TensorData &model_output,
+bool NanoDet::processTyped(const TensorData &model_output,
                       const FrameTransformContext &prep_args,
                       const AnchorDetParams &post_args,
                       AlgoOutput &algo_output) const {
@@ -43,7 +43,7 @@ bool NanoDet::process(const TensorData &model_output,
   return true;
 }
 
-bool NanoDet::batchProcess(const TensorData &model_output,
+bool NanoDet::batchProcessTyped(const TensorData &model_output,
                            const std::vector<FrameTransformContext> &prep_args,
                            const AnchorDetParams &post_args,
                            std::vector<AlgoOutput> &algo_output) const {

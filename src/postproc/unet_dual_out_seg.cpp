@@ -14,7 +14,7 @@
 #include <opencv2/core/mat.hpp>
 
 namespace ai_core::dnn {
-bool UNetDualOutputSeg::process(const TensorData &model_output,
+bool UNetDualOutputSeg::processTyped(const TensorData &model_output,
                                 const FrameTransformContext &prep_args,
                                 const GenericPostParams &post_args,
                                 AlgoOutput &algo_output) const {
@@ -39,7 +39,7 @@ bool UNetDualOutputSeg::process(const TensorData &model_output,
   return true;
 }
 
-bool UNetDualOutputSeg::batchProcess(
+bool UNetDualOutputSeg::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const GenericPostParams &post_args,

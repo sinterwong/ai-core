@@ -5,8 +5,8 @@
 #include "ai_core/logger.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
-#include "postproc/anchor_det_postproc.hpp"
-#include "preproc/frame_prep.hpp"
+#include "postproc/yolo_det.hpp"
+#include "preproc/cuda_generic_preprocess.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <opencv2/imgcodecs.hpp>
@@ -31,10 +31,10 @@ protected:
     ai_core::logging::Logger::instance().enableFile(false);
     ai_core::logging::Logger::instance().enableColor(true);
 
-    m_framePreproc = std::make_shared<FramePreprocess>();
+    m_framePreproc = std::make_shared<CudaGenericPreprocess>();
     ASSERT_NE(m_framePreproc, nullptr);
 
-    m_yoloDetPostproc = std::make_shared<AnchorDetPostproc>();
+    m_yoloDetPostproc = std::make_shared<Yolov11Det>();
     ASSERT_NE(m_yoloDetPostproc, nullptr);
   }
 
@@ -64,15 +64,12 @@ protected:
     frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
     frame_preprocess_arg.hwc2chw = true;
     frame_preprocess_arg.input_names = {"images"};
-    frame_preprocess_arg.preproc_task_type =
-        FramePreprocessArg::FramePreprocType::CudaGpuGeneric;
     frame_preprocess_arg.output_location = BufferLocation::GpuDevice;
     return frame_preprocess_arg;
   }
 
   AnchorDetParams getPostprocParams() {
     AnchorDetParams anchor_det_params;
-    anchor_det_params.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
     anchor_det_params.cond_thre = 0.5f;
     anchor_det_params.nms_thre = 0.45f;
     anchor_det_params.output_names = {"output0"};

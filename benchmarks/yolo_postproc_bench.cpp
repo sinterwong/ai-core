@@ -64,7 +64,7 @@ const static auto engine = []() {
 
 #if defined(WITH_ORT) || defined(WITH_NCNN) || defined(WITH_TRT)
 static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
-  ai_core::dnn::AlgoPreproc preproc("FramePreprocess");
+  ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
   preproc.initialize();
 
   ai_core::AlgoPreprocParams preproc_params;
@@ -87,8 +87,6 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   frame_preprocess_arg.mean_vals = {0, 0, 0};
   frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
   frame_preprocess_arg.hwc2chw = true;
-  frame_preprocess_arg.preproc_task_type =
-      ai_core::FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
   frame_preprocess_arg.output_location = ai_core::BufferLocation::CPU;
   preproc_params.setParams(frame_preprocess_arg);
 
@@ -111,12 +109,11 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   ai_core::TensorData model_output;
   engine->infer(model_input, model_output);
 
-  ai_core::dnn::AlgoPostproc postproc("AnchorDetPostproc");
+  ai_core::dnn::AlgoPostproc postproc("Yolov11Det");
   postproc.initialize();
 
   ai_core::AlgoPostprocParams postproc_params;
   ai_core::AnchorDetParams anchor_det_params;
-  anchor_det_params.algo_type = ai_core::AnchorDetParams::AlgoType::YoloDetV11;
   anchor_det_params.cond_thre = 0.5f;
   anchor_det_params.nms_thre = 0.45f;
   anchor_det_params.output_names = {"output0"};

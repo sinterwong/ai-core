@@ -14,7 +14,7 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool Yolov11Det::process(const TensorData &model_output,
+bool Yolov11Det::processTyped(const TensorData &model_output,
                          const FrameTransformContext &prep_args,
                          const AnchorDetParams &post_args,
                          AlgoOutput &algo_output) const {
@@ -60,7 +60,7 @@ bool Yolov11Det::process(const TensorData &model_output,
   return true;
 }
 
-bool Yolov11Det::batchProcess(
+bool Yolov11Det::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const AnchorDetParams &post_args,

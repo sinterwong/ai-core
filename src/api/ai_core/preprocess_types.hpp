@@ -30,16 +30,6 @@ struct Shape {
 };
 
 struct FramePreprocessArg {
-  enum class FramePreprocType : int8_t {
-    // ROI -> Resize -> Normalize -> Layout convert
-    OpencvCpuGeneric = 0,
-    NcnnGeneric,
-    CudaGpuGeneric,
-
-    // ROI -> Concat -> Resize -> Normalize -> Layout convert
-    OpencvCpuConcatMask
-  };
-  FramePreprocType preproc_task_type = FramePreprocType::OpencvCpuGeneric;
   Shape model_input_shape;
   bool need_resize;
   bool is_equal_scale;

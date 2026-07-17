@@ -13,7 +13,7 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool SoftmaxCls::process(const TensorData &model_output,
+bool SoftmaxCls::processTyped(const TensorData &model_output,
                          const FrameTransformContext &prep_args,
                          const GenericPostParams &post_args,
                          AlgoOutput &algo_output) const {
@@ -36,7 +36,7 @@ bool SoftmaxCls::process(const TensorData &model_output,
   return true;
 }
 
-bool SoftmaxCls::batchProcess(
+bool SoftmaxCls::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const GenericPostParams &post_args,

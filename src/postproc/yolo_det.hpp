@@ -12,16 +12,16 @@
 #define AI_CORE_INFERENCE_VISION_YOLOV11_DETECTION_HPP
 
 #include "ai_core/preprocess_types.hpp"
-#include "anchor_det_post_base.hpp"
+#include "frame_postproc_base.hpp"
 namespace ai_core::dnn {
-class Yolov11Det : public IAnchorDetPostprocessor {
+class Yolov11Det : public FramePostprocBase<AnchorDetParams, true> {
 public:
   explicit Yolov11Det() {}
 
-  virtual bool process(const TensorData &, const FrameTransformContext &,
+  virtual bool processTyped(const TensorData &, const FrameTransformContext &,
                        const AnchorDetParams &, AlgoOutput &) const override;
 
-  virtual bool batchProcess(const TensorData &,
+  virtual bool batchProcessTyped(const TensorData &,
                             const std::vector<FrameTransformContext> &,
                             const AnchorDetParams &,
                             std::vector<AlgoOutput> &) const override;

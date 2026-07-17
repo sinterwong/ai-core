@@ -433,16 +433,17 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 
 | 阶段 | 名字 | 用途 |
 | --- | --- | --- |
-| 预处理 | `FramePreprocess` | 单帧图通用预处理 |
-| 预处理 | `FrameWithMaskPreprocess` | 带掩码区域的图 |
+| 预处理 | `CpuGenericPreprocess` | 单帧图通用预处理（OpenCV CPU） |
+| 预处理 | `CudaGenericPreprocess` | 单帧图通用预处理（CUDA，需 `WITH_TRT_ENGINE`） |
+| 预处理 | `FrameWithMaskPreprocess` | 带掩码区域的图（CPU） |
 | 推理 | `OrtAlgoInference` | ONNX Runtime |
 | 推理 | `NCNNAlgoInference` | NCNN |
 | 推理 | `TrtAlgoInference` | TensorRT |
-| 后处理 | `AnchorDetPostproc` | YoloDetV11 / RtmDet / NanoDet |
-| 后处理 | `CVGenericPostproc` | SoftmaxCls / FprCls / RawModelOutput / UnetDualOutput / OcrReco |
-| 后处理 | `ConfidenceFilterPostproc` | SemanticSeg |
+| 后处理 | `Yolov11Det` / `RTMDet` / `NanoDet` | 锚框检测，参数 `AnchorDetParams` |
+| 后处理 | `SoftmaxCls` / `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` | 通用后处理，参数 `GenericPostParams` |
+| 后处理 | `SemanticSeg` | 语义分割，参数 `ConfidenceFilterParams` |
 
-后处理插件内部的算法选择由 `AlgoPostprocParams` 中的 `algo_type` 字段决定。
+算法由插件名直接选择：`AlgoModuleTypes::postproc_module` 填上表中的名字即可，参数结构里不再有 `algo_type` 字段。
 
 ## 12. 日志
 

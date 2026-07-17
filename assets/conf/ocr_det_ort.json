@@ -2,9 +2,9 @@
     "algorithm": {
         "name": "chinese-ocr-det",
         "types": {
-            "preproc": "FramePreprocess",
+            "preproc": "CpuGenericPreprocess",
             "infer": "OrtAlgoInference",
-            "postproc": "ConfidenceFilterPostproc"
+            "postproc": "SemanticSeg"
         },
         "preprocParams": {
             "inputShape": {
@@ -33,8 +33,7 @@
             "hwc2chw": true,
             "inputNames": [
                 "x"
-            ],
-            "preprocTaskType": 0
+            ]
         },
         "inferParams": {
             "modelPath": "models/ch_PP_ocr_det.onnx",
@@ -43,7 +42,6 @@
             "needDecrypt": false
         },
         "postprocParams": {
-            "algoType": 0,
             "condThre": 0.3,
             "outputNames": [
                 "sigmoid_0.tmp_0"

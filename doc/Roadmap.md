@@ -32,7 +32,7 @@
 
 ### 架构合一
 
-- [ ] **分发机制二合一**：删除"字符串工厂 → enum switch"双层分发。`Yolov11Det` / `RTMDet` / `NanoDet` / `SoftmaxCls` / 各 preprocessor 直接注册为工厂插件，`AnchorDetPostproc` / `CVGenericPostproc` / `FramePreprocess` 这些 enum 分发壳删除。新增算法 = 新文件 + 一行注册宏。
+- [x] **分发机制二合一**：删除"字符串工厂 → enum switch"双层分发。`Yolov11Det` / `RTMDet` / `NanoDet` / `SoftmaxCls` / 各 preprocessor 直接注册为工厂插件，`AnchorDetPostproc` / `CVGenericPostproc` / `FramePreprocess` 这些 enum 分发壳删除。新增算法 = 新文件 + 一行注册宏。
 - [ ] **RuntimeContext 类型化**：preproc → postproc 的 `FrameTransformContext` 传递改为类型化槽位，消灭 `"preproc_runtime_args"` 魔法字符串；`DataPacket` 仅保留给自由扩展。
 - [ ] **注册机制健壮化**：提供显式 `registerDefaultPlugins()` 入口，静态/动态链接皆可用，不再依赖"恰好是 SHARED 库"才成立的静态初始化。
 
@@ -133,6 +133,7 @@
 ### 任务
 
 - [ ] **配置模块**：`examples/algo_config_parser` 升级为正式可选模块 `ai_core::config`，全部算法参数支持 JSON 定义，加载即用——新产品的算法编排不写 C++。
+  - 已知问题（v1.3 发现）：parser 与 `assets/conf/*.json` 键风格不一致（parser 读 `preproc_params`/`input_names` 等 snake_case，JSON 写 `preprocParams`/`inputNames` 等 camelCase），preproc/postproc 参数从未被解析，OCR 示例因此跑不通。升级为正式模块时统一键风格并加 schema 校验。
 - [ ] **错误详情通道**：`InferErrorCode::to_string`；facade 提供错误上下文（哪个张量、期望什么、拿到什么），排查不靠翻日志。
 - [ ] **示例即模板**：det / cls / seg / OCR / 异步流水线示例整理成可直接复制起手的 starter 结构（`examples/starter/`），带自己的 CMakeLists，验证 `find_package(ai_core)` 消费路径。
 - [ ] **文档体系**：Doxygen 站点、架构文档更新（Framework.md 对齐终态）、插件开发指南、各 postproc 张量契约（名字/shape/dtype）、线程模型文档。

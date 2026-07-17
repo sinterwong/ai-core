@@ -14,7 +14,7 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool RTMDet::process(const TensorData &model_output,
+bool RTMDet::processTyped(const TensorData &model_output,
                      const FrameTransformContext &prep_args,
                      const AnchorDetParams &post_args,
                      AlgoOutput &algo_output) const {
@@ -44,7 +44,7 @@ bool RTMDet::process(const TensorData &model_output,
   return true;
 }
 
-bool RTMDet::batchProcess(const TensorData &model_output,
+bool RTMDet::batchProcessTyped(const TensorData &model_output,
                           const std::vector<FrameTransformContext> &prep_args,
                           const AnchorDetParams &post_args,
                           std::vector<AlgoOutput> &algo_output) const {

@@ -14,8 +14,8 @@
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/typed_buffer.hpp"
-#include "postproc/confidence_filter_postproc.hpp"
-#include "preproc/frame_prep.hpp"
+#include "postproc/semantic_seg.hpp"
+#include "preproc/cpu_generic_preprocess.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <functional>
@@ -53,8 +53,6 @@ struct TestConfig {
   DataType preproc_data_type;
   DeviceType device_type;
   std::string input_name;
-  FramePreprocessArg::FramePreprocType preproc_task_type =
-      FramePreprocessArg::FramePreprocType::OpencvCpuGeneric;
   BufferLocation buffer_location = BufferLocation::CPU;
   bool need_decrypt = false;
   std::string decryptkey_str = "";
@@ -63,10 +61,10 @@ struct TestConfig {
 class OCRDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
 protected:
   void SetUp() override {
-    m_m_framePreproc = std::make_shared<FramePreprocess>();
+    m_m_framePreproc = std::make_shared<CpuGenericPreprocess>();
     ASSERT_NE(m_m_framePreproc, nullptr);
 
-    m_confidenceFilterPostproc = std::make_shared<ConfidenceFilterPostproc>();
+    m_confidenceFilterPostproc = std::make_shared<SemanticSeg>();
     ASSERT_NE(m_confidenceFilterPostproc, nullptr);
   }
 
@@ -122,14 +120,11 @@ TEST_P(OCRDetInferenceTest, Normal) {
   frame_preprocess_arg.norm_vals = {58.395f, 57.12f, 57.375f};
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
-  frame_preprocess_arg.preproc_task_type = config.preproc_task_type;
   frame_preprocess_arg.output_location = config.buffer_location;
   preproc_params.setParams(frame_preprocess_arg);
 
   AlgoPostprocParams postproc_params;
   ConfidenceFilterParams confidence_filter_params;
-  confidence_filter_params.algo_type =
-      ConfidenceFilterParams::AlgoType::SemanticSeg;
   confidence_filter_params.cond_thre = 0.3f;
   confidence_filter_params.output_names = {"sigmoid_0.tmp_0"};
   postproc_params.setParams(confidence_filter_params);
@@ -175,7 +170,6 @@ std::vector<TestConfig> getTestConfigs() {
                      },
                      "assets/models/ch_PP_ocr_det.onnx", DataType::FLOAT32,
                      DataType::FLOAT32, DeviceType::CPU, "x",
-                     FramePreprocessArg::FramePreprocType::OpencvCpuGeneric,
                      BufferLocation::CPU, false});
 #endif
 #ifdef WITH_NCNN

@@ -13,7 +13,7 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool OCRReco::process(const TensorData &model_output,
+bool OCRReco::processTyped(const TensorData &model_output,
                       const FrameTransformContext &prep_args,
                       const GenericPostParams &post_args,
                       AlgoOutput &algo_output) const {
@@ -35,7 +35,7 @@ bool OCRReco::process(const TensorData &model_output,
   return true;
 }
 
-bool OCRReco::batchProcess(const TensorData &model_output,
+bool OCRReco::batchProcessTyped(const TensorData &model_output,
                            const std::vector<FrameTransformContext> &prep_args,
                            const GenericPostParams &post_args,
                            std::vector<AlgoOutput> &algo_output) const {

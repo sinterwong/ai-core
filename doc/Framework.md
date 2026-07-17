@@ -82,11 +82,10 @@ struct AlgoInferParams {
 
 构造时传插件名。`initialize()` 阶段从 `PreprocFactory` 取出对应实现。`process()` 内部把任务转给该插件。
 
-内置：`FramePreprocess`（单帧）、`FrameWithMaskPreprocess`（带掩码）。
+内置：`CpuGenericPreprocess`（单帧，OpenCV CPU）、`CudaGenericPreprocess`（单帧，CUDA，需 `WITH_TRT_ENGINE`）、`FrameWithMaskPreprocess`（带掩码，CPU）。执行设备由插件名决定，不再有运行期分发字段。
 
 参数见 `FramePreprocessArg`：
 
-- `preproc_task_type` — `OpencvCpuGeneric` / `NcnnGeneric` / `CudaGpuGeneric` / `OpencvCpuConcatMask`
 - `model_input_shape` — `{w, h, c}`
 - `need_resize`、`is_equal_scale`、`pad`
 - `mean_vals`、`norm_vals`
@@ -106,17 +105,19 @@ struct AlgoInferParams {
 
 构造时传插件名。`process()` 把模型输出解析成 `AlgoOutput` 中的一种类型。
 
-内置：
+内置（每个算法就是一个插件，按名字直接注册到工厂）：
 
-- `AnchorDetPostproc` —— YoloDetV11 / RtmDet / NanoDet
-- `CVGenericPostproc` —— SoftmaxCls / FprCls / RawModelOutput / UnetDualOutput / OcrReco
-- `ConfidenceFilterPostproc` —— SemanticSeg
+- `Yolov11Det` / `RTMDet` / `NanoDet` —— 锚框检测家族，参数 `AnchorDetParams`
+- `SoftmaxCls` / `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` —— 通用家族，参数 `GenericPostParams`
+- `SemanticSeg` —— 置信度过滤家族，参数 `ConfidenceFilterParams`
 
 参数：
 
-- `AnchorDetParams`：`algo_type`、`cond_thre`、`nms_thre`、`output_names`
-- `GenericPostParams`：`algo_type`、`output_names`
-- `ConfidenceFilterParams`：`algo_type`、`cond_thre`、`output_names`
+- `AnchorDetParams`：`cond_thre`、`nms_thre`、`output_names`
+- `GenericPostParams`：`output_names`
+- `ConfidenceFilterParams`：`cond_thre`、`output_names`
+
+新增一个后处理算法 = 一个继承 `FramePostprocBase<ParamsT, RequiresPrepContext>` 的新 `.cpp` + 一行注册宏。
 
 ## 工厂与注册
 
