@@ -37,9 +37,23 @@ InferErrorCode
 AlgoPostproc::Impl::process(const TensorData &model_output, AlgoOutput &output,
                             const AlgoPostprocParams &postproc_params,
                             std::shared_ptr<RuntimeContext> &runtime_context) {
-  if (!m_postprocessor->process(model_output, postproc_params, output,
-                                runtime_context)) {
-    LOG_ERROR_S << "Failed to postprocess output.";
+  if (m_postprocessor == nullptr) {
+    LOG_ERROR_S << "Postprocessor is not initialized: " << m_moduleName;
+    return InferErrorCode::NotInitialized;
+  }
+  try {
+    if (!m_postprocessor->process(model_output, postproc_params, output,
+                                  runtime_context)) {
+      LOG_ERROR_S << "Failed to postprocess output.";
+      return InferErrorCode::InferOutputError;
+    }
+  } catch (const std::exception &e) {
+    LOG_ERROR_S << "Exception in postprocessor '" << m_moduleName
+                << "': " << e.what();
+    return InferErrorCode::InferOutputError;
+  } catch (...) {
+    LOG_ERROR_S << "Unknown exception in postprocessor '" << m_moduleName
+                << "'.";
     return InferErrorCode::InferOutputError;
   }
   return InferErrorCode::SUCCESS;
@@ -49,9 +63,23 @@ InferErrorCode AlgoPostproc::Impl::batchProcess(
     const TensorData &model_output, std::vector<AlgoOutput> &output,
     const AlgoPostprocParams &postproc_params,
     std::shared_ptr<RuntimeContext> &runtime_context) {
-  if (!m_postprocessor->batchProcess(model_output, postproc_params, output,
-                                     runtime_context)) {
-    LOG_ERROR_S << "Failed to batch postprocess output.";
+  if (m_postprocessor == nullptr) {
+    LOG_ERROR_S << "Postprocessor is not initialized: " << m_moduleName;
+    return InferErrorCode::NotInitialized;
+  }
+  try {
+    if (!m_postprocessor->batchProcess(model_output, postproc_params, output,
+                                       runtime_context)) {
+      LOG_ERROR_S << "Failed to batch postprocess output.";
+      return InferErrorCode::InferOutputError;
+    }
+  } catch (const std::exception &e) {
+    LOG_ERROR_S << "Exception in postprocessor '" << m_moduleName
+                << "': " << e.what();
+    return InferErrorCode::InferOutputError;
+  } catch (...) {
+    LOG_ERROR_S << "Unknown exception in postprocessor '" << m_moduleName
+                << "'.";
     return InferErrorCode::InferOutputError;
   }
   return InferErrorCode::SUCCESS;

@@ -35,9 +35,23 @@ InferErrorCode AlgoPreproc::Impl::initialize() {
 InferErrorCode AlgoPreproc::Impl::process(
     const AlgoInput &input, const AlgoPreprocParams &preproc_params,
     TensorData &model_input, std::shared_ptr<RuntimeContext> &runtime_context) {
-  if (!m_preprocessor->process(input, preproc_params, model_input,
-                               runtime_context)) {
-    LOG_ERROR_S << "Failed to preprocess input.";
+  if (m_preprocessor == nullptr) {
+    LOG_ERROR_S << "Preprocessor is not initialized: " << m_moduleName;
+    return InferErrorCode::NotInitialized;
+  }
+  try {
+    if (!m_preprocessor->process(input, preproc_params, model_input,
+                                 runtime_context)) {
+      LOG_ERROR_S << "Failed to preprocess input.";
+      return InferErrorCode::InferPreprocessFailed;
+    }
+  } catch (const std::exception &e) {
+    LOG_ERROR_S << "Exception in preprocessor '" << m_moduleName
+                << "': " << e.what();
+    return InferErrorCode::InferPreprocessFailed;
+  } catch (...) {
+    LOG_ERROR_S << "Unknown exception in preprocessor '" << m_moduleName
+                << "'.";
     return InferErrorCode::InferPreprocessFailed;
   }
   return InferErrorCode::SUCCESS;
@@ -47,9 +61,23 @@ InferErrorCode AlgoPreproc::Impl::batchProcess(
     const std::vector<AlgoInput> &input,
     const AlgoPreprocParams &preproc_params, TensorData &model_input,
     std::shared_ptr<RuntimeContext> &runtime_context) {
-  if (!m_preprocessor->batchProcess(input, preproc_params, model_input,
-                                    runtime_context)) {
-    LOG_ERROR_S << "Failed to batch preprocess input.";
+  if (m_preprocessor == nullptr) {
+    LOG_ERROR_S << "Preprocessor is not initialized: " << m_moduleName;
+    return InferErrorCode::NotInitialized;
+  }
+  try {
+    if (!m_preprocessor->batchProcess(input, preproc_params, model_input,
+                                      runtime_context)) {
+      LOG_ERROR_S << "Failed to batch preprocess input.";
+      return InferErrorCode::InferPreprocessFailed;
+    }
+  } catch (const std::exception &e) {
+    LOG_ERROR_S << "Exception in preprocessor '" << m_moduleName
+                << "': " << e.what();
+    return InferErrorCode::InferPreprocessFailed;
+  } catch (...) {
+    LOG_ERROR_S << "Unknown exception in preprocessor '" << m_moduleName
+                << "'.";
     return InferErrorCode::InferPreprocessFailed;
   }
   return InferErrorCode::SUCCESS;
