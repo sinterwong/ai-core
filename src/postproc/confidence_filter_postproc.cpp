@@ -15,13 +15,13 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool ConfidenceFilterPostproc::process(
+InferErrorCode ConfidenceFilterPostproc::process(
     const TensorData &model_output, const AlgoPostprocParams &post_args,
     AlgoOutput &algo_output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
-    return false;
+    return InferErrorCode::InferOutputError;
   }
 
   auto params = post_args.getParams<ConfidenceFilterParams>();
@@ -42,24 +42,26 @@ bool ConfidenceFilterPostproc::process(
 
     SemanticSeg postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   default: {
     LOG_ERROR_S << "Unknown generic algorithm type: "
                 << static_cast<int>(params->algo_type);
-    return false;
+    return InferErrorCode::InferOutputError;
   }
   }
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 
-bool ConfidenceFilterPostproc::batchProcess(
+InferErrorCode ConfidenceFilterPostproc::batchProcess(
     const TensorData &model_output, const AlgoPostprocParams &post_args,
     std::vector<AlgoOutput> &output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
-    return false;
+    return InferErrorCode::InferOutputError;
   }
 
   auto params = post_args.getParams<ConfidenceFilterParams>();
@@ -80,14 +82,16 @@ bool ConfidenceFilterPostproc::batchProcess(
             "preproc_runtime_args_batch");
     SemanticSeg postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   default: {
     LOG_ERROR_S << "Unknown generic algorithm type: "
                 << static_cast<int>(params->algo_type);
-    return false;
+    return InferErrorCode::InferOutputError;
   }
   }
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 } // namespace ai_core::dnn

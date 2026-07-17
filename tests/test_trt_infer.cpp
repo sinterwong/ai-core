@@ -179,8 +179,9 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   postproc_params.setParams(getPostprocParams());
 
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context));
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
+                                       runtime_context),
+            InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);
@@ -227,8 +228,9 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
       postproc_params.setParams(getPostprocParams());
 
       AlgoOutput algo_output;
-      ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params,
-                                           algo_output, runtime_context));
+      ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                           algo_output, runtime_context),
+            InferErrorCode::SUCCESS);
       auto *det_ret = algo_output.getParams<DetRet>();
       checkResults(det_ret);
     }
@@ -487,8 +489,9 @@ TEST_F(TrtInferenceTest, BackwardCompatibilityInfer) {
   postproc_params.setParams(getPostprocParams());
 
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context));
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
+                                       runtime_context),
+            InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);

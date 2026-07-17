@@ -18,14 +18,14 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool CVGenericPostproc::process(
+InferErrorCode CVGenericPostproc::process(
     const TensorData &model_output, const AlgoPostprocParams &post_args,
     AlgoOutput &algo_output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
 
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
-    return false;
+    return InferErrorCode::InferOutputError;
   }
 
   auto params = post_args.getParams<GenericPostParams>();
@@ -39,19 +39,25 @@ bool CVGenericPostproc::process(
     FrameTransformContext prep_runtime_args;
     SoftmaxCls postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::FprCls: {
     FrameTransformContext prep_runtime_args;
     FprCls postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::RawModelOutput: {
     FrameTransformContext prep_runtime_args;
     RawModelOutput postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::UnetDualOutput: {
     if (!runtime_context->has<FrameTransformContext>("preproc_runtime_args")) {
@@ -63,30 +69,34 @@ bool CVGenericPostproc::process(
             "preproc_runtime_args");
     UNetDualOutputSeg postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::OcrReco: {
     FrameTransformContext prep_runtime_args;
     OCRReco postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   default: {
     LOG_ERROR_S << "Unknown generic algorithm type: "
                 << static_cast<int>(params->algo_type);
-    return false;
+    return InferErrorCode::InferOutputError;
   }
   }
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 
-bool CVGenericPostproc::batchProcess(
+InferErrorCode CVGenericPostproc::batchProcess(
     const TensorData &model_output, const AlgoPostprocParams &post_args,
     std::vector<AlgoOutput> &output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
-    return false;
+    return InferErrorCode::InferOutputError;
   }
 
   auto params = post_args.getParams<GenericPostParams>();
@@ -100,19 +110,25 @@ bool CVGenericPostproc::batchProcess(
     std::vector<FrameTransformContext> prep_runtime_args_batch;
     SoftmaxCls postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::FprCls: {
     std::vector<FrameTransformContext> prep_runtime_args_batch;
     FprCls postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::RawModelOutput: {
     std::vector<FrameTransformContext> prep_runtime_args_batch;
     RawModelOutput postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::UnetDualOutput: {
     if (!runtime_context->has<std::vector<FrameTransformContext>>(
@@ -125,20 +141,24 @@ bool CVGenericPostproc::batchProcess(
             "preproc_runtime_args_batch");
     UNetDualOutputSeg postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case GenericPostParams::AlgoType::OcrReco: {
     std::vector<FrameTransformContext> prep_runtime_args_batch;
     OCRReco postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   default: {
     LOG_ERROR_S << "Unknown generic algorithm type: "
                 << static_cast<int>(params->algo_type);
-    return false;
+    return InferErrorCode::InferOutputError;
   }
   }
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 } // namespace ai_core::dnn

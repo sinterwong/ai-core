@@ -26,26 +26,26 @@
 
 namespace ai_core::dnn {
 
-bool FramePreprocess::process(
+InferErrorCode FramePreprocess::process(
     const AlgoInput &input, const AlgoPreprocParams &params, TensorData &output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
 
   auto params_ptr = params.getParams<FramePreprocessArg>();
   if (params_ptr == nullptr) {
     LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   if (params_ptr->input_names.size() != 1) {
     LOG_ERROR_S << "FramePreprocess expects exactly one input name.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   auto frame_input = input.getParams<FrameInput>();
 
   if (!frame_input) {
     LOG_ERROR_S << "Unsupported AlgoInput type for FramePreprocess.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
   FrameTransformContext single_runtime_args;
   auto data = singleProcess(*params_ptr, *frame_input, single_runtime_args);
@@ -61,22 +61,22 @@ bool FramePreprocess::process(
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
   output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 
-bool FramePreprocess::batchProcess(
+InferErrorCode FramePreprocess::batchProcess(
     const std::vector<AlgoInput> &input, const AlgoPreprocParams &params,
     TensorData &output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   auto params_ptr = params.getParams<FramePreprocessArg>();
   if (params_ptr == nullptr) {
     LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   if (params_ptr->input_names.size() != 1) {
     LOG_ERROR_S << "FramePreprocess expects exactly one input name.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   std::vector<FrameInput> frame_inputs;
@@ -85,7 +85,7 @@ bool FramePreprocess::batchProcess(
     auto frame_input = algo_input.getParams<FrameInput>();
     if (!frame_input) {
       LOG_ERROR_S << "Unsupported AlgoInput type for FramePreprocess.";
-      return false;
+      return InferErrorCode::InferPreprocessFailed;
     }
     frame_inputs.push_back(*frame_input);
   }
@@ -104,7 +104,7 @@ bool FramePreprocess::batchProcess(
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
   output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 
 TypedBuffer

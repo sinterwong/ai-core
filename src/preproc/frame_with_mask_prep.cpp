@@ -24,25 +24,25 @@
 
 namespace ai_core::dnn {
 
-bool FrameWithMaskPreprocess::process(
+InferErrorCode FrameWithMaskPreprocess::process(
     const AlgoInput &input, const AlgoPreprocParams &params, TensorData &output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   auto params_ptr = params.getParams<FramePreprocessArg>();
   if (params_ptr == nullptr) {
     LOG_ERROR_S
         << "Failed to get FrameWithMaskPreprocArg from AlgoPreprocParams.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   if (params_ptr->input_names.size() != 1) {
     LOG_ERROR_S << "FrameWithMaskPreprocess expects exactly one input name.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   auto frame_input_with_mask = input.getParams<FrameInputWithMask>();
   if (!frame_input_with_mask) {
     LOG_ERROR_S << "Failed to get FrameInputWithMask from AlgoInput.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   const auto &frame_input = frame_input_with_mask->frame_input;
@@ -146,25 +146,25 @@ bool FrameWithMaskPreprocess::process(
   default: {
     LOG_ERROR_S << "Unknown preprocessor type: "
                 << static_cast<int>(params_ptr->preproc_task_type);
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
   }
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 
-bool FrameWithMaskPreprocess::batchProcess(
+InferErrorCode FrameWithMaskPreprocess::batchProcess(
     const std::vector<AlgoInput> &input, const AlgoPreprocParams &params,
     TensorData &output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   auto params_ptr = params.getParams<FramePreprocessArg>();
   if (params_ptr == nullptr) {
     LOG_ERROR_S << "Failed to get FramePreprocessArg from AlgoPreprocParams.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   if (params_ptr->input_names.size() != 1) {
     LOG_ERROR_S << "FrameWithMaskPreprocess expects exactly one input name.";
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
 
   std::vector<FrameInput> masked_frame_inputs;
@@ -174,13 +174,13 @@ bool FrameWithMaskPreprocess::batchProcess(
     auto frame_input_with_mask = algo_input.getParams<FrameInputWithMask>();
     if (!frame_input_with_mask) {
       LOG_ERROR_S << "Unsupported AlgoInput type for FrameWithMaskPreprocess.";
-      return false;
+      return InferErrorCode::InferPreprocessFailed;
     }
     const auto &frame_input = frame_input_with_mask->frame_input;
 
     if (frame_input.image == nullptr) {
       LOG_ERROR_S << "Input frame is null in the batch.";
-      return false;
+      return InferErrorCode::InferPreprocessFailed;
     }
 
     cv::Rect roi;
@@ -253,7 +253,7 @@ bool FrameWithMaskPreprocess::batchProcess(
     LOG_ERROR_S << "Unknown or unsupported batch preprocessor type for "
                    "FrameWithMask: "
                 << static_cast<int>(params_ptr->preproc_task_type);
-    return false;
+    return InferErrorCode::InferPreprocessFailed;
   }
   }
 
@@ -267,6 +267,6 @@ bool FrameWithMaskPreprocess::batchProcess(
   }
   output.shapes.insert(std::make_pair(params_ptr->input_names[0], shape));
 
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 } // namespace ai_core::dnn

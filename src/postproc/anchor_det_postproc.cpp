@@ -17,13 +17,13 @@
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
-bool AnchorDetPostproc::process(
+InferErrorCode AnchorDetPostproc::process(
     const TensorData &model_output, const AlgoPostprocParams &post_args,
     AlgoOutput &algo_output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
-    return false;
+    return InferErrorCode::InferOutputError;
   }
 
   if (!runtime_context->has<FrameTransformContext>("preproc_runtime_args")) {
@@ -44,35 +44,41 @@ bool AnchorDetPostproc::process(
   case AnchorDetParams::AlgoType::YoloDetV11: {
     Yolov11Det postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case AnchorDetParams::AlgoType::RtmDet: {
     RTMDet postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case AnchorDetParams::AlgoType::NanoDet: {
     NanoDet postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
-                            algo_output);
+                            algo_output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   default: {
     LOG_ERROR_S << "Unknown detection algorithm type: "
                 << static_cast<int>(params->algo_type);
-    return false;
+    return InferErrorCode::InferOutputError;
   }
   }
 
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 
-bool AnchorDetPostproc::batchProcess(
+InferErrorCode AnchorDetPostproc::batchProcess(
     const TensorData &model_output, const AlgoPostprocParams &post_args,
     std::vector<AlgoOutput> &output,
     std::shared_ptr<RuntimeContext> &runtime_context) const {
   if (model_output.datas.empty()) {
     LOG_ERROR_S << "model_output.outputs is empty";
-    return false;
+    return InferErrorCode::InferOutputError;
   }
 
   if (!runtime_context->has<std::vector<FrameTransformContext>>(
@@ -95,25 +101,31 @@ bool AnchorDetPostproc::batchProcess(
   case AnchorDetParams::AlgoType::YoloDetV11: {
     Yolov11Det postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case AnchorDetParams::AlgoType::RtmDet: {
     RTMDet postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   case AnchorDetParams::AlgoType::NanoDet: {
     NanoDet postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
-                                 output);
+                                 output)
+               ? InferErrorCode::SUCCESS
+               : InferErrorCode::InferOutputError;
   }
   default: {
     LOG_ERROR_S << "Unknown detection algorithm type: "
                 << static_cast<int>(params->algo_type);
-    return false;
+    return InferErrorCode::InferOutputError;
   }
   }
 
-  return true;
+  return InferErrorCode::SUCCESS;
 }
 } // namespace ai_core::dnn

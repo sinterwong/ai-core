@@ -40,10 +40,11 @@ InferErrorCode AlgoPreproc::Impl::process(
     return InferErrorCode::NotInitialized;
   }
   try {
-    if (!m_preprocessor->process(input, preproc_params, model_input,
-                                 runtime_context)) {
+    const auto ret = m_preprocessor->process(input, preproc_params, model_input,
+                                             runtime_context);
+    if (ret != InferErrorCode::SUCCESS) {
       LOG_ERROR_S << "Failed to preprocess input.";
-      return InferErrorCode::InferPreprocessFailed;
+      return ret;
     }
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception in preprocessor '" << m_moduleName
@@ -66,10 +67,11 @@ InferErrorCode AlgoPreproc::Impl::batchProcess(
     return InferErrorCode::NotInitialized;
   }
   try {
-    if (!m_preprocessor->batchProcess(input, preproc_params, model_input,
-                                      runtime_context)) {
+    const auto ret = m_preprocessor->batchProcess(input, preproc_params,
+                                                  model_input, runtime_context);
+    if (ret != InferErrorCode::SUCCESS) {
       LOG_ERROR_S << "Failed to batch preprocess input.";
-      return InferErrorCode::InferPreprocessFailed;
+      return ret;
     }
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception in preprocessor '" << m_moduleName

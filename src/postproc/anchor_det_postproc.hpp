@@ -22,11 +22,11 @@ class AnchorDetPostproc : public IPostprocessPlugin {
 public:
   explicit AnchorDetPostproc() = default;
 
-  virtual bool process(const TensorData &, const AlgoPostprocParams &,
+  virtual InferErrorCode process(const TensorData &, const AlgoPostprocParams &,
                        AlgoOutput &,
                        std::shared_ptr<RuntimeContext> &) const override;
 
-  virtual bool batchProcess(const TensorData &, const AlgoPostprocParams &,
+  virtual InferErrorCode batchProcess(const TensorData &, const AlgoPostprocParams &,
                             std::vector<AlgoOutput> &,
                             std::shared_ptr<RuntimeContext> &) const override;
 };

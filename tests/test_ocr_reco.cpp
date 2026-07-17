@@ -169,8 +169,9 @@ TEST_P(OCRRecoInferTest, Normal) {
   generic_post.output_names = {"output_lengths", "argmax_output"};
   postproc_params.setParams(generic_post);
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_ocrPostproc->process(model_output, postproc_params, algo_output,
-                                   runtime_context));
+  ASSERT_EQ(m_ocrPostproc->process(model_output, postproc_params, algo_output,
+                                   runtime_context),
+            InferErrorCode::SUCCESS);
   OCRRecoRet *ocr_ret = algo_output.getParams<OCRRecoRet>();
   ASSERT_NE(ocr_ret, nullptr);
   ASSERT_EQ(ocr_ret->outputs.size(), 9);

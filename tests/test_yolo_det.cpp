@@ -148,8 +148,9 @@ TEST_P(YoloDetInferenceTest, Normal) {
   ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);
 
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
-                                       runtime_context));
+  ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params, algo_output,
+                                       runtime_context),
+            InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);
@@ -234,8 +235,9 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
                 InferErrorCode::SUCCESS);
 
       AlgoOutput algo_output;
-      ASSERT_TRUE(m_yoloDetPostproc->process(model_output, postproc_params,
-                                           algo_output, runtime_context));
+      ASSERT_EQ(m_yoloDetPostproc->process(model_output, postproc_params,
+                                           algo_output, runtime_context),
+            InferErrorCode::SUCCESS);
 
       auto *det_ret = algo_output.getParams<DetRet>();
       checkResults(det_ret);

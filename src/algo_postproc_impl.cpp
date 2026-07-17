@@ -42,10 +42,11 @@ AlgoPostproc::Impl::process(const TensorData &model_output, AlgoOutput &output,
     return InferErrorCode::NotInitialized;
   }
   try {
-    if (!m_postprocessor->process(model_output, postproc_params, output,
-                                  runtime_context)) {
+    const auto ret = m_postprocessor->process(model_output, postproc_params,
+                                              output, runtime_context);
+    if (ret != InferErrorCode::SUCCESS) {
       LOG_ERROR_S << "Failed to postprocess output.";
-      return InferErrorCode::InferOutputError;
+      return ret;
     }
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception in postprocessor '" << m_moduleName
@@ -68,10 +69,11 @@ InferErrorCode AlgoPostproc::Impl::batchProcess(
     return InferErrorCode::NotInitialized;
   }
   try {
-    if (!m_postprocessor->batchProcess(model_output, postproc_params, output,
-                                       runtime_context)) {
+    const auto ret = m_postprocessor->batchProcess(
+        model_output, postproc_params, output, runtime_context);
+    if (ret != InferErrorCode::SUCCESS) {
       LOG_ERROR_S << "Failed to batch postprocess output.";
-      return InferErrorCode::InferOutputError;
+      return ret;
     }
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception in postprocessor '" << m_moduleName

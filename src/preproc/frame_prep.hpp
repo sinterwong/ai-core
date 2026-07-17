@@ -21,11 +21,11 @@ public:
   FramePreprocess() = default;
   ~FramePreprocess() = default;
 
-  virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
+  virtual InferErrorCode process(const AlgoInput &, const AlgoPreprocParams &,
                        TensorData &,
                        std::shared_ptr<RuntimeContext> &) const override;
 
-  virtual bool batchProcess(const std::vector<AlgoInput> &,
+  virtual InferErrorCode batchProcess(const std::vector<AlgoInput> &,
                             const AlgoPreprocParams &, TensorData &,
                             std::shared_ptr<RuntimeContext> &) const override;
 

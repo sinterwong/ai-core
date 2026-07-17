@@ -148,8 +148,9 @@ TEST_P(OCRDetInferenceTest, Normal) {
   ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);
 
   AlgoOutput algo_output;
-  ASSERT_TRUE(m_confidenceFilterPostproc->process(model_output, postproc_params,
-                                                algo_output, runtime_context));
+  ASSERT_EQ(m_confidenceFilterPostproc->process(model_output, postproc_params,
+                                                algo_output, runtime_context),
+            InferErrorCode::SUCCESS);
 
   auto *seg_ret = algo_output.getParams<SegRet>();
   checkResults(seg_ret);
