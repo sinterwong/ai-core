@@ -31,8 +31,6 @@ private:
   DefaultPreprocPluginRegistrar();
 };
 
-[[maybe_unused]] inline const static DefaultPreprocPluginRegistrar
-    &temp_preproc_registrar = DefaultPreprocPluginRegistrar::getInstance();
 } // namespace ai_core::dnn
 
 #endif

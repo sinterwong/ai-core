@@ -137,7 +137,7 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 
 宏的副作用是把字符串 `"MyPreproc"` 和对应的构造器放进工厂的 map。`AlgoModuleTypes` 写哪个名字，就调用哪个。
 
-默认注册在 `src/registrar/` 下，链接库时自动生效。
+内置插件通过 `ai_core::dnn::registerDefaultPlugins()`（`<ai_core/default_plugins.hpp>`）显式注册。该函数幂等且线程安全，`AlgoPreproc` / `AlgoInferEngine` / `AlgoPostproc` 的 `initialize()` 会自动调用它，静态链接与动态链接行为一致；只有在绕过 facade 直接使用工厂时才需要手动调用。
 
 ## 自定义插件
 

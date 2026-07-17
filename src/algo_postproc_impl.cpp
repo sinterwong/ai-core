@@ -9,6 +9,7 @@
  *
  */
 #include "algo_postproc_impl.hpp"
+#include "ai_core/default_plugins.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
 
@@ -17,6 +18,7 @@ AlgoPostproc::Impl::Impl(const std::string &module_name)
     : m_moduleName(module_name) {}
 
 InferErrorCode AlgoPostproc::Impl::initialize() {
+  registerDefaultPlugins();
   try {
     m_postprocessor =
         PostprocFactory::instance().create(m_moduleName, AlgoConstructParams{});

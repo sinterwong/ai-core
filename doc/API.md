@@ -435,7 +435,9 @@ REGISTER_INFER_ENGINE(MyEngine);
 REGISTER_POSTPROCESS_ALGO(MyPostproc);
 ```
 
-宏把字符串 `"MyPreproc"` 等与默认构造函数 / `AlgoConstructParams` 构造函数绑定。默认注册在 `src/registrar/` 下，链接主库即可生效。注册自己的插件时，把上述宏放到对应 `.cpp` 末尾即可。
+宏把字符串 `"MyPreproc"` 等与默认构造函数 / `AlgoConstructParams` 构造函数绑定。
+
+内置插件由 `ai_core::dnn::registerDefaultPlugins()`（`<ai_core/default_plugins.hpp>`）显式注册；facade 的 `initialize()` 会自动调用，静态/动态链接皆可用。绕过 facade 直接用工厂时先手动调用一次。注册自己的插件时，在自己的代码里执行上述宏即可（例如放在插件 `.cpp` 的一个初始化函数中）。
 
 ### 内置插件一览
 
