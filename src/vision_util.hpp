@@ -13,6 +13,7 @@
 
 #include "ai_core/common_types.hpp"
 #include "ai_core/output_types.hpp"
+#include "ai_core/preprocess_types.hpp"
 #include <opencv2/core/types.hpp>
 
 namespace ai_core::utils {
