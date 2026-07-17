@@ -116,7 +116,7 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &image_gray) {
 
   std::vector<int64_t> input_lengths = {1};
   ai_core::TypedBuffer input_lengths_tensor;
-  input_lengths_tensor.setCpuData(
+  input_lengths_tensor = ai_core::TypedBuffer::createFromCpu(
       ai_core::DataType::INT64,
       std::vector<uint8_t>(
           reinterpret_cast<const uint8_t *>(input_lengths.data()),

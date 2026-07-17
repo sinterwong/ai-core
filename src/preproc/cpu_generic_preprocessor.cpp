@@ -86,7 +86,7 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
   switch (args.data_type) {
   case DataType::FLOAT32: {
     TypedBuffer result;
-    result.resize(total_elements);
+    result.resizeDiscard(total_elements);
     float *dst_ptr = result.getHostPtr<float>();
 
     for (const auto &image : processed_images) {
@@ -237,7 +237,7 @@ CpuGenericCvPreprocessor::preprocessFP32(const cv::Mat &normalized_image,
 
   const size_t total_elements =
       static_cast<size_t>(input_channels) * input_height * input_width;
-  result.resize(total_elements);
+  result.resizeDiscard(total_elements);
 
   float *data_ptr = result.getHostPtr<float>();
 

@@ -149,7 +149,7 @@ TEST_P(OCRRecoInferTest, Normal) {
 
   std::vector<int64_t> input_lengths = {1};
   TypedBuffer input_lengths_tensor;
-  input_lengths_tensor.setCpuData(
+  input_lengths_tensor = ai_core::TypedBuffer::createFromCpu(
       ai_core::DataType::INT64,
       std::vector<uint8_t>(
           reinterpret_cast<const uint8_t *>(input_lengths.data()),

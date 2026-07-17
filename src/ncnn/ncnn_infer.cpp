@@ -261,7 +261,7 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
       }
 
       TypedBuffer output_buffer;
-      output_buffer.resize(ncnn_out.total());
+      output_buffer.resizeDiscard(ncnn_out.total());
       memcpy(output_buffer.getRawHostPtr(), ncnn_out.data,
              output_buffer.getSizeBytes());
 

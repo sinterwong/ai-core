@@ -23,21 +23,13 @@ TypedBuffer::TypedBuffer() = default;
 TypedBuffer::~TypedBuffer() { reset(); }
 
 void TypedBuffer::reset() {
-  // Clean up manually managed external pointer
-  if (m_isExternalRef && m_manageExternalCpu && m_externalCpuPtr) {
-    // Note: Assuming uint8_t array allocation for generic void*
-    // In a real generic container, deleting void* is undefined behavior without
-    // a custom deleter. Here we assume standard byte array usage.
-    delete[] static_cast<uint8_t *>(m_externalCpuPtr);
-  }
-
-  // mAccelBuffer and mCpuData clean themselves up
+  // mAccelBuffer and mCpuData clean themselves up; external pointers are
+  // never owned.
   m_accelBuffer.reset();
   m_cpuData.clear();
 
   m_externalCpuPtr = nullptr;
   m_isExternalRef = false;
-  m_manageExternalCpu = false;
   m_elementCount = 0;
   m_dataType = DataType::FLOAT32;
   m_location = BufferLocation::CPU;
@@ -51,8 +43,7 @@ TypedBuffer::TypedBuffer(const TypedBuffer &other)
       m_memoryType(other.m_memoryType), m_deviceId(other.m_deviceId),
       m_elementCount(other.m_elementCount),
       // References are converted to deep copies by default in copy-ctor
-      m_isExternalRef(false), m_manageExternalCpu(false),
-      m_externalCpuPtr(nullptr) {
+      m_isExternalRef(false), m_externalCpuPtr(nullptr) {
 
   // Handle CPU Pageable Data
   if (other.m_location == BufferLocation::CPU &&
@@ -112,14 +103,12 @@ TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept
       m_cpuData(std::move(other.m_cpuData)),
       m_externalCpuPtr(other.m_externalCpuPtr),
       m_isExternalRef(other.m_isExternalRef),
-      m_manageExternalCpu(other.m_manageExternalCpu),
       m_accelBuffer(std::move(other.m_accelBuffer)),
       m_deviceId(other.m_deviceId) {
 
   // Neutralize other
   other.m_externalCpuPtr = nullptr;
   other.m_isExternalRef = false;
-  other.m_manageExternalCpu = false;
   other.m_elementCount = 0;
 }
 
@@ -139,12 +128,10 @@ TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept {
 
     m_externalCpuPtr = other.m_externalCpuPtr;
     m_isExternalRef = other.m_isExternalRef;
-    m_manageExternalCpu = other.m_manageExternalCpu;
 
     // Neutralize other
     other.m_externalCpuPtr = nullptr;
     other.m_isExternalRef = false;
-    other.m_manageExternalCpu = false;
     other.m_elementCount = 0;
   }
   return *this;
@@ -179,23 +166,21 @@ TypedBuffer TypedBuffer::createFromCpu(DataType type,
   return buf;
 }
 
-TypedBuffer TypedBuffer::createFromCpuRef(DataType type, const void *host_ptr,
-                                          size_t size_bytes,
-                                          bool manage_memory) {
+TypedBuffer TypedBuffer::wrapCpu(DataType type, const void *host_ptr,
+                                 size_t size_bytes) {
   TypedBuffer buf;
   buf.m_dataType = type;
   buf.m_location = BufferLocation::CPU;
   buf.m_memoryType = BufferMemoryType::Pageable;
   buf.m_externalCpuPtr = const_cast<void *>(host_ptr);
   buf.m_isExternalRef = true;
-  buf.m_manageExternalCpu = manage_memory;
   size_t elem_size = getElementSize(type);
   buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
   return buf;
 }
 
-TypedBuffer TypedBuffer::createFromGpu(DataType type, size_t size_bytes,
-                                       int device_id) {
+TypedBuffer TypedBuffer::allocateGpu(DataType type, size_t size_bytes,
+                                     int device_id) {
   TypedBuffer buf;
   buf.m_dataType = type;
   buf.m_location = BufferLocation::GpuDevice;
@@ -212,9 +197,8 @@ TypedBuffer TypedBuffer::createFromGpu(DataType type, size_t size_bytes,
   return buf;
 }
 
-TypedBuffer TypedBuffer::createFromGpu(DataType type, void *device_ptr,
-                                       size_t size_bytes, int device_id,
-                                       bool manage_memory) {
+TypedBuffer TypedBuffer::wrapGpu(DataType type, void *device_ptr,
+                                 size_t size_bytes, int device_id) {
   TypedBuffer buf;
   buf.m_dataType = type;
   buf.m_location = BufferLocation::GpuDevice;
@@ -225,7 +209,8 @@ TypedBuffer TypedBuffer::createFromGpu(DataType type, void *device_ptr,
 
   if (size_bytes > 0 && device_ptr) {
     buf.m_accelBuffer = IAcceleratorBuffer::createReference(
-        device_ptr, size_bytes, AcceleratorMemoryType::Device, manage_memory);
+        device_ptr, size_bytes, AcceleratorMemoryType::Device,
+        /*manage_memory=*/false);
   }
   return buf;
 }
@@ -323,56 +308,52 @@ void *TypedBuffer::getRawDevicePtr() const {
 // Modification
 // ============================================================================
 
-void TypedBuffer::setCpuData(DataType type, const std::vector<uint8_t> &data) {
-  *this = createFromCpu(type, data);
-}
-
-void TypedBuffer::setGpuDataReference(DataType type, void *ptr,
-                                      size_t size_bytes, int dev_id) {
-  *this = createFromGpu(type, ptr, size_bytes, dev_id, false);
-}
-
 void TypedBuffer::clear() { reset(); }
 
-void TypedBuffer::resize(size_t new_element_count) {
-  if (new_element_count == m_elementCount)
+void TypedBuffer::resizeDiscard(size_t new_element_count) {
+  if (new_element_count == m_elementCount && !m_isExternalRef) {
     return;
+  }
 
   size_t new_size_bytes = new_element_count * getElementSize(m_dataType);
 
-  // Case 1: Standard CPU Pageable
-  if (m_location == BufferLocation::CPU &&
-      m_memoryType == BufferMemoryType::Pageable) {
-    // If it's an external reference, we must convert to owned to resize
-    if (m_isExternalRef) {
-      std::vector<uint8_t> new_data(new_size_bytes);
-      if (m_externalCpuPtr && m_elementCount > 0) {
-        size_t copy_size = std::min(getSizeBytes(), new_size_bytes);
-        std::memcpy(new_data.data(), m_externalCpuPtr, copy_size);
-      }
-      // Reset ref and move to owned
-      if (m_manageExternalCpu && m_externalCpuPtr) {
-        delete[] static_cast<uint8_t *>(m_externalCpuPtr);
-      }
-      m_isExternalRef = false;
-      m_externalCpuPtr = nullptr;
-      m_manageExternalCpu = false;
-      m_cpuData = std::move(new_data);
-    } else {
-      // Standard vector resize
-      m_cpuData.resize(new_size_bytes);
-    }
-  }
-  // Case 2: Accelerator Managed (Pinned CPU or Device GPU)
-  else if (m_accelBuffer) {
-    // Note: AcceleratorBuffer resizing typically implies reallocation.
-    // Preserving data (copying old to new) is expensive and often unnecessary
-    // for output buffers. If needed, clone-and-copy logic would go here.
-    // Current Strategy: Destructive Resize (Reallocate)
-
-    auto current_type =
-        m_accelBuffer->getType(); // Needs getType() in interface
+  if (m_accelBuffer) {
+    // Pinned host or GPU device storage: reallocate.
+    auto current_type = m_accelBuffer->getType();
     m_accelBuffer = IAcceleratorBuffer::create(new_size_bytes, current_type);
+  } else {
+    // CPU pageable. A wrapped external pointer is detached: this buffer is
+    // being turned into an owned output buffer.
+    m_isExternalRef = false;
+    m_externalCpuPtr = nullptr;
+    m_cpuData.assign(new_size_bytes, 0);
+  }
+
+  m_elementCount = new_element_count;
+}
+
+void TypedBuffer::resizePreserving(size_t new_element_count) {
+  if (m_location != BufferLocation::CPU ||
+      m_memoryType != BufferMemoryType::Pageable) {
+    throw std::logic_error(
+        "resizePreserving is only supported for CPU pageable buffers; use "
+        "resizeDiscard (or copy explicitly) for pinned/GPU storage.");
+  }
+
+  size_t new_size_bytes = new_element_count * getElementSize(m_dataType);
+
+  if (m_isExternalRef) {
+    // Convert the wrapped memory into owned storage, keeping the overlap.
+    std::vector<uint8_t> new_data(new_size_bytes, 0);
+    if (m_externalCpuPtr && m_elementCount > 0) {
+      size_t copy_size = std::min(getSizeBytes(), new_size_bytes);
+      std::memcpy(new_data.data(), m_externalCpuPtr, copy_size);
+    }
+    m_isExternalRef = false;
+    m_externalCpuPtr = nullptr;
+    m_cpuData = std::move(new_data);
+  } else {
+    m_cpuData.resize(new_size_bytes);
   }
 
   m_elementCount = new_element_count;
