@@ -16,9 +16,9 @@
 
 namespace ai_core::dnn {
 
-class IPreprocssPlugin {
+class IPreprocessPlugin {
 public:
-  virtual ~IPreprocssPlugin() {};
+  virtual ~IPreprocessPlugin() {};
 
   virtual bool process(const AlgoInput &, const AlgoPreprocParams &,
                        TensorData &,

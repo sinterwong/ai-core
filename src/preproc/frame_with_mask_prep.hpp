@@ -16,7 +16,7 @@
 #include "ai_core/tensor_data.hpp"
 
 namespace ai_core::dnn {
-class FrameWithMaskPreprocess : public IPreprocssPlugin {
+class FrameWithMaskPreprocess : public IPreprocessPlugin {
 public:
   FrameWithMaskPreprocess() = default;
   ~FrameWithMaskPreprocess() = default;

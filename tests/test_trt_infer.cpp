@@ -116,8 +116,8 @@ protected:
   fs::path m_dataDir = m_resourceDir / "data";
   std::string m_image_path = (m_dataDir / "yolov11/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> m_framePreproc;
-  std::shared_ptr<IPostprocssPlugin> m_yoloDetPostproc;
+  std::shared_ptr<IPreprocessPlugin> m_framePreproc;
+  std::shared_ptr<IPostprocessPlugin> m_yoloDetPostproc;
 };
 
 TEST_F(TrtInferenceTest, AsyncCapabilityDetection) {

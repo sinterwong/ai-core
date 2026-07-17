@@ -9,7 +9,7 @@
  *
  */
 
-#include "ai_core/accelerator_buffer_impl.hpp"
+#include "ai_core/i_accelerator_buffer.hpp"
 #include "cuda_helper.cuh"
 #include <cstring>
 #include <cuda_runtime.h>
@@ -17,7 +17,7 @@
 
 namespace ai_core {
 
-class CudaAcceleratorBuffer : public AcceleratorBufferImpl {
+class CudaAcceleratorBuffer : public IAcceleratorBuffer {
 public:
   CudaAcceleratorBuffer(size_t size_bytes, AcceleratorMemoryType type)
       : m_sizeBytes(size_bytes), m_type(type), m_ownsMemory(true) {
@@ -89,21 +89,21 @@ private:
 // Factory Implementation
 // ============================================================================
 
-std::unique_ptr<AcceleratorBufferImpl>
-AcceleratorBufferImpl::create(size_t size_bytes, AcceleratorMemoryType type) {
+std::unique_ptr<IAcceleratorBuffer>
+IAcceleratorBuffer::create(size_t size_bytes, AcceleratorMemoryType type) {
   return std::make_unique<CudaAcceleratorBuffer>(size_bytes, type);
 }
 
-std::unique_ptr<AcceleratorBufferImpl>
-AcceleratorBufferImpl::createReference(void *ptr, size_t size_bytes,
+std::unique_ptr<IAcceleratorBuffer>
+IAcceleratorBuffer::createReference(void *ptr, size_t size_bytes,
                                        AcceleratorMemoryType type,
                                        bool manage_memory) {
   return std::make_unique<CudaAcceleratorBuffer>(ptr, size_bytes, type,
                                                  manage_memory);
 }
 
-std::unique_ptr<AcceleratorBufferImpl>
-AcceleratorBufferImpl::clone(const AcceleratorBufferImpl &other) {
+std::unique_ptr<IAcceleratorBuffer>
+IAcceleratorBuffer::clone(const IAcceleratorBuffer &other) {
   // Dynamic cast ensures we are cloning a compatible CUDA buffer
   const auto *cuda_impl = dynamic_cast<const CudaAcceleratorBuffer *>(&other);
   if (!cuda_impl) {

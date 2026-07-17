@@ -1,5 +1,5 @@
 /**
- * @file unet_daul_out_seg.hpp
+ * @file unet_dual_out_seg.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -13,9 +13,9 @@
 
 #include "cv_generic_post_base.hpp"
 namespace ai_core::dnn {
-class UNetDaulOutputSeg : public ICVGenericPostprocessor {
+class UNetDualOutputSeg : public ICVGenericPostprocessor {
 public:
-  explicit UNetDaulOutputSeg() {}
+  explicit UNetDualOutputSeg() {}
 
   virtual bool process(const TensorData &, const FrameTransformContext &,
                        const GenericPostParams &, AlgoOutput &) const override;
@@ -26,7 +26,7 @@ public:
                             std::vector<AlgoOutput> &) const override;
 
 private:
-  DaulRawSegRet processSingleItem(const float *prob_data,
+  DualRawSegRet processSingleItem(const float *prob_data,
                                   const std::vector<int> &prob_shape,
                                   const float *mask_data,
                                   const std::vector<int> &mask_shape,

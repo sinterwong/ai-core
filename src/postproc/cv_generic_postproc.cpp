@@ -14,7 +14,7 @@
 #include "postproc/ocr_reco.hpp"
 #include "postproc/raw_output.hpp"
 #include "postproc/softmax_cls.hpp"
-#include "postproc/unet_daul_out_seg.hpp"
+#include "postproc/unet_dual_out_seg.hpp"
 #include <opencv2/core.hpp>
 
 namespace ai_core::dnn {
@@ -61,7 +61,7 @@ bool CVGenericPostproc::process(
     const auto &prep_runtime_args =
         runtime_context->getParam<FrameTransformContext>(
             "preproc_runtime_args");
-    UNetDaulOutputSeg postproc;
+    UNetDualOutputSeg postproc;
     return postproc.process(model_output, prep_runtime_args, *params,
                             algo_output);
   }
@@ -123,7 +123,7 @@ bool CVGenericPostproc::batchProcess(
     const auto &prep_runtime_args_batch =
         runtime_context->getParam<std::vector<FrameTransformContext>>(
             "preproc_runtime_args_batch");
-    UNetDaulOutputSeg postproc;
+    UNetDualOutputSeg postproc;
     return postproc.batchProcess(model_output, prep_runtime_args_batch, *params,
                                  output);
   }

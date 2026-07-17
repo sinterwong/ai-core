@@ -47,7 +47,7 @@ struct SegRet {
   std::map<int, std::vector<Contour>> cls_to_contours;
 };
 
-struct DaulRawSegRet {
+struct DualRawSegRet {
   std::shared_ptr<cv::Mat> mask;
   std::shared_ptr<cv::Mat> prob;
   std::shared_ptr<cv::Rect> roi;

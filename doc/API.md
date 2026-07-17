@@ -144,7 +144,7 @@ struct DetRet { std::vector<BBox> bboxes; };
 
 struct SegRet { std::map<int, std::vector<Contour>> cls_to_contours; };
 
-struct DaulRawSegRet {
+struct DualRawSegRet {
   std::shared_ptr<cv::Mat> mask;
   std::shared_ptr<cv::Mat> prob;
   std::shared_ptr<cv::Rect> roi;
@@ -379,9 +379,9 @@ struct ModelInfo {
 ### 接口
 
 ```cpp
-class IPreprocssPlugin {
+class IPreprocessPlugin {
 public:
-  virtual ~IPreprocssPlugin() = default;
+  virtual ~IPreprocessPlugin() = default;
   virtual bool process(const AlgoInput&,
                        const AlgoPreprocParams&,
                        TensorData&,
@@ -392,9 +392,9 @@ public:
                             std::shared_ptr<RuntimeContext>&) const = 0;
 };
 
-class IPostprocssPlugin {
+class IPostprocessPlugin {
 public:
-  virtual ~IPostprocssPlugin() = default;
+  virtual ~IPostprocessPlugin() = default;
   virtual bool process(const TensorData&,
                        const AlgoPostprocParams&,
                        AlgoOutput&,

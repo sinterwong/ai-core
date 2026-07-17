@@ -90,8 +90,8 @@ protected:
 
   std::string m_image_path = (m_dataDir / "ocr_reco/image.png").string();
 
-  std::shared_ptr<IPreprocssPlugin> m_framePreproc;
-  std::shared_ptr<IPostprocssPlugin> m_ocrPostproc;
+  std::shared_ptr<IPreprocessPlugin> m_framePreproc;
+  std::shared_ptr<IPostprocessPlugin> m_ocrPostproc;
 };
 
 TEST_P(OCRRecoInferTest, Normal) {

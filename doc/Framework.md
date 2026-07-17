@@ -22,7 +22,7 @@ AlgoInput -> AlgoPreproc -> TensorData -> AlgoInferEngine -> TensorData -> AlgoP
 
 ### `AlgoInput` / `AlgoOutput`
 
-`AlgoInput` 当前可装 `FrameInput`（单帧图）或 `FrameInputWithMask`（带掩码区域）。`AlgoOutput` 可装 `ClsRet`、`DetRet`、`SegRet`、`DaulRawSegRet`、`OCRRecoRet`、`FprClsRet`、`RawModelOutput` 等。
+`AlgoInput` 当前可装 `FrameInput`（单帧图）或 `FrameInputWithMask`（带掩码区域）。`AlgoOutput` 可装 `ClsRet`、`DetRet`、`SegRet`、`DualRawSegRet`、`OCRRecoRet`、`FprClsRet`、`RawModelOutput` 等。
 
 它们都是 `ParamCenter<std::variant<...>>`。用 `setParams<T>()` 存，用 `getParams<T>()` 取。类型不对就拿不到指针，不需要写 type cast。
 
@@ -122,9 +122,9 @@ struct AlgoInferParams {
 
 插件在编译期通过宏挂到三个全局工厂里：
 
-- `PreprocFactory = Factory<IPreprocssPlugin>`
+- `PreprocFactory = Factory<IPreprocessPlugin>`
 - `InferEngineFactory = Factory<IInferEnginePlugin>`
-- `PostprocFactory = Factory<IPostprocssPlugin>`
+- `PostprocFactory = Factory<IPostprocessPlugin>`
 
 注册宏：
 
@@ -142,7 +142,7 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 
 要加新的算法或后端，按以下步骤：
 
-1. 继承 `IPreprocssPlugin`、`IInferEnginePlugin` 或 `IPostprocssPlugin`，实现纯虚函数。
+1. 继承 `IPreprocessPlugin`、`IInferEnginePlugin` 或 `IPostprocessPlugin`，实现纯虚函数。
 2. 在 `.cpp` 末尾用对应宏注册。
 3. 链接到主程序。
 4. 在 `AlgoModuleTypes` 里写新插件的名字。
