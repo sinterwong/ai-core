@@ -48,18 +48,18 @@ std::vector<ai_core::AlgoOutput>
 GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
                               const std::vector<cv::Rect> &rois) {
   if (images.empty()) {
-    LOG_ERRORS << "Input images vector is empty";
+    LOG_ERROR_S << "Input images vector is empty";
     return {};
   }
   if (images.size() != rois.size()) {
-    LOG_ERRORS << "Input images and rois vectors must have the same size";
+    LOG_ERROR_S << "Input images and rois vectors must have the same size";
     return {};
   }
 
   std::vector<AlgoInput> algo_inputs(images.size());
   for (size_t i = 0; i < images.size(); ++i) {
     if (images[i].empty()) {
-      LOG_WARNINGS << "Input image at index " << i << " is empty, skipping.";
+      LOG_WARNING_S << "Input image at index " << i << " is empty, skipping.";
       continue;
     }
 
@@ -76,7 +76,7 @@ GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
 
   std::vector<AlgoOutput> algo_outputs;
   if (mEngine->batchInfer(algo_inputs, algo_outputs) != InferErrorCode::SUCCESS) {
-    LOG_ERRORS << "engine batch infer failed";
+    LOG_ERROR_S << "engine batch infer failed";
     return {};
   }
   return algo_outputs;

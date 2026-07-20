@@ -36,7 +36,7 @@ public:
   void log(Severity severity, const char *msg) noexcept override {
     switch (severity) {
     case Severity::kINTERNAL_ERROR:
-      LOG_FATALS << "[TRT] " << msg;
+      LOG_FATAL_S << "[TRT] " << msg;
       break;
     case Severity::kERROR:
       LOG_ERROR_S << "[TRT] " << msg;

@@ -250,7 +250,7 @@ cv::Mat OCRUtils::convertToBlackWords(const cv::Mat &gray_image) {
  */
 std::vector<cv::Mat> OCRUtils::lineSplit(const cv::Mat &gray_image) {
   if (gray_image.empty() || gray_image.channels() != 1) {
-    LOG_ERRORS << "Input image is empty or not a single channel image.";
+    LOG_ERROR_S << "Input image is empty or not a single channel image.";
     return {};
   }
 

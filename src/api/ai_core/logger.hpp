@@ -1,30 +1,26 @@
+/**
+ * @file logger.hpp
+ * @author Sinter Wong (sintercver@gmail.com)
+ * @brief Lightweight logging interface. The implementation (file sinks, async
+ * worker, formatting) lives entirely in logger.cpp so this header pulls in no
+ * <iostream>/<fstream>/<thread>.
+ * @version 0.2
+ * @date 2026-07-17
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
 #pragma once
 
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <cstdint>
-#include <cstring>
-#include <fstream>
+#include <cstdio>
 #include <functional>
-#include <iomanip>
-#include <iostream>
 #include <memory>
-#include <mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <thread>
-#include <type_traits>
-#include <vector>
-
-// Source location support (C++20 or fallback)
-#if __cplusplus >= 202002L && __has_include(<source_location>)
-#include <source_location>
-#define AI_CORE_HAS_SOURCE_LOCATION 1
-#else
-#define AI_CORE_HAS_SOURCE_LOCATION 0
-#endif
 
 namespace ai_core::logging {
 
@@ -55,24 +51,7 @@ constexpr LogLevel k_compile_time_log_level =
 }
 
 // ============================================================================
-// Console Colors (ANSI escape codes)
-// ============================================================================
-
-namespace color {
-inline constexpr std::string_view k_reset = "\033[0m";
-inline constexpr std::string_view k_red = "\033[31m";
-inline constexpr std::string_view k_green = "\033[32m";
-inline constexpr std::string_view k_yellow = "\033[33m";
-inline constexpr std::string_view k_blue = "\033[34m";
-inline constexpr std::string_view k_magenta = "\033[35m";
-inline constexpr std::string_view k_cyan = "\033[36m";
-inline constexpr std::string_view k_white = "\033[37m";
-inline constexpr std::string_view k_bold_red = "\033[1;31m";
-inline constexpr std::string_view k_gray = "\033[90m";
-} // namespace color
-
-// ============================================================================
-// Source Location (C++20 compatible fallback)
+// Source Location
 // ============================================================================
 
 struct SourceLocation {
@@ -83,18 +62,10 @@ struct SourceLocation {
   constexpr SourceLocation() noexcept = default;
   constexpr SourceLocation(const char *f, const char *fn, int l) noexcept
       : file(f), function(fn), line(l) {}
-
-#if AI_CORE_HAS_SOURCE_LOCATION
-  static constexpr SourceLocation
-  current(const std::source_location &loc =
-              std::source_location::current()) noexcept {
-    return {loc.file_name(), loc.function_name(), static_cast<int>(loc.line())};
-  }
-#endif
 };
 
 // ============================================================================
-// Log Entry - Optimized for minimal allocations
+// Log Entry
 // ============================================================================
 
 struct LogEntry {
@@ -102,16 +73,14 @@ struct LogEntry {
   std::string message;
   std::chrono::system_clock::time_point timestamp;
   SourceLocation location;
-  std::thread::id thread_id;
+  uint64_t thread_id = 0;
   std::string_view category; // Non-owning reference, must outlive entry
 
   LogEntry() noexcept = default;
 
+  // Defined in logger.cpp (captures timestamp + calling thread id).
   LogEntry(LogLevel lvl, std::string msg, SourceLocation loc,
-           std::string_view cat = {}) noexcept
-      : level(lvl), message(std::move(msg)),
-        timestamp(std::chrono::system_clock::now()), location(loc),
-        thread_id(std::this_thread::get_id()), category(cat) {}
+           std::string_view cat = {}) noexcept;
 };
 
 // ============================================================================
@@ -141,166 +110,14 @@ struct LoggerConfig {
 };
 
 // ============================================================================
-// Lock-Free SPSC Ring Buffer for Async Logging
-// ============================================================================
-
-template <typename T> class SPSCRingBuffer {
-public:
-  explicit SPSCRingBuffer(size_t capacity)
-      : m_capacity(nextPowerOf2(capacity)), m_mask(m_capacity - 1),
-        m_buffer(std::make_unique<Slot[]>(m_capacity)) {}
-
-  // Producer: try to push, returns false if full
-  bool tryPush(T &&item) noexcept {
-    const size_t head = m_head.load(std::memory_order_relaxed);
-    const size_t next_head = (head + 1) & m_mask;
-
-    if (next_head == m_tail.load(std::memory_order_acquire)) {
-      return false; // Full
-    }
-
-    m_buffer[head].data = std::move(item);
-    m_head.store(next_head, std::memory_order_release);
-    return true;
-  }
-
-  // Consumer: try to pop, returns false if empty
-  bool tryPop(T &item) noexcept {
-    const size_t tail = m_tail.load(std::memory_order_relaxed);
-
-    if (tail == m_head.load(std::memory_order_acquire)) {
-      return false; // Empty
-    }
-
-    item = std::move(m_buffer[tail].data);
-    m_tail.store((tail + 1) & m_mask, std::memory_order_release);
-    return true;
-  }
-
-  [[nodiscard]] bool empty() const noexcept {
-    return m_head.load(std::memory_order_acquire) ==
-           m_tail.load(std::memory_order_acquire);
-  }
-
-  [[nodiscard]] size_t capacity() const noexcept { return m_capacity; }
-
-private:
-  static size_t nextPowerOf2(size_t n) noexcept {
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n |= n >> 32;
-    return n + 1;
-  }
-
-  struct Slot {
-    T data;
-  };
-
-  const size_t m_capacity;
-  const size_t m_mask;
-  std::unique_ptr<Slot[]> m_buffer;
-
-  // Separate cache lines to avoid false sharing
-  alignas(64) std::atomic<size_t> m_head{0};
-  alignas(64) std::atomic<size_t> m_tail{0};
-};
-
-// ============================================================================
-// Thread-Local Formatting Buffer
-// ============================================================================
-
-class FormatBuffer {
-public:
-  static constexpr size_t k_initial_capacity = 1024;
-
-  FormatBuffer() { m_buffer.reserve(k_initial_capacity); }
-
-  void clear() noexcept { m_buffer.clear(); }
-
-  void append(std::string_view sv) { m_buffer.append(sv); }
-
-  void append(char c) { m_buffer.push_back(c); }
-
-  template <typename T> void appendNumber(T value) {
-    // Fast integer to string conversion
-    char temp[32];
-    char *end = temp + sizeof(temp);
-    char *ptr = end;
-
-    if constexpr (std::is_signed_v<T>) {
-      bool negative = value < 0;
-      if (negative)
-        value = -value;
-
-      do {
-        *--ptr = '0' + (value % 10);
-        value /= 10;
-      } while (value > 0);
-
-      if (negative)
-        *--ptr = '-';
-    } else {
-      do {
-        *--ptr = '0' + (value % 10);
-        value /= 10;
-      } while (value > 0);
-    }
-
-    m_buffer.append(ptr, end - ptr);
-  }
-
-  void appendPadded(int value, int width, char pad = '0') {
-    char temp[16];
-    int len = 0;
-    int v = value;
-
-    do {
-      temp[len++] = '0' + (v % 10);
-      v /= 10;
-    } while (v > 0);
-
-    for (int i = len; i < width; ++i) {
-      m_buffer.push_back(pad);
-    }
-
-    for (int i = len - 1; i >= 0; --i) {
-      m_buffer.push_back(temp[i]);
-    }
-  }
-
-  [[nodiscard]] std::string_view view() const noexcept {
-    return {m_buffer.data(), m_buffer.size()};
-  }
-
-  [[nodiscard]] const std::string &str() const noexcept { return m_buffer; }
-
-private:
-  std::string m_buffer;
-};
-
-// Thread-local buffer accessor
-inline FormatBuffer &getThreadLocalBuffer() {
-  thread_local FormatBuffer buffer;
-  buffer.clear();
-  return buffer;
-}
-
-// ============================================================================
-// Logger Core
+// Logger Core (pimpl: all sinks and the async machinery live in logger.cpp)
 // ============================================================================
 
 class Logger {
 public:
   using LogCallback = std::function<void(const LogEntry &)>;
 
-  static Logger &instance() noexcept {
-    static Logger logger;
-    return logger;
-  }
+  static Logger &instance() noexcept;
 
   // Non-copyable, non-movable
   Logger(const Logger &) = delete;
@@ -357,7 +174,7 @@ public:
   // Graceful shutdown
   void shutdown();
 
-  // Check if level is enabled (for conditional logging)
+  // Check if level is enabled (hot path, inline & lock-free)
   [[nodiscard]] bool isEnabled(LogLevel level) const noexcept {
     return level >= m_level.load(std::memory_order_relaxed);
   }
@@ -366,52 +183,10 @@ private:
   Logger();
   ~Logger();
 
-  void processEntry(const LogEntry &entry);
-  void writeConsole(const LogEntry &entry);
-  void writeFile(const LogEntry &entry);
-  void asyncWorker();
-  void rotateFile();
-
-  void formatEntry(FormatBuffer &buf, const LogEntry &entry,
-                   bool with_color) const;
-  void formatJson(FormatBuffer &buf, const LogEntry &entry) const;
-  void formatTimestamp(FormatBuffer &buf,
-                       std::chrono::system_clock::time_point tp) const;
-
-  [[nodiscard]] static std::string_view levelName(LogLevel level) noexcept;
-  [[nodiscard]] static std::string_view levelColor(LogLevel level) noexcept;
-  [[nodiscard]] static std::string_view
-  extractFilename(std::string_view path) noexcept;
-
-  // Configuration (atomic where possible for lock-free reads)
   std::atomic<LogLevel> m_level{LogLevel::Debug};
-  std::atomic<bool> m_consoleEnabled{true};
-  std::atomic<bool> m_fileEnabled{false};
-  std::atomic<bool> m_colorEnabled{true};
-  std::atomic<bool> m_asyncEnabled{false};
-  std::atomic<bool> m_jsonEnabled{false};
-  std::atomic<bool> m_showThreadId{true};
-  std::atomic<bool> m_showSource{true};
-  std::atomic<bool> m_showCategory{true};
 
-  LoggerConfig m_config;
-  mutable std::mutex m_configMutex;
-
-  // File output
-  std::ofstream m_fileStream;
-  std::mutex m_fileMutex;
-
-  // Async logging
-  std::unique_ptr<SPSCRingBuffer<LogEntry>> m_ringBuffer;
-  std::unique_ptr<std::thread> m_workerThread;
-  std::atomic<bool> m_running{false};
-  std::atomic<bool> m_initialized{false};
-  std::condition_variable m_workerCv;
-  std::mutex m_workerMutex;
-
-  // Custom callbacks
-  std::vector<LogCallback> m_callbacks;
-  std::mutex m_callbackMutex;
+  class Impl;
+  std::unique_ptr<Impl> m_impl;
 };
 
 // ============================================================================
@@ -688,15 +463,3 @@ std::string hexDump(const void *data, size_t size, size_t bytes_per_line = 16);
       }                                                                        \
     }                                                                          \
   } while (0)
-
-// ============================================================================
-// Backward-Compatible Stream Macros (legacy naming: LOG_INFOS, LOG_DEBUG_S,
-// etc.)
-// ============================================================================
-
-#define LOG_TRACES LOG_TRACE_S
-#define LOG_DEBUGS LOG_DEBUG_S
-#define LOG_INFOS LOG_INFO_S
-#define LOG_WARNINGS LOG_WARNING_S
-#define LOG_ERRORS LOG_ERROR_S
-#define LOG_FATALS LOG_FATAL_S
