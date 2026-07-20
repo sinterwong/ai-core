@@ -20,6 +20,16 @@
 
 namespace ai_core {
 
+/**
+ * @brief Singleton string->creator registry for plugins.
+ *
+ * @par Thread safety
+ * @ref registerCreator is not synchronized and is expected to run at startup
+ * (via the REGISTER_* macros / registerDefaultPlugins) before any concurrent
+ * use. Once registration is complete, @ref create and @ref isRegistered are
+ * read-only and safe to call concurrently. Do not register from one thread
+ * while another creates.
+ */
 template <class BaseClass> class Factory {
 public:
   // takes a const refer to paramters and returns a shared_ptr to the BaseClass

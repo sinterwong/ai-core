@@ -18,6 +18,14 @@
 
 namespace ai_core::dnn {
 
+/**
+ * @brief Standalone preprocessing stage (bypasses the AlgoInference facade).
+ *
+ * @par Thread safety
+ * The plugin is stateless after @ref initialize, so @ref process /
+ * @ref batchProcess are concurrency-safe per instance (all scratch is passed
+ * in by the caller). @ref initialize / @ref terminate require exclusive access.
+ */
 class AlgoPreproc {
 public:
   AlgoPreproc(const std::string &module_name);

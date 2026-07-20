@@ -46,6 +46,11 @@ enum class BufferMemoryType {
  * - CPU Pageable: Managed via std::vector<uint8_t>
  * - CPU External: Managed via raw pointers
  * - CPU Pinned / GPU Device: Managed via unified IAcceleratorBuffer
+ *
+ * @par Thread safety
+ * Value type with no internal synchronization. Concurrent const access (e.g.
+ * multiple readers of getHostPtr) is safe; any concurrent mutation, or mutation
+ * racing a read, requires external synchronization.
  */
 class TypedBuffer {
 public:

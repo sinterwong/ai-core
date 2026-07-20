@@ -19,6 +19,17 @@
 
 namespace ai_core::dnn {
 
+/**
+ * @brief Three-stage inference facade (preprocess -> infer -> postprocess).
+ *
+ * @par Thread safety
+ * Concurrency-safe per instance for @ref infer / @ref batchInfer: each call
+ * uses call-local scratch (RuntimeContext, TensorData) and the backend guards
+ * its own session (ORT runs concurrently; NCNN and TRT serialize internally
+ * until the v1.7 context pool). @ref initialize and @ref terminate must not
+ * run concurrently with any other method on the same instance. Distinct
+ * instances are fully independent.
+ */
 class AlgoInference {
 public:
   AlgoInference(const AlgoModuleTypes &module_types,

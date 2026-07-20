@@ -113,6 +113,15 @@ struct LoggerConfig {
 // Logger Core (pimpl: all sinks and the async machinery live in logger.cpp)
 // ============================================================================
 
+/**
+ * @brief Process-wide logger singleton.
+ *
+ * @par Thread safety
+ * Fully concurrency-safe: logging (the log/trace/stream macros) may be called
+ * from any thread; sinks and the async queue are internally synchronized.
+ * Reconfiguration (configure, enableConsole/File/etc, setFilePath) is also
+ * synchronized but is intended for startup.
+ */
 class Logger {
 public:
   using LogCallback = std::function<void(const LogEntry &)>;

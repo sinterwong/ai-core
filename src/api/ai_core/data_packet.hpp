@@ -21,6 +21,14 @@
 namespace ai_core {
 using DataPacketId = uint64_t;
 
+/**
+ * @brief Type-erased key/value bag for plugin construction params and
+ * free-form runtime extensions.
+ *
+ * @par Thread safety
+ * Value type with no internal synchronization; concurrent const access is
+ * safe, concurrent mutation requires external synchronization.
+ */
 struct DataPacket {
   DataPacketId id;
   std::map<std::string, std::any> params;

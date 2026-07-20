@@ -36,6 +36,10 @@ struct Tensor {
  * Models have 1~3 inputs/outputs, so tensors are kept in a flat vector in
  * insertion order and looked up by linear scan — cheaper than a map at these
  * sizes, and iteration order is deterministic.
+ *
+ * @par Thread safety
+ * Value type with no internal synchronization; concurrent const access is
+ * safe, concurrent mutation requires external synchronization.
  */
 class TensorData {
 public:

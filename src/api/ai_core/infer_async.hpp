@@ -12,6 +12,12 @@ namespace ai_core::dnn {
  * This interface represents a "Heavy" resource factory. It manages weights,
  * model definitions, and hardware initialization. It spawns lightweight
  * "IExecutionContext" instances for actual inference.
+ *
+ * @par Thread safety
+ * The engine (weights/factory) is shared and its context-creation methods are
+ * safe to call concurrently. Each IExecutionContext it hands out is NOT
+ * thread-safe and must be owned by a single worker thread — that is how
+ * multiple threads achieve parallel inference against one engine.
  */
 class IAsyncInferEngine : public IInferEnginePlugin {
 public:

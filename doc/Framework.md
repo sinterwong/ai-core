@@ -162,7 +162,7 @@ dnn::AlgoManager mgr;
 mgr.registerAlgo("det", std::make_shared<dnn::AlgoInference>(detModules, detParams));
 mgr.registerAlgo("cls", std::make_shared<dnn::AlgoInference>(clsModules, clsParams));
 
-mgr.infer("det", input, preproc_params, output, postproc_params);
+mgr.infer("det", input, output);
 ```
 
 注册失败会返回 `InferErrorCode::AlgoRegisterFailed` / `AlgoNotFound`。
@@ -176,3 +176,19 @@ mgr.infer("det", input, preproc_params, output, postproc_params);
 - `createContextPackage()` / `createContextPool(n)` —— 预绑定缓冲区，适合 CUDA Graph 这类地址不能变的场景。
 
 `TypedBuffer` 已经统一了 CPU 内存、Pinned Host 内存和 GPU 显存，所以预分配的输入/输出可以直接在流水线里流转。
+
+## 线程模型
+
+每个公共类的头文件注释都标明了并发契约（`@par Thread safety`）。总览：
+
+| 类型 | 契约 |
+|---|---|
+| `Logger` | 完全并发安全（日志宏可任意线程调用）；重配置建议启动期做 |
+| `AlgoManager` | 完全并发安全（`shared_mutex`）：注册/查找/推理可并发 |
+| `AlgoInference` / `AlgoInferEngine` / `AlgoPreproc` / `AlgoPostproc` | 单实例 `infer`/`process` 并发安全（调用私有 scratch + 后端自锁）；`initialize`/`terminate` 需独占 |
+| 推理后端并行度 | ORT：`Session::Run` 并发；NCNN/TRT：内部串行（TRT 的 context pool 见 v1.7） |
+| `IAsyncInferEngine` | engine 共享、可并发建 context；每个 `IExecutionContext` **非线程安全**，由单个 worker 线程独占——这是多线程并行推理的正道 |
+| `TypedBuffer` / `Tensor` / `TensorData` / `DataPacket` / `ParamCenter` | 值类型，无内部同步；并发只读安全，并发写需外部同步 |
+| `Factory` | 注册在启动期（无锁），注册完成后 `create` 只读并发安全 |
+
+插件作者契约：`IPreprocessPlugin` / `IPostprocessPlugin` 的 `process` / `batchProcess` 是 `const` 且必须可重入——对象上不留可变的 per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`。

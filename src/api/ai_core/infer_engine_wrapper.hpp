@@ -19,6 +19,14 @@
 
 namespace ai_core::dnn {
 
+/**
+ * @brief Thin wrapper around a backend inference engine plugin.
+ *
+ * @par Thread safety
+ * Concurrency-safe per instance for @ref infer (the backend serializes: ORT
+ * concurrent via shared lock, NCNN/TRT via a mutex). @ref initialize and
+ * @ref terminate require exclusive access. Distinct instances are independent.
+ */
 class AlgoInferEngine {
 public:
   AlgoInferEngine(const std::string &module_name,

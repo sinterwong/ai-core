@@ -20,6 +20,15 @@
 
 namespace ai_core::dnn {
 
+/**
+ * @brief Registry of named AlgoInference instances.
+ *
+ * @par Thread safety
+ * Fully concurrency-safe: registration/lookup are guarded by a shared_mutex,
+ * so registering, looking up and inferring may run from multiple threads. A
+ * concurrent @ref infer forwards to the target AlgoInference, which is itself
+ * per-instance concurrency-safe.
+ */
 class AlgoManager : public std::enable_shared_from_this<AlgoManager> {
 public:
   AlgoManager();

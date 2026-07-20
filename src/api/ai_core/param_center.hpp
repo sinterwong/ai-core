@@ -15,6 +15,13 @@
 #include <variant>
 
 namespace ai_core {
+/**
+ * @brief Type-safe variant wrapper for algorithm inputs/outputs/params.
+ *
+ * @par Thread safety
+ * Value type with no internal synchronization; concurrent const access is
+ * safe, concurrent mutation requires external synchronization.
+ */
 template <typename P> class ParamCenter {
 public:
   using Params = P;

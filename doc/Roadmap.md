@@ -83,12 +83,14 @@
   - 记录（工具环境）：`--coverage` 插桩下集成测试 teardown 偶发 `double free`（gcov + OpenCV/ORT 静态析构交互），非框架缺陷；覆盖率脚本只跑无资产单测规避。
 - [x] **集成测试矩阵**：det / cls / seg / OCR × ORT / TRT / NCNN，模型资产脚本化下载。（`scripts/fetch_models.sh`：基础 ONNX/NCNN 为源产物，机器相关的 TRT `.engine` 移出 git 由 trtexec 从 ONNX 重建；已跑通 det=ort/ncnn/trt、OCR det=ort、OCR reco=ort/trt。cls/seg 无模型资产，集成层 skip，解码逻辑在单测层已覆盖）
 - [x] **benchmark 基线化**：单帧预处理、端到端、各后端吞吐，结果存档进仓库，每版对比，性能回退 CI 报警。（`benchmarks/baseline/v1.5-x86_64.json` + README；Release 采集。v1.6 靶子：CPU 单帧预处理 median 3.16ms → ≤1.90ms。修复 benchmark 迁移期遗留的 ImageView 悬垂 bug。CI 报警留待 v1.6 有优化后对接）
-- [ ] **线程安全审计**：每个公共类标明"可并发 / 需外部同步 / 单线程"，写进头文件注释，为 v1.7 立契约。
+- [x] **线程安全审计**：每个公共类标明"可并发 / 需外部同步 / 单线程"，写进头文件注释，为 v1.7 立契约。（每个公共头加 `@par Thread safety`；`doc/Framework.md` 加线程模型总览表。审计结论：ORT 单实例并发安全、NCNN/TRT 内部串行，facade `infer` 并发安全、`initialize`/`terminate` 需独占）
 
 ### 验收标准
 
 - 不下载任何模型也能跑完全部单测。
 - 覆盖率与 benchmark 对比在 CI 里可见。
+
+**v1.5 完成状态（2026-07）**：4 项任务全部完成。核心组件行覆盖 82%（CI `coverage` job 门禁 80%）；集成矩阵 det/OCR 跑通、模型 provisioning 脚本化（TRT 引擎移出 git）；benchmark 基线存档（`benchmarks/baseline/v1.5-x86_64.json`）；线程契约进头文件 + 文档。附带修复 benchmark 迁移期的 ImageView 悬垂 bug。
 
 ---
 
