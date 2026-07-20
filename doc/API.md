@@ -17,25 +17,25 @@ public:
                 const AlgoInferParams& infer_params);
   ~AlgoInference();
 
-  InferErrorCode initialize();
+  InferErrorCode initialize(const AlgoPreprocParams& preproc_params,
+                            const AlgoPostprocParams& postproc_params);
   InferErrorCode terminate();
 
-  InferErrorCode infer(const AlgoInput& input,
-                       const AlgoPreprocParams& preproc_params,
-                       const AlgoPostprocParams& postproc_params,
-                       AlgoOutput& output);
+  InferErrorCode infer(const AlgoInput& input, AlgoOutput& output,
+                       const AlgoPreprocParams* preproc_override = nullptr,
+                       const AlgoPostprocParams* postproc_override = nullptr);
 
   InferErrorCode batchInfer(const std::vector<AlgoInput>& inputs,
-                            const AlgoPreprocParams& preproc_params,
-                            const AlgoPostprocParams& postproc_params,
-                            std::vector<AlgoOutput>& outputs);
+                            std::vector<AlgoOutput>& outputs,
+                            const AlgoPreprocParams* preproc_override = nullptr,
+                            const AlgoPostprocParams* postproc_override = nullptr);
 
   const ModelInfo& getModelInfo() const noexcept;
   const AlgoModuleTypes& getModuleTypes() const noexcept;
 };
 ```
 
-调用顺序：`initialize` → 多次 `infer` / `batchInfer` → `terminate`。未初始化就调用 `infer` 会得到 `InferErrorCode::NotInitialized`。
+前后处理参数在 `initialize` 时绑定并做一次结构校验，`infer` 只带数据；个别调用需要不同参数时传 override 指针。调用顺序：`initialize` → 多次 `infer` / `batchInfer` → `terminate`。未初始化就调用 `infer` 会得到 `InferErrorCode::NotInitialized`。
 
 ### `ai_core::dnn::AlgoManager`
 
@@ -50,9 +50,7 @@ public:
 
   InferErrorCode infer(const std::string& name,
                        AlgoInput& input,
-                       AlgoPreprocParams& preproc_params,
-                       AlgoOutput& output,
-                       AlgoPostprocParams& postproc_params);
+                       AlgoOutput& output);
 
   std::shared_ptr<AlgoInference> getAlgo(const std::string& name) const;
   bool hasAlgo(const std::string& name) const;
@@ -70,7 +68,7 @@ public:
 - `ai_core::dnn::AlgoInferEngine(const std::string& module_name, const AlgoInferParams& infer_params)`
 - `ai_core::dnn::AlgoPostproc(const std::string& module_name)`
 
-三者的接口分别是 `process / batchProcess`、`infer`、`process / batchProcess`，全部需要先 `initialize()`。
+三者的接口分别是 `process / batchProcess`、`infer`、`process / batchProcess`。`AlgoPreproc` / `AlgoPostproc` 在 `initialize(params)` 时绑定参数，`AlgoInferEngine` 用无参 `initialize()`。
 
 ## 2. 配置与参数
 
@@ -104,21 +102,40 @@ struct AlgoInferParams {
 
 ### `AlgoPreprocParams` / `AlgoPostprocParams`
 
-每次 `infer` 调用都传一份，覆盖一些按需调整的参数。底层是 `ParamCenter<std::variant<...>>`，详见第 4 节。
+在 `initialize` 时绑定一次；`infer` 可选传 override 指针做 per-call 覆盖。底层是 `ParamCenter<std::variant<...>>`，详见第 4 节。
 
 ## 3. 输入 / 输出结构
+
+### 图像视图与几何类型
+
+公共 API 不含任何 OpenCV 类型。图像输入是非拥有视图 `ImageView`（`<ai_core/image_view.hpp>`）：
+
+```cpp
+enum class ImagePixelFormat : uint8_t { GRAY8, BGR888, RGB888, BGRA8888, RGBA8888 };
+
+struct ImageView {
+  const uint8_t* data;   // 调用方保证像素在 infer 调用期间有效
+  int width, height;
+  size_t stride;         // 行字节距；0 表示紧凑排列（width * channels）
+  ImagePixelFormat format;
+};
+```
+
+几何类型是自有值类型（`<ai_core/common_types.hpp>`）：`Point{x,y}`、`Point2f`、`Rect{x,y,width,height}`。`Contour` 是 `std::vector<Point>`。
+
+与 OpenCV 互转用 opt-in 头 `<ai_core/opencv_interop.hpp>`（唯一包含 OpenCV 的公共头）：`interop::viewFromMat` / `matFromView` / `toCv` / `fromCv`，全部零拷贝。
 
 ### 输入
 
 ```cpp
 struct FrameInput {
-  std::shared_ptr<cv::Mat> image;
-  std::shared_ptr<cv::Rect> input_roi;  // 可选，nullptr 表示全图
+  ImageView image;
+  std::optional<Rect> roi;  // 不填表示全图
 };
 
 struct FrameInputWithMask {
   FrameInput frame_input;
-  std::vector<cv::Rect> mask_regions;
+  std::vector<Rect> mask_regions;
 };
 ```
 
@@ -126,7 +143,7 @@ struct FrameInputWithMask {
 
 ```cpp
 struct BBox {
-  cv::Rect rect;
+  Rect  rect;
   float score;
   int   label;
 };
@@ -145,9 +162,9 @@ struct DetRet { std::vector<BBox> bboxes; };
 struct SegRet { std::map<int, std::vector<Contour>> cls_to_contours; };
 
 struct DualRawSegRet {
-  std::shared_ptr<cv::Mat> mask;
-  std::shared_ptr<cv::Mat> prob;
-  std::shared_ptr<cv::Rect> roi;
+  Tensor mask;   // INT8/UINT8 类别图，shape {h, w}，拥有数据
+  Tensor prob;   // FLOAT32 概率图，shape {h, w}，拥有数据
+  Rect  roi;
   float ratio;
   int   left_shift;
   int   top_shift;
@@ -161,7 +178,7 @@ struct OCRRecoRet {
 using RawModelOutput = TensorData;
 ```
 
-`Contour` 是 `std::vector<cv::Point>`，定义在 `<ai_core/common_types.hpp>`。
+`Contour` 是 `std::vector<ai_core::Point>`，定义在 `<ai_core/common_types.hpp>`。
 
 ## 4. 参数包装：`ParamCenter<T>`
 
@@ -187,17 +204,16 @@ public:
 static TypedBuffer createFromCpu(DataType type, const std::vector<uint8_t>& data);
 static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t>&& data);
 
-static TypedBuffer createFromCpuRef(DataType type, const void* host_ptr,
-                                    size_t size_bytes, bool manage_memory = false);
+static TypedBuffer wrapCpu(DataType type, const void* host_ptr, size_t size_bytes);
 
-static TypedBuffer createFromGpu(DataType type, size_t size_bytes, int device_id = 0);
-static TypedBuffer createFromGpu(DataType type, void* device_ptr,
-                                 size_t size_bytes, int device_id, bool manage_memory);
+static TypedBuffer allocateGpu(DataType type, size_t size_bytes, int device_id = 0);
+static TypedBuffer wrapGpu(DataType type, void* device_ptr,
+                           size_t size_bytes, int device_id = 0);
 
 static TypedBuffer createPinnedHost(DataType type, size_t size_bytes);
 ```
 
-`createFrom*Ref` 是零拷贝包装，缓冲区生命周期由外部管理。`manage_memory=true` 时 `TypedBuffer` 在析构时释放该指针。
+`wrapCpu` / `wrapGpu` 是零拷贝、永不拥有的包装，缓冲区生命周期由调用方管理；拷贝一个 wrap 出来的 `TypedBuffer` 会深拷贝成自有存储。
 
 ### 访问
 
@@ -227,22 +243,36 @@ bool   isReference()    const noexcept;
 ### 修改
 
 ```cpp
-void resize(size_t new_element_count);  // CPU 保留数据，Pinned/GPU 重新分配
+void resizeDiscard(size_t new_element_count);    // 全类型统一：内容不保证，输出缓冲用这个
+void resizePreserving(size_t new_element_count); // 仅 CPU pageable；Pinned/GPU 抛 std::logic_error
 void clear();
-void setCpuData(DataType type, const std::vector<uint8_t>& data);
-void setGpuDataReference(DataType type, void* ptr, size_t size_bytes, int dev_id = 0);
 ```
 
-## 6. 张量集合：`TensorData`
+resize 的分歧语义在方法名上显式化：不会再有"以为保数据其实被重分配"的隐患。
+
+## 6. 张量：`Tensor` / `TensorData`
 
 ```cpp
-struct TensorData {
-  std::map<std::string, TypedBuffer> datas;
-  std::map<std::string, std::vector<int>> shapes;
+struct Tensor {
+  std::string name;
+  TypedBuffer buffer;      // dtype 在 buffer.dataType()
+  std::vector<int> shape;
+};
+
+class TensorData {
+public:
+  Tensor& set(std::string name, TypedBuffer buffer, std::vector<int> shape);
+  const Tensor* find(std::string_view name) const noexcept;  // 无则 nullptr
+  const Tensor& at(std::string_view name) const;             // 无则抛 out_of_range
+  bool contains(std::string_view name) const noexcept;
+  size_t size() const noexcept;
+  bool empty() const noexcept;
+  void clear() noexcept;
+  // begin()/end()：按插入序迭代
 };
 ```
 
-应用层一般不需要直接构造 `TensorData`，由预处理、推理、后处理插件在内部维护。
+张量按插入序存放在扁平 vector 里、按名字线性查找——模型输入输出通常只有 1~3 个，比 `std::map` 更快且迭代顺序确定。应用层一般不需要直接构造 `TensorData`，由预处理、推理、后处理插件在内部维护。
 
 ## 7. 上下文：`DataPacket`
 
@@ -423,7 +453,7 @@ public:
 };
 ```
 
-注意：预处理和后处理插件用 `bool` 表示成功失败，推理引擎插件用 `InferErrorCode`。
+三类插件统一用 `InferErrorCode` 表示成功失败；异常只存在于插件内部，不会穿透 facade。
 
 ### 注册
 

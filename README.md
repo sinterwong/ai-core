@@ -87,6 +87,7 @@ CMake 选项：
 ```cpp
 #include "ai_core/algo_inference.hpp"
 #include "ai_core/algo_types.hpp"
+#include "ai_core/opencv_interop.hpp"
 
 using namespace ai_core;
 
@@ -101,15 +102,6 @@ params.name = "yolov11";
 params.model_path = "models/yolov11.onnx";
 params.device_type = DeviceType::CPU;
 params.data_type = DataType::FLOAT32;
-
-dnn::AlgoInference algo(modules, params);
-algo.initialize();
-
-AlgoInput input;
-input.setParams(FrameInput{
-    std::make_shared<cv::Mat>(cv::imread("test.jpg")),
-    std::make_shared<cv::Rect>(0, 0, 0, 0)
-});
 
 AlgoPreprocParams preproc_params;
 FramePreprocessArg arg;
@@ -127,9 +119,17 @@ det_arg.nms_thre = 0.45f;
 det_arg.output_names = {"output0"};
 postproc_params.setParams(det_arg);
 
+dnn::AlgoInference algo(modules, params);
+algo.initialize(preproc_params, postproc_params);
+
+// 图像输入是非拥有视图：像素来自任何来源（此处用 OpenCV 解码，经
+// opt-in 的 opencv_interop 零拷贝转换）
+cv::Mat image = cv::imread("test.jpg");
+AlgoInput input;
+input.setParams(FrameInput{interop::viewFromMat(image), std::nullopt});
+
 AlgoOutput output;
-if (algo.infer(input, preproc_params, postproc_params, output)
-    != InferErrorCode::SUCCESS) {
+if (algo.infer(input, output) != InferErrorCode::SUCCESS) {
     // 处理错误
 }
 
