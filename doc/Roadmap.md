@@ -82,7 +82,7 @@
   - 记录（不在本条修）：`FrameWithMaskPreprocess` 要求调用方把 `model_input_shape.c` 设为「含 mask 的模型真实通道数」（3 图 + 1 mask = 4），否则发布的 shape 与实际 buffer 通道数不一致。应在 v2.0 参数校验/错误详情通道里加断言。
   - 记录（工具环境）：`--coverage` 插桩下集成测试 teardown 偶发 `double free`（gcov + OpenCV/ORT 静态析构交互），非框架缺陷；覆盖率脚本只跑无资产单测规避。
 - [x] **集成测试矩阵**：det / cls / seg / OCR × ORT / TRT / NCNN，模型资产脚本化下载。（`scripts/fetch_models.sh`：基础 ONNX/NCNN 为源产物，机器相关的 TRT `.engine` 移出 git 由 trtexec 从 ONNX 重建；已跑通 det=ort/ncnn/trt、OCR det=ort、OCR reco=ort/trt。cls/seg 无模型资产，集成层 skip，解码逻辑在单测层已覆盖）
-- [ ] **benchmark 基线化**：单帧预处理、端到端、各后端吞吐，结果存档进仓库，每版对比，性能回退 CI 报警。
+- [x] **benchmark 基线化**：单帧预处理、端到端、各后端吞吐，结果存档进仓库，每版对比，性能回退 CI 报警。（`benchmarks/baseline/v1.5-x86_64.json` + README；Release 采集。v1.6 靶子：CPU 单帧预处理 median 3.16ms → ≤1.90ms。修复 benchmark 迁移期遗留的 ImageView 悬垂 bug。CI 报警留待 v1.6 有优化后对接）
 - [ ] **线程安全审计**：每个公共类标明"可并发 / 需外部同步 / 单线程"，写进头文件注释，为 v1.7 立契约。
 
 ### 验收标准
