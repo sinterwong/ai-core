@@ -31,3 +31,5 @@ cmake-build-debug-remote-host/
 .vscode/launch.json
 
 CMakeUserPresets.json
+build-cov/
+install-cov/

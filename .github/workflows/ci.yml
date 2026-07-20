@@ -94,3 +94,36 @@ jobs:
         run: |
           export LD_LIBRARY_PATH=$PWD/lib:$GITHUB_WORKSPACE/3rdparty/target/Linux_x86_64/onnxruntime/lib
           ./tests/ai_core_tests
+
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libopencv-dev gcovr
+
+      - name: Cache ONNX Runtime
+        id: cache-ort
+        uses: actions/cache@v4
+        with:
+          path: 3rdparty/target/Linux_x86_64/onnxruntime
+          key: onnxruntime-linux-x64-${{ env.ORT_VERSION }}
+
+      - name: Download ONNX Runtime
+        if: steps.cache-ort.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz
+          mkdir -p 3rdparty/target/Linux_x86_64
+          tar -xzf onnxruntime-linux-x64-${ORT_VERSION}.tgz
+          mv onnxruntime-linux-x64-${ORT_VERSION} 3rdparty/target/Linux_x86_64/onnxruntime
+
+      - name: Core-component coverage (>= 80%)
+        env:
+          CC: gcc
+          CXX: g++
+        run: scripts/coverage.sh 80

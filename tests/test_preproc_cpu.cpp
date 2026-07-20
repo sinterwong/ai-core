@@ -268,6 +268,156 @@ TEST(ParamBindingTest, StructurallyInvalidPreprocParamsRejected) {
   EXPECT_EQ(preproc.initialize(params3), InferErrorCode::InferInvalidInput);
 }
 
+TEST(CpuPreprocTest, EqualScaleLetterboxResize) {
+  // 8x4 source into a 4x4 model input with equal scaling -> letterboxed with
+  // vertical padding (scale 0.5, resized 4x2, pad 1 top/bottom).
+  const int sw = 8, sh = 4;
+  auto pixels = makeSyntheticImage(sw, sh, 3);
+
+  auto arg = baseArg(4, 4);
+  arg.need_resize = true;
+  arg.is_equal_scale = true;
+  arg.pad = {0, 0, 0};
+  AlgoPreprocParams params;
+  params.setParams(arg);
+
+  AlgoPreproc preproc("CpuGenericPreprocess");
+  ASSERT_EQ(preproc.initialize(params), InferErrorCode::SUCCESS);
+
+  auto input = makeInput(pixels, sw, sh);
+  auto ctx = std::make_shared<RuntimeContext>();
+  TensorData model_input;
+  ASSERT_EQ(preproc.process(input, model_input, ctx), InferErrorCode::SUCCESS);
+
+  EXPECT_EQ(model_input.at("input").shape, (std::vector<int>{1, 3, 4, 4}));
+  ASSERT_TRUE(ctx->frame_transform.has_value());
+  // 4x2 resized image centered in 4x4 -> 1px top padding.
+  EXPECT_EQ(ctx->frame_transform->top_pad, 1);
+  EXPECT_EQ(ctx->frame_transform->left_pad, 0);
+}
+
+TEST(CpuPreprocTest, BatchFp16Path) {
+  const int w = 2, h = 2;
+  auto pixels_a = makeSyntheticImage(w, h, 3);
+  std::vector<uint8_t> pixels_b(pixels_a.size(), 3);
+
+  auto arg = baseArg(w, h);
+  arg.data_type = DataType::FLOAT16;
+  AlgoPreprocParams params;
+  params.setParams(arg);
+
+  AlgoPreproc preproc("CpuGenericPreprocess");
+  ASSERT_EQ(preproc.initialize(params), InferErrorCode::SUCCESS);
+
+  std::vector<AlgoInput> inputs{makeInput(pixels_a, w, h),
+                                makeInput(pixels_b, w, h)};
+  auto ctx = std::make_shared<RuntimeContext>();
+  TensorData model_input;
+  ASSERT_EQ(preproc.batchProcess(inputs, model_input, ctx),
+            InferErrorCode::SUCCESS);
+
+  const auto &buffer = model_input.at("input").buffer;
+  EXPECT_EQ(buffer.dataType(), DataType::FLOAT16);
+  EXPECT_EQ(buffer.getElementCount(), static_cast<size_t>(2 * 3 * h * w));
+  EXPECT_EQ(buffer.getSizeBytes(), static_cast<size_t>(2 * 3 * h * w) * 2);
+}
+
+TEST(CpuPreprocTest, EmptyImageFails) {
+  AlgoPreprocParams params;
+  params.setParams(baseArg(2, 2));
+  AlgoPreproc preproc("CpuGenericPreprocess");
+  ASSERT_EQ(preproc.initialize(params), InferErrorCode::SUCCESS);
+
+  FrameInput frame; // default ImageView is empty
+  AlgoInput input;
+  input.setParams(frame);
+  auto ctx = std::make_shared<RuntimeContext>();
+  TensorData model_input;
+  EXPECT_EQ(preproc.process(input, model_input, ctx),
+            InferErrorCode::InferPreprocessFailed);
+}
+
+// ============================================================================
+// FrameWithMaskPreprocess: mask regions become an extra input channel
+// ============================================================================
+
+TEST(FrameWithMaskTest, RasterizesMaskChannel) {
+  const int w = 4, h = 4;
+  auto pixels = makeSyntheticImage(w, h, 3);
+
+  // The model consumes 4 channels: 3 image + 1 rasterized mask. The caller
+  // describes the model's real input shape (c = 4); the preprocessor appends
+  // the mask channel and extends mean/norm internally.
+  auto arg = baseArg(w, h);
+  arg.model_input_shape.c = 4;
+  arg.mean_vals = {0.f, 0.f, 0.f};
+  arg.norm_vals = {1.f, 1.f, 1.f};
+  AlgoPreprocParams params;
+  params.setParams(arg);
+
+  AlgoPreproc preproc("FrameWithMaskPreprocess");
+  ASSERT_EQ(preproc.initialize(params), InferErrorCode::SUCCESS);
+
+  ImageView view;
+  view.data = pixels.data();
+  view.width = w;
+  view.height = h;
+  view.format = ImagePixelFormat::RGB888;
+
+  FrameInputWithMask masked;
+  masked.frame_input.image = view;
+  masked.mask_regions = {Rect{1, 1, 2, 2}};
+
+  AlgoInput input;
+  input.setParams(masked);
+
+  auto ctx = std::make_shared<RuntimeContext>();
+  TensorData model_input;
+  ASSERT_EQ(preproc.process(input, model_input, ctx), InferErrorCode::SUCCESS);
+
+  const Tensor &tensor = model_input.at("input");
+  // CHW with 4 channels (3 image + 1 mask)
+  EXPECT_EQ(tensor.shape, (std::vector<int>{1, 4, h, w}));
+  const float *data = tensor.buffer.getHostPtr<float>();
+  const int plane = h * w;
+  // Mask plane is channel 3; inside the region -> 255, outside -> 0
+  EXPECT_FLOAT_EQ(data[3 * plane + 1 * w + 1], 255.f); // (y=1,x=1) inside
+  EXPECT_FLOAT_EQ(data[3 * plane + 0 * w + 0], 0.f);   // (0,0) outside
+}
+
+TEST(FrameWithMaskTest, BatchProcess) {
+  const int w = 4, h = 4;
+  auto pixels = makeSyntheticImage(w, h, 3);
+
+  auto arg = baseArg(w, h);
+  arg.model_input_shape.c = 4;
+  AlgoPreprocParams params;
+  params.setParams(arg);
+  AlgoPreproc preproc("FrameWithMaskPreprocess");
+  ASSERT_EQ(preproc.initialize(params), InferErrorCode::SUCCESS);
+
+  auto makeMasked = [&]() {
+    ImageView view;
+    view.data = pixels.data();
+    view.width = w;
+    view.height = h;
+    view.format = ImagePixelFormat::RGB888;
+    FrameInputWithMask masked;
+    masked.frame_input.image = view;
+    masked.mask_regions = {Rect{0, 0, 2, 2}};
+    AlgoInput input;
+    input.setParams(masked);
+    return input;
+  };
+
+  std::vector<AlgoInput> inputs{makeMasked(), makeMasked()};
+  auto ctx = std::make_shared<RuntimeContext>();
+  TensorData model_input;
+  ASSERT_EQ(preproc.batchProcess(inputs, model_input, ctx),
+            InferErrorCode::SUCCESS);
+  EXPECT_EQ(model_input.at("input").shape, (std::vector<int>{2, 4, h, w}));
+}
+
 TEST(ParamBindingTest, MonostatePostprocParamsRejected) {
   AlgoPostprocParams empty;
   ai_core::dnn::AlgoPostproc postproc("Yolov11Det");
