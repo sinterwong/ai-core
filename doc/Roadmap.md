@@ -50,9 +50,11 @@
 
 ---
 
-## v1.4 — 数据层重塑
+## v1.4 — 数据层重塑 ✅（2026-07 完成）
 
 > 主题：公共 API 的最后一块深水区。这一版结束后，公共 API 达到终态，此后只加不改。
+>
+> **完成状态**：5 项任务全部完成；公共头零第三方类型（opt-in 的 opencv_interop.hpp 除外）；纯指针链路由 `AlgoInferenceTest.PurePointerPath` 锁定；API 终态已写入 CHANGELOG。MSVC 编译自查：公共头无 POSIX 类型、无 GCC 扩展（本机无 MSVC，留待 CI/Windows 实测）。
 
 ### 任务
 
