@@ -33,3 +33,6 @@ cmake-build-debug-remote-host/
 CMakeUserPresets.json
 build-cov/
 install-cov/
+
+# Machine-specific TensorRT engines: rebuild via scripts/fetch_models.sh
+assets/models/*.engine

@@ -80,6 +80,30 @@ CMake 选项：
 | `WITH_NCNN_ENGINE` | OFF | NCNN 后端 |
 | `WITH_TRT_ENGINE` | OFF | TensorRT 后端 |
 
+## 模型资产
+
+单元测试不依赖任何模型（用构造的张量数据）。集成测试需要模型资产：
+
+- 基础模型（ONNX / NCNN）是源产物。
+- TensorRT `.engine` 是机器相关的派生产物，不入库，由脚本从 ONNX 本地重建。
+
+```bash
+# 确保基础模型存在（缺失时从 $AI_CORE_MODEL_BASE_URL 下载）并重建 TRT 引擎
+scripts/fetch_models.sh
+# 仅重建 TRT 引擎（需要 trtexec 在 PATH，或用 TRTEXEC= 指定）
+TRTEXEC=/path/to/trtexec scripts/fetch_models.sh --trt-only
+```
+
+## 测试与覆盖率
+
+```bash
+# 全部测试（install/ 下运行，需 LD_LIBRARY_PATH 指向 3rdparty libs）
+cd install && LD_LIBRARY_PATH=$PWD/lib:<3rdparty-libs> ./tests/ai_core_tests
+
+# 核心组件行覆盖率门禁（≥80%，只跑无资产单测）
+scripts/coverage.sh
+```
+
 ## 使用
 
 `AlgoInference` 是流水线入口，构造时给出三段插件的名字和推理参数：
