@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ai_core/algo_inference.hpp"
-#include "algo_config_parser.hpp"
+#include "ai_core/config/algo_config.hpp"
 #include <opencv2/opencv.hpp>
 #include <string>
 
@@ -20,7 +20,7 @@ public:
 
 private:
   std::shared_ptr<ai_core::dnn::AlgoInference> mEngine;
-  utils::AlgoConfigData mParams;
+  ai_core::config::AlgoConfig mParams;
 };
 
 } // namespace ai_core::example

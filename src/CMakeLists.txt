@@ -182,12 +182,49 @@ install(
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
 )
 
-# Install public headers
+# Install public headers (top-level only; subdir headers install with their
+# module below to preserve the ai_core/<module>/ layout).
+file(GLOB AI_CORE_PUBLIC_HEADERS_TOP CONFIGURE_DEPENDS "api/ai_core/*.hpp")
 install(
-    FILES ${AI_CORE_PUBLIC_HEADERS}
+    FILES ${AI_CORE_PUBLIC_HEADERS_TOP}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core
     COMPONENT dev
 )
+
+# ============================================================================
+# Optional module: ai_core::config (JSON pipeline loader)
+# ============================================================================
+if(BUILD_AI_CORE_CONFIG)
+    message(STATUS "Configuring config module (ai_core::config)")
+    add_library(ai_core_config SHARED config/algo_config.cpp)
+    add_library(ai_core::config ALIAS ai_core_config)
+    target_compile_features(ai_core_config PUBLIC cxx_std_20)
+    target_include_directories(ai_core_config
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        PRIVATE
+            ${PROJECT_INCLUDE_DIR} # nlohmann/json.hpp
+    )
+    target_link_libraries(ai_core_config PUBLIC ai_core::ai_core)
+    set_target_properties(ai_core_config PROPERTIES
+        VERSION ${AI_CORE_VERSION}
+        SOVERSION ${AI_CORE_VERSION_MAJOR}
+    )
+
+    install(
+        TARGETS ai_core_config
+        EXPORT ai_core_export_set
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    )
+    install(
+        FILES api/ai_core/config/algo_config.hpp
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core/config
+        COMPONENT dev
+    )
+endif()
 
 # ============================================================================
 # CMake Package Configuration

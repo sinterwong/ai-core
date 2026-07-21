@@ -2,7 +2,7 @@
 #include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
 #include "ai_core/preprocess_types.hpp"
-#include "algo_config_parser.hpp"
+#include "ai_core/config/algo_config.hpp"
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -54,19 +54,19 @@ OCRRec::OCRRec(const std::string &config_path, const std::string &dict_path) {
   }
 
   try {
-    mParams = ai_core::example::utils::AlgoConfigParser(config_path).parse();
+    mParams = ai_core::config::loadAlgoConfig(config_path);
   } catch (const std::exception &e) {
     throw std::runtime_error("Failed to load OCR config: " +
                              std::string(e.what()));
   }
 
   mFramePreproc = std::make_shared<ai_core::dnn::AlgoPreproc>(
-      mParams.modelTypes.preproc_module);
+      mParams.module_types.preproc_module);
   mOcrPostproc = std::make_shared<ai_core::dnn::AlgoPostproc>(
-      mParams.modelTypes.postproc_module);
+      mParams.module_types.postproc_module);
 
   mEngine = std::make_shared<ai_core::dnn::AlgoInferEngine>(
-      mParams.modelTypes.infer_module, mParams.inferParams);
+      mParams.module_types.infer_module, mParams.infer_params);
 
   if (mEngine->initialize() != ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec engine initialize failed";

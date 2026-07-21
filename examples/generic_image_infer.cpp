@@ -1,14 +1,14 @@
 #include "generic_image_infer.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
-#include "algo_config_parser.hpp"
+#include "ai_core/config/algo_config.hpp"
 
 namespace ai_core::example {
 GenericImageInfer::GenericImageInfer(const std::string &config_path) {
-  mParams = utils::AlgoConfigParser(config_path).parse();
+  mParams = ai_core::config::loadAlgoConfig(config_path);
 
-  mEngine = std::make_shared<dnn::AlgoInference>(mParams.modelTypes,
-                                                 mParams.inferParams);
+  mEngine = std::make_shared<dnn::AlgoInference>(mParams.module_types,
+                                                 mParams.infer_params);
 
   if (mEngine->initialize(mParams.preproc_params, mParams.postproc_params) !=
       InferErrorCode::SUCCESS) {

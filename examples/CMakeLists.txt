@@ -23,7 +23,6 @@ endif()
 # Source Files
 # ============================================================================
 set(EXAMPLES_SOURCES
-    algo_config_parser.cpp
     generic_image_infer.cpp
 )
 
@@ -37,6 +36,7 @@ set(DEPENDENCY_INCLUDES
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core
+    ai_core::config
     ${OpenCV_LIBS}
     ${ANDROID_JIN_LIBS}
 )
