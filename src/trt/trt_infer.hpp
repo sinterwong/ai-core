@@ -78,7 +78,9 @@ public:
  *   - IExecutionContext, cudaStream_t, Device Buffers, CUDA Graph
  *
  * Thread Safety:
- * - infer(): Thread-safe via internal mutex (uses dedicated default stream)
+ * - infer(): Thread-safe AND concurrent — each call borrows an execution
+ *   context from a pool and runs on its own CUDA stream, so N threads reach
+ *   ~N-way parallelism instead of serializing on one mutex.
  * - createExecutionContext(): Thread-safe, returns independent stream
  * - Each TrtInferStream: NOT thread-safe, use one per thread
  */
@@ -228,8 +230,20 @@ private:
   // Cached input shapes (to avoid redundant setInputShape calls)
   std::unordered_map<std::string, std::vector<int64_t>> m_cachedInputShapes;
 
-  // Mutex for thread-safe sync infer()
+  // Guards initialize()/terminate() lifecycle only.
   mutable std::mutex m_mutex;
+
+  // ============================================================================
+  // Execution-context pool (concurrent sync infer())
+  // ============================================================================
+
+  // Idle execution contexts available for borrowing. Grows lazily up to the
+  // number of concurrent infer() callers. Guarded by m_poolMutex.
+  std::mutex m_poolMutex;
+  std::vector<std::shared_ptr<IExecutionContext>> m_idlePool;
+
+  std::shared_ptr<IExecutionContext> acquireContext();
+  void releaseContext(std::shared_ptr<IExecutionContext> ctx);
 };
 
 } // namespace ai_core::dnn

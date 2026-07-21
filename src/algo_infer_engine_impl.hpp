@@ -33,6 +33,8 @@ public:
 
   const ModelInfo &getModelInfo() const noexcept;
 
+  std::shared_ptr<IAsyncInferEngine> getAsyncEngine() const noexcept;
+
 private:
   std::string m_moduleName;
   AlgoInferParams m_inferParams;

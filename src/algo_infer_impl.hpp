@@ -48,6 +48,10 @@ public:
 
   const AlgoModuleTypes &getModuleTypes() const noexcept;
 
+  std::shared_ptr<IAsyncInferEngine> getAsyncEngine() const noexcept {
+    return m_engine ? m_engine->getAsyncEngine() : nullptr;
+  }
+
 private:
   AlgoModuleTypes m_algoModuleTypes;
 

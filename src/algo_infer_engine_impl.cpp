@@ -61,4 +61,9 @@ const ModelInfo &AlgoInferEngine::Impl::getModelInfo() const noexcept {
   }
   return m_engine->getModelInfo();
 }
+
+std::shared_ptr<IAsyncInferEngine>
+AlgoInferEngine::Impl::getAsyncEngine() const noexcept {
+  return std::dynamic_pointer_cast<IAsyncInferEngine>(m_engine);
+}
 } // namespace ai_core::dnn

@@ -73,76 +73,57 @@ InferErrorCode TrtAlgoInference::initialize() {
   }
 }
 
+std::shared_ptr<IExecutionContext> TrtAlgoInference::acquireContext() {
+  {
+    std::lock_guard<std::mutex> lock(m_poolMutex);
+    if (!m_idlePool.empty()) {
+      auto ctx = std::move(m_idlePool.back());
+      m_idlePool.pop_back();
+      return ctx;
+    }
+  }
+  // Pool empty: create a fresh context outside the lock (each has its own CUDA
+  // stream + buffers). Under N concurrent callers the pool naturally grows to
+  // N contexts.
+  return createExecutionContext();
+}
+
+void TrtAlgoInference::releaseContext(std::shared_ptr<IExecutionContext> ctx) {
+  if (!ctx) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(m_poolMutex);
+  m_idlePool.push_back(std::move(ctx));
+}
+
 InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
-  std::lock_guard<std::mutex> lock(m_mutex);
-
   if (!m_isInitialized) {
     LOG_ERROR_S << "Inference called on uninitialized model.";
     return InferErrorCode::NotInitialized;
   }
 
+  // Borrow an execution context (own CUDA stream + buffers) so concurrent
+  // callers run in parallel instead of serializing on a global mutex. Sync
+  // semantics: submit async then block on the future.
+  std::shared_ptr<IExecutionContext> ctx;
   try {
-    // Validate inputs
-    for (const auto &input_info : m_modelInfo->inputs) {
-      const auto &name = input_info.name;
-      const Tensor *input_tensor = inputs.find(name);
-      if (input_tensor == nullptr) {
-        LOG_ERROR_S << "Input tensor '" << name
-                    << "' not found in provided inputs.";
-        return InferErrorCode::InferInputError;
-      }
+    ctx = acquireContext();
+  } catch (const std::exception &e) {
+    LOG_ERROR_S << "Failed to acquire execution context: " << e.what();
+    return InferErrorCode::InferExecutionFailed;
+  }
 
-      const TypedBuffer &input_buffer = input_tensor->buffer;
-      if (input_buffer.dataType() != input_info.data_type) {
-        LOG_ERROR_S << "Mismatched data type for input tensor '" << name
-                    << "'. Expected: " << static_cast<int>(input_info.data_type)
-                    << ", Got: " << static_cast<int>(input_buffer.dataType());
-        return InferErrorCode::InferTypeMismatch;
-      }
-
-      const size_t actual_size_bytes = input_buffer.getSizeBytes();
-      const bool is_dynamic = m_dynamicInputTensorNames.count(name);
-
-      if (is_dynamic) {
-        if (input_tensor->shape.empty()) {
-          LOG_ERROR_S << "Shape info for dynamic input tensor '" << name
-                      << "' must be provided.";
-          return InferErrorCode::InferInputError;
-        }
-        if (actual_size_bytes > m_tensorSizeMap.at(name)) {
-          LOG_ERROR_S << "Actual size for dynamic input '" << name
-                      << "' exceeds max buffer size.";
-          return InferErrorCode::InferSizeMismatch;
-        }
-      } else {
-        if (actual_size_bytes != m_tensorSizeMap.at(name)) {
-          LOG_ERROR_S << "Mismatched size for static input tensor '" << name
-                      << "'. Expected: " << m_tensorSizeMap.at(name)
-                      << " bytes, Got: " << actual_size_bytes << " bytes.";
-          return InferErrorCode::InferSizeMismatch;
-        }
-      }
-
-      if (input_buffer.location() != BufferLocation::CPU &&
-          input_buffer.location() != BufferLocation::GpuDevice) {
-        LOG_ERROR_S << "Unsupported buffer location for input tensor: " << name;
-        return InferErrorCode::InferInvalidInput;
-      }
-    }
-
-    if (!updateInputShapesIfNeeded(inputs)) {
-      return InferErrorCode::InferExecutionFailed;
-    }
-
-    // Always use inferWithoutGraph for backward compatible sync mode
-    return inferWithoutGraph(inputs, outputs);
-
+  InferErrorCode ret;
+  try {
+    ret = ctx->inferAsync(inputs, outputs).get();
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception during inference: " << e.what();
-    CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));
+    releaseContext(std::move(ctx));
     return InferErrorCode::InferFailed;
   }
+  releaseContext(std::move(ctx));
+  return ret;
 }
 
 const ModelInfo &TrtAlgoInference::getModelInfo() {
@@ -228,6 +209,13 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
 
 void TrtAlgoInference::releaseResources() {
   LOG_INFO_S << "Releasing TensorRT resources for model: " << m_params.name;
+
+  // Pooled execution contexts hold device resources (and keep the engine
+  // alive via shared_ptr); drop them before the engine.
+  {
+    std::lock_guard<std::mutex> lock(m_poolMutex);
+    m_idlePool.clear();
+  }
 
   m_context.reset();
   m_engine.reset();

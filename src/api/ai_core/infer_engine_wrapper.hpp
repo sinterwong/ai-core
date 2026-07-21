@@ -14,6 +14,7 @@
 #include "ai_core/common_types.hpp"
 #include "ai_core/error_code.hpp"
 #include "ai_core/infer_config.hpp"
+#include "ai_core/infer_async.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <memory>
 
@@ -41,6 +42,15 @@ public:
   InferErrorCode terminate();
 
   const ModelInfo &getModelInfo() const noexcept;
+
+  /**
+   * @brief The async engine handle if the backend supports it, else nullptr.
+   *
+   * This is the supported way to reach the async infrastructure (execution
+   * contexts, pinned buffers, CUDA graph) — no dynamic_pointer_cast on the
+   * plugin needed. Must be called after @ref initialize.
+   */
+  std::shared_ptr<IAsyncInferEngine> getAsyncEngine() const noexcept;
 
 private:
   class Impl;

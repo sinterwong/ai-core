@@ -51,4 +51,9 @@ const AlgoModuleTypes &AlgoInference::getModuleTypes() const noexcept {
   return m_pImpl->getModuleTypes();
 }
 
+std::shared_ptr<IAsyncInferEngine> AlgoInference::getAsyncEngine() const
+    noexcept {
+  return m_pImpl->getAsyncEngine();
+}
+
 } // namespace ai_core::dnn

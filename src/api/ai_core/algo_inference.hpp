@@ -14,6 +14,7 @@
 #include "ai_core/algo_types.hpp"
 #include "ai_core/common_types.hpp"
 #include "ai_core/error_code.hpp"
+#include "ai_core/infer_async.hpp"
 #include "ai_core/infer_config.hpp"
 #include <memory>
 
@@ -63,6 +64,15 @@ public:
   const ModelInfo &getModelInfo() const noexcept;
 
   const AlgoModuleTypes &getModuleTypes() const noexcept;
+
+  /**
+   * @brief The async engine handle if the backend supports it, else nullptr.
+   *
+   * The front door to the async infrastructure (execution contexts, pinned
+   * buffers, CUDA graph). Must be called after @ref initialize. Returns
+   * nullptr for backends without async support (e.g. NCNN).
+   */
+  std::shared_ptr<IAsyncInferEngine> getAsyncEngine() const noexcept;
 
 private:
   class Impl;
