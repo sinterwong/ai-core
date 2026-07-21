@@ -7,9 +7,13 @@ set(WITH_GTEST OFF CACHE BOOL "Disable gtest for glog")
 if(NOT TARGET encrypt)
     message(STATUS "encrypt target not found. Adding subdirectory...")
     add_subdirectory(encryption-tool EXCLUDE_FROM_ALL)
-else()
-    message(STATUS "encrypt target already exists. Skipping.")
 endif()
+
+# libai_core.so and the test binaries need libencrypt.so at runtime, but
+# EXCLUDE_FROM_ALL skips encryption-tool's own install rules, so install the
+# runtime artifact alongside the project's libraries.
+set_target_properties(encrypt PROPERTIES EXCLUDE_FROM_ALL FALSE)
+install(TARGETS encrypt LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(BUILD_AI_CORE_TESTS)
     if(NOT TARGET gtest)
