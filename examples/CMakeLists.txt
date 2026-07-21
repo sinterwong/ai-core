@@ -80,3 +80,4 @@ install(
 # Subdirectories
 # ============================================================================
 add_subdirectory(ocr)
+add_subdirectory(async_pipeline)
