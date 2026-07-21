@@ -12,6 +12,7 @@
 #include "algo_manager_impl.hpp"
 #include "ai_core/logger.hpp"
 #include <ostream>
+#include <mutex>
 
 namespace ai_core::dnn {
 
@@ -48,10 +49,7 @@ InferErrorCode AlgoManager::Impl::unregisterAlgo(const std::string &name) {
 }
 
 InferErrorCode AlgoManager::Impl::infer(const std::string &name,
-                                        AlgoInput &input,
-                                        AlgoPreprocParams &preproc_params,
-                                        AlgoOutput &output,
-                                        AlgoPostprocParams &postproc_params) {
+                                        AlgoInput &input, AlgoOutput &output) {
   std::shared_lock<std::shared_mutex> lock(m_mutex);
   auto it = m_algoMap.find(name);
   if (it == m_algoMap.end()) {
@@ -62,7 +60,7 @@ InferErrorCode AlgoManager::Impl::infer(const std::string &name,
     LOG_ERROR_S << "Algo with name " << name << " is registered but null.";
     return InferErrorCode::AlgoNotFound;
   }
-  return it->second->infer(input, preproc_params, postproc_params, output);
+  return it->second->infer(input, output);
 }
 
 std::shared_ptr<AlgoInference>

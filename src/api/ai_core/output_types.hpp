@@ -16,12 +16,11 @@
 #include "ai_core/tensor_data.hpp"
 #include <map>
 #include <memory>
-#include <opencv2/core/types.hpp>
 #include <vector>
 
 namespace ai_core {
 struct BBox {
-  cv::Rect rect;
+  Rect rect;
   float score;
   int label;
 };
@@ -48,10 +47,14 @@ struct SegRet {
   std::map<int, std::vector<Contour>> cls_to_contours;
 };
 
+/**
+ * @brief Raw dual-headed segmentation output. `mask` is an INT8/UINT8 class
+ * map and `prob` a FLOAT32 probability map, both shaped {h, w}.
+ */
 struct DualRawSegRet {
-  std::shared_ptr<cv::Mat> mask;
-  std::shared_ptr<cv::Mat> prob;
-  std::shared_ptr<cv::Rect> roi;
+  Tensor mask;
+  Tensor prob;
+  Rect roi;
   float ratio;
   int left_shift;
   int top_shift;

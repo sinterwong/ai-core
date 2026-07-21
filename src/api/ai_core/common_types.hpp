@@ -15,20 +15,39 @@
 #include <string>
 #include <vector>
 
-namespace cv {
-template <typename Tp> class Rect_;
-using Rect = Rect_<int>;
-
-class Mat;
-
-template <typename Tp> class Point_;
-using Point = Point_<int>;
-using Point2f = Point_<float>;
-} // namespace cv
 namespace ai_core {
 
-using PointList = std::vector<cv::Point>;
-using PointfList = std::vector<cv::Point2f>;
+struct Point {
+  int x{0};
+  int y{0};
+};
+
+struct Point2f {
+  float x{0.f};
+  float y{0.f};
+};
+
+/**
+ * @brief Axis-aligned rectangle. A default-constructed (empty) rect means
+ * "whole frame" wherever a region-of-interest is optional.
+ */
+struct Rect {
+  int x{0};
+  int y{0};
+  int width{0};
+  int height{0};
+
+  int area() const noexcept { return width * height; }
+  bool empty() const noexcept { return width <= 0 || height <= 0; }
+
+  friend bool operator==(const Rect &a, const Rect &b) noexcept {
+    return a.x == b.x && a.y == b.y && a.width == b.width &&
+           a.height == b.height;
+  }
+};
+
+using PointList = std::vector<Point>;
+using PointfList = std::vector<Point2f>;
 
 using Contour = PointList;
 using Contourf = PointfList;

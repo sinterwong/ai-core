@@ -73,77 +73,57 @@ InferErrorCode TrtAlgoInference::initialize() {
   }
 }
 
+std::shared_ptr<IExecutionContext> TrtAlgoInference::acquireContext() {
+  {
+    std::lock_guard<std::mutex> lock(m_poolMutex);
+    if (!m_idlePool.empty()) {
+      auto ctx = std::move(m_idlePool.back());
+      m_idlePool.pop_back();
+      return ctx;
+    }
+  }
+  // Pool empty: create a fresh context outside the lock (each has its own CUDA
+  // stream + buffers). Under N concurrent callers the pool naturally grows to
+  // N contexts.
+  return createExecutionContext();
+}
+
+void TrtAlgoInference::releaseContext(std::shared_ptr<IExecutionContext> ctx) {
+  if (!ctx) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(m_poolMutex);
+  m_idlePool.push_back(std::move(ctx));
+}
+
 InferErrorCode TrtAlgoInference::infer(const TensorData &inputs,
                                        TensorData &outputs) {
-  std::lock_guard<std::mutex> lock(m_mutex);
-
   if (!m_isInitialized) {
     LOG_ERROR_S << "Inference called on uninitialized model.";
     return InferErrorCode::NotInitialized;
   }
 
+  // Borrow an execution context (own CUDA stream + buffers) so concurrent
+  // callers run in parallel instead of serializing on a global mutex. Sync
+  // semantics: submit async then block on the future.
+  std::shared_ptr<IExecutionContext> ctx;
   try {
-    // Validate inputs
-    for (const auto &input_info : m_modelInfo->inputs) {
-      const auto &name = input_info.name;
-      auto data_it = inputs.datas.find(name);
-      if (data_it == inputs.datas.end()) {
-        LOG_ERROR_S << "Input tensor '" << name
-                    << "' not found in provided inputs.";
-        return InferErrorCode::InferInputError;
-      }
+    ctx = acquireContext();
+  } catch (const std::exception &e) {
+    LOG_ERROR_S << "Failed to acquire execution context: " << e.what();
+    return InferErrorCode::InferExecutionFailed;
+  }
 
-      const TypedBuffer &input_buffer = data_it->second;
-      if (input_buffer.dataType() != input_info.data_type) {
-        LOG_ERROR_S << "Mismatched data type for input tensor '" << name
-                    << "'. Expected: " << static_cast<int>(input_info.data_type)
-                    << ", Got: " << static_cast<int>(input_buffer.dataType());
-        return InferErrorCode::InferTypeMismatch;
-      }
-
-      const size_t actual_size_bytes = input_buffer.getSizeBytes();
-      const bool is_dynamic = m_dynamicInputTensorNames.count(name);
-
-      if (is_dynamic) {
-        auto shape_it = inputs.shapes.find(name);
-        if (shape_it == inputs.shapes.end()) {
-          LOG_ERROR_S << "Shape info for dynamic input tensor '" << name
-                      << "' must be provided.";
-          return InferErrorCode::InferInputError;
-        }
-        if (actual_size_bytes > m_tensorSizeMap.at(name)) {
-          LOG_ERROR_S << "Actual size for dynamic input '" << name
-                      << "' exceeds max buffer size.";
-          return InferErrorCode::InferSizeMismatch;
-        }
-      } else {
-        if (actual_size_bytes != m_tensorSizeMap.at(name)) {
-          LOG_ERROR_S << "Mismatched size for static input tensor '" << name
-                      << "'. Expected: " << m_tensorSizeMap.at(name)
-                      << " bytes, Got: " << actual_size_bytes << " bytes.";
-          return InferErrorCode::InferSizeMismatch;
-        }
-      }
-
-      if (input_buffer.location() != BufferLocation::CPU &&
-          input_buffer.location() != BufferLocation::GpuDevice) {
-        LOG_ERROR_S << "Unsupported buffer location for input tensor: " << name;
-        return InferErrorCode::InferInvalidInput;
-      }
-    }
-
-    if (!updateInputShapesIfNeeded(inputs)) {
-      return InferErrorCode::InferExecutionFailed;
-    }
-
-    // Always use inferWithoutGraph for backward compatible sync mode
-    return inferWithoutGraph(inputs, outputs);
-
+  InferErrorCode ret;
+  try {
+    ret = ctx->inferAsync(inputs, outputs).get();
   } catch (const std::exception &e) {
     LOG_ERROR_S << "Exception during inference: " << e.what();
-    CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));
+    releaseContext(std::move(ctx));
     return InferErrorCode::InferFailed;
   }
+  releaseContext(std::move(ctx));
+  return ret;
 }
 
 const ModelInfo &TrtAlgoInference::getModelInfo() {
@@ -204,21 +184,19 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
   // Pre-allocate pinned input buffers based on max sizes
   for (const auto &input : m_modelInfo->inputs) {
     size_t size_bytes = m_tensorSizeMap.at(input.name);
-    ctx.inputs.datas[input.name] =
-        TypedBuffer::createPinnedHost(input.data_type, size_bytes);
-
     std::vector<int> shape_int(input.shape.begin(), input.shape.end());
-    ctx.inputs.shapes[input.name] = std::move(shape_int);
+    ctx.inputs.set(input.name,
+                   TypedBuffer::createPinnedHost(input.data_type, size_bytes),
+                   std::move(shape_int));
   }
 
   // Pre-allocate pinned output buffers based on max sizes
   for (const auto &output : m_modelInfo->outputs) {
     size_t size_bytes = m_tensorSizeMap.at(output.name);
-    ctx.outputs.datas[output.name] =
-        TypedBuffer::createPinnedHost(output.data_type, size_bytes);
-
     std::vector<int> shape_int(output.shape.begin(), output.shape.end());
-    ctx.outputs.shapes[output.name] = std::move(shape_int);
+    ctx.outputs.set(output.name,
+                    TypedBuffer::createPinnedHost(output.data_type, size_bytes),
+                    std::move(shape_int));
   }
 
   LOG_INFO_S << "Created stream context with pre-allocated buffers";
@@ -231,6 +209,13 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
 
 void TrtAlgoInference::releaseResources() {
   LOG_INFO_S << "Releasing TensorRT resources for model: " << m_params.name;
+
+  // Pooled execution contexts hold device resources (and keep the engine
+  // alive via shared_ptr); drop them before the engine.
+  {
+    std::lock_guard<std::mutex> lock(m_poolMutex);
+    m_idlePool.clear();
+  }
 
   m_context.reset();
   m_engine.reset();
@@ -476,13 +461,13 @@ bool TrtAlgoInference::updateInputShapesIfNeeded(const TensorData &inputs) {
       continue;
     }
 
-    auto shape_it = inputs.shapes.find(name);
-    if (shape_it == inputs.shapes.end()) {
+    const Tensor *input_tensor = inputs.find(name);
+    if (input_tensor == nullptr || input_tensor->shape.empty()) {
       continue;
     }
 
-    const std::vector<int64_t> new_shape(shape_it->second.begin(),
-                                         shape_it->second.end());
+    const std::vector<int64_t> new_shape(input_tensor->shape.begin(),
+                                         input_tensor->shape.end());
     auto cache_it = m_cachedInputShapes.find(name);
 
     if (cache_it == m_cachedInputShapes.end() ||
@@ -507,7 +492,7 @@ bool TrtAlgoInference::updateInputShapesIfNeeded(const TensorData &inputs) {
 void TrtAlgoInference::copyInputsToDevice(const TensorData &inputs) {
   for (const auto &input_info : m_modelInfo->inputs) {
     const auto &name = input_info.name;
-    const TypedBuffer &input_buffer = inputs.datas.at(name);
+    const TypedBuffer &input_buffer = inputs.at(name).buffer;
     const size_t actual_size_bytes = input_buffer.getSizeBytes();
     void *dest_device_ptr = m_tensorAddressMap.at(name);
 
@@ -526,8 +511,7 @@ void TrtAlgoInference::copyInputsToDevice(const TensorData &inputs) {
 }
 
 void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
-  outputs.datas.clear();
-  outputs.shapes.clear();
+  outputs.clear();
 
   for (const auto &output_info : m_modelInfo->outputs) {
     const auto &name = output_info.name;
@@ -553,8 +537,10 @@ void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
                                      actual_output_size_bytes,
                                      cudaMemcpyDeviceToHost, m_stream));
 
-    outputs.shapes[name].assign(
-        actual_output_dims.d, actual_output_dims.d + actual_output_dims.nbDims);
+    outputs.set(
+        name, TypedBuffer(),
+        std::vector<int>(actual_output_dims.d,
+                         actual_output_dims.d + actual_output_dims.nbDims));
   }
 
   CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));
@@ -563,7 +549,7 @@ void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
     const auto &name = output_info.name;
     auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
     std::vector<uint8_t> safe_data = pinned_buffer.toVector();
-    outputs.datas[name] =
+    outputs.find(name)->buffer =
         TypedBuffer::createFromCpu(output_info.data_type, std::move(safe_data));
   }
 }

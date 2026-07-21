@@ -18,19 +18,19 @@ bool NanoDet::processTyped(const TensorData &model_output,
                            const FrameTransformContext &prep_args,
                            const AnchorDetParams &post_args,
                            AlgoOutput &algo_output) const {
-  if (model_output.datas.empty()) {
+  if (model_output.empty()) {
     return false;
   }
 
   const auto &output_name = post_args.output_names.at(0);
-  if (model_output.datas.find(output_name) == model_output.datas.end()) {
+  if (!model_output.contains(output_name)) {
     LOG_ERROR_S << "Cannot find output name " << output_name
                 << " in model_output.";
     return false;
   }
 
-  auto output = model_output.datas.at(output_name);
-  std::vector<int> output_shape = model_output.shapes.at(output_name);
+  auto output = model_output.at(output_name).buffer;
+  std::vector<int> output_shape = model_output.at(output_name).shape;
 
   int num_anchors = output_shape.at(output_shape.size() - 2);
   int stride = output_shape.at(output_shape.size() - 1);
@@ -48,19 +48,19 @@ bool NanoDet::batchProcessTyped(
     const std::vector<FrameTransformContext> &prep_args,
     const AnchorDetParams &post_args,
     std::vector<AlgoOutput> &algo_output) const {
-  if (model_output.datas.empty()) {
+  if (model_output.empty()) {
     return false;
   }
 
   const auto &output_name = post_args.output_names.at(0);
-  if (model_output.datas.find(output_name) == model_output.datas.end()) {
+  if (!model_output.contains(output_name)) {
     LOG_ERROR_S << "Cannot find output name " << output_name
                 << " in model_output.";
     return false;
   }
 
-  auto output = model_output.datas.at(output_name);
-  std::vector<int> output_shape = model_output.shapes.at(output_name);
+  auto output = model_output.at(output_name).buffer;
+  std::vector<int> output_shape = model_output.at(output_name).shape;
 
   if (output_shape.size() != 3) {
     LOG_ERROR_S
@@ -103,7 +103,7 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
                    const_cast<float *>(output_data));
   int num_classes = stride - 4;
 
-  const auto &input_roi = *prep_args.roi;
+  const auto &input_roi = prep_args.roi;
   Shape origin_shape;
   if (input_roi.area() > 0) {
     origin_shape.w = input_roi.width;
@@ -141,8 +141,8 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
       float x = (x1 - prep_args.left_pad) / scaleX + input_roi.x;
       float y = (y1 - prep_args.top_pad) / scaleY + input_roi.y;
 
-      result.rect = cv::Rect(static_cast<int>(x), static_cast<int>(y),
-                             static_cast<int>(w), static_cast<int>(h));
+      result.rect = Rect{static_cast<int>(x), static_cast<int>(y),
+                         static_cast<int>(w), static_cast<int>(h)};
       results.push_back(result);
     }
   }

@@ -18,23 +18,38 @@
 
 namespace ai_core::dnn {
 
+/**
+ * @brief Standalone preprocessing stage (bypasses the AlgoInference facade).
+ *
+ * @par Thread safety
+ * The plugin is stateless after @ref initialize, so @ref process /
+ * @ref batchProcess are concurrency-safe per instance (all scratch is passed
+ * in by the caller). @ref initialize / @ref terminate require exclusive access.
+ */
 class AlgoPreproc {
 public:
   AlgoPreproc(const std::string &module_name);
 
   ~AlgoPreproc();
 
-  InferErrorCode initialize();
+  /**
+   * @brief Create the plugin and bind + validate the preprocess parameters
+   * once. process() calls carry data only.
+   */
+  InferErrorCode initialize(const AlgoPreprocParams &preproc_params);
 
-  InferErrorCode process(const AlgoInput &input,
-                         const AlgoPreprocParams &preproc_params,
-                         TensorData &model_input,
-                         std::shared_ptr<RuntimeContext> &runtime_context);
+  /**
+   * @param preproc_override optional per-call parameter override; pass
+   * nullptr to use the parameters bound at initialize().
+   */
+  InferErrorCode process(const AlgoInput &input, TensorData &model_input,
+                         std::shared_ptr<RuntimeContext> &runtime_context,
+                         const AlgoPreprocParams *preproc_override = nullptr);
 
-  InferErrorCode batchProcess(const std::vector<AlgoInput> &input,
-                              const AlgoPreprocParams &preproc_params,
-                              TensorData &model_input,
-                              std::shared_ptr<RuntimeContext> &runtime_context);
+  InferErrorCode
+  batchProcess(const std::vector<AlgoInput> &input, TensorData &model_input,
+               std::shared_ptr<RuntimeContext> &runtime_context,
+               const AlgoPreprocParams *preproc_override = nullptr);
 
   InferErrorCode terminate();
 

@@ -17,14 +17,14 @@ bool SoftmaxCls::processTyped(const TensorData &model_output,
                               const FrameTransformContext &prep_args,
                               const GenericPostParams &post_args,
                               AlgoOutput &algo_output) const {
-  if (model_output.datas.empty()) {
-    LOG_ERROR_S << "model_output.datas is empty";
+  if (model_output.empty()) {
+    LOG_ERROR_S << "model_output is empty";
     return false;
   }
 
   const auto &score_output_name = post_args.output_names.at(0);
-  const auto &output = model_output.datas.at(score_output_name);
-  const auto &output_shape = model_output.shapes.at(score_output_name);
+  const auto &output = model_output.at(score_output_name).buffer;
+  const auto &output_shape = model_output.at(score_output_name).shape;
 
   int num_classes = output_shape.at(output_shape.size() - 1);
 
@@ -41,14 +41,14 @@ bool SoftmaxCls::batchProcessTyped(
     const std::vector<FrameTransformContext> &prep_args,
     const GenericPostParams &post_args,
     std::vector<AlgoOutput> &algo_output) const {
-  if (model_output.datas.empty()) {
-    LOG_ERROR_S << "model_output.datas is empty";
+  if (model_output.empty()) {
+    LOG_ERROR_S << "model_output is empty";
     return false;
   }
 
   const auto &score_output_name = post_args.output_names.at(0);
-  const auto &output = model_output.datas.at(score_output_name);
-  const auto &output_shape = model_output.shapes.at(score_output_name);
+  const auto &output = model_output.at(score_output_name).buffer;
+  const auto &output_shape = model_output.at(score_output_name).shape;
 
   if (output_shape.size() != 2) {
     LOG_ERROR_S

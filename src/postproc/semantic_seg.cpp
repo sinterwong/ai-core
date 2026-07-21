@@ -20,8 +20,8 @@ bool SemanticSeg::processTyped(const TensorData &model_output,
                                const ConfidenceFilterParams &post_args,
                                AlgoOutput &algo_output) const {
   const auto &feat_map_output_name = post_args.output_names.at(0);
-  const auto &feat_map_output = model_output.datas.at(feat_map_output_name);
-  const auto &feat_map_shape = model_output.shapes.at(feat_map_output_name);
+  const auto &feat_map_output = model_output.at(feat_map_output_name).buffer;
+  const auto &feat_map_shape = model_output.at(feat_map_output_name).shape;
 
   const int num_classes = feat_map_shape.at(feat_map_shape.size() - 3);
   const int height = feat_map_shape.at(feat_map_shape.size() - 2);
@@ -46,8 +46,8 @@ bool SemanticSeg::batchProcessTyped(
     const ConfidenceFilterParams &post_args,
     std::vector<AlgoOutput> &algo_output) const {
   const auto &feat_map_output_name = post_args.output_names.at(0);
-  const auto &feat_map_output = model_output.datas.at(feat_map_output_name);
-  const auto &feat_map_shape = model_output.shapes.at(feat_map_output_name);
+  const auto &feat_map_output = model_output.at(feat_map_output_name).buffer;
+  const auto &feat_map_shape = model_output.at(feat_map_output_name).shape;
 
   if (feat_map_shape.size() != 4) {
     LOG_ERROR_S << "Expected a 4D tensor for batch processing (NCHW), but got "
@@ -131,7 +131,7 @@ SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
   seg_ret.cls_to_contours.clear();
 
   Shape origin_shape;
-  const auto &input_roi = *prep_args.roi;
+  const auto &input_roi = prep_args.roi;
   if (input_roi.area() > 0) {
     origin_shape.w = input_roi.width;
     origin_shape.h = input_roi.height;
@@ -167,20 +167,20 @@ SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
       continue;
     }
 
-    const float offset_x = prep_args.roi->x - prep_args.left_pad / scaleX;
-    const float offset_y = prep_args.roi->y - prep_args.top_pad / scaleY;
+    const float offset_x = prep_args.roi.x - prep_args.left_pad / scaleX;
+    const float offset_y = prep_args.roi.y - prep_args.top_pad / scaleY;
 
     for (const auto &contour : contours) {
-      std::vector<cv::Point> transformed_contour;
+      Contour transformed_contour;
       transformed_contour.reserve(contour.size());
       std::transform(contour.begin(), contour.end(),
                      std::back_inserter(transformed_contour),
-                     [&](const cv::Point &pt) -> cv::Point {
+                     [&](const cv::Point &pt) -> Point {
                        float originalX =
                            static_cast<float>(pt.x) / scaleX + offset_x;
                        float originalY =
                            static_cast<float>(pt.y) / scaleY + offset_y;
-                       return cv::Point(cvRound(originalX), cvRound(originalY));
+                       return Point{cvRound(originalX), cvRound(originalY)};
                      });
 
       seg_ret.cls_to_contours[c].emplace_back(std::move(transformed_contour));

@@ -13,6 +13,7 @@
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/semantic_seg.hpp"
 #include "preproc/cpu_generic_preprocess.hpp"
@@ -131,9 +132,8 @@ TEST_P(OCRDetInferenceTest, Normal) {
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image.cols, image.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image);
+  frame_input.roi = ai_core::Rect{0, 0, image.cols, image.rows};
   algo_input.setParams(frame_input);
 
   TensorData model_input;
@@ -154,8 +154,14 @@ TEST_P(OCRDetInferenceTest, Normal) {
   cv::Mat vis_image = image.clone();
   for (const auto &pair : seg_ret->cls_to_contours) {
     for (const auto &contour : pair.second) {
-      cv::drawContours(vis_image, std::vector<std::vector<cv::Point>>{contour},
-                       -1, cv::Scalar(0, 255, 0), 2);
+      std::vector<cv::Point> cv_contour;
+      cv_contour.reserve(contour.size());
+      for (const auto &pt : contour) {
+        cv_contour.push_back(ai_core::interop::toCv(pt));
+      }
+      cv::drawContours(vis_image,
+                       std::vector<std::vector<cv::Point>>{cv_contour}, -1,
+                       cv::Scalar(0, 255, 0), 2);
     }
   }
   std::string output_filename = "vis_ocr_det_" + config.test_name + ".png";

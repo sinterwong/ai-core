@@ -14,11 +14,14 @@
 #include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "trt/trt_infer.hpp"
+#include <atomic>
 #include <benchmark/benchmark.h>
+#include <chrono>
 #include <future>
 #include <memory>
 #include <mutex>
 #include <opencv2/opencv.hpp>
+#include <thread>
 #include <vector>
 
 using namespace ai_core;
@@ -95,8 +98,8 @@ static TensorData createPageableInput(const std::vector<int64_t> &shape,
     ptr[i] = static_cast<float>(i % 255) / 255.0f;
   }
 
-  data.datas["images"] = TypedBuffer::createFromCpu(dtype, std::move(buffer));
-  data.shapes["images"] = std::vector<int>(shape.begin(), shape.end());
+  data.set("images", TypedBuffer::createFromCpu(dtype, std::move(buffer)),
+           std::vector<int>(shape.begin(), shape.end()));
   return data;
 }
 
@@ -117,8 +120,8 @@ static TensorData createPinnedInput(IAsyncInferEngine *engine,
     ptr[i] = static_cast<float>(i % 255) / 255.0f;
   }
 
-  data.datas["images"] = std::move(buffer);
-  data.shapes["images"] = std::vector<int>(shape.begin(), shape.end());
+  data.set("images", std::move(buffer),
+           std::vector<int>(shape.begin(), shape.end()));
   return data;
 }
 
@@ -249,6 +252,107 @@ static void BM_TRT_Baseline_Sync(benchmark::State &state) {
   setCommonCounters(state, {1, 3, 640, 640});
 }
 BENCHMARK(BM_TRT_Baseline_Sync)->Unit(benchmark::kMillisecond)->Iterations(100);
+
+/**
+ * @brief Concurrent synchronous infer() throughput vs thread count.
+ *
+ * google-benchmark runs the loop body on `threads` threads simultaneously
+ * against the shared engine. Because sync infer() now borrows an execution
+ * context from a pool (no global mutex), items/s should scale with threads.
+ * Acceptance (v1.7): items/s at 4 threads >= 3x the 1-thread rate.
+ */
+static void BM_TRT_Sync_Concurrent(benchmark::State &state) {
+  auto engine = EngineManager::instance().getEngine();
+  // Each thread owns its input/output so nothing but the engine is shared.
+  auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
+  if (state.thread_index() == 0) {
+    warmup(engine.get(), input);
+  }
+
+  TensorData output;
+  for (auto _ : state) {
+    auto result = engine->infer(input, output);
+    if (result != InferErrorCode::SUCCESS) {
+      state.SkipWithError("Inference failed");
+      return;
+    }
+  }
+  state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_TRT_Sync_Concurrent)
+    ->ThreadRange(1, 8)
+    ->UseRealTime()
+    ->Unit(benchmark::kMillisecond);
+
+/**
+ * @brief Unambiguous aggregate-throughput sweep for concurrent sync infer().
+ *
+ * Spawns N worker threads that each call the shared engine's infer() in a
+ * tight loop for a fixed wall-clock window, then reports the aggregate
+ * images/sec at N = 1, 2, 4, 8. This measures the real scaling the context
+ * pool provides (google-benchmark's Threads() aggregation is easy to
+ * misread). Registered as a single benchmark that runs the whole sweep once.
+ */
+static void BM_TRT_Sync_ThroughputSweep(benchmark::State &state) {
+  auto engine = EngineManager::instance().getEngine();
+  auto warmup_input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
+  warmup(engine.get(), warmup_input, 20);
+
+  const std::vector<int> thread_counts = {1, 2, 4, 8};
+  const auto window = std::chrono::milliseconds(1500);
+
+  double single_thread_rate = 0.0;
+  for (auto _ : state) {
+    for (int n : thread_counts) {
+      std::atomic<uint64_t> total_ops{0};
+      std::atomic<bool> go{false};
+      std::atomic<bool> stop{false};
+      std::vector<std::thread> workers;
+      workers.reserve(n);
+      auto async_engine = EngineManager::instance().getAsyncEngine();
+      for (int t = 0; t < n; ++t) {
+        workers.emplace_back([&]() {
+          // Pinned input so per-stream H2D copies are truly async and can
+          // overlap across threads (pageable copies serialize on the driver).
+          auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
+                                         DataType::FLOAT32);
+          TensorData output;
+          while (!go.load(std::memory_order_acquire)) {
+          }
+          uint64_t local = 0;
+          while (!stop.load(std::memory_order_acquire)) {
+            if (engine->infer(input, output) == InferErrorCode::SUCCESS) {
+              ++local;
+            }
+          }
+          total_ops.fetch_add(local, std::memory_order_relaxed);
+        });
+      }
+      auto start = std::chrono::steady_clock::now();
+      go.store(true, std::memory_order_release);
+      std::this_thread::sleep_for(window);
+      stop.store(true, std::memory_order_release);
+      for (auto &w : workers) {
+        w.join();
+      }
+      auto elapsed = std::chrono::duration<double>(
+                         std::chrono::steady_clock::now() - start)
+                         .count();
+      double rate = total_ops.load() / elapsed;
+      if (n == 1) {
+        single_thread_rate = rate;
+      }
+      state.counters["thr" + std::to_string(n) + "_imgps"] = rate;
+      if (single_thread_rate > 0) {
+        state.counters["thr" + std::to_string(n) + "_speedup"] =
+            rate / single_thread_rate;
+      }
+    }
+  }
+}
+BENCHMARK(BM_TRT_Sync_ThroughputSweep)
+    ->Iterations(1)
+    ->Unit(benchmark::kMillisecond);
 
 /**
  * @brief Async without CUDA Graph (measures async overhead)

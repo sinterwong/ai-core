@@ -19,6 +19,22 @@
 namespace ai_core::dnn::gpu {
 using namespace cuda_utils;
 
+namespace {
+// The CUDA kernels index source rows as width * channels, so views must be
+// tightly packed.
+inline void requirePackedView(const ImageView &image) {
+  if (image.strideBytes() !=
+      static_cast<size_t>(image.width) * image.channels()) {
+    throw std::runtime_error(
+        "GpuGenericCudaPreprocessor requires tightly packed image rows.");
+  }
+}
+
+inline size_t viewByteSize(const ImageView &image) {
+  return static_cast<size_t>(image.height) * image.strideBytes();
+}
+} // namespace
+
 // ===========================================================================
 // CudaStream Implementation
 // ===========================================================================
@@ -246,10 +262,11 @@ void GpuGenericCudaPreprocessor::ensureWorkingBufferCapacity(
 TypedBuffer GpuGenericCudaPreprocessor::processSequential(
     const FramePreprocessArg &args, const FrameInput &input,
     FrameTransformContext &runtime_args) const {
-  if (input.image == nullptr) {
-    throw std::runtime_error("Input frame is null.");
+  if (input.image.empty()) {
+    throw std::runtime_error("Input frame is empty.");
   }
-  validatePreprocessArgs(args, input.image->channels());
+  requirePackedView(input.image);
+  validatePreprocessArgs(args, input.image.channels());
 
   // Lock for thread safety
   std::lock_guard<std::mutex> lock(m_mutex);
@@ -261,29 +278,25 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
   ensureWorkingBufferCapacity(args, 1, stream);
 
   // Set ROI
-  if (input.input_roi == nullptr) {
-    runtime_args.roi =
-        std::make_shared<cv::Rect>(0, 0, input.image->cols, input.image->rows);
-  } else {
-    runtime_args.roi = input.input_roi;
-  }
-  runtime_args.origin_shape = {input.image->cols, input.image->rows,
-                               input.image->channels()};
+  runtime_args.roi =
+      input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
+  runtime_args.origin_shape = {input.image.width, input.image.height,
+                               input.image.channels()};
 
-  const auto &image = *input.image;
-  const auto &roi = *runtime_args.roi;
+  const ImageView &image = input.image;
+  const Rect &roi = runtime_args.roi;
 
   if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
-      roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
+      roi.x + roi.width > image.width || roi.y + roi.height > image.height) {
     throw std::runtime_error("Invalid ROI.");
   }
 
-  int src_h = roi.height > 0 ? roi.height : image.rows;
-  int src_w = roi.width > 0 ? roi.width : image.cols;
+  int src_h = roi.height > 0 ? roi.height : image.height;
+  int src_w = roi.width > 0 ? roi.width : image.width;
   int src_c = image.channels();
 
   // Upload input image using cached buffer (avoids alloc/free per call)
-  size_t input_image_size = image.total() * image.elemSize();
+  size_t input_image_size = viewByteSize(image);
   if (m_cache.d_input_image.capacity() < input_image_size) {
     m_cache.d_input_image.reserve(input_image_size, stream);
   }
@@ -312,13 +325,13 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
     cuda_op::ROIData roi_data = {roi.x, roi.y, roi.height, roi.width};
     cuda_op::escaleResizeNormalizeGpu(
         static_cast<const uint8_t *>(m_cache.d_input_image.unsafePtr()),
-        hwc_ptr, image.cols, src_c, roi_data, args.model_input_shape.h,
+        hwc_ptr, image.width, src_c, roi_data, args.model_input_shape.h,
         args.model_input_shape.w, m_cache.d_mean.readPtr(),
         m_cache.d_std.readPtr(), m_cache.d_pad.readPtr(), stream);
   } else {
     cuda_op::cropResizeNormalizeGpu(
         static_cast<const uint8_t *>(m_cache.d_input_image.unsafePtr()),
-        hwc_ptr, image.rows, image.cols, src_c, roi.x, roi.y, src_h, src_w,
+        hwc_ptr, image.height, image.width, src_c, roi.x, roi.y, src_h, src_w,
         args.model_input_shape.h, args.model_input_shape.w,
         m_cache.d_mean.readPtr(), m_cache.d_std.readPtr(), stream);
   }
@@ -334,7 +347,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::createFromGpu(args.data_type, final_byte_size);
+      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
 
   if (args.data_type == DataType::FLOAT16) {
     cuda_op::fp32ToFp16Gpu(
@@ -372,15 +385,15 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
 
   const size_t batch_size = frames.size();
 
-  if (frames[0].image == nullptr) {
-    throw std::runtime_error("First input frame is null.");
+  if (frames[0].image.empty()) {
+    throw std::runtime_error("First input frame is empty.");
   }
-  validatePreprocessArgs(args, frames[0].image->channels());
+  validatePreprocessArgs(args, frames[0].image.channels());
 
-  const int expected_channels = frames[0].image->channels();
+  const int expected_channels = frames[0].image.channels();
   for (size_t i = 1; i < batch_size; ++i) {
-    if (frames[i].image != nullptr &&
-        frames[i].image->channels() != expected_channels) {
+    if (!frames[i].image.empty() &&
+        frames[i].image.channels() != expected_channels) {
       throw std::invalid_argument(
           "All images in batch must have the same number of channels.");
     }
@@ -408,42 +421,39 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
 
   for (size_t i = 0; i < batch_size; ++i) {
     const auto &input = frames[i];
-    if (input.image == nullptr) {
-      throw std::runtime_error("Input frame is null at batch index " +
+    if (input.image.empty()) {
+      throw std::runtime_error("Input frame is empty at batch index " +
                                std::to_string(i));
     }
+    requirePackedView(input.image);
 
-    if (input.input_roi == nullptr) {
-      runtime_args[i].roi = std::make_shared<cv::Rect>(0, 0, input.image->cols,
-                                                       input.image->rows);
-    } else {
-      runtime_args[i].roi = input.input_roi;
-    }
+    runtime_args[i].roi =
+        input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
 
-    const auto &roi = *runtime_args[i].roi;
+    const Rect &roi = runtime_args[i].roi;
     if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
-        roi.x + roi.width > input.image->cols ||
-        roi.y + roi.height > input.image->rows) {
+        roi.x + roi.width > input.image.width ||
+        roi.y + roi.height > input.image.height) {
       throw std::runtime_error("Invalid ROI for image at batch index " +
                                std::to_string(i));
     }
 
     // Use cached buffer, expand if needed
-    size_t image_size = input.image->total() * input.image->elemSize();
+    size_t image_size = viewByteSize(input.image);
     if (m_cache.d_batch_input_images[i].capacity() < image_size) {
       m_cache.d_batch_input_images[i].reserve(image_size, stream);
     }
     CHECK_CUDA_ERROR(cudaMemcpyAsync(
-        m_cache.d_batch_input_images[i].unsafePtr(), input.image->data,
+        m_cache.d_batch_input_images[i].unsafePtr(), input.image.data,
         image_size, cudaMemcpyHostToDevice, stream));
 
     h_src_ptrs[i] =
         static_cast<uint8_t *>(m_cache.d_batch_input_images[i].unsafePtr());
-    h_src_heights[i] = input.image->rows;
-    h_src_widths[i] = input.image->cols;
+    h_src_heights[i] = input.image.height;
+    h_src_widths[i] = input.image.width;
     h_rois[i] = {roi.x, roi.y, roi.height, roi.width};
-    runtime_args[i].origin_shape = {input.image->cols, input.image->rows,
-                                    input.image->channels()};
+    runtime_args[i].origin_shape = {input.image.width, input.image.height,
+                                    input.image.channels()};
   }
 
   m_cache.d_src_ptrs.initFromHost(h_src_ptrs, stream);
@@ -514,7 +524,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::createFromGpu(args.data_type, final_byte_size);
+      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
 
   if (args.data_type == DataType::FLOAT16) {
     cuda_op::fp32ToFp16Gpu(
@@ -550,42 +560,38 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
 TypedBuffer GpuGenericCudaPreprocessor::processParallel(
     const FramePreprocessArg &args, const FrameInput &input,
     FrameTransformContext &runtime_args) const {
-  if (input.image == nullptr) {
-    throw std::runtime_error("Input frame is null.");
+  if (input.image.empty()) {
+    throw std::runtime_error("Input frame is empty.");
   }
-  validatePreprocessArgs(args, input.image->channels());
+  requirePackedView(input.image);
+  validatePreprocessArgs(args, input.image.channels());
 
   // Use default stream (nullptr) for parallel mode
   // Each call is independent, CUDA handles synchronization
   cudaStream_t stream = nullptr;
 
   // Set ROI
-  if (input.input_roi == nullptr) {
-    runtime_args.roi =
-        std::make_shared<cv::Rect>(0, 0, input.image->cols, input.image->rows);
-  } else {
-    runtime_args.roi = input.input_roi;
-  }
-  runtime_args.origin_shape = {input.image->cols, input.image->rows,
-                               input.image->channels()};
+  runtime_args.roi =
+      input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
+  runtime_args.origin_shape = {input.image.width, input.image.height,
+                               input.image.channels()};
 
-  const auto &image = *input.image;
-  const auto &roi = *runtime_args.roi;
+  const ImageView &image = input.image;
+  const Rect &roi = runtime_args.roi;
 
   if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
-      roi.x + roi.width > image.cols || roi.y + roi.height > image.rows) {
+      roi.x + roi.width > image.width || roi.y + roi.height > image.height) {
     throw std::runtime_error("Invalid ROI.");
   }
 
-  int src_h = roi.height > 0 ? roi.height : image.rows;
-  int src_w = roi.width > 0 ? roi.width : image.cols;
+  int src_h = roi.height > 0 ? roi.height : image.height;
+  int src_w = roi.width > 0 ? roi.width : image.width;
   int src_c = image.channels();
 
   // Allocate all buffers fresh for this call
-  cuda_utils::DeviceByteBuffer d_input_image(image.total() * image.elemSize());
+  cuda_utils::DeviceByteBuffer d_input_image(viewByteSize(image));
   CHECK_CUDA_ERROR(cudaMemcpy(d_input_image.unsafePtr(), image.data,
-                              image.total() * image.elemSize(),
-                              cudaMemcpyHostToDevice));
+                              viewByteSize(image), cudaMemcpyHostToDevice));
 
   cuda_utils::CudaDeviceBuffer<float> d_mean(args.mean_vals.size());
   cuda_utils::CudaDeviceBuffer<float> d_std(args.norm_vals.size());
@@ -599,7 +605,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
       total_elements * TypedBuffer::getElementSize(args.data_type);
 
   TypedBuffer hwc_buffer =
-      TypedBuffer::createFromGpu(DataType::FLOAT32, byte_size_f_p32);
+      TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
 
   if (args.is_equal_scale) {
     float scale =
@@ -616,25 +622,26 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
     cuda_op::ROIData roi_data = {roi.x, roi.y, roi.height, roi.width};
     cuda_op::escaleResizeNormalizeGpu(
         static_cast<const uint8_t *>(d_input_image.unsafePtr()),
-        static_cast<float *>(hwc_buffer.getRawDevicePtr()), image.cols, src_c,
+        static_cast<float *>(hwc_buffer.getRawDevicePtr()), image.width, src_c,
         roi_data, args.model_input_shape.h, args.model_input_shape.w,
         d_mean.readPtr(), d_std.readPtr(), d_pad.readPtr(), stream);
   } else {
     cuda_op::cropResizeNormalizeGpu(
         static_cast<const uint8_t *>(d_input_image.unsafePtr()),
-        static_cast<float *>(hwc_buffer.getRawDevicePtr()), image.rows,
-        image.cols, src_c, roi.x, roi.y, src_h, src_w, args.model_input_shape.h,
-        args.model_input_shape.w, d_mean.readPtr(), d_std.readPtr(), stream);
+        static_cast<float *>(hwc_buffer.getRawDevicePtr()), image.height,
+        image.width, src_c, roi.x, roi.y, src_h, src_w,
+        args.model_input_shape.h, args.model_input_shape.w, d_mean.readPtr(),
+        d_std.readPtr(), stream);
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::createFromGpu(args.data_type, final_byte_size);
+      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
 
   TypedBuffer chw_buffer;
   TypedBuffer *source_buffer = &hwc_buffer;
 
   if (args.hwc2chw) {
-    chw_buffer = TypedBuffer::createFromGpu(DataType::FLOAT32, byte_size_f_p32);
+    chw_buffer = TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
     cuda_op::hwcToChwGpu(
         static_cast<const float *>(hwc_buffer.getRawDevicePtr()),
         static_cast<float *>(chw_buffer.getRawDevicePtr()),
@@ -676,15 +683,15 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
 
   const size_t batch_size = frames.size();
 
-  if (frames[0].image == nullptr) {
-    throw std::runtime_error("First input frame is null.");
+  if (frames[0].image.empty()) {
+    throw std::runtime_error("First input frame is empty.");
   }
-  validatePreprocessArgs(args, frames[0].image->channels());
+  validatePreprocessArgs(args, frames[0].image.channels());
 
-  const int expected_channels = frames[0].image->channels();
+  const int expected_channels = frames[0].image.channels();
   for (size_t i = 1; i < batch_size; ++i) {
-    if (frames[i].image != nullptr &&
-        frames[i].image->channels() != expected_channels) {
+    if (!frames[i].image.empty() &&
+        frames[i].image.channels() != expected_channels) {
       throw std::invalid_argument(
           "All images in batch must have the same number of channels.");
     }
@@ -705,38 +712,34 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
 
   for (size_t i = 0; i < batch_size; ++i) {
     const auto &input = frames[i];
-    if (input.image == nullptr) {
-      throw std::runtime_error("Input frame is null at batch index " +
+    if (input.image.empty()) {
+      throw std::runtime_error("Input frame is empty at batch index " +
                                std::to_string(i));
     }
+    requirePackedView(input.image);
 
-    if (input.input_roi == nullptr) {
-      runtime_args[i].roi = std::make_shared<cv::Rect>(0, 0, input.image->cols,
-                                                       input.image->rows);
-    } else {
-      runtime_args[i].roi = input.input_roi;
-    }
+    runtime_args[i].roi =
+        input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
 
-    const auto &roi = *runtime_args[i].roi;
+    const Rect &roi = runtime_args[i].roi;
     if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
-        roi.x + roi.width > input.image->cols ||
-        roi.y + roi.height > input.image->rows) {
+        roi.x + roi.width > input.image.width ||
+        roi.y + roi.height > input.image.height) {
       throw std::runtime_error("Invalid ROI for image at batch index " +
                                std::to_string(i));
     }
 
-    d_input_images.emplace_back(input.image->total() * input.image->elemSize());
+    d_input_images.emplace_back(viewByteSize(input.image));
     CHECK_CUDA_ERROR(cudaMemcpy(d_input_images.back().unsafePtr(),
-                                input.image->data,
-                                input.image->total() * input.image->elemSize(),
+                                input.image.data, viewByteSize(input.image),
                                 cudaMemcpyHostToDevice));
 
     h_src_ptrs[i] = static_cast<uint8_t *>(d_input_images.back().unsafePtr());
-    h_src_heights[i] = input.image->rows;
-    h_src_widths[i] = input.image->cols;
+    h_src_heights[i] = input.image.height;
+    h_src_widths[i] = input.image.width;
     h_rois[i] = {roi.x, roi.y, roi.height, roi.width};
-    runtime_args[i].origin_shape = {input.image->cols, input.image->rows,
-                                    input.image->channels()};
+    runtime_args[i].origin_shape = {input.image.width, input.image.height,
+                                    input.image.channels()};
   }
 
   cuda_utils::CudaDeviceBuffer<float> d_mean(args.mean_vals.size());
@@ -763,7 +766,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
       total_elements * TypedBuffer::getElementSize(args.data_type);
 
   TypedBuffer hwc_batch_buffer =
-      TypedBuffer::createFromGpu(DataType::FLOAT32, byte_size_f_p32);
+      TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
 
   if (args.is_equal_scale) {
     cuda_utils::CudaDeviceBuffer<int> d_pad(args.pad.size());
@@ -813,14 +816,14 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::createFromGpu(args.data_type, final_byte_size);
+      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
 
   TypedBuffer chw_batch_buffer;
   TypedBuffer *source_buffer = &hwc_batch_buffer;
 
   if (args.hwc2chw) {
     chw_batch_buffer =
-        TypedBuffer::createFromGpu(DataType::FLOAT32, byte_size_f_p32);
+        TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
     cuda_op::batchHwcToChwGpu(
         static_cast<const float *>(hwc_batch_buffer.getRawDevicePtr()),
         static_cast<float *>(chw_batch_buffer.getRawDevicePtr()),

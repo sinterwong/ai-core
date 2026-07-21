@@ -6,7 +6,7 @@
 
 一次推理分为三段：
 
-1. **预处理**（`AlgoPreproc`）—— 把 `AlgoInput` 里的原始数据（例如 `cv::Mat`）转成模型要的 `TensorData`。
+1. **预处理**（`AlgoPreproc`）—— 把 `AlgoInput` 里的原始数据（`ImageView` 指向的像素）转成模型要的 `TensorData`。
 2. **推理**（`AlgoInferEngine`）—— 调用底层后端（ONNX Runtime、NCNN、TensorRT）做前向，输出 `TensorData`。
 3. **后处理**（`AlgoPostproc`）—— 把模型的原始张量解析成业务结果，写入 `AlgoOutput`。
 
@@ -26,22 +26,25 @@ AlgoInput -> AlgoPreproc -> TensorData -> AlgoInferEngine -> TensorData -> AlgoP
 
 它们都是 `ParamCenter<std::variant<...>>`。用 `setParams<T>()` 存，用 `getParams<T>()` 取。类型不对就拿不到指针，不需要写 type cast。
 
-### `TensorData`
+### `Tensor` / `TensorData`
 
 ```cpp
-struct TensorData {
-  std::map<std::string, TypedBuffer> datas;
-  std::map<std::string, std::vector<int>> shapes;
+struct Tensor {
+  std::string name;
+  TypedBuffer buffer;   // dtype 在 buffer 上
+  std::vector<int> shape;
 };
+
+class TensorData;  // 按插入序存放的 Tensor 集合，set / find / at 按名字访问
 ```
 
-流水线内部按张量名传递数据，与 ONNX Runtime、TensorRT 的输入输出约定一致。应用层一般不需要直接构造 `TensorData`，由插件负责。
+流水线内部按张量名传递数据，与 ONNX Runtime、TensorRT 的输入输出约定一致。张量存在扁平 vector 中（模型输入输出通常 1~3 个，线性查找快于 map）。应用层一般不需要直接构造 `TensorData`，由插件负责。
 
 ### `TypedBuffer`
 
 带类型的内存缓冲区，能同时表示 CPU 内存、GPU 显存和 Pinned Host 内存。提供：
 
-- 静态工厂：`createFromCpu`、`createFromGpu`、`createPinnedHost`、`createFromCpuRef`、`createFromGpuRef`
+- 静态工厂：`createFromCpu`（拥有）、`allocateGpu`、`createPinnedHost`（分配）、`wrapCpu`、`wrapGpu`（零拷贝非拥有包装）
 - `getHostPtr<T>()` / `getRawHostPtr()` / `getRawDevicePtr()`
 - 元信息：`dataType`、`location`、`memoryType`、`getSizeBytes`、`getElementCount`
 
@@ -159,7 +162,7 @@ dnn::AlgoManager mgr;
 mgr.registerAlgo("det", std::make_shared<dnn::AlgoInference>(detModules, detParams));
 mgr.registerAlgo("cls", std::make_shared<dnn::AlgoInference>(clsModules, clsParams));
 
-mgr.infer("det", input, preproc_params, output, postproc_params);
+mgr.infer("det", input, output);
 ```
 
 注册失败会返回 `InferErrorCode::AlgoRegisterFailed` / `AlgoNotFound`。
@@ -173,3 +176,19 @@ mgr.infer("det", input, preproc_params, output, postproc_params);
 - `createContextPackage()` / `createContextPool(n)` —— 预绑定缓冲区，适合 CUDA Graph 这类地址不能变的场景。
 
 `TypedBuffer` 已经统一了 CPU 内存、Pinned Host 内存和 GPU 显存，所以预分配的输入/输出可以直接在流水线里流转。
+
+## 线程模型
+
+每个公共类的头文件注释都标明了并发契约（`@par Thread safety`）。总览：
+
+| 类型 | 契约 |
+|---|---|
+| `Logger` | 完全并发安全（日志宏可任意线程调用）；重配置建议启动期做 |
+| `AlgoManager` | 完全并发安全（`shared_mutex`）：注册/查找/推理可并发 |
+| `AlgoInference` / `AlgoInferEngine` / `AlgoPreproc` / `AlgoPostproc` | 单实例 `infer`/`process` 并发安全（调用私有 scratch + 后端自锁）；`initialize`/`terminate` 需独占 |
+| 推理后端并行度 | ORT：`Session::Run` 并发；NCNN/TRT：内部串行（TRT 的 context pool 见 v1.7） |
+| `IAsyncInferEngine` | engine 共享、可并发建 context；每个 `IExecutionContext` **非线程安全**，由单个 worker 线程独占——这是多线程并行推理的正道 |
+| `TypedBuffer` / `Tensor` / `TensorData` / `DataPacket` / `ParamCenter` | 值类型，无内部同步；并发只读安全，并发写需外部同步 |
+| `Factory` | 注册在启动期（无锁），注册完成后 `create` 只读并发安全 |
+
+插件作者契约：`IPreprocessPlugin` / `IPostprocessPlugin` 的 `process` / `batchProcess` 是 `const` 且必须可重入——对象上不留可变的 per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`。

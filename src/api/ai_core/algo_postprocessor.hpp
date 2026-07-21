@@ -18,23 +18,38 @@
 
 namespace ai_core::dnn {
 
+/**
+ * @brief Standalone postprocessing stage (bypasses the AlgoInference facade).
+ *
+ * @par Thread safety
+ * The plugin is stateless after @ref initialize, so @ref process /
+ * @ref batchProcess are concurrency-safe per instance (all scratch is passed
+ * in by the caller). @ref initialize / @ref terminate require exclusive access.
+ */
 class AlgoPostproc {
 public:
   AlgoPostproc(const std::string &module_name);
 
   ~AlgoPostproc();
 
-  InferErrorCode initialize();
+  /**
+   * @brief Create the plugin and bind + validate the postprocess parameters
+   * once. process() calls carry data only.
+   */
+  InferErrorCode initialize(const AlgoPostprocParams &postproc_params);
 
-  InferErrorCode process(const TensorData &model_output,
-                         const AlgoPostprocParams &postproc_params,
-                         AlgoOutput &output,
-                         std::shared_ptr<RuntimeContext> &runtime_context);
+  /**
+   * @param postproc_override optional per-call parameter override; pass
+   * nullptr to use the parameters bound at initialize().
+   */
+  InferErrorCode process(const TensorData &model_output, AlgoOutput &output,
+                         std::shared_ptr<RuntimeContext> &runtime_context,
+                         const AlgoPostprocParams *postproc_override = nullptr);
 
-  InferErrorCode batchProcess(const TensorData &model_output,
-                              const AlgoPostprocParams &postproc_params,
-                              std::vector<AlgoOutput> &output,
-                              std::shared_ptr<RuntimeContext> &runtime_context);
+  InferErrorCode
+  batchProcess(const TensorData &model_output, std::vector<AlgoOutput> &output,
+               std::shared_ptr<RuntimeContext> &runtime_context,
+               const AlgoPostprocParams *postproc_override = nullptr);
 
   InferErrorCode terminate();
 

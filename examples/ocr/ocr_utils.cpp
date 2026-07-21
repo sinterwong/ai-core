@@ -1,5 +1,6 @@
 #include "ocr_utils.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include <opencv2/imgcodecs.hpp>
 
 namespace ai_core::example {
@@ -101,7 +102,12 @@ std::vector<cv::Rect> OCRUtils::detect(const cv::Mat &frame,
   const auto &det_contour_rets = ocr_det_ret->cls_to_contours.at(1);
   std::vector<cv::Rect> bboxes;
   for (const auto &contour : det_contour_rets) {
-    bboxes.push_back(cv::boundingRect(contour));
+    std::vector<cv::Point> cv_contour;
+    cv_contour.reserve(contour.size());
+    for (const auto &pt : contour) {
+      cv_contour.push_back(ai_core::interop::toCv(pt));
+    }
+    bboxes.push_back(cv::boundingRect(cv_contour));
   }
   return bboxes;
 }
@@ -244,7 +250,7 @@ cv::Mat OCRUtils::convertToBlackWords(const cv::Mat &gray_image) {
  */
 std::vector<cv::Mat> OCRUtils::lineSplit(const cv::Mat &gray_image) {
   if (gray_image.empty() || gray_image.channels() != 1) {
-    LOG_ERRORS << "Input image is empty or not a single channel image.";
+    LOG_ERROR_S << "Input image is empty or not a single channel image.";
     return {};
   }
 

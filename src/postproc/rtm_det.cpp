@@ -18,20 +18,19 @@ bool RTMDet::processTyped(const TensorData &model_output,
                           const FrameTransformContext &prep_args,
                           const AnchorDetParams &post_args,
                           AlgoOutput &algo_output) const {
-  if (model_output.datas.empty()) {
+  if (model_output.empty()) {
     return false;
   }
 
-  const auto &output_shapes = model_output.shapes;
-  const auto &outputs = model_output.datas;
+  const auto &outputs = model_output;
 
   const auto &det_output_name = post_args.output_names.at(0);
   const auto &cls_output_name = post_args.output_names.at(1);
-  auto det_pred = outputs.at(det_output_name);
-  auto cls_pred = outputs.at(cls_output_name);
+  auto det_pred = outputs.at(det_output_name).buffer;
+  auto cls_pred = outputs.at(cls_output_name).buffer;
 
-  std::vector<int> det_out_shape = output_shapes.at(det_output_name);
-  std::vector<int> cls_out_shape = output_shapes.at(cls_output_name);
+  std::vector<int> det_out_shape = model_output.at(det_output_name).shape;
+  std::vector<int> cls_out_shape = model_output.at(cls_output_name).shape;
 
   int num_classes = cls_out_shape.at(cls_out_shape.size() - 1);
   int anchor_num = det_out_shape.at(det_out_shape.size() - 2);
@@ -49,20 +48,19 @@ bool RTMDet::batchProcessTyped(
     const std::vector<FrameTransformContext> &prep_args,
     const AnchorDetParams &post_args,
     std::vector<AlgoOutput> &algo_output) const {
-  if (model_output.datas.empty()) {
+  if (model_output.empty()) {
     return false;
   }
 
-  const auto &output_shapes = model_output.shapes;
-  const auto &outputs = model_output.datas;
+  const auto &outputs = model_output;
 
   const auto &det_output_name = post_args.output_names.at(0);
   const auto &cls_output_name = post_args.output_names.at(1);
-  auto det_pred = outputs.at(det_output_name);
-  auto cls_pred = outputs.at(cls_output_name);
+  auto det_pred = outputs.at(det_output_name).buffer;
+  auto cls_pred = outputs.at(cls_output_name).buffer;
 
-  std::vector<int> det_out_shape = output_shapes.at(det_output_name);
-  std::vector<int> cls_out_shape = output_shapes.at(cls_output_name);
+  std::vector<int> det_out_shape = model_output.at(det_output_name).shape;
+  std::vector<int> cls_out_shape = model_output.at(cls_output_name).shape;
 
   int batch_size = det_out_shape.at(0);
   int anchor_num = det_out_shape.at(1);
@@ -101,7 +99,7 @@ DetRet RTMDet::processSingle(const float *det_data_ptr,
   const auto &input_shape = prep_args.model_input_shape;
   Shape origin_shape;
 
-  const auto &input_roi = *prep_args.roi;
+  const auto &input_roi = prep_args.roi;
   if (input_roi.area() > 0) {
     origin_shape.w = input_roi.width;
     origin_shape.h = input_roi.height;
@@ -141,8 +139,8 @@ DetRet RTMDet::processSingle(const float *det_data_ptr,
       x += input_roi.x;
       y += input_roi.y;
 
-      result.rect = cv::Rect(static_cast<int>(x), static_cast<int>(y),
-                             static_cast<int>(w), static_cast<int>(h));
+      result.rect = Rect{static_cast<int>(x), static_cast<int>(y),
+                         static_cast<int>(w), static_cast<int>(h)};
       results.emplace_back(result);
     }
   }

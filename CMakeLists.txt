@@ -22,6 +22,7 @@ include(GNUInstallDirs)
 option(BUILD_AI_CORE_TESTS "Build unit tests" OFF)
 option(BUILD_AI_CORE_BENCHMARKS "Build benchmarks" OFF)
 option(BUILD_AI_CORE_EXAMPLES "Build examples" OFF)
+option(BUILD_AI_CORE_CONFIG "Build the JSON config module (ai_core::config)" ON)
 
 # Inference engine options
 option(WITH_ORT_ENGINE "Build with ONNX Runtime engine" ON)

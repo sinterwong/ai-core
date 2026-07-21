@@ -20,21 +20,25 @@ AlgoPreproc::AlgoPreproc(const std::string &module_name)
 
 AlgoPreproc::~AlgoPreproc() = default;
 
-InferErrorCode AlgoPreproc::initialize() { return m_pImpl->initialize(); }
+InferErrorCode AlgoPreproc::initialize(const AlgoPreprocParams &params) {
+  return m_pImpl->initialize(params);
+}
 
-InferErrorCode AlgoPreproc::process(
-    const AlgoInput &input, const AlgoPreprocParams &preproc_params,
-    TensorData &model_input, std::shared_ptr<RuntimeContext> &runtime_context) {
-  return m_pImpl->process(input, preproc_params, model_input, runtime_context);
+InferErrorCode
+AlgoPreproc::process(const AlgoInput &input, TensorData &model_input,
+                     std::shared_ptr<RuntimeContext> &runtime_context,
+                     const AlgoPreprocParams *preproc_override) {
+  return m_pImpl->process(input, model_input, runtime_context,
+                          preproc_override);
 }
 
 InferErrorCode
 AlgoPreproc::batchProcess(const std::vector<AlgoInput> &input,
-                          const AlgoPreprocParams &preproc_params,
                           TensorData &model_input,
-                          std::shared_ptr<RuntimeContext> &runtime_context) {
-  return m_pImpl->batchProcess(input, preproc_params, model_input,
-                               runtime_context);
+                          std::shared_ptr<RuntimeContext> &runtime_context,
+                          const AlgoPreprocParams *preproc_override) {
+  return m_pImpl->batchProcess(input, model_input, runtime_context,
+                               preproc_override);
 }
 
 InferErrorCode AlgoPreproc::terminate() { return m_pImpl->terminate(); }

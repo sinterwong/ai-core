@@ -125,4 +125,46 @@ TEST(ScaleRatioTest, NonEqualScaleStretchesBothAxes) {
   EXPECT_FLOAT_EQ(scaleY, 640.f / 100.f);
 }
 
+TEST(ScaleRatioTest, EqualScaleUsesMinRatioOnBothAxes) {
+  auto [rw, rh] = scaleRatio(Shape{200, 100, 3}, Shape{640, 640, 3},
+                             /*is_scale=*/true);
+  EXPECT_FLOAT_EQ(rw, rh);
+  EXPECT_FLOAT_EQ(rw, std::min(640.f / 200.f, 640.f / 100.f));
+}
+
+// ============================================================================
+// NMS + IoU
+// ============================================================================
+
+TEST(NmsTest, CalculateIoUOverlap) {
+  BBox a{Rect{0, 0, 10, 10}, 0.9f, 0};
+  BBox b{Rect{5, 0, 10, 10}, 0.8f, 0};
+  // Intersection 5x10 = 50, union = 100 + 100 - 50 = 150
+  EXPECT_NEAR(ai_core::utils::calculateIoU(a, b), 50.f / 150.f, 1e-5);
+
+  BBox c{Rect{100, 100, 10, 10}, 0.7f, 0};
+  EXPECT_FLOAT_EQ(ai_core::utils::calculateIoU(a, c), 0.f); // disjoint
+}
+
+TEST(NmsTest, SuppressesOverlappingSameClass) {
+  std::vector<BBox> boxes{
+      {Rect{0, 0, 10, 10}, 0.9f, 0},
+      {Rect{1, 1, 10, 10}, 0.8f, 0}, // heavy overlap with the first, class 0
+      {Rect{50, 50, 10, 10}, 0.7f, 0},
+  };
+  auto kept =
+      ai_core::utils::nms(boxes, /*nms_thre=*/0.45f, /*conf_thre=*/0.5f);
+  // The overlapping lower-score box is suppressed; the distant one survives.
+  EXPECT_EQ(kept.size(), 2u);
+}
+
+TEST(NmsTest, KeepsDifferentClassesEvenIfOverlapping) {
+  std::vector<BBox> boxes{
+      {Rect{0, 0, 10, 10}, 0.9f, 0},
+      {Rect{0, 0, 10, 10}, 0.8f, 1}, // same box, different class
+  };
+  auto kept = ai_core::utils::nms(boxes, 0.45f, 0.5f);
+  EXPECT_EQ(kept.size(), 2u);
+}
+
 } // namespace testing_vision_util

@@ -46,6 +46,11 @@ enum class BufferMemoryType {
  * - CPU Pageable: Managed via std::vector<uint8_t>
  * - CPU External: Managed via raw pointers
  * - CPU Pinned / GPU Device: Managed via unified IAcceleratorBuffer
+ *
+ * @par Thread safety
+ * Value type with no internal synchronization. Concurrent const access (e.g.
+ * multiple readers of getHostPtr) is safe; any concurrent mutation, or mutation
+ * racing a read, requires external synchronization.
  */
 class TypedBuffer {
 public:
@@ -70,26 +75,25 @@ public:
   static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t> &&data);
 
   /**
-   * @brief Create a wrapper around existing CPU memory (Reference)
-   * @param manageMemory If true, TypedBuffer will delete[] the pointer on
-   * destruction
+   * @brief Wrap existing CPU memory without taking ownership (like a view).
+   * The caller keeps the memory alive for the buffer's lifetime. Copying the
+   * TypedBuffer deep-copies into owned storage.
    */
-  static TypedBuffer createFromCpuRef(DataType type, const void *host_ptr,
-                                      size_t size_bytes,
-                                      bool manage_memory = false);
+  static TypedBuffer wrapCpu(DataType type, const void *host_ptr,
+                             size_t size_bytes);
 
   /**
-   * @brief Create a GPU Device buffer
+   * @brief Allocate a new GPU device buffer.
    */
-  static TypedBuffer createFromGpu(DataType type, size_t size_bytes,
-                                   int device_id = 0);
+  static TypedBuffer allocateGpu(DataType type, size_t size_bytes,
+                                 int device_id = 0);
 
   /**
-   * @brief Wrap existing GPU pointer
+   * @brief Wrap an existing GPU pointer without taking ownership. The caller
+   * keeps the allocation alive for the buffer's lifetime.
    */
-  static TypedBuffer createFromGpu(DataType type, void *device_ptr,
-                                   size_t size_bytes, int device_id,
-                                   bool manage_memory);
+  static TypedBuffer wrapGpu(DataType type, void *device_ptr, size_t size_bytes,
+                             int device_id = 0);
 
   /**
    * @brief Create a Pinned (Page-locked) Host buffer
@@ -136,20 +140,24 @@ public:
   // Data Modification
   // ============================================================================
 
-  void setCpuData(DataType type, const std::vector<uint8_t> &data);
-  void setGpuDataReference(DataType type, void *ptr, size_t size_bytes,
-                           int dev_id = 0);
+  /**
+   * @brief Resize to `new_element_count`; contents are unspecified afterwards.
+   *
+   * Works for every memory type (pageable / pinned / GPU) - accelerator
+   * buffers reallocate instead of copying. This is the right call for output
+   * buffers that are about to be overwritten. A wrapped external buffer
+   * (wrapCpu/wrapGpu) is detached and replaced by owned storage.
+   */
+  void resizeDiscard(size_t new_element_count);
 
   /**
-   * @brief Resize the buffer
+   * @brief Resize preserving existing contents (std::vector semantics).
    *
-   * @note
-   * - For CPU Pageable: Preserves data (std::vector resize behavior).
-   * - For Pinned/GPU: Reallocates. Data preservation depends on backend
-   * implementation (Current impl: destructive resize to avoid expensive
-   * copies).
+   * Only supported for CPU pageable storage; throws std::logic_error for
+   * pinned/GPU buffers, where a preserving resize would hide an expensive
+   * device copy - do it explicitly if you need it.
    */
-  void resize(size_t new_element_count);
+  void resizePreserving(size_t new_element_count);
 
   void clear();
 
@@ -168,10 +176,9 @@ private:
   // Standard CPU Storage
   std::vector<uint8_t> m_cpuData;
 
-  // External Reference Storage
+  // External Reference Storage (non-owning)
   void *m_externalCpuPtr{nullptr};
   bool m_isExternalRef{false};
-  bool m_manageExternalCpu{false};
 
   // Unified Accelerator Storage (Handles both GPU VRAM and CPU Pinned RAM)
   std::unique_ptr<IAcceleratorBuffer> m_accelBuffer;

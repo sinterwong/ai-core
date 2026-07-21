@@ -14,6 +14,7 @@
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/ocr_reco.hpp"
 #include "preproc/cpu_generic_preprocess.hpp"
@@ -138,9 +139,8 @@ TEST_P(OCRRecoInferTest, Normal) {
   cv::cvtColor(image, image_gray, cv::COLOR_BGR2GRAY);
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_gray);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_gray.cols, image_gray.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_gray);
+  frame_input.roi = ai_core::Rect{0, 0, image_gray.cols, image_gray.rows};
   algo_input.setParams(frame_input);
 
   TensorData model_input;
@@ -149,14 +149,13 @@ TEST_P(OCRRecoInferTest, Normal) {
 
   std::vector<int64_t> input_lengths = {1};
   TypedBuffer input_lengths_tensor;
-  input_lengths_tensor.setCpuData(
+  input_lengths_tensor = ai_core::TypedBuffer::createFromCpu(
       ai_core::DataType::INT64,
       std::vector<uint8_t>(
           reinterpret_cast<const uint8_t *>(input_lengths.data()),
           reinterpret_cast<const uint8_t *>(input_lengths.data()) +
               input_lengths.size() * sizeof(int64_t)));
-  model_input.datas.insert({"input_lengths", input_lengths_tensor});
-  model_input.shapes.insert({"input_lengths", {1}});
+  model_input.set("input_lengths", input_lengths_tensor, {1});
 
   TensorData model_output;
   ASSERT_EQ(engine->infer(model_input, model_output), InferErrorCode::SUCCESS);

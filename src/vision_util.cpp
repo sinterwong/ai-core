@@ -13,6 +13,7 @@
 
 #include "ai_core/output_types.hpp"
 #include "ai_core/preprocess_types.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include <opencv2/opencv.hpp>
 #include <unordered_map>
 
@@ -69,7 +70,7 @@ std::vector<BBox> nms(const std::vector<BBox> &results, float nms_thre,
     std::vector<int> indices;
 
     for (const auto &result : class_result) {
-      boxes.push_back(result.rect);
+      boxes.push_back(interop::toCv(result.rect));
       scores.push_back(result.score);
     }
 

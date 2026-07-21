@@ -13,6 +13,11 @@
 
 #include "ai_core/preprocess_types.hpp"
 #include "frame_postproc_base.hpp"
+
+namespace cv {
+class Mat;
+} // namespace cv
+
 namespace ai_core::dnn {
 class Yolov11Det : public FramePostprocBase<AnchorDetParams, true> {
 public:

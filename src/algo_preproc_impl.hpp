@@ -23,22 +23,22 @@ public:
 
   ~Impl() = default;
 
-  InferErrorCode initialize();
+  InferErrorCode initialize(const AlgoPreprocParams &preproc_params);
 
-  InferErrorCode process(const AlgoInput &input,
-                         const AlgoPreprocParams &preproc_params,
-                         TensorData &model_input,
-                         std::shared_ptr<RuntimeContext> &runtime_context);
+  InferErrorCode process(const AlgoInput &input, TensorData &model_input,
+                         std::shared_ptr<RuntimeContext> &runtime_context,
+                         const AlgoPreprocParams *preproc_override);
 
   InferErrorCode batchProcess(const std::vector<AlgoInput> &input,
-                              const AlgoPreprocParams &preproc_params,
                               TensorData &model_input,
-                              std::shared_ptr<RuntimeContext> &runtime_context);
+                              std::shared_ptr<RuntimeContext> &runtime_context,
+                              const AlgoPreprocParams *preproc_override);
 
   InferErrorCode terminate();
 
 private:
   std::string m_moduleName;
+  AlgoPreprocParams m_boundParams;
   std::shared_ptr<IPreprocessPlugin> m_preprocessor;
 };
 } // namespace ai_core::dnn

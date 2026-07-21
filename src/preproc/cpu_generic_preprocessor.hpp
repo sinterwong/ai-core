@@ -33,19 +33,18 @@ public:
                            std::vector<FrameTransformContext> &) const override;
 
 private:
-  cv::Mat preprocessSingleFrame(const FramePreprocessArg &params,
-                                const FrameInput &frame_input,
-                                FrameTransformContext &runtime_args) const;
+  // Crop the ROI and resize to the model input size, staying 8-bit (no
+  // per-pixel float work here). Returns the prepared uint8 image.
+  cv::Mat cropAndResize(const FramePreprocessArg &params,
+                        const FrameInput &frame_input,
+                        FrameTransformContext &runtime_args) const;
 
-  TypedBuffer preprocessFP32(const cv::Mat &normalized_image,
-                             int input_channels, int input_height,
-                             int input_width, bool hwc2chw) const;
-
-  TypedBuffer preprocessFP16(const cv::Mat &normalized_image,
-                             int input_channels, int input_height,
-                             int input_width, bool hwc2chw) const;
-
-  void convertLayout(const cv::Mat &image, float *dst, bool hwc2chw) const;
+  // Single-pass fusion of normalization ((v - mean)/norm), dtype cast
+  // (fp32/fp16) and layout (HWC/CHW), writing directly into a fresh
+  // TypedBuffer. `dst_offset_elems` places the frame inside a batch buffer.
+  void writeNormalizedLayout(const cv::Mat &prepared_u8,
+                             const FramePreprocessArg &params, TypedBuffer &dst,
+                             size_t dst_offset_elems) const;
 };
 } // namespace ai_core::dnn::cpu
 #endif

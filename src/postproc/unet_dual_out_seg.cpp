@@ -11,7 +11,8 @@
 #include "unet_dual_out_seg.hpp"
 
 #include "ai_core/logger.hpp"
-#include <opencv2/core/mat.hpp>
+
+#include <cstring>
 
 namespace ai_core::dnn {
 bool UNetDualOutputSeg::processTyped(const TensorData &model_output,
@@ -26,10 +27,10 @@ bool UNetDualOutputSeg::processTyped(const TensorData &model_output,
   const auto &prob_output_name = post_args.output_names.at(0);
   const auto &mask_output_name = post_args.output_names.at(1);
 
-  auto prob_output = model_output.datas.at(prob_output_name);
-  auto mask_output = model_output.datas.at(mask_output_name);
-  const auto &prob_shape = model_output.shapes.at(prob_output_name);
-  const auto &mask_shape = model_output.shapes.at(mask_output_name);
+  const auto &prob_output = model_output.at(prob_output_name).buffer;
+  const auto &mask_output = model_output.at(mask_output_name).buffer;
+  const auto &prob_shape = model_output.at(prob_output_name).shape;
+  const auto &mask_shape = model_output.at(mask_output_name).shape;
 
   DualRawSegRet ret =
       processSingleItem(prob_output.getHostPtr<float>(), prob_shape,
@@ -53,10 +54,10 @@ bool UNetDualOutputSeg::batchProcessTyped(
   const auto &prob_output_name = post_args.output_names.at(0);
   const auto &mask_output_name = post_args.output_names.at(1);
 
-  auto prob_output = model_output.datas.at(prob_output_name);
-  auto mask_output = model_output.datas.at(mask_output_name);
-  const auto &prob_shape = model_output.shapes.at(prob_output_name);
-  const auto &mask_shape = model_output.shapes.at(mask_output_name);
+  const auto &prob_output = model_output.at(prob_output_name).buffer;
+  const auto &mask_output = model_output.at(mask_output_name).buffer;
+  const auto &prob_shape = model_output.at(prob_output_name).shape;
+  const auto &mask_shape = model_output.at(mask_output_name).shape;
 
   int batch_size = prob_shape.at(0);
   if (batch_size != prep_args.size()) {
@@ -94,17 +95,25 @@ DualRawSegRet UNetDualOutputSeg::processSingleItem(
     const float *mask_data, const std::vector<int> &mask_shape,
     const FrameTransformContext &prep_args) const {
 
-  int height = prob_shape[2];
-  int width = prob_shape[1];
-  cv::Mat prob_cv_mat(height, width, CV_32FC1, const_cast<float *>(prob_data));
-
-  height = mask_shape[2];
-  width = mask_shape[1];
-  cv::Mat mask_cv_mat(height, width, CV_32FC1, const_cast<float *>(mask_data));
+  // The result owns its pixels: copy out of the inference output buffer so
+  // the returned tensors stay valid after the TensorData is released.
+  auto copyPlane = [](const char *tag, const float *data,
+                      const std::vector<int> &shape) {
+    const int height = shape[2];
+    const int width = shape[1];
+    const size_t byte_size =
+        static_cast<size_t>(height) * width * sizeof(float);
+    std::vector<uint8_t> bytes(byte_size);
+    std::memcpy(bytes.data(), data, byte_size);
+    return Tensor{
+        tag,
+        TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(bytes)),
+        {height, width}};
+  };
 
   DualRawSegRet ret;
-  ret.prob = std::make_shared<cv::Mat>(prob_cv_mat);
-  ret.mask = std::make_shared<cv::Mat>(mask_cv_mat);
+  ret.prob = copyPlane("prob", prob_data, prob_shape);
+  ret.mask = copyPlane("mask", mask_data, mask_shape);
 
   ret.roi = prep_args.roi;
   ret.ratio = static_cast<float>(prep_args.model_input_shape.w) /

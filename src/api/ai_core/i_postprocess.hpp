@@ -17,6 +17,14 @@
 
 namespace ai_core::dnn {
 
+/**
+ * @brief Postprocessing plugin interface.
+ *
+ * @par Thread-safety contract
+ * process / batchProcess are const and must be reentrant: implementations keep
+ * no mutable per-call state on the object, so one instance serves concurrent
+ * calls. Any internal cache must be synchronized by the implementation.
+ */
 class IPostprocessPlugin {
 public:
   virtual ~IPostprocessPlugin() {};

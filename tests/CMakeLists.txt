@@ -40,6 +40,10 @@ set(DEPENDENCY_LIBS
     ${ANDROID_JIN_LIBS}
 )
 
+if(BUILD_AI_CORE_CONFIG)
+    list(APPEND DEPENDENCY_LIBS ai_core::config)
+endif()
+
 # Engine-specific dependencies
 if(WITH_ORT_ENGINE)
     load_onnxruntime()

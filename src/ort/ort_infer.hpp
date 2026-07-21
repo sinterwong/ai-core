@@ -49,6 +49,13 @@ private:
 
   std::unordered_set<std::string> m_dynamicInputTensorNames;
 
+  // Per-output (index-aligned with m_outputNames): whether the output shape is
+  // fully static, and if so its element count. Static outputs are bound to a
+  // caller-owned buffer via IoBinding so ORT writes into it directly, skipping
+  // the post-Run copy. Dynamic outputs fall back to ORT allocation + copy.
+  std::vector<bool> m_outputIsStatic;
+  std::vector<int64_t> m_outputElementCount;
+
   // Guards session lifetime: infer/getModelInfo take shared ownership
   // (Ort::Session::Run is thread-safe), initialize/terminate take exclusive.
   mutable std::shared_mutex m_mutex;

@@ -17,6 +17,16 @@
 #include <memory>
 
 namespace ai_core::dnn {
+/**
+ * @brief Synchronous inference engine plugin interface.
+ *
+ * @par Thread-safety contract
+ * A single instance must tolerate concurrent @ref infer calls (implementations
+ * serialize or parallelize internally: ORT via a shared lock, NCNN/TRT via a
+ * mutex). @ref initialize / @ref terminate require exclusive access. For true
+ * multi-thread parallelism prefer @ref IAsyncInferEngine with per-thread
+ * execution contexts.
+ */
 class IInferEnginePlugin {
 public:
   IInferEnginePlugin() = default;

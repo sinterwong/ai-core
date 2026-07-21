@@ -1,7 +1,8 @@
 #include "ocr_rec.hpp"
+#include "ai_core/config/algo_config.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/preprocess_types.hpp"
-#include "algo_config_parser.hpp"
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -53,31 +54,48 @@ OCRRec::OCRRec(const std::string &config_path, const std::string &dict_path) {
   }
 
   try {
-    mParams = ai_core::example::utils::AlgoConfigParser(config_path).parse();
+    mParams = ai_core::config::loadAlgoConfig(config_path);
   } catch (const std::exception &e) {
     throw std::runtime_error("Failed to load OCR config: " +
                              std::string(e.what()));
   }
 
   mFramePreproc = std::make_shared<ai_core::dnn::AlgoPreproc>(
-      mParams.modelTypes.preproc_module);
+      mParams.module_types.preproc_module);
   mOcrPostproc = std::make_shared<ai_core::dnn::AlgoPostproc>(
-      mParams.modelTypes.postproc_module);
+      mParams.module_types.postproc_module);
 
   mEngine = std::make_shared<ai_core::dnn::AlgoInferEngine>(
-      mParams.modelTypes.infer_module, mParams.inferParams);
+      mParams.module_types.infer_module, mParams.infer_params);
 
   if (mEngine->initialize() != ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec engine initialize failed";
     throw std::runtime_error("OCRRec engine initialize failed");
   }
 
-  if (mFramePreproc->initialize() != ai_core::InferErrorCode::SUCCESS) {
+  // The parser hands back all model input names; the frame preprocessor
+  // consumes exactly the first one (the second input, input_lengths, is
+  // assembled manually in process()).
+  ai_core::AlgoPreprocParams bound_preproc_params;
+  auto frame_preprocess_arg_ptr =
+      mParams.preproc_params.getParams<ai_core::FramePreprocessArg>();
+  if (frame_preprocess_arg_ptr == nullptr) {
+    LOG_ERROR_S << "FramePreprocessArg is nullptr";
+    throw std::runtime_error("FramePreprocessArg is nullptr");
+  }
+  auto frame_preprocess_arg = *frame_preprocess_arg_ptr;
+  frame_preprocess_arg.input_names = {
+      frame_preprocess_arg_ptr->input_names.at(0)};
+  bound_preproc_params.setParams(frame_preprocess_arg);
+
+  if (mFramePreproc->initialize(bound_preproc_params) !=
+      ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec preprocessor initialize failed";
     throw std::runtime_error("OCRRec preprocessor initialize failed");
   }
 
-  if (mOcrPostproc->initialize() != ai_core::InferErrorCode::SUCCESS) {
+  if (mOcrPostproc->initialize(mParams.postproc_params) !=
+      ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec postprocessor initialize failed";
     throw std::runtime_error("OCRRec postprocessor initialize failed");
   }
@@ -86,44 +104,28 @@ OCRRec::OCRRec(const std::string &config_path, const std::string &dict_path) {
 OCRRec::~OCRRec() {}
 
 ai_core::OCRRecoRet OCRRec::process(const cv::Mat &image_gray) {
-  ai_core::AlgoPreprocParams preproc_params;
-
-  auto frame_preprocess_arg_ptr =
-      mParams.preproc_params.getParams<ai_core::FramePreprocessArg>();
-
-  if (frame_preprocess_arg_ptr == nullptr) {
-    LOG_ERROR_S << "FramePreprocessArg is nullptr";
-    throw std::runtime_error("FramePreprocessArg is nullptr");
-  }
-
-  auto frame_preprocess_arg = *frame_preprocess_arg_ptr;
-
-  auto input_names = frame_preprocess_arg_ptr->input_names;
-  frame_preprocess_arg.input_names = {input_names.at(0)};
-  preproc_params.setParams(frame_preprocess_arg);
-
   ai_core::AlgoInput algo_input;
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_gray);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_gray.cols, image_gray.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_gray);
+  frame_input.roi = ai_core::Rect{0, 0, image_gray.cols, image_gray.rows};
   algo_input.setParams(frame_input);
 
   auto runtime_context = std::make_shared<ai_core::RuntimeContext>();
   ai_core::TensorData model_input;
-  mFramePreproc->process(algo_input, preproc_params, model_input,
-                         runtime_context);
+  mFramePreproc->process(algo_input, model_input, runtime_context);
 
   std::vector<int64_t> input_lengths = {1};
   ai_core::TypedBuffer input_lengths_tensor;
-  input_lengths_tensor.setCpuData(
+  input_lengths_tensor = ai_core::TypedBuffer::createFromCpu(
       ai_core::DataType::INT64,
       std::vector<uint8_t>(
           reinterpret_cast<const uint8_t *>(input_lengths.data()),
           reinterpret_cast<const uint8_t *>(input_lengths.data()) +
               input_lengths.size() * sizeof(int64_t)));
-  model_input.datas.insert({input_names.at(1), input_lengths_tensor});
-  model_input.shapes.insert({input_names.at(1), {1}});
+  const auto &input_names =
+      mParams.preproc_params.getParams<ai_core::FramePreprocessArg>()
+          ->input_names;
+  model_input.set(input_names.at(1), input_lengths_tensor, {1});
 
   ai_core::TensorData model_output;
   if (mEngine->infer(model_input, model_output) !=
@@ -133,8 +135,7 @@ ai_core::OCRRecoRet OCRRec::process(const cv::Mat &image_gray) {
   }
 
   ai_core::AlgoOutput algo_output;
-  if (mOcrPostproc->process(model_output, mParams.postproc_params, algo_output,
-                            runtime_context) !=
+  if (mOcrPostproc->process(model_output, algo_output, runtime_context) !=
       ai_core::InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "OCRRec postprocess failed";
     return {};

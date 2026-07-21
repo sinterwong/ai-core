@@ -13,6 +13,7 @@
 #include "ai_core/common_types.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/infer_engine_wrapper.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <opencv2/opencv.hpp>
@@ -34,15 +35,24 @@ const static auto get_frame_preprocess_arg =
       return arg;
     };
 
+// ImageView is non-owning: the backing cv::Mat must outlive every view into
+// it. Keep the decoded image in a long-lived static alongside the AlgoInput.
+static cv::Mat &benchImageRgb() {
+  static cv::Mat image_rgb = [] {
+    cv::Mat bgr = cv::imread("assets/data/yolov11/image.png");
+    cv::Mat rgb;
+    cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
+    return rgb;
+  }();
+  return image_rgb;
+}
+
 const static auto algo_input = []() {
   ai_core::AlgoInput input;
-  cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+  cv::Mat &image_rgb = benchImageRgb();
   ai_core::FrameInput frame_input;
-  frame_input.image = std::make_shared<cv::Mat>(image_rgb);
-  frame_input.input_roi =
-      std::make_shared<cv::Rect>(0, 0, image_rgb.cols, image_rgb.rows);
+  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
+  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
   input.setParams(frame_input);
   return input;
 }();
@@ -64,14 +74,14 @@ static void BM_ORT_CPU_DATA_YoloInfer(benchmark::State &state) {
   preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
-  preproc.initialize();
+  preproc.initialize(preproc_params);
 
   ai_core::AlgoInput input = algo_input;
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
   ai_core::TensorData model_input;
-  preproc.process(input, preproc_params, model_input, runtime_context);
+  preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
   // ==================== WARM-UP ====================
@@ -107,14 +117,14 @@ static void BM_NCNN_CPU_DATA_YoloInfer(benchmark::State &state) {
   preproc_params.setParams(frame_preprocess_arg);
 
   ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
-  preproc.initialize();
+  preproc.initialize(preproc_params);
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
   ai_core::AlgoInput input = algo_input;
   ai_core::TensorData model_input;
-  preproc.process(input, preproc_params, model_input, runtime_context);
+  preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
   // ==================== WARM-UP ====================
