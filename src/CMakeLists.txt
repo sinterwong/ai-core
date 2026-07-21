@@ -38,35 +38,50 @@ file(GLOB_RECURSE AI_CORE_PUBLIC_HEADERS CONFIGURE_DEPENDS
     "api/ai_core/*.hpp"
 )
 
-# Private/Internal Headers and Sources
-# A. Root directory files (Non-recursive to strictly avoid sub folders)
-file(GLOB AI_CORE_ROOT_SRCS CONFIGURE_DEPENDS "*.cpp")
-file(GLOB AI_CORE_ROOT_HDRS CONFIGURE_DEPENDS "*.hpp")
-
-# B. Implementation Subdirectories (Recursive to allow sub-folders)
-# Includes: preproc, postproc, registrar
-file(GLOB_RECURSE AI_CORE_SUBMOD_SRCS CONFIGURE_DEPENDS 
-    "preproc/*.cpp"
-    "postproc/*.cpp"
-    "registrar/*.cpp"
-)
-
-file(GLOB_RECURSE AI_CORE_SUBMOD_HDRS CONFIGURE_DEPENDS 
-    "preproc/*.hpp"
-    "postproc/*.hpp"
-    "registrar/*.hpp"
-)
-
-# Combine lists
+# Private/Internal sources — explicitly listed (no GLOB) so adding a file is a
+# deliberate, reviewable change and the build never silently picks up strays.
 set(AI_CORE_SOURCES
-    ${AI_CORE_ROOT_SRCS}
-    ${AI_CORE_SUBMOD_SRCS}
+    # facade + pimpl
+    algo_infer.cpp
+    algo_infer_impl.cpp
+    algo_infer_engine.cpp
+    algo_infer_engine_impl.cpp
+    algo_manager.cpp
+    algo_manager_impl.cpp
+    algo_preproc.cpp
+    algo_preproc_impl.cpp
+    algo_postproc.cpp
+    algo_postproc_impl.cpp
+    # core value types + utilities
+    typed_buffer.cpp
+    vision_util.cpp
+    logger.cpp
+    infer_base.cpp
+    device_buffer_impl_stub.cpp
+    # preprocessing
+    preproc/cpu_generic_preprocessor.cpp
+    preproc/frame_with_mask_prep.cpp
+    preproc/generic_frame_preproc_base.cpp
+    # postprocessing
+    postproc/yolo_det.cpp
+    postproc/nano_det.cpp
+    postproc/rtm_det.cpp
+    postproc/softmax_cls.cpp
+    postproc/fpr_cls.cpp
+    postproc/semantic_seg.cpp
+    postproc/unet_dual_out_seg.cpp
+    postproc/ocr_reco.cpp
+    postproc/raw_output.cpp
+    # plugin registrars
+    registrar/default_plugins.cpp
+    registrar/preproc_registrar.cpp
+    registrar/postproc_registrar.cpp
+    registrar/infer_engine_registrar.cpp
 )
 
-set(AI_CORE_PRIVATE_HEADERS
-    ${AI_CORE_ROOT_HDRS}
-    ${AI_CORE_SUBMOD_HDRS}
-)
+# Private headers are only used for IDE indexing; globbing them is harmless.
+file(GLOB AI_CORE_PRIVATE_HEADERS CONFIGURE_DEPENDS
+    "*.hpp" "preproc/*.hpp" "postproc/*.hpp" "registrar/*.hpp")
 
 # ONNX Runtime engine
 if(WITH_ORT_ENGINE)

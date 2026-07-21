@@ -41,6 +41,21 @@ if(NOT TARGET ai_core::ai_core)
   include("${CMAKE_CURRENT_LIST_DIR}/ai_core-targets.cmake")
 endif()
 
+# --- Backends compiled into this build ---
+# Query with find_package(ai_core COMPONENTS ort trt ncnn) or inspect the
+# ai_core_WITH_* variables. The framework ships as one library with the
+# selected backends compiled in; components report availability, they are not
+# separately loadable archives.
+set(ai_core_WITH_ORT  @WITH_ORT_ENGINE@)
+set(ai_core_WITH_NCNN @WITH_NCNN_ENGINE@)
+set(ai_core_WITH_TRT  @WITH_TRT_ENGINE@)
+set(ai_core_WITH_CONFIG @BUILD_AI_CORE_CONFIG@)
+
+set(ai_core_ort_FOUND ${ai_core_WITH_ORT})
+set(ai_core_ncnn_FOUND ${ai_core_WITH_NCNN})
+set(ai_core_trt_FOUND ${ai_core_WITH_TRT})
+set(ai_core_config_FOUND ${ai_core_WITH_CONFIG})
+
 # --- Final check for requested components ---
 # This uses the self-defined macro from above.
 check_required_components(ai_core)

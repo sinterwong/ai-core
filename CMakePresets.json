@@ -1,0 +1,63 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install",
+      "cacheVariables": {
+        "BUILD_AI_CORE_TESTS": "ON",
+        "BUILD_AI_CORE_EXAMPLES": "ON",
+        "BUILD_AI_CORE_CONFIG": "ON",
+        "WITH_ORT_ENGINE": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (ORT)",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "release-all-backends",
+      "displayName": "Release (ORT + NCNN + TRT)",
+      "inherits": "release",
+      "cacheVariables": {
+        "BUILD_AI_CORE_BENCHMARKS": "ON",
+        "WITH_NCNN_ENGINE": "ON",
+        "WITH_TRT_ENGINE": "ON"
+      }
+    },
+    {
+      "name": "debug-asan",
+      "displayName": "Debug + ASan/UBSan (ORT)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Debug + coverage (ORT)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "--coverage -O0 -g",
+        "CMAKE_EXE_LINKER_FLAGS": "--coverage",
+        "CMAKE_SHARED_LINKER_FLAGS": "--coverage"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "release", "configurePreset": "release" },
+    { "name": "release-all-backends", "configurePreset": "release-all-backends" },
+    { "name": "debug-asan", "configurePreset": "debug-asan" },
+    { "name": "coverage", "configurePreset": "coverage" }
+  ]
+}
