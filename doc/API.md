@@ -32,6 +32,9 @@ public:
 
   const ModelInfo& getModelInfo() const noexcept;
   const AlgoModuleTypes& getModuleTypes() const noexcept;
+
+  // 异步正门：后端支持则返回异步引擎，否则 nullptr（详见第 8 节）。
+  std::shared_ptr<IAsyncInferEngine> getAsyncEngine() const noexcept;
 };
 ```
 
@@ -299,6 +302,11 @@ struct RuntimeContext {
 ```
 
 ## 8. 异步接口
+
+异步路径从公共 API 可达：`AlgoInference::getAsyncEngine()` 和
+`AlgoInferEngine::getAsyncEngine()` 返回 `IAsyncInferEngine`（后端不支持返回
+`nullptr`），不必对插件做 `dynamic_pointer_cast`。完整可运行示例见
+`examples/async_pipeline/`（context pool + pinned buffer + CUDA Graph 流水线）。
 
 ### `IAsyncInferEngine`
 
