@@ -58,6 +58,15 @@ jobs:
           tar -xzf onnxruntime-linux-x64-${ORT_VERSION}.tgz
           mv onnxruntime-linux-x64-${ORT_VERSION} 3rdparty/target/Linux_x86_64/onnxruntime
 
+      # The 1.20.1 release tarball ships libs in lib/ and headers in include/,
+      # but its cmake export references lib64/ and include/onnxruntime.
+      # Runs unconditionally: the broken copy is cached.
+      - name: Patch ONNX Runtime cmake export
+        run: |
+          ORT_CMAKE=3rdparty/target/Linux_x86_64/onnxruntime/lib/cmake/onnxruntime
+          sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
+          sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
+
       - name: Configure
         run: |
           if [ "${{ matrix.compiler }}" = "clang" ]; then
@@ -121,6 +130,15 @@ jobs:
           mkdir -p 3rdparty/target/Linux_x86_64
           tar -xzf onnxruntime-linux-x64-${ORT_VERSION}.tgz
           mv onnxruntime-linux-x64-${ORT_VERSION} 3rdparty/target/Linux_x86_64/onnxruntime
+
+      # The 1.20.1 release tarball ships libs in lib/ and headers in include/,
+      # but its cmake export references lib64/ and include/onnxruntime.
+      # Runs unconditionally: the broken copy is cached.
+      - name: Patch ONNX Runtime cmake export
+        run: |
+          ORT_CMAKE=3rdparty/target/Linux_x86_64/onnxruntime/lib/cmake/onnxruntime
+          sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
+          sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
 
       - name: Core-component coverage (>= 80%)
         env:
