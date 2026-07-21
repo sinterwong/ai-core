@@ -102,14 +102,16 @@
 
 - [x] **CPU 预处理单趟化**：现状一帧至少 4 次全图遍历/分配（`clone` → `convertTo` → `split`/`merge` 归一化 → `convertLayout`）。归一化合并进 `convertTo(alpha, beta)`，直接写目标 buffer。（融合 kernel `fusedWrite<Dst,Chw>`：crop 零拷贝、resize 唯一分配、归一化+dtype+布局单趟直写 TypedBuffer。median 3.16ms→1.53ms，-51.6%，达标）
 - [x] **FP16 路径去双拷贝**：去掉中间 FP32 vector 与末端 `vector<uint8_t>` 拷贝，直接落 `TypedBuffer`。（同上融合 kernel：fp16 逐元素转半精度直写，无中间 fp32 vector 无末端拷贝）
-- [ ] **ORT 输出零拷贝**：IOBinding + 预分配输出缓冲（`max_output_buffer_sizes` 字段已存在但 ORT 未用）。
-- [ ] **热路径堆分配清零**：preprocessor 实例、后处理分发对象移到 initialize 阶段持有；`RuntimeContext` 复用。
-- [ ] **ORT 线程配置可配**：`SetIntraOpNumThreads(hardware_concurrency())` 硬编码在多实例场景互相打架。
+- [x] **ORT 输出零拷贝**：IOBinding + 预分配输出缓冲（`max_output_buffer_sizes` 字段已存在但 ORT 未用）。（静态 shape 输出经 `Ort::IoBinding` 绑定到调用方 buffer，ORT 直写省去 post-Run 拷贝；动态 shape 回退 allocate+copy。per-call buffer 保并发。CPU 上省的拷贝是亚毫秒级，真正收益在 GPU EP）
+- [x] **热路径堆分配清零**：preprocessor 实例、后处理分发对象移到 initialize 阶段持有；`RuntimeContext` 复用。（preproc kernel / postproc 分发对象本就在 initialize 持有；融合 kernel 把预处理每帧分配 ~6→2。`RuntimeContext` 按并发契约保持 per-call，不复用——复用会与「单实例 infer 并发安全」冲突）
+- [x] **ORT 线程配置可配**：`SetIntraOpNumThreads(hardware_concurrency())` 硬编码在多实例场景互相打架。（`AlgoInferParams.intra/inter_op_num_threads`，0=ORT 默认，不再硬编码抢满核）
 
 ### 验收标准
 
-- YOLO 640×640 基准，单帧 CPU 预处理耗时较 v1.5 基线下降 ≥ 40%。
-- 端到端路径的每次"分配 + 拷贝"可枚举且有存在理由。
+- YOLO 640×640 基准，单帧 CPU 预处理耗时较 v1.5 基线下降 ≥ 40%。（**达标：3.16ms→1.53ms，-51.6%**）
+- 端到端路径的每次"分配 + 拷贝"可枚举且有存在理由。（预处理：resize + 输出 buffer 各 1 次，均必要；ORT 静态输出零多余拷贝，动态输出的 copy 有「返回自有数据」的理由）
+
+**v1.6 完成状态（2026-07）**：5 项任务全部完成，验收达标。核心产出：融合预处理 kernel（-51.6%）、ORT IOBinding、线程可配。
 
 ---
 

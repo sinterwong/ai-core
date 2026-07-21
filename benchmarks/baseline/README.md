@@ -37,3 +37,14 @@ LD_LIBRARY_PATH=$PWD/lib:<3rdparty-libs> ./benchmarks/ai_core_benchmarks \
 | `BM_NCNN_CPU_DATA_YoloInfer` | 72.6 | NCNN CPU 前向 |
 
 完整数据见 `v1.5-x86_64.json`。TRT 异步/CUDA Graph 系列（`BM_TRT_*`）是 v1.7 并发工作的基线，届时单独采集。
+
+## v1.6 对比（median，同机）
+
+| benchmark | v1.5 | v1.6 | 变化 |
+|---|---|---|---|
+| `BM_CPU_FramePreproc_Yolo` | 3.16 | **1.49** | **-52.8%**（融合预处理 kernel，达标） |
+| `BM_CPU_YoloDetPostproc` | 1.45 | 1.45 | 持平 |
+| `BM_ORT_CPU_DATA_YoloInfer` | 65.7 | 44.4 | -32%（主因：ORT 线程不再硬编码抢满核；IOBinding 输出零拷贝在 CPU 上边际） |
+| `BM_GPU_FramePreproc_Yolo` | 1.47 | 1.60 | 噪声范围内 |
+
+完整数据见 `v1.6-x86_64.json`。
