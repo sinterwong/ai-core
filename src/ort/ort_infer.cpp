@@ -84,7 +84,14 @@ InferErrorCode OrtAlgoInference::initialize() {
                                        m_params.name.c_str());
 
     Ort::SessionOptions session_options;
-    session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+    // 0 means "leave it to ORT"; a positive value pins the pool size so
+    // multiple instances don't each grab every core.
+    if (m_params.intra_op_num_threads > 0) {
+      session_options.SetIntraOpNumThreads(m_params.intra_op_num_threads);
+    }
+    if (m_params.inter_op_num_threads > 0) {
+      session_options.SetInterOpNumThreads(m_params.inter_op_num_threads);
+    }
     session_options.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
@@ -163,6 +170,19 @@ InferErrorCode OrtAlgoInference::initialize() {
       ti.name = output_name.get();
       ti.shape = tensor_info.GetShape();
       ti.data_type = ortDataTypeToAiCore(tensor_info.GetElementType());
+
+      bool is_static = !ti.shape.empty();
+      int64_t element_count = 1;
+      for (const auto &dim : ti.shape) {
+        if (dim < 0) {
+          is_static = false;
+          break;
+        }
+        element_count *= dim;
+      }
+      m_outputIsStatic.push_back(is_static);
+      m_outputElementCount.push_back(is_static ? element_count : 0);
+
       m_modelInfo->outputs.push_back(std::move(ti));
     }
 
@@ -258,68 +278,63 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
           aiCoreDataTypeToOrt(input_buffer.dataType())));
     }
 
-    std::vector<const char *> input_names_ptr;
-    input_names_ptr.reserve(m_inputNames.size());
-    for (const auto &name : m_inputNames) {
-      input_names_ptr.push_back(name.c_str());
+    // IoBinding lets us bind static-shape outputs to caller-owned buffers so
+    // ORT writes into them directly (no post-Run copy). Dynamic outputs are
+    // bound by memory info and copied out afterwards.
+    Ort::IoBinding binding(*m_session);
+    for (size_t i = 0; i < m_inputNames.size(); ++i) {
+      binding.BindInput(m_inputNames[i].c_str(), input_tensors[i]);
     }
 
-    std::vector<const char *> output_names_ptr;
-    output_names_ptr.reserve(m_outputNames.size());
-    for (const auto &name : m_outputNames) {
-      output_names_ptr.push_back(name.c_str());
-    }
+    // Per-call output buffers (keeps infer concurrency-safe: no shared state).
+    std::vector<TypedBuffer> bound_output_buffers(m_outputNames.size());
+    std::vector<Ort::Value> bound_output_values;
+    bound_output_values.reserve(m_outputNames.size());
 
-    auto output_tensors = m_session->Run(
-        Ort::RunOptions{nullptr}, input_names_ptr.data(), input_tensors.data(),
-        input_tensors.size(), output_names_ptr.data(), output_names_ptr.size());
-
-    for (size_t i = 0; i < output_tensors.size(); ++i) {
-      const auto &output_tensor = output_tensors[i];
-      auto tensor_info = output_tensor.GetTensorTypeAndShapeInfo();
-
-      // Get raw data and size
-      const void *raw_data = output_tensor.GetTensorRawData();
-
-      size_t element_count = tensor_info.GetElementCount();
-      ONNXTensorElementDataType type = tensor_info.GetElementType();
-      size_t element_size = 0;
-      switch (type) {
-      case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
-        element_size = sizeof(float);
-        break;
-      case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
-        element_size = sizeof(uint16_t);
-        break;
-      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
-        element_size = sizeof(int64_t);
-        break;
-      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
-        element_size = sizeof(int32_t);
-        break;
-      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
-        element_size = sizeof(int8_t);
-        break;
-      default:
-        LOG_ERROR_S << "Unsupported data type for size calculation.";
-        return InferErrorCode::InferFailed;
+    for (size_t i = 0; i < m_outputNames.size(); ++i) {
+      if (m_outputIsStatic[i]) {
+        const DataType dt = m_modelInfo->outputs[i].data_type;
+        const size_t bytes = static_cast<size_t>(m_outputElementCount[i]) *
+                             TypedBuffer::getElementSize(dt);
+        bound_output_buffers[i] = TypedBuffer::createFromCpu(
+            dt, std::vector<uint8_t>(bytes));
+        const auto &shape = m_modelInfo->outputs[i].shape;
+        bound_output_values.emplace_back(Ort::Value::CreateTensor(
+            *m_memoryInfo, bound_output_buffers[i].getRawHostPtr(), bytes,
+            shape.data(), shape.size(), aiCoreDataTypeToOrt(dt)));
+        binding.BindOutput(m_outputNames[i].c_str(),
+                           bound_output_values.back());
+      } else {
+        binding.BindOutput(m_outputNames[i].c_str(), *m_memoryInfo);
       }
-      size_t byte_size = element_count * element_size;
+    }
 
-      // Create a copy of the output data
-      std::vector<uint8_t> byte_data(static_cast<const uint8_t *>(raw_data),
-                                     static_cast<const uint8_t *>(raw_data) +
-                                         byte_size);
+    m_session->Run(Ort::RunOptions{nullptr}, binding);
 
-      DataType output_type = ortDataTypeToAiCore(tensor_info.GetElementType());
-      TypedBuffer output_buffer =
-          TypedBuffer::createFromCpu(output_type, std::move(byte_data));
-
+    std::vector<Ort::Value> output_tensors = binding.GetOutputValues();
+    for (size_t i = 0; i < output_tensors.size(); ++i) {
+      auto tensor_info = output_tensors[i].GetTensorTypeAndShapeInfo();
       auto output_shape_int64 = tensor_info.GetShape();
       std::vector<int> output_shape(output_shape_int64.begin(),
                                     output_shape_int64.end());
-      outputs.set(m_outputNames[i], std::move(output_buffer),
-                  std::move(output_shape));
+      const DataType output_type =
+          ortDataTypeToAiCore(tensor_info.GetElementType());
+
+      if (m_outputIsStatic[i]) {
+        // ORT already wrote into our buffer — move it in, no copy.
+        outputs.set(m_outputNames[i], std::move(bound_output_buffers[i]),
+                    std::move(output_shape));
+      } else {
+        const void *raw_data = output_tensors[i].GetTensorRawData();
+        const size_t byte_size = tensor_info.GetElementCount() *
+                                 TypedBuffer::getElementSize(output_type);
+        std::vector<uint8_t> byte_data(
+            static_cast<const uint8_t *>(raw_data),
+            static_cast<const uint8_t *>(raw_data) + byte_size);
+        outputs.set(m_outputNames[i],
+                    TypedBuffer::createFromCpu(output_type, std::move(byte_data)),
+                    std::move(output_shape));
+      }
     }
 
     return InferErrorCode::SUCCESS;

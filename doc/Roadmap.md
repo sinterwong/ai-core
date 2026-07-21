@@ -100,8 +100,8 @@
 
 ### 任务
 
-- [ ] **CPU 预处理单趟化**：现状一帧至少 4 次全图遍历/分配（`clone` → `convertTo` → `split`/`merge` 归一化 → `convertLayout`）。归一化合并进 `convertTo(alpha, beta)`，直接写目标 buffer。
-- [ ] **FP16 路径去双拷贝**：去掉中间 FP32 vector 与末端 `vector<uint8_t>` 拷贝，直接落 `TypedBuffer`。
+- [x] **CPU 预处理单趟化**：现状一帧至少 4 次全图遍历/分配（`clone` → `convertTo` → `split`/`merge` 归一化 → `convertLayout`）。归一化合并进 `convertTo(alpha, beta)`，直接写目标 buffer。（融合 kernel `fusedWrite<Dst,Chw>`：crop 零拷贝、resize 唯一分配、归一化+dtype+布局单趟直写 TypedBuffer。median 3.16ms→1.53ms，-51.6%，达标）
+- [x] **FP16 路径去双拷贝**：去掉中间 FP32 vector 与末端 `vector<uint8_t>` 拷贝，直接落 `TypedBuffer`。（同上融合 kernel：fp16 逐元素转半精度直写，无中间 fp32 vector 无末端拷贝）
 - [ ] **ORT 输出零拷贝**：IOBinding + 预分配输出缓冲（`max_output_buffer_sizes` 字段已存在但 ORT 未用）。
 - [ ] **热路径堆分配清零**：preprocessor 实例、后处理分发对象移到 initialize 阶段持有；`RuntimeContext` 复用。
 - [ ] **ORT 线程配置可配**：`SetIntraOpNumThreads(hardware_concurrency())` 硬编码在多实例场景互相打架。
