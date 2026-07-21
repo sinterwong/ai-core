@@ -39,3 +39,5 @@ assets/models/*.engine
 
 build-tsan/
 install-tsan/
+
+doc/doxygen/
