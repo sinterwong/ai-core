@@ -503,3 +503,21 @@ LOG_ERROR_FMT("infer failed, code = %d", static_cast<int>(code));
 ```
 
 日志级别（`LogLevel`）：`Trace / Debug / Info / Warning / Error / Fatal / Off`。运行时通过 `ai_core::logging::Logger::instance().setLevel(...)` 调整。`LOG_*` 宏在编译期会按 `AI_CORE_LOG_LEVEL` 过滤，不会把禁用级别的字符串拼进二进制。
+
+`to_string(InferErrorCode)`（`<ai_core/error_code.hpp>`）返回错误码的稳定可读名，`operator<<` 打印 `Name(number)`，日志/排错直接用。
+
+## 13. 配置模块 `ai_core::config`（可选）
+
+`<ai_core/config/algo_config.hpp>`，独立目标 `ai_core::ai_core_config`
+（`BUILD_AI_CORE_CONFIG=ON`，默认开）。从 JSON 加载并校验整条流水线定义，算法编排不写 C++。
+
+```cpp
+#include "ai_core/config/algo_config.hpp"
+using namespace ai_core;
+
+config::AlgoConfig cfg = config::loadAlgoConfig("conf/model.json");
+dnn::AlgoInference engine(cfg.module_types, cfg.infer_params);
+engine.initialize(cfg.preproc_params, cfg.postproc_params);
+```
+
+JSON 键统一 camelCase（见 `assets/conf/*.json`）。校验失败抛 `config::ConfigError`，消息含出错的键与期望/实际。`loadAlgoConfig` 的 `modelPath` 相对配置文件祖父目录解析（可用 `model_root` 覆盖）。完整消费示例见 `examples/starter/`。

@@ -1,6 +1,31 @@
 # Changelog
 
-本项目无外部用户、无兼容包袱；v1.4 之前的接口变更一律不留兼容别名。
+本项目无外部用户、无兼容包袱；v1.4 之前的接口变更一律不留兼容别名。**v1.4 起公共 API 终态，此后只加不改。**
+
+## v2.0 — 产品起手能力（2026-07）
+
+新增（公共 API 只加不改）：
+
+- **`ai_core::config` 模块**（`<ai_core/config/algo_config.hpp>`，`BUILD_AI_CORE_CONFIG`）：JSON 加载整条流水线 + schema 校验（`ConfigError`）。统一 camelCase 键，修复 v1.3 记录的 snake/camelCase 不一致 bug，OCR 示例端到端跑通。
+- **`to_string(InferErrorCode)`** + `operator<<`；facade 错误日志带 stage + 错误码。
+- **`AlgoInference::getAsyncEngine()` / `AlgoInferEngine::getAsyncEngine()`**（v1.7）：异步正门。
+- `AlgoInferParams.intra/inter_op_num_threads`（v1.6）：ORT 线程可配。
+- `examples/starter/`（find_package 消费路径）、`examples/async_pipeline/`（异步流水线）、`doc/PluginGuide.md`（张量契约）、`Doxyfile`、`CMakePresets.json`、`scripts/{bootstrap,fetch_models,coverage}.sh`。
+
+## v1.7 — 并发与异步（2026-07）
+
+- **TRT 同步 infer 去大锁**：`TrtAlgoInference::infer` 全局 mutex → execution context pool（每 context 独立 CUDA stream）。**break**：并发语义从「串行」变「并发」。
+- 异步正门 `getAsyncEngine()`；ORT 并发审计（已最优）；多线程吞吐 benchmark；TSan 我方代码全绿（`tests/tsan.supp`）。
+
+## v1.6 — 数据通路性能（2026-07）
+
+- CPU 单帧预处理融合单趟化：3.16ms → 1.53ms（-51.6%）；FP16 去双拷贝。
+- ORT 静态输出 IOBinding 零拷贝；`intra/inter_op_num_threads` 可配。
+- **break**：`TypedBuffer::resize` → `resizeDiscard` / `resizePreserving`（已在 v1.4 落地）。
+
+## v1.5 — 测试体系与基线（2026-07）
+
+- 核心组件行覆盖 82%（`scripts/coverage.sh`，CI 门禁 80%）；集成矩阵 + 模型 provisioning 脚本化；benchmark 基线存档；线程契约进头文件（`@par Thread safety`）。无 API 变更。
 
 ## v1.4 — 数据层重塑（2026-07）
 

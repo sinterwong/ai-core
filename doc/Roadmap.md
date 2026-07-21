@@ -142,13 +142,13 @@
 
 ### 任务
 
-- [ ] **配置模块**：`examples/algo_config_parser` 升级为正式可选模块 `ai_core::config`，全部算法参数支持 JSON 定义，加载即用——新产品的算法编排不写 C++。
-  - 已知问题（v1.3 发现）：parser 与 `assets/conf/*.json` 键风格不一致（parser 读 `preproc_params`/`input_names` 等 snake_case，JSON 写 `preprocParams`/`inputNames` 等 camelCase），preproc/postproc 参数从未被解析，OCR 示例因此跑不通。升级为正式模块时统一键风格并加 schema 校验。
-- [ ] **错误详情通道**：`InferErrorCode::to_string`；facade 提供错误上下文（哪个张量、期望什么、拿到什么），排查不靠翻日志。
-- [ ] **示例即模板**：det / cls / seg / OCR / 异步流水线示例整理成可直接复制起手的 starter 结构（`examples/starter/`），带自己的 CMakeLists，验证 `find_package(ai_core)` 消费路径。
-- [ ] **文档体系**：Doxygen 站点、架构文档更新（Framework.md 对齐终态）、插件开发指南、各 postproc 张量契约（名字/shape/dtype）、线程模型文档。
-- [ ] **CMake 组件化**：后端拆为可选组件（`find_package(ai_core COMPONENTS ort trt)`）；CMake Presets；显式源文件列表替代 `GLOB_RECURSE`。
-- [ ] **一键环境**：脚本化拉起依赖 + 构建 + 测试（新机器从 clone 到全绿一条命令）。
+- [x] **配置模块**：`examples/algo_config_parser` 升级为正式可选模块 `ai_core::config`，全部算法参数支持 JSON 定义，加载即用——新产品的算法编排不写 C++。（`ai_core::config`，`BUILD_AI_CORE_CONFIG=ON`；`loadAlgoConfig` + `ConfigError` schema 校验）
+  - 已知问题（v1.3 发现）：parser 与 `assets/conf/*.json` 键风格不一致——**已修复**：统一 camelCase（与 JSON 一致）+ schema 校验；OCR det+reco 示例端到端跑通。
+- [x] **错误详情通道**：`InferErrorCode::to_string`；facade 提供错误上下文（哪个张量、期望什么、拿到什么），排查不靠翻日志。（constexpr `to_string` + `operator<<`；facade 日志带「哪个 stage + 错误码」，后端已带张量级 expected/got）
+- [x] **示例即模板**：det / cls / seg / OCR / 异步流水线示例整理成可直接复制起手的 starter 结构（`examples/starter/`），带自己的 CMakeLists，验证 `find_package(ai_core)` 消费路径。（`examples/starter/` 独立项目，find_package 消费路径已实测端到端跑通 YOLO）
+- [x] **文档体系**：Doxygen 站点、架构文档更新（Framework.md 对齐终态）、插件开发指南、各 postproc 张量契约（名字/shape/dtype）、线程模型文档。（`Doxyfile` + `doc/PluginGuide.md`（含每个 postproc 张量契约表）+ Framework.md 线程模型；API.md/README 对齐终态）
+- [x] **CMake 组件化**：后端拆为可选组件（`find_package(ai_core COMPONENTS ort trt)`）；CMake Presets；显式源文件列表替代 `GLOB_RECURSE`。（`CMakePresets.json`；显式源列表；`ai_core_<comp>_FOUND` 组件查询——单库编译进后端，组件报告可用性）
+- [x] **一键环境**：脚本化拉起依赖 + 构建 + 测试（新机器从 clone 到全绿一条命令）。（`scripts/bootstrap.sh`：依赖→配置→构建→安装→模型→测试，幂等、后端可选）
 
 ### 可选延伸（backlog，按需要再排）
 
@@ -157,20 +157,22 @@
 
 ### 验收标准
 
-- 新机器：clone → 一条命令 → 全部测试与示例通过。
-- 起手实测：复制 starter、换一个新模型、改 JSON 配置，一天内跑通新产品原型。
+- 新机器：clone → 一条命令 → 全部测试与示例通过。（`scripts/bootstrap.sh`）
+- 起手实测：复制 starter、换一个新模型、改 JSON 配置，一天内跑通新产品原型。（`examples/starter/` + `ai_core::config` 已验证消费路径）
+
+**v2.0 完成状态（2026-07）**：6 项任务全部完成。`ai_core::config` 修复 OCR 示例、错误码 to_string、find_package starter、插件指南 + 张量契约、CMake presets/组件查询、一键 bootstrap。公共 API 保持终态（v2.0 只加不改）。
 
 ---
 
 ## 版本总览
 
-| 版本 | 主题 | 相对工作量 | 关键产出 |
-|---|---|---|---|
-| v1.3 | 清算与合一 | ★★★ | 零已知缺陷、单一分发机制、CI 安全网 |
-| v1.4 | 数据层重塑 | ★★★ | **公共 API 终态**（ImageView、Tensor） |
-| v1.5 | 测试体系与基线 | ★★☆ | 覆盖 ≥80%、benchmark 基线、线程契约 |
-| v1.6 | 数据通路性能 | ★★☆ | 预处理 -40%、零多余拷贝 |
-| v1.7 | 并发与异步 | ★★★ | 多线程近线性、异步正门可达 |
-| v2.0 | 产品起手能力 | ★★☆ | 一天起手一个产品原型 |
+| 版本 | 主题 | 相对工作量 | 状态 | 关键产出 |
+|---|---|---|---|---|
+| v1.3 | 清算与合一 | ★★★ | ✅ | 零已知缺陷、单一分发机制、CI 安全网 |
+| v1.4 | 数据层重塑 | ★★★ | ✅ | **公共 API 终态**（ImageView、Tensor） |
+| v1.5 | 测试体系与基线 | ★★☆ | ✅ | 覆盖 82%、benchmark 基线、线程契约 |
+| v1.6 | 数据通路性能 | ★★☆ | ✅ | 预处理 -52%、ORT IOBinding |
+| v1.7 | 并发与异步 | ★★★ | ✅ | TRT context pool、异步正门 + 示例 |
+| v2.0 | 产品起手能力 | ★★☆ | ✅ | config 模块、starter、一键 bootstrap |
 
 依赖关系：v1.5 的测试投入必须等 v1.4 的 API 终态（否则测试写两遍）；v1.6/v1.7 的性能与并发必须踩在 v1.5 的基线与安全网上。v1.3 与 v1.4 之间顺序可微调，但都必须在 v1.5 之前完成。
