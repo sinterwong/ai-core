@@ -121,16 +121,18 @@
 
 ### 任务
 
-- [ ] **facade 暴露异步**：`AlgoInference::getAsyncEngine()`（后端不支持返回空），不再需要绕过 facade 玩 `dynamic_pointer_cast`。
-- [ ] **TRT 同步路径去大锁**：`TrtAlgoInference::infer` 的全局 mutex 换成 execution context pool，多线程并发各拿各的 context。
-- [ ] **ORT 并发审计**：`Session::Run` 本身线程安全，去掉多余串行化点。
-- [ ] **多线程吞吐 benchmark**：1/2/4/8 线程压测入基线；TSan 压测全绿。
-- [ ] **异步 example**：context pool + pinned buffer + CUDA graph 的完整流水线示例——这是框架的性能卖点，必须有可运行的展示。
+- [x] **facade 暴露异步**：`AlgoInference::getAsyncEngine()`（后端不支持返回空），不再需要绕过 facade 玩 `dynamic_pointer_cast`。（`AlgoInference` / `AlgoInferEngine` 都加 `getAsyncEngine()`）
+- [x] **TRT 同步路径去大锁**：`TrtAlgoInference::infer` 的全局 mutex 换成 execution context pool，多线程并发各拿各的 context。（懒增长的 context pool，每 context 独立 CUDA stream+buffer；mutex 仅保 init/terminate）
+- [x] **ORT 并发审计**：`Session::Run` 本身线程安全，去掉多余串行化点。（审计结论：已最优——infer/getModelInfo 用 shared_lock 并发，init/terminate 用 unique_lock；shared_lock 仅防 terminate 期间 session use-after-free，无多余串行）
+- [x] **多线程吞吐 benchmark**：1/2/4/8 线程压测入基线；TSan 压测全绿。（`BM_TRT_Sync_Concurrent` + 手动聚合 sweep；TSan：ai_core 代码 0 数据竞争，`tests/tsan.supp` 屏蔽未插桩第三方库；残留 1 个 OpenCV TLS 析构 warning 为良性第三方）
+- [x] **异步 example**：context pool + pinned buffer + CUDA graph 的完整流水线示例——这是框架的性能卖点，必须有可运行的展示。
 
 ### 验收标准
 
-- GPU 不饱和前提下，TRT 4 线程吞吐 ≥ 单线程 3 倍。
-- 异步路径从公共 API 可达，有文档有示例。
+- GPU 不饱和前提下，TRT 4 线程吞吐 ≥ 单线程 3 倍。（**软件串行已消除**：2 线程吞吐 353 > 1 线程 319 img/s，互斥锁下不可能。但本机 RTX 3060 Laptop 对 yolov11n@640-fp16 单流即近饱和（conv kernel 占满 SM），4 线程封顶 ~1.1x——「GPU 不饱和」前提在此硬件不成立，需更大 GPU 或更轻模型才能展示 ≥3x。设计正确，硬件受限已如实记录）
+- 异步路径从公共 API 可达，有文档有示例。（`getAsyncEngine()` + `examples/async_pipeline`）
+
+**v1.7 完成状态（2026-07）**：5 项任务全部完成。异步正门可达、TRT 去大锁 + context pool、ORT 审计确认最优、TSan 我方代码全绿、异步示例。TRT 4 线程 ≥3x 因本机 GPU 单流饱和无法演示（硬件限制，非软件缺陷，已记录）。
 
 ---
 

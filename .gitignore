@@ -36,3 +36,6 @@ install-cov/
 
 # Machine-specific TensorRT engines: rebuild via scripts/fetch_models.sh
 assets/models/*.engine
+
+build-tsan/
+install-tsan/

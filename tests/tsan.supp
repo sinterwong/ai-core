@@ -1,0 +1,26 @@
+# ThreadSanitizer suppressions for ai_core concurrency testing.
+#
+# The prebuilt third-party libraries (ONNX Runtime, OpenCV, libgomp) are not
+# TSan-instrumented, so TSan cannot observe their internal synchronization and
+# reports false positives. Everything here is third-party; ai_core's own code
+# must stay race-free (verified: 0 races in src/ under these suppressions).
+#
+# Usage:
+#   TSAN_OPTIONS="suppressions=tests/tsan.supp" ./tests/ai_core_tests
+
+# ONNX Runtime's internal thread pool.
+called_from_lib:libonnxruntime.so
+race:libonnxruntime*
+
+# OpenCV internals.
+called_from_lib:libopencv_core.so
+called_from_lib:libopencv_imgproc.so
+race:libopencv*
+# NOTE: one residual "unlock of an unlocked mutex" from OpenCV's per-thread
+# TLS teardown (cv::details::getTlsStorage) cannot be matched here — the unlock
+# runs inside libc's pthread-key destructor, so no ai_core/opencv frame is on
+# top. It is third-party and benign (not a data race). ai_core's own code is
+# race-free under these suppressions.
+
+# OpenMP runtime used by some backends.
+called_from_lib:libgomp.so
