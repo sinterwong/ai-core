@@ -26,9 +26,10 @@ struct AlgoInferParams {
   DataType data_type;
   std::map<std::string, size_t> max_output_buffer_sizes;
 
-  // ORT thread pool sizing. 0 = let the backend decide (ORT default). Hardcoding
-  // hardware_concurrency() made multiple engine instances oversubscribe the
-  // machine and fight for cores; set these explicitly in multi-instance setups.
+  // ORT thread pool sizing. 0 = let the backend decide (ORT default).
+  // Hardcoding hardware_concurrency() made multiple engine instances
+  // oversubscribe the machine and fight for cores; set these explicitly in
+  // multi-instance setups.
   int intra_op_num_threads = 0;
   int inter_op_num_threads = 0;
 };

@@ -9,11 +9,11 @@
  *
  */
 #include "ai_core/algo_postprocessor.hpp"
-#include "ai_core/opencv_interop.hpp"
 #include "ai_core/algo_preprocessor.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/infer_engine_wrapper.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <benchmark/benchmark.h>
 #include <memory>
@@ -110,7 +110,7 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   engine->infer(model_input, model_output);
 
   ai_core::dnn::AlgoPostproc postproc("Yolov11Det");
-  
+
   ai_core::AlgoPostprocParams postproc_params;
   ai_core::AnchorDetParams anchor_det_params;
   anchor_det_params.cond_thre = 0.5f;

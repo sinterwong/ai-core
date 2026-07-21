@@ -296,8 +296,8 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
         const DataType dt = m_modelInfo->outputs[i].data_type;
         const size_t bytes = static_cast<size_t>(m_outputElementCount[i]) *
                              TypedBuffer::getElementSize(dt);
-        bound_output_buffers[i] = TypedBuffer::createFromCpu(
-            dt, std::vector<uint8_t>(bytes));
+        bound_output_buffers[i] =
+            TypedBuffer::createFromCpu(dt, std::vector<uint8_t>(bytes));
         const auto &shape = m_modelInfo->outputs[i].shape;
         bound_output_values.emplace_back(Ort::Value::CreateTensor(
             *m_memoryInfo, bound_output_buffers[i].getRawHostPtr(), bytes,
@@ -328,12 +328,13 @@ InferErrorCode OrtAlgoInference::infer(const TensorData &inputs,
         const void *raw_data = output_tensors[i].GetTensorRawData();
         const size_t byte_size = tensor_info.GetElementCount() *
                                  TypedBuffer::getElementSize(output_type);
-        std::vector<uint8_t> byte_data(
-            static_cast<const uint8_t *>(raw_data),
-            static_cast<const uint8_t *>(raw_data) + byte_size);
-        outputs.set(m_outputNames[i],
-                    TypedBuffer::createFromCpu(output_type, std::move(byte_data)),
-                    std::move(output_shape));
+        std::vector<uint8_t> byte_data(static_cast<const uint8_t *>(raw_data),
+                                       static_cast<const uint8_t *>(raw_data) +
+                                           byte_size);
+        outputs.set(
+            m_outputNames[i],
+            TypedBuffer::createFromCpu(output_type, std::move(byte_data)),
+            std::move(output_shape));
       }
     }
 

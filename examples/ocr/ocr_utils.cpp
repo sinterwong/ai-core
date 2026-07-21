@@ -1,6 +1,6 @@
 #include "ocr_utils.hpp"
-#include "ai_core/opencv_interop.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include <opencv2/imgcodecs.hpp>
 
 namespace ai_core::example {

@@ -105,10 +105,10 @@ DualRawSegRet UNetDualOutputSeg::processSingleItem(
         static_cast<size_t>(height) * width * sizeof(float);
     std::vector<uint8_t> bytes(byte_size);
     std::memcpy(bytes.data(), data, byte_size);
-    return Tensor{tag,
-                  TypedBuffer::createFromCpu(DataType::FLOAT32,
-                                             std::move(bytes)),
-                  {height, width}};
+    return Tensor{
+        tag,
+        TypedBuffer::createFromCpu(DataType::FLOAT32, std::move(bytes)),
+        {height, width}};
   };
 
   DualRawSegRet ret;

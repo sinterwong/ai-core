@@ -13,8 +13,8 @@
 
 #include "ai_core/common_types.hpp"
 #include "ai_core/error_code.hpp"
-#include "ai_core/infer_config.hpp"
 #include "ai_core/infer_async.hpp"
+#include "ai_core/infer_config.hpp"
 #include "ai_core/tensor_data.hpp"
 #include <memory>
 

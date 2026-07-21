@@ -427,8 +427,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
     }
     requirePackedView(input.image);
 
-    runtime_args[i].roi = input.roi.value_or(
-        Rect{0, 0, input.image.width, input.image.height});
+    runtime_args[i].roi =
+        input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
 
     const Rect &roi = runtime_args[i].roi;
     if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
@@ -591,8 +591,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
   // Allocate all buffers fresh for this call
   cuda_utils::DeviceByteBuffer d_input_image(viewByteSize(image));
   CHECK_CUDA_ERROR(cudaMemcpy(d_input_image.unsafePtr(), image.data,
-                              viewByteSize(image),
-                              cudaMemcpyHostToDevice));
+                              viewByteSize(image), cudaMemcpyHostToDevice));
 
   cuda_utils::CudaDeviceBuffer<float> d_mean(args.mean_vals.size());
   cuda_utils::CudaDeviceBuffer<float> d_std(args.norm_vals.size());
@@ -630,8 +629,9 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
     cuda_op::cropResizeNormalizeGpu(
         static_cast<const uint8_t *>(d_input_image.unsafePtr()),
         static_cast<float *>(hwc_buffer.getRawDevicePtr()), image.height,
-        image.width, src_c, roi.x, roi.y, src_h, src_w, args.model_input_shape.h,
-        args.model_input_shape.w, d_mean.readPtr(), d_std.readPtr(), stream);
+        image.width, src_c, roi.x, roi.y, src_h, src_w,
+        args.model_input_shape.h, args.model_input_shape.w, d_mean.readPtr(),
+        d_std.readPtr(), stream);
   }
 
   TypedBuffer final_device_buffer =
@@ -718,8 +718,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
     }
     requirePackedView(input.image);
 
-    runtime_args[i].roi = input.roi.value_or(
-        Rect{0, 0, input.image.width, input.image.height});
+    runtime_args[i].roi =
+        input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
 
     const Rect &roi = runtime_args[i].roi;
     if (roi.x < 0 || roi.y < 0 || roi.width <= 0 || roi.height <= 0 ||
@@ -731,8 +731,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
 
     d_input_images.emplace_back(viewByteSize(input.image));
     CHECK_CUDA_ERROR(cudaMemcpy(d_input_images.back().unsafePtr(),
-                                input.image.data,
-                                viewByteSize(input.image),
+                                input.image.data, viewByteSize(input.image),
                                 cudaMemcpyHostToDevice));
 
     h_src_ptrs[i] = static_cast<uint8_t *>(d_input_images.back().unsafePtr());

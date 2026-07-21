@@ -52,8 +52,8 @@ size_t inputElementCount() {
 // preprocessor targeting an accelerator buffer).
 TensorData makePinnedInput(IAsyncInferEngine &engine, int seed) {
   const size_t elems = inputElementCount();
-  TypedBuffer buffer =
-      engine.allocateAcceleratorBuffer(DataType::FLOAT32, elems * sizeof(float));
+  TypedBuffer buffer = engine.allocateAcceleratorBuffer(DataType::FLOAT32,
+                                                        elems * sizeof(float));
   float *ptr = buffer.getHostPtr<float>();
   for (size_t i = 0; i < elems; ++i) {
     ptr[i] = static_cast<float>((i + seed) % 255) / 255.0f;
@@ -153,9 +153,8 @@ int main(int argc, char **argv) {
 
   const int processed = total_frames - failures.load();
   LOG_INFO_S << "Processed " << processed << "/" << total_frames
-             << " frames in " << elapsed << " s  ("
-             << (processed / elapsed) << " img/s, " << num_workers
-             << " workers)";
+             << " frames in " << elapsed << " s  (" << (processed / elapsed)
+             << " img/s, " << num_workers << " workers)";
   if (failures.load() > 0) {
     LOG_ERROR_S << failures.load() << " inference(s) failed.";
     return 1;

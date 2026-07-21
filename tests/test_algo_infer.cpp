@@ -1,7 +1,7 @@
 #include "ai_core/algo_inference.hpp"
-#include "ai_core/opencv_interop.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "gtest/gtest.h"
 #include <cstring>
 #include <filesystem>
@@ -114,8 +114,7 @@ TEST(AlgoInferenceTest, YoloDet) {
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;
-  ASSERT_EQ(algo_inf.infer(algo_input, algo_output),
-            InferErrorCode::SUCCESS);
+  ASSERT_EQ(algo_inf.infer(algo_input, algo_output), InferErrorCode::SUCCESS);
 
   auto *det_ret = algo_output.getParams<DetRet>();
   checkResults(det_ret);
@@ -141,8 +140,8 @@ TEST(AlgoInferenceTest, PurePointerPath) {
   const int height = rgb.rows;
   std::vector<uint8_t> pixels(static_cast<size_t>(width) * height * 3);
   for (int y = 0; y < height; ++y) {
-    std::memcpy(pixels.data() + static_cast<size_t>(y) * width * 3,
-                rgb.ptr(y), static_cast<size_t>(width) * 3);
+    std::memcpy(pixels.data() + static_cast<size_t>(y) * width * 3, rgb.ptr(y),
+                static_cast<size_t>(width) * 3);
   }
 
   ImageView view;

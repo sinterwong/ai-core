@@ -53,7 +53,8 @@ struct AlgoConfig {
  * @param config_path path to the .json file.
  * @param model_root  directory that `inferParams.modelPath` is resolved
  *   against. If empty, defaults to the config file's grandparent directory
- *   (so `<root>/conf/x.json` resolves `models/y.onnx` to `<root>/models/y.onnx`).
+ *   (so `<root>/conf/x.json` resolves `models/y.onnx` to
+ * `<root>/models/y.onnx`).
  * @throws ConfigError on any schema violation; std::runtime_error on I/O.
  */
 AlgoConfig loadAlgoConfig(const std::string &config_path,

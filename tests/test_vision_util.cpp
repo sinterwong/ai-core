@@ -152,7 +152,8 @@ TEST(NmsTest, SuppressesOverlappingSameClass) {
       {Rect{1, 1, 10, 10}, 0.8f, 0}, // heavy overlap with the first, class 0
       {Rect{50, 50, 10, 10}, 0.7f, 0},
   };
-  auto kept = ai_core::utils::nms(boxes, /*nms_thre=*/0.45f, /*conf_thre=*/0.5f);
+  auto kept =
+      ai_core::utils::nms(boxes, /*nms_thre=*/0.45f, /*conf_thre=*/0.5f);
   // The overlapping lower-score box is suppressed; the distant one survives.
   EXPECT_EQ(kept.size(), 2u);
 }

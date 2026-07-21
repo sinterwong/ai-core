@@ -265,7 +265,6 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
       memcpy(output_buffer.getRawHostPtr(), ncnn_out.data,
              output_buffer.getSizeBytes());
 
-
       std::vector<int> shape_vec;
       if (ncnn_out.dims == 1) { // Typically (Features) or (Width)
         shape_vec = {ncnn_out.w};
@@ -309,8 +308,7 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
         // Let's assume it's (C,D,H,W) from ncnn if dims == 4
         shape_vec = {ncnn_out.c, ncnn_out.d, ncnn_out.h, ncnn_out.w};
       }
-      outputs.set(output_name, std::move(output_buffer),
-                  std::move(shape_vec));
+      outputs.set(output_name, std::move(output_buffer), std::move(shape_vec));
     }
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {

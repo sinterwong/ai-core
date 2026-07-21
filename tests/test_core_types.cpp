@@ -157,9 +157,8 @@ struct ImplWithParams : TestBase {
 
 TEST(FactoryTest, RegisterAndCreate) {
   auto &factory = Factory<TestBase>::instance();
-  factory.registerCreator("ImplA", [](const DataPacket &) {
-    return std::make_shared<ImplA>();
-  });
+  factory.registerCreator(
+      "ImplA", [](const DataPacket &) { return std::make_shared<ImplA>(); });
 
   EXPECT_TRUE(factory.isRegistered("ImplA"));
   auto obj = factory.create("ImplA");
@@ -187,12 +186,10 @@ TEST(FactoryTest, UnknownNameThrows) {
 
 TEST(FactoryTest, DuplicateRegistrationRejected) {
   auto &factory = Factory<TestBase>::instance();
-  factory.registerCreator("Dup", [](const DataPacket &) {
-    return std::make_shared<ImplA>();
-  });
-  bool second = factory.registerCreator("Dup", [](const DataPacket &) {
-    return std::make_shared<ImplA>();
-  });
+  factory.registerCreator(
+      "Dup", [](const DataPacket &) { return std::make_shared<ImplA>(); });
+  bool second = factory.registerCreator(
+      "Dup", [](const DataPacket &) { return std::make_shared<ImplA>(); });
   EXPECT_FALSE(second);
 }
 
@@ -203,9 +200,10 @@ TEST(FactoryTest, NullCreatorThrows) {
 
 TEST(FactoryTest, CreatorExceptionIsWrapped) {
   auto &factory = Factory<TestBase>::instance();
-  factory.registerCreator("Throws", [](const DataPacket &) -> std::shared_ptr<TestBase> {
-    throw std::invalid_argument("boom");
-  });
+  factory.registerCreator("Throws",
+                          [](const DataPacket &) -> std::shared_ptr<TestBase> {
+                            throw std::invalid_argument("boom");
+                          });
   EXPECT_THROW(factory.create("Throws"), std::runtime_error);
 }
 

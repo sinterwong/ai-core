@@ -77,8 +77,8 @@ void requireArrayNonEmpty(const json &parent, const std::string &key,
 
 DeviceType toDeviceType(int v, const std::string &ctx) {
   if (v != 0 && v != 1) {
-    fail(ctx + ".deviceType", "must be 0 (CPU) or 1 (GPU), got " +
-                                  std::to_string(v));
+    fail(ctx + ".deviceType",
+         "must be 0 (CPU) or 1 (GPU), got " + std::to_string(v));
   }
   return static_cast<DeviceType>(v);
 }
@@ -125,10 +125,10 @@ FramePreprocessArg parseFramePreprocessArg(const json &p) {
   arg.hwc2chw = optionalScalar<bool>(p, "hwc2chw", false, ctx);
   arg.need_resize = optionalScalar<bool>(p, "needResize", false, ctx);
   arg.is_equal_scale = optionalScalar<bool>(p, "isEqualScale", false, ctx);
-  arg.data_type = toDataType(
-      optionalScalar<int>(p, "dataType", static_cast<int>(DataType::FLOAT32),
-                          ctx),
-      ctx);
+  arg.data_type =
+      toDataType(optionalScalar<int>(p, "dataType",
+                                     static_cast<int>(DataType::FLOAT32), ctx),
+                 ctx);
   arg.output_location = static_cast<BufferLocation>(optionalScalar<int>(
       p, "bufferLocation", static_cast<int>(BufferLocation::CPU), ctx));
 
@@ -152,13 +152,10 @@ AlgoInferParams parseInferParams(const json &p, const std::string &model_root) {
   ip.need_decrypt = optionalScalar<bool>(p, "needDecrypt", false, ctx);
   ip.name = optionalScalar<std::string>(p, "name", "", ctx);
   ip.decryptkey_str = optionalScalar<std::string>(p, "decryptKey", "", ctx);
-  ip.max_output_buffer_sizes =
-      optionalScalar<std::map<std::string, size_t>>(p, "maxOutputBufferSizes",
-                                                    {}, ctx);
-  ip.intra_op_num_threads =
-      optionalScalar<int>(p, "intraOpNumThreads", 0, ctx);
-  ip.inter_op_num_threads =
-      optionalScalar<int>(p, "interOpNumThreads", 0, ctx);
+  ip.max_output_buffer_sizes = optionalScalar<std::map<std::string, size_t>>(
+      p, "maxOutputBufferSizes", {}, ctx);
+  ip.intra_op_num_threads = optionalScalar<int>(p, "intraOpNumThreads", 0, ctx);
+  ip.inter_op_num_threads = optionalScalar<int>(p, "interOpNumThreads", 0, ctx);
   return ip;
 }
 
@@ -166,7 +163,7 @@ AlgoPostprocParams parsePostprocParams(const json &p,
                                        const std::string &postproc_module) {
   const std::string ctx = "postprocParams";
   static const std::set<std::string> kAnchorDet = {"Yolov11Det", "RTMDet",
-                                                    "NanoDet"};
+                                                   "NanoDet"};
   static const std::set<std::string> kGeneric = {
       "SoftmaxCls", "FprCls", "RawModelOutput", "OCRReco", "UNetDualOutputSeg"};
   static const std::set<std::string> kConfidenceFilter = {"SemanticSeg"};
@@ -191,8 +188,7 @@ AlgoPostprocParams parsePostprocParams(const json &p,
     g.output_names = std::move(output_names);
     params.setParams(g);
   } else {
-    fail("types.postproc",
-         "unknown postproc module '" + postproc_module + "'");
+    fail("types.postproc", "unknown postproc module '" + postproc_module + "'");
   }
   return params;
 }
@@ -205,10 +201,10 @@ AlgoConfig parseRoot(const json &root, const std::string &model_root) {
 
   AlgoConfig cfg;
   cfg.name = optionalScalar<std::string>(algo, "name", "", "algorithm");
-  cfg.module_types = parseModuleTypes(requireObject(algo, "types", "algorithm"));
-  cfg.infer_params =
-      parseInferParams(requireObject(algo, "inferParams", "algorithm"),
-                       model_root);
+  cfg.module_types =
+      parseModuleTypes(requireObject(algo, "types", "algorithm"));
+  cfg.infer_params = parseInferParams(
+      requireObject(algo, "inferParams", "algorithm"), model_root);
   if (cfg.infer_params.name.empty()) {
     cfg.infer_params.name = cfg.name;
   }
@@ -225,12 +221,11 @@ AlgoConfig parseRoot(const json &root, const std::string &model_root) {
   }
   if (has_preproc_json) {
     if (!kFramePreproc.count(cfg.module_types.preproc_module)) {
-      fail("types.preproc", "unknown preproc module '" +
-                                cfg.module_types.preproc_module + "'");
+      fail("types.preproc",
+           "unknown preproc module '" + cfg.module_types.preproc_module + "'");
     }
-    cfg.preproc_params.setParams(
-        parseFramePreprocessArg(requireObject(algo, "preprocParams",
-                                              "algorithm")));
+    cfg.preproc_params.setParams(parseFramePreprocessArg(
+        requireObject(algo, "preprocParams", "algorithm")));
     cfg.has_preproc = true;
   }
 
@@ -241,9 +236,9 @@ AlgoConfig parseRoot(const json &root, const std::string &model_root) {
                       "or both absent");
   }
   if (has_postproc_json) {
-    cfg.postproc_params = parsePostprocParams(
-        requireObject(algo, "postprocParams", "algorithm"),
-        cfg.module_types.postproc_module);
+    cfg.postproc_params =
+        parsePostprocParams(requireObject(algo, "postprocParams", "algorithm"),
+                            cfg.module_types.postproc_module);
     cfg.has_postproc = true;
   }
 
@@ -275,10 +270,8 @@ AlgoConfig loadAlgoConfig(const std::string &config_path,
   std::string root = model_root;
   if (root.empty()) {
     // <root>/conf/x.json -> model paths resolve under <root>.
-    root = std::filesystem::path(config_path)
-               .parent_path()
-               .parent_path()
-               .string();
+    root =
+        std::filesystem::path(config_path).parent_path().parent_path().string();
   }
   return parseAlgoConfig(text, root);
 }

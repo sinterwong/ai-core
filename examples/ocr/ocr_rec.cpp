@@ -1,8 +1,8 @@
 #include "ocr_rec.hpp"
+#include "ai_core/config/algo_config.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
 #include "ai_core/preprocess_types.hpp"
-#include "ai_core/config/algo_config.hpp"
 #include <cstdint>
 #include <filesystem>
 #include <fstream>

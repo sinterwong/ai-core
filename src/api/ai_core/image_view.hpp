@@ -58,8 +58,7 @@ struct ImageView {
   int channels() const noexcept { return channelCount(format); }
 
   size_t strideBytes() const noexcept {
-    return stride != 0 ? stride
-                       : static_cast<size_t>(width) * channels();
+    return stride != 0 ? stride : static_cast<size_t>(width) * channels();
   }
 
   bool empty() const noexcept {

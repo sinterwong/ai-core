@@ -105,8 +105,7 @@ TEST(SoftmaxClsDecode, PicksArgmaxWithSoftmaxScore) {
   ASSERT_NE(cls, nullptr);
   EXPECT_EQ(cls->label, 1);
   // softmax([0,2,1])[1] = e^2 / (1 + e^2 + e)
-  const float expected =
-      std::exp(2.f) / (1.f + std::exp(2.f) + std::exp(1.f));
+  const float expected = std::exp(2.f) / (1.f + std::exp(2.f) + std::exp(1.f));
   EXPECT_NEAR(cls->score, expected, 1e-5);
 }
 
@@ -489,8 +488,10 @@ TEST(RtmDetDecode, DecodesSplitDetClsTensors) {
   };
   // cls: [1, anchors, nc]
   std::vector<float> cls_data{
-      0.1f, 0.75f, // anchor 0 -> class 1
-      0.f,  0.f,   // anchor 1 below threshold
+      0.1f,
+      0.75f, // anchor 0 -> class 1
+      0.f,
+      0.f, // anchor 1 below threshold
   };
 
   TensorData model_output;
@@ -620,8 +621,8 @@ TEST(FprClsDecode, BatchDecodesEachRow) {
   TensorData model_output;
   model_output.set("scores", floatBuffer({0.1f, 0.9f, /*row1*/ 0.8f, 0.2f}),
                    {2, 2});
-  model_output.set("birads",
-                   floatBuffer({0.1f, 0.2f, /*row1*/ 0.6f, 0.4f}), {2, 2});
+  model_output.set("birads", floatBuffer({0.1f, 0.2f, /*row1*/ 0.6f, 0.4f}),
+                   {2, 2});
 
   GenericPostParams params;
   params.output_names = {"scores", "birads"};
@@ -644,8 +645,8 @@ TEST(FprClsDecode, BatchDecodesEachRow) {
 TEST(OcrRecoDecode, BatchCtcPerRow) {
   TensorData model_output;
   model_output.set("lengths", int64Buffer({3, 2}), {2});
-  model_output.set("argmax",
-                   int64Buffer({4, 4, 0, 5, /*row1*/ 0, 7, 7, 8}), {2, 4});
+  model_output.set("argmax", int64Buffer({4, 4, 0, 5, /*row1*/ 0, 7, 7, 8}),
+                   {2, 4});
 
   GenericPostParams params;
   params.output_names = {"lengths", "argmax"};
@@ -715,8 +716,10 @@ TEST(RtmDetDecode, BatchDecodesEachImage) {
       20.f, 20.f, 80.f, 90.f, // image 1
   };
   std::vector<float> cls{
-      0.1f, 0.9f, // image 0 -> class 1
-      0.7f, 0.2f, // image 1 -> class 0
+      0.1f,
+      0.9f, // image 0 -> class 1
+      0.7f,
+      0.2f, // image 1 -> class 0
   };
   TensorData model_output;
   model_output.set("dets", floatBuffer(det), {batch, anchors, 4});

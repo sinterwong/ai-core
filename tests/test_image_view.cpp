@@ -106,8 +106,8 @@ TEST(InteropTest, MatFromViewRoundTrip) {
 TEST(InteropTest, MatFromViewRespectsStride) {
   // Simulate a strided view: 4x2 RGB rows padded to 16 bytes
   std::vector<uint8_t> pixels(4 * 16, 0);
-  pixels[0] = 42;        // (0,0) B
-  pixels[16] = 7;        // (1,0) B
+  pixels[0] = 42; // (0,0) B
+  pixels[16] = 7; // (1,0) B
 
   ImageView view;
   view.data = pixels.data();

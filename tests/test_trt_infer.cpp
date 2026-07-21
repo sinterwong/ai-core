@@ -1,11 +1,11 @@
 #include "ai_core/algo_types.hpp"
-#include "ai_core/opencv_interop.hpp"
 #include "ai_core/i_infer_engine.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/cuda_generic_preprocess.hpp"
 #include "gtest/gtest.h"
@@ -85,8 +85,8 @@ protected:
     AlgoInput algo_input;
     FrameInput frame_input;
     frame_input.image = ai_core::interop::viewFromMat(image_rgb);
-    frame_input.roi = ai_core::Rect{2, 2, image_rgb.cols - 4,
-                                                       image_rgb.rows - 4};
+    frame_input.roi =
+        ai_core::Rect{2, 2, image_rgb.cols - 4, image_rgb.rows - 4};
     algo_input.setParams(frame_input);
 
     std::shared_ptr<RuntimeContext> runtime_context =
@@ -309,16 +309,16 @@ TEST_F(TrtInferenceTest, StreamContextPreallocatedBuffers) {
   const auto &model_info = engine->getModelInfo();
   for (const auto &input : model_info.inputs) {
     const ai_core::Tensor *t = ctx.inputs.find(input.name);
-    ASSERT_NE(t, nullptr)
-        << "Missing pre-allocated input buffer: " << input.name;
+    ASSERT_NE(t, nullptr) << "Missing pre-allocated input buffer: "
+                          << input.name;
     EXPECT_TRUE(t->buffer.isPinned())
         << "Input buffer should be pinned: " << input.name;
   }
 
   for (const auto &output : model_info.outputs) {
     const ai_core::Tensor *t = ctx.outputs.find(output.name);
-    ASSERT_NE(t, nullptr)
-        << "Missing pre-allocated output buffer: " << output.name;
+    ASSERT_NE(t, nullptr) << "Missing pre-allocated output buffer: "
+                          << output.name;
     EXPECT_TRUE(t->buffer.isPinned())
         << "Output buffer should be pinned: " << output.name;
   }

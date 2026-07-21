@@ -1,10 +1,10 @@
 #include "ai_core/i_infer_engine.hpp"
-#include "ai_core/opencv_interop.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/cpu_generic_preprocess.hpp"
@@ -158,8 +158,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
                   cv::Scalar(0, 255, 0), 2);
     std::stringstream ss;
     ss << bbox.label << ":" << std::fixed << std::setprecision(2) << bbox.score;
-    cv::putText(vis_image, ss.str(), cv::Point(bbox.rect.x, bbox.rect.y), cv::FONT_HERSHEY_SIMPLEX,
-                1, cv::Scalar(0, 0, 255), 2);
+    cv::putText(vis_image, ss.str(), cv::Point(bbox.rect.x, bbox.rect.y),
+                cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
   }
   std::string output_filename = "vis_yolodet_" + config.test_name + ".png";
   cv::imwrite(output_filename, vis_image);

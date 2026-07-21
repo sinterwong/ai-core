@@ -2,8 +2,8 @@
 
 #include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/algo_preprocessor.hpp"
-#include "ai_core/infer_engine_wrapper.hpp"
 #include "ai_core/config/algo_config.hpp"
+#include "ai_core/infer_engine_wrapper.hpp"
 #include <vector>
 
 namespace cv {

@@ -99,14 +99,14 @@ CpuGenericCvPreprocessor::process(const FramePreprocessArg &params,
   TypedBuffer result;
   switch (params.data_type) {
   case DataType::FLOAT32:
-    result = TypedBuffer::createFromCpu(DataType::FLOAT32,
-                                        std::vector<uint8_t>(total_elements *
-                                                             sizeof(float)));
+    result = TypedBuffer::createFromCpu(
+        DataType::FLOAT32,
+        std::vector<uint8_t>(total_elements * sizeof(float)));
     break;
   case DataType::FLOAT16:
-    result = TypedBuffer::createFromCpu(DataType::FLOAT16,
-                                        std::vector<uint8_t>(total_elements *
-                                                             sizeof(uint16_t)));
+    result = TypedBuffer::createFromCpu(
+        DataType::FLOAT16,
+        std::vector<uint8_t>(total_elements * sizeof(uint16_t)));
     break;
   default:
     LOG_ERROR_S << "Unsupported data type: "
@@ -140,9 +140,8 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
       static_cast<size_t>(input_channels) * input_height * input_width;
   const size_t total_elements = single_image_size * batch_size;
 
-  const size_t elem_size = (args.data_type == DataType::FLOAT16)
-                               ? sizeof(uint16_t)
-                               : sizeof(float);
+  const size_t elem_size =
+      (args.data_type == DataType::FLOAT16) ? sizeof(uint16_t) : sizeof(float);
   if (args.data_type != DataType::FLOAT32 &&
       args.data_type != DataType::FLOAT16) {
     LOG_ERROR_S << "Unsupported data type: "
@@ -197,9 +196,9 @@ cv::Mat CpuGenericCvPreprocessor::cropAndResize(
                          "first 4 will be used.";
       }
       cv::Scalar pad = utils::createScalarFromVector(params.pad);
-      auto pad_ret = utils::escaleResizeWithPad(cropped, resized,
-                                                params.model_input_shape.h,
-                                                params.model_input_shape.w, pad);
+      auto pad_ret = utils::escaleResizeWithPad(
+          cropped, resized, params.model_input_shape.h,
+          params.model_input_shape.w, pad);
       runtime_args.top_pad = pad_ret.h;
       runtime_args.left_pad = pad_ret.w;
     } else {

@@ -537,10 +537,10 @@ void TrtAlgoInference::copyOutputsToHost(TensorData &outputs) {
                                      actual_output_size_bytes,
                                      cudaMemcpyDeviceToHost, m_stream));
 
-    outputs.set(name, TypedBuffer(),
-                std::vector<int>(actual_output_dims.d,
-                                 actual_output_dims.d +
-                                     actual_output_dims.nbDims));
+    outputs.set(
+        name, TypedBuffer(),
+        std::vector<int>(actual_output_dims.d,
+                         actual_output_dims.d + actual_output_dims.nbDims));
   }
 
   CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));

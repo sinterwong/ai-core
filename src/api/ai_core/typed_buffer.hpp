@@ -92,8 +92,8 @@ public:
    * @brief Wrap an existing GPU pointer without taking ownership. The caller
    * keeps the allocation alive for the buffer's lifetime.
    */
-  static TypedBuffer wrapGpu(DataType type, void *device_ptr,
-                             size_t size_bytes, int device_id = 0);
+  static TypedBuffer wrapGpu(DataType type, void *device_ptr, size_t size_bytes,
+                             int device_id = 0);
 
   /**
    * @brief Create a Pinned (Page-locked) Host buffer

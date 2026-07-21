@@ -48,7 +48,8 @@ bool OCRReco::batchProcessTyped(
   auto p_output_lengths = outputs.at(output_lengths_name).buffer;
   auto p_argmax_outputs = outputs.at(argmax_output_name).buffer;
 
-  const std::vector<int> &argmax_shape = model_output.at(argmax_output_name).shape;
+  const std::vector<int> &argmax_shape =
+      model_output.at(argmax_output_name).shape;
   if (argmax_shape.size() != 2) {
     // Handle error: shape is not as expected for a batch
     return false;

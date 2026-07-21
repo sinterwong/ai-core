@@ -231,8 +231,8 @@ TEST(CpuPreprocTest, BatchProcessConcatenatesFrames) {
   EXPECT_EQ(tensor.shape, (std::vector<int>{2, 3, h, w}));
   const float *data = tensor.buffer.getHostPtr<float>();
   const size_t frame_elems = 3 * h * w;
-  EXPECT_FLOAT_EQ(data[0], 0.f);              // frame A pixel (0,0,0)
-  EXPECT_FLOAT_EQ(data[frame_elems], 7.f);    // frame B constant fill
+  EXPECT_FLOAT_EQ(data[0], 0.f);           // frame A pixel (0,0,0)
+  EXPECT_FLOAT_EQ(data[frame_elems], 7.f); // frame B constant fill
   EXPECT_EQ(ctx->frame_transform_batch.size(), 2u);
 }
 

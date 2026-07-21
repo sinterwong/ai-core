@@ -403,10 +403,10 @@ InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
 
     // Store output shapes immediately (available from context); the buffer
     // is filled in by finalizeOutputs after stream sync.
-    outputs.set(name, TypedBuffer(),
-                std::vector<int>(actual_output_dims.d,
-                                 actual_output_dims.d +
-                                     actual_output_dims.nbDims));
+    outputs.set(
+        name, TypedBuffer(),
+        std::vector<int>(actual_output_dims.d,
+                         actual_output_dims.d + actual_output_dims.nbDims));
   }
 
   // NOTE: No synchronization here! Caller is responsible for sync.

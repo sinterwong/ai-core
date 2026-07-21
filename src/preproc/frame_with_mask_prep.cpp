@@ -11,9 +11,9 @@
 #include "frame_with_mask_prep.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/logger.hpp"
+#include "ai_core/opencv_interop.hpp"
 #include "cpu_generic_preprocessor.hpp"
 #include "frame_preprocessor_base.hpp"
-#include "ai_core/opencv_interop.hpp"
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
@@ -25,9 +25,8 @@ cv::Mat buildImageWithMaskChannel(const FrameInputWithMask &input_with_mask) {
   const auto &frame_input = input_with_mask.frame_input;
 
   const cv::Mat image = interop::matFromView(frame_input.image);
-  const cv::Rect roi =
-      frame_input.roi ? interop::toCv(*frame_input.roi)
-                      : cv::Rect(0, 0, image.cols, image.rows);
+  const cv::Rect roi = frame_input.roi ? interop::toCv(*frame_input.roi)
+                                       : cv::Rect(0, 0, image.cols, image.rows);
 
   cv::Mat roi_image = image(roi);
   cv::Mat mask = cv::Mat::zeros(roi_image.size(), CV_8UC1);
@@ -110,7 +109,6 @@ InferErrorCode FrameWithMaskPreprocess::process(
 
   runtime_context->frame_transform = single_runtime_args;
 
-
   std::vector<int> shape;
   if (params_ptr->hwc2chw) {
     shape = {1, params_ptr->model_input_shape.c,
@@ -119,7 +117,8 @@ InferErrorCode FrameWithMaskPreprocess::process(
     shape = {1, params_ptr->model_input_shape.h,
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
-  output.set(params_ptr->input_names[0], std::move(processed_frame), std::move(shape));
+  output.set(params_ptr->input_names[0], std::move(processed_frame),
+             std::move(shape));
   return InferErrorCode::SUCCESS;
 }
 
@@ -157,8 +156,7 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
       return InferErrorCode::InferInvalidInput;
     }
 
-    masked_images.push_back(
-        buildImageWithMaskChannel(*frame_input_with_mask));
+    masked_images.push_back(buildImageWithMaskChannel(*frame_input_with_mask));
     FrameInput current_masked_input;
     current_masked_input.image = interop::viewFromMat(masked_images.back());
     masked_frame_inputs.push_back(current_masked_input);
@@ -179,7 +177,6 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
   }
   runtime_context->frame_transform_batch = batch_runtime_args;
 
-
   std::vector<int> shape;
   if (params_ptr->hwc2chw) {
     shape = {static_cast<int>(input.size()), params_ptr->model_input_shape.c,
@@ -188,7 +185,8 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
     shape = {static_cast<int>(input.size()), params_ptr->model_input_shape.h,
              params_ptr->model_input_shape.w, params_ptr->model_input_shape.c};
   }
-  output.set(params_ptr->input_names[0], std::move(processed_frames), std::move(shape));
+  output.set(params_ptr->input_names[0], std::move(processed_frames),
+             std::move(shape));
 
   return InferErrorCode::SUCCESS;
 }

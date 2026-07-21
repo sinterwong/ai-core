@@ -161,8 +161,7 @@ TEST(TypedBufferTest, ResizePreservingDetachesWrappedMemory) {
 }
 
 TEST(TypedBufferTest, ClearResetsState) {
-  TypedBuffer buf =
-      TypedBuffer::createFromCpu(DataType::INT8, {1, 2, 3});
+  TypedBuffer buf = TypedBuffer::createFromCpu(DataType::INT8, {1, 2, 3});
   buf.clear();
   EXPECT_EQ(buf.getElementCount(), 0u);
   EXPECT_EQ(buf.getSizeBytes(), 0u);
