@@ -38,6 +38,20 @@ jobs:
         with:
           submodules: recursive
 
+      # Fetch LFS assets (test models/images) via cache to save LFS bandwidth;
+      # only asset changes hit the LFS servers.
+      - name: Compute LFS asset key
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Cache LFS assets
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-assets-id') }}
+
+      - name: Fetch LFS assets
+        run: git lfs pull
+
       - name: Install dependencies
         run: |
           sudo apt-get update
