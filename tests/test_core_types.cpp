@@ -5,9 +5,12 @@
  */
 #include "ai_core/algo_types.hpp"
 #include "ai_core/data_packet.hpp"
+#include "ai_core/error_code.hpp"
 #include "ai_core/param_center.hpp"
 #include "ai_core/type_safe_factory.hpp"
 #include "gtest/gtest.h"
+
+#include <sstream>
 
 namespace testing_core_types {
 using namespace ai_core;
@@ -110,6 +113,27 @@ TEST(ParamCenterTest, VisitDispatchesToHeldAlternative) {
     }
   });
   EXPECT_TRUE(visited_anchor);
+}
+
+// ============================================================================
+// InferErrorCode::to_string
+// ============================================================================
+
+TEST(ErrorCodeTest, ToStringNamesCodes) {
+  EXPECT_EQ(to_string(InferErrorCode::SUCCESS), "SUCCESS");
+  EXPECT_EQ(to_string(InferErrorCode::InferSizeMismatch), "InferSizeMismatch");
+  EXPECT_EQ(to_string(InferErrorCode::AlgoNotFound), "AlgoNotFound");
+}
+
+TEST(ErrorCodeTest, UnknownValueIsHandled) {
+  EXPECT_EQ(to_string(static_cast<InferErrorCode>(99999)),
+            "InferErrorCode(unknown)");
+}
+
+TEST(ErrorCodeTest, StreamOperatorIncludesNumericValue) {
+  std::ostringstream oss;
+  oss << InferErrorCode::NotInitialized;
+  EXPECT_EQ(oss.str(), "NotInitialized(106)");
 }
 
 // ============================================================================

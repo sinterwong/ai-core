@@ -63,9 +63,11 @@ InferErrorCode AlgoInference::Impl::infer(
   // prep const time
   auto start_pre = std::chrono::steady_clock::now();
   TensorData model_input;
-  if (m_preprocessor->process(input, model_input, runtime_context,
-                              preproc_override) != InferErrorCode::SUCCESS) {
-    LOG_ERROR_S << "Failed to preprocess input.";
+  if (auto ec = m_preprocessor->process(input, model_input, runtime_context,
+                                        preproc_override);
+      ec != InferErrorCode::SUCCESS) {
+    LOG_ERROR_S << "infer: preprocess stage '"
+                << m_algoModuleTypes.preproc_module << "' failed with " << ec;
     return InferErrorCode::InferPreprocessFailed;
   }
   auto end_pre = std::chrono::steady_clock::now();
@@ -77,6 +79,8 @@ InferErrorCode AlgoInference::Impl::infer(
   TensorData model_output;
   auto ret = m_engine->infer(model_input, model_output);
   if (ret != InferErrorCode::SUCCESS) {
+    LOG_ERROR_S << "infer: engine stage '" << m_algoModuleTypes.infer_module
+                << "' failed with " << ret;
     return ret;
   }
   auto end_infer = std::chrono::steady_clock::now();
@@ -85,9 +89,11 @@ InferErrorCode AlgoInference::Impl::infer(
 
   // post cost time
   auto start_post = std::chrono::steady_clock::now();
-  if (m_postprocessor->process(model_output, output, runtime_context,
-                               postproc_override) != InferErrorCode::SUCCESS) {
-    LOG_ERROR_S << "Failed to postprocess output.";
+  if (auto ec = m_postprocessor->process(model_output, output, runtime_context,
+                                         postproc_override);
+      ec != InferErrorCode::SUCCESS) {
+    LOG_ERROR_S << "infer: postprocess stage '"
+                << m_algoModuleTypes.postproc_module << "' failed with " << ec;
     return InferErrorCode::InferOutputError;
   }
   auto end_post = std::chrono::steady_clock::now();
