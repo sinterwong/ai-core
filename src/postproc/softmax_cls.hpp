@@ -13,6 +13,16 @@
 
 #include "frame_postproc_base.hpp"
 namespace ai_core::dnn {
+/**
+ * @brief Classification decoder for models that emit raw **logits**.
+ *
+ * It applies its own softmax, so feeding it an already-normalized vector
+ * (ultralytics bakes the softmax into its exported `*-cls` graphs) normalizes
+ * twice. Softmax is monotonic, so the label stays correct and only the score
+ * collapses towards the 1/num_classes floor — a silent failure that only shows
+ * up when something downstream thresholds or votes on confidence. Use
+ * @ref ArgmaxCls for already-normalized outputs.
+ */
 class SoftmaxCls : public FramePostprocBase<GenericPostParams, false> {
 public:
   explicit SoftmaxCls() {}
@@ -27,7 +37,8 @@ public:
                                  std::vector<AlgoOutput> &) const override;
 
 private:
-  ClsRet processSingleItem(const float *logits, int num_classes) const;
+  ClsRet processSingleItem(const float *logits, int num_classes,
+                           bool keep_probs) const;
 };
 } // namespace ai_core::dnn
 

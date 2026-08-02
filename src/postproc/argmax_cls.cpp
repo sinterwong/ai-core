@@ -1,23 +1,23 @@
 /**
- * @file softmax_cls.cpp
+ * @file argmax_cls.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
- * @date 2025-01-19
+ * @date 2026-08-02
  *
- * @copyright Copyright (c) 2025
+ * @copyright Copyright (c) 2026
  *
  */
-#include "softmax_cls.hpp"
+#include "argmax_cls.hpp"
 #include "ai_core/logger.hpp"
 #include <opencv2/core.hpp>
 #include <utility>
 
 namespace ai_core::dnn {
-bool SoftmaxCls::processTyped(const TensorData &model_output,
-                              const FrameTransformContext &prep_args,
-                              const GenericPostParams &post_args,
-                              AlgoOutput &algo_output) const {
+bool ArgmaxCls::processTyped(const TensorData &model_output,
+                             const FrameTransformContext &prep_args,
+                             const GenericPostParams &post_args,
+                             AlgoOutput &algo_output) const {
   if (model_output.empty()) {
     LOG_ERROR_S << "model_output is empty";
     return false;
@@ -27,18 +27,16 @@ bool SoftmaxCls::processTyped(const TensorData &model_output,
   const auto &output = model_output.at(score_output_name).buffer;
   const auto &output_shape = model_output.at(score_output_name).shape;
 
-  int num_classes = output_shape.at(output_shape.size() - 1);
+  const int num_classes = output_shape.at(output_shape.size() - 1);
 
-  const float *logits = output.getHostPtr<float>();
-
-  ClsRet cls_ret =
-      processSingleItem(logits, num_classes, post_args.keep_class_probs);
+  ClsRet cls_ret = processSingleItem(output.getHostPtr<float>(), num_classes,
+                                     post_args.keep_class_probs);
 
   algo_output.setParams(std::move(cls_ret));
   return true;
 }
 
-bool SoftmaxCls::batchProcessTyped(
+bool ArgmaxCls::batchProcessTyped(
     const TensorData &model_output,
     const std::vector<FrameTransformContext> &prep_args,
     const GenericPostParams &post_args,
@@ -62,43 +60,32 @@ bool SoftmaxCls::batchProcessTyped(
   const int batch_size = output_shape.at(0);
   const int num_classes = output_shape.at(1);
 
-  const float *base_logits = output.getHostPtr<float>();
+  const float *base_scores = output.getHostPtr<float>();
 
   algo_output.resize(batch_size);
 
   for (int i = 0; i < batch_size; ++i) {
-    const float *current_logits = base_logits + i * num_classes;
-    ClsRet cls_ret = processSingleItem(current_logits, num_classes,
-                                       post_args.keep_class_probs);
+    ClsRet cls_ret = processSingleItem(base_scores + i * num_classes,
+                                       num_classes, post_args.keep_class_probs);
     algo_output[i].setParams(std::move(cls_ret));
   }
   return true;
 }
 
-ClsRet SoftmaxCls::processSingleItem(const float *logits, int num_classes,
-                                     bool keep_probs) const {
-  cv::Mat logit_mat(1, num_classes, CV_32F, const_cast<float *>(logits));
-
-  double max_logit;
-  cv::minMaxLoc(logit_mat, nullptr, &max_logit, nullptr, nullptr);
-
-  cv::Mat exp_mat;
-  cv::exp(logit_mat - max_logit, exp_mat);
-
-  double sum = cv::sum(exp_mat)[0];
-
-  cv::Mat prob_mat = exp_mat / sum;
+ClsRet ArgmaxCls::processSingleItem(const float *scores, int num_classes,
+                                    bool keep_probs) const {
+  const cv::Mat score_mat(1, num_classes, CV_32F, const_cast<float *>(scores));
 
   cv::Point class_id_point;
   double score;
-  cv::minMaxLoc(prob_mat, nullptr, &score, nullptr, &class_id_point);
+  cv::minMaxLoc(score_mat, nullptr, &score, nullptr, &class_id_point);
 
   ClsRet cls_ret;
+  // The score is passed through as-is: the model already normalized it.
   cls_ret.score = static_cast<float>(score);
   cls_ret.label = class_id_point.x;
   if (keep_probs) {
-    const float *probs = prob_mat.ptr<float>(0);
-    cls_ret.probs.assign(probs, probs + num_classes);
+    cls_ret.probs.assign(scores, scores + num_classes);
   }
 
   return cls_ret;

@@ -96,19 +96,6 @@ DetRet RTMDet::processSingle(const float *det_data_ptr,
                              int num_classes,
                              const FrameTransformContext &prep_args,
                              const AnchorDetParams &post_args) const {
-  const auto &input_shape = prep_args.model_input_shape;
-  Shape origin_shape;
-
-  const auto &input_roi = prep_args.roi;
-  if (input_roi.area() > 0) {
-    origin_shape.w = input_roi.width;
-    origin_shape.h = input_roi.height;
-  } else {
-    origin_shape = prep_args.origin_shape;
-  }
-  auto [scaleX, scaleY] =
-      utils::scaleRatio(origin_shape, input_shape, prep_args.is_equal_scale);
-
   std::vector<BBox> results;
   for (int i = 0; i < anchor_num; ++i) {
     auto det_data = det_data_ptr + i * 4;
@@ -118,29 +105,16 @@ DetRet RTMDet::processSingle(const float *det_data_ptr,
     double score;
     cv::minMaxLoc(scores, nullptr, &score, nullptr, &class_id_point);
     if (score > post_args.cond_thre) {
-      float x = det_data[0];
-      float y = det_data[1];
-      float w = det_data[2] - x;
-      float h = det_data[3] - y;
-
-      if (prep_args.is_equal_scale) {
-        x = (x - prep_args.left_pad) / scaleX;
-        y = (y - prep_args.top_pad) / scaleY;
-      } else {
-        x = x / scaleX;
-        y = y / scaleY;
-      }
-      w = w / scaleX;
-      h = h / scaleY;
+      const Point2f tl = prep_args.mapToSource({det_data[0], det_data[1]});
+      const Point2f size = prep_args.mapSizeToSource(det_data[2] - det_data[0],
+                                                     det_data[3] - det_data[1]);
 
       BBox result;
       result.score = score;
       result.label = class_id_point.x;
-      x += input_roi.x;
-      y += input_roi.y;
 
-      result.rect = Rect{static_cast<int>(x), static_cast<int>(y),
-                         static_cast<int>(w), static_cast<int>(h)};
+      result.rect = Rect{static_cast<int>(tl.x), static_cast<int>(tl.y),
+                         static_cast<int>(size.x), static_cast<int>(size.y)};
       results.emplace_back(result);
     }
   }

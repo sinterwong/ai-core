@@ -11,6 +11,7 @@
 #include "postproc_registrar.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
+#include "postproc/argmax_cls.hpp"
 #include "postproc/fpr_cls.hpp"
 #include "postproc/nano_det.hpp"
 #include "postproc/ocr_reco.hpp"
@@ -28,6 +29,7 @@ DefaultPostprocPluginRegistrar::DefaultPostprocPluginRegistrar() {
   REGISTER_POSTPROCESS_ALGO(RTMDet);
   REGISTER_POSTPROCESS_ALGO(NanoDet);
   REGISTER_POSTPROCESS_ALGO(SoftmaxCls);
+  REGISTER_POSTPROCESS_ALGO(ArgmaxCls);
   REGISTER_POSTPROCESS_ALGO(FprCls);
   REGISTER_POSTPROCESS_ALGO(RawModelOutput);
   REGISTER_POSTPROCESS_ALGO(OCRReco);

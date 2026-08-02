@@ -27,6 +27,7 @@
                 0,
                 0
             ],
+            "inputFormat": "BGR888",
             "isEqualScale": true,
             "needResize": true,
             "dataType": 0,

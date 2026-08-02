@@ -1,5 +1,5 @@
 /**
- * @file algo_infer_engine.hpp
+ * @file infer_engine_wrapper.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1

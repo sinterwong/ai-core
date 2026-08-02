@@ -45,12 +45,13 @@ int main(int argc, char **argv) {
     std::cerr << "failed to read image: " << image_path << "\n";
     return 1;
   }
-  cv::Mat rgb;
-  cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
 
   AlgoInput input;
   FrameInput frame;
-  frame.image = interop::viewFromMat(rgb); // rgb must outlive the infer call
+  // The preprocessor converts BGR to whatever the config declares as
+  // inputFormat, so imread's output goes in as-is. bgr must outlive the
+  // infer call.
+  frame.image = interop::viewFromMat(bgr);
   input.setParams(frame);
 
   // 4) Infer (data only — params are already bound).

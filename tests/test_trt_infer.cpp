@@ -62,7 +62,8 @@ protected:
     frame_preprocess_arg.is_equal_scale = true;
     frame_preprocess_arg.pad = {0, 0, 0};
     frame_preprocess_arg.mean_vals = {0, 0, 0};
-    frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+    frame_preprocess_arg.std_vals = {255.f, 255.f, 255.f};
+    frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::RGB888;
     frame_preprocess_arg.hwc2chw = true;
     frame_preprocess_arg.input_names = {"images"};
     frame_preprocess_arg.output_location = BufferLocation::GpuDevice;
@@ -79,14 +80,13 @@ protected:
 
   // Prepare model input from image
   std::pair<TensorData, std::shared_ptr<RuntimeContext>>
-  prepareInput(const cv::Mat &image_rgb) {
+  prepareInput(const cv::Mat &image) {
     AlgoPreprocParams preproc_params;
     preproc_params.setParams(getPreprocParams());
     AlgoInput algo_input;
     FrameInput frame_input;
-    frame_input.image = ai_core::interop::viewFromMat(image_rgb);
-    frame_input.roi =
-        ai_core::Rect{2, 2, image_rgb.cols - 4, image_rgb.rows - 4};
+    frame_input.image = ai_core::interop::viewFromMat(image);
+    frame_input.roi = ai_core::Rect{2, 2, image.cols - 4, image.rows - 4};
     algo_input.setParams(frame_input);
 
     std::shared_ptr<RuntimeContext> runtime_context =
@@ -158,10 +158,8 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   // Load and preprocess image
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
-  auto [modelInput, runtime_context] = prepareInput(image_rgb);
+  auto [modelInput, runtime_context] = prepareInput(image);
 
   TensorData model_output;
 
@@ -208,10 +206,8 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
 
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
-  auto [modelInput, runtime_context] = prepareInput(image_rgb);
+  auto [modelInput, runtime_context] = prepareInput(image);
 
   // Run multiple iterations to test graph capture and replay
   const int num_iterations = 5;
@@ -260,8 +256,6 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
 
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
   // Pipeline-style execution
   const int num_inferences = 10;
@@ -270,7 +264,7 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
 
   for (int i = 0; i < num_inferences; ++i) {
     auto &stream = stream_pool[i % pool_size];
-    auto [modelInput, runtime_context] = prepareInput(image_rgb);
+    auto [modelInput, runtime_context] = prepareInput(image);
 
     // Wait for previous inference on this stream
     if (i >= static_cast<int>(pool_size) && futures[i - pool_size].valid()) {
@@ -367,10 +361,8 @@ TEST_F(TrtInferenceTest, GraphEnableDisableToggle) {
 
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
-  auto [modelInput, runtime_context] = prepareInput(image_rgb);
+  auto [modelInput, runtime_context] = prepareInput(image);
 
   // Phase 1: Without graph
   stream->setGraphEnabled(false);
@@ -418,10 +410,8 @@ TEST_F(TrtInferenceTest, SynchronizeAndIsComplete) {
 
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
-  auto [modelInput, runtime_context] = prepareInput(image_rgb);
+  auto [modelInput, runtime_context] = prepareInput(image);
 
   TensorData model_output;
 
@@ -471,10 +461,8 @@ TEST_F(TrtInferenceTest, BackwardCompatibilityInfer) {
 
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
-  auto [modelInput, runtime_context] = prepareInput(image_rgb);
+  auto [modelInput, runtime_context] = prepareInput(image);
   TensorData model_output;
 
   // Use the old synchronous infer() method
@@ -507,8 +495,6 @@ TEST_F(TrtInferenceTest, StressTestManyStreams) {
 
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
   const int num_iterations = 20;
   for (int i = 0; i < num_iterations; ++i) {
@@ -517,7 +503,7 @@ TEST_F(TrtInferenceTest, StressTestManyStreams) {
     ASSERT_NE(stream, nullptr);
 
     // Run one inference
-    auto [modelInput, runtime_context] = prepareInput(image_rgb);
+    auto [modelInput, runtime_context] = prepareInput(image);
     TensorData model_output;
 
     auto future = stream->inferAsync(modelInput, model_output);
@@ -543,10 +529,8 @@ TEST_F(TrtInferenceTest, PerformanceComparisonWithGraph) {
 
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
 
-  auto [modelInput, runtime_context] = prepareInput(image_rgb);
+  auto [modelInput, runtime_context] = prepareInput(image);
 
   const int warmup_iterations = 5;
   const int bench_iterations = 50;

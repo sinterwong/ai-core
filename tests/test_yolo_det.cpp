@@ -104,8 +104,6 @@ TEST_P(YoloDetInferenceTest, Normal) {
   engine->prettyPrintModelInfos();
 
   cv::Mat image = cv::imread(m_image_path);
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
   AlgoPreprocParams preproc_params;
@@ -116,7 +114,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};
   frame_preprocess_arg.mean_vals = {0, 0, 0};
-  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.std_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::RGB888;
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
   frame_preprocess_arg.output_location = config.buffer_location;
@@ -131,8 +130,8 @@ TEST_P(YoloDetInferenceTest, Normal) {
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
-  frame_input.roi = ai_core::Rect{2, 2, image_rgb.cols - 4, image_rgb.rows - 4};
+  frame_input.image = ai_core::interop::viewFromMat(image);
+  frame_input.roi = ai_core::Rect{2, 2, image.cols - 4, image.rows - 4};
   algo_input.setParams(frame_input);
 
   std::shared_ptr<RuntimeContext> runtime_context =
@@ -184,8 +183,6 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
   cv::Mat image = cv::imread(m_image_path);
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
   AlgoPreprocParams preproc_params;
@@ -196,7 +193,8 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};
   frame_preprocess_arg.mean_vals = {0, 0, 0};
-  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.std_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::RGB888;
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
   frame_preprocess_arg.output_location = config.buffer_location;
@@ -211,8 +209,8 @@ TEST_P(YoloDetInferenceTest, MultiThreads) {
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
-  frame_input.roi = ai_core::Rect{2, 2, image_rgb.cols - 4, image_rgb.rows - 4};
+  frame_input.image = ai_core::interop::viewFromMat(image);
+  frame_input.roi = ai_core::Rect{2, 2, image.cols - 4, image.rows - 4};
   algo_input.setParams(frame_input);
 
   std::vector<std::thread> threads;

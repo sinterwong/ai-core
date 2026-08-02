@@ -1,6 +1,36 @@
 # Changelog
 
-本项目无外部用户、无兼容包袱；v1.4 之前的接口变更一律不留兼容别名。**v1.4 起公共 API 终态，此后只加不改。**
+本项目无外部用户、无兼容包袱；v1.4 之前的接口变更一律不留兼容别名。**v1.4 起公共 API 终态，此后只加不改**——v2.1 是唯一的例外，见下。
+
+## v2.1 — 下游反馈收口（2026-08）
+
+来自 ai-sdk 集成的 16 条反馈。**本版含 break**，是 v1.4「只加不改」承诺的一次有意破例：两条都属于「字段名/字段语义会导致静默错误」，留着比改掉代价更大。
+
+**break（无兼容别名）：**
+
+- **`FramePreprocessArg::norm_vals` → `std_vals`**。语义一直是 `(v - mean) / norm`，即**除数**；但 NCNN/MNN 里同名字段是**乘数**，直觉会写成 `1/255`，结果像素被放大到 0~65025、head 里 sigmoid 全部饱和，且**不报任何错**。改名把语义写进名字，头文件里补上公式，另加一条运行期告警：8bit 输入且 `std_vals` 全部 < 1 时提示疑似写反。
+- **预处理开始真正消费 `ImageView::format`**。此前 CPU 路径完全不做通道序转换（`format` 是装饰性字段），ncnn 路径却**无条件** `BGR2RGB`——同一份配置换个预处理插件结果不同，且 BGR 喂给 RGB 训练的模型是静默掉点。新增 `FramePreprocessArg::model_input_format`（默认 `BGR888`），预处理按 `image.format → model_input_format` 转换。同通道数互换折叠进归一化那一趟（零开销），通道数变化走 `cvtColor`。调用方应删掉自己的 `cvtColor`，改为如实声明格式。JSON 键 `preprocParams.inputFormat`。
+- **包配置安装路径** `<prefix>/share/` → `<prefix>/lib/cmake/ai_core/`，与 ai-pipe / ai-stream 一致；消费者不再需要手动把 `share/` 加进 `CMAKE_PREFIX_PATH`。同时把 `configure_file` 换成 `configure_package_config_file`——此前 `@PACKAGE_INIT@` 展开成空，生成的 config 不可重定位。
+
+**新增（只加不改）：**
+
+- **`AlgoOutput` variant 尾部加 `DataPacket`**：库外插件吐自有结果类型的正门（`packet.setParam("pose", PoseRet{...})`），不必改 ai-core 头文件、不必重编下游、不必借道 `RawModelOutput`/`TensorData`。
+- **`ArgmaxCls` 内置后处理**：给已归一化输出取 top-1、分数原样透传。ultralytics 的 `*-cls` 导出把 softmax 烘进了计算图，用 `SoftmaxCls` 会 softmax 两次——类别对、**置信度塌到 `1/nc` 地板值**，按置信度做阈值或表决的下游会中招。`SoftmaxCls` 的文档补上「期望 logits」这个前提。
+- **`ClsRet::probs` + `GenericPostParams::keep_class_probs`**：完整类别分布本来就在后处理里算出来了，开关打开就不丢（默认关，行为与之前完全一致）。滑窗表决类下游不必再对硬判决表决。
+- **`FrameTransformContext` 收口坐标映射**：`sourceShape()` / `scaleRatio()` / `mapToSource()` / `mapSizeToSource()`。此前这套推导在 4 个内置解码器里各抄了一遍，下游还得再抄第五遍。`utils::scaleRatio` 已删除，全仓单一实现。
+- **配置层去掉硬编码白名单**：未知的 postproc 模块名不再 `fail`，改按 `postprocParams` 出现的键推断参数族（`condThre`+`nmsThre` → AnchorDet；仅 `condThre` → ConfidenceFilter；否则 Generic），可用 `paramFamily` 显式覆盖；preproc 侧白名单直接移除。自定义插件从此可被配置驱动——内建算法与自定义算法走同一条配置路径。
+- **`REGISTER_*` 宏命名空间无关**：宏体里所有名字改全限定，库外插件不再需要同时 `using namespace ai_core;` 和 `ai_core::dnn;`。
+- 安装导出的 config 目标别名统一为 `ai_core::config`（此前 build tree 叫 `ai_core::config`、安装后叫 `ai_core::ai_core_config`）。
+
+**修复：**
+
+- `scripts/bootstrap.sh` / README / `scripts/x86_build.sh` 里三处指向三个不同 release tag 的依赖包链接，其中两个已 404，照 README 走必然卡在 `tar: not in gzip format`。改为与 CI 同源：ONNX Runtime 取 Microsoft 官方发布版，OpenCV 用系统包。`curl` 加 `-f` 让 404 在下载阶段就失败。
+- 顺带消除 OpenCV 双实例风险：不再解出 vendored OpenCV。`load_opencv()` 在检测到 vendored 与系统 OpenCV 并存时告警；bootstrap 结尾断言 `ldd | grep -c opencv_core == 1`。
+- CI 里 patch onnxruntime cmake export 的两条 `sed`（`lib64/`→`lib/`、`include/onnxruntime`→`include`）下沉进 `scripts/bootstrap.sh`，手动流程与 CI 一致。
+- `load_3rdparty.cmake` 的 `load_tensorrt()` 用 `CMAKE_SOURCE_DIR` 而非 `PROJECT_SOURCE_DIR`，super-build + TRT 组合下找不到 `FindTensorRT.cmake`。
+- `UNetDualOutputSeg` 的 `DualRawSegRet::ratio` 此前按整帧宽度推导，忽略 ROI 与等比缩放；改用统一的 `scaleRatio()`。
+- 4 处 doxygen `@file` 与真实文件名不符。
+- `version.hpp` 停在 1.2.0 而 CHANGELOG 已到 v2.0，安装出来的包版本是错的。CI 新增一条断言，让两者不能再各走各的。
 
 ## v2.0 — 产品起手能力（2026-07）
 

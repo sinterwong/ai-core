@@ -44,7 +44,7 @@ void GpuGenericCudaPreprocessor::CachedResources::reset() {
   d_std.reset();
   d_pad.reset();
   cached_mean_vals.clear();
-  cached_norm_vals.clear();
+  cached_std_vals.clear();
   cached_pad_vals.clear();
   d_hwc_buffer.reset();
   d_chw_buffer.reset();
@@ -126,8 +126,8 @@ void GpuGenericCudaPreprocessor::validatePreprocessArgs(
     throw std::invalid_argument("mean_vals cannot be empty.");
   }
 
-  if (args.norm_vals.empty()) {
-    throw std::invalid_argument("norm_vals (std) cannot be empty.");
+  if (args.std_vals.empty()) {
+    throw std::invalid_argument("std_vals cannot be empty.");
   }
 
   if (args.mean_vals.size() != static_cast<size_t>(args.model_input_shape.c)) {
@@ -135,14 +135,14 @@ void GpuGenericCudaPreprocessor::validatePreprocessArgs(
         "mean_vals size must match model input channels.");
   }
 
-  if (args.norm_vals.size() != static_cast<size_t>(args.model_input_shape.c)) {
+  if (args.std_vals.size() != static_cast<size_t>(args.model_input_shape.c)) {
     throw std::invalid_argument(
-        "norm_vals size must match model input channels.");
+        "std_vals size must match model input channels.");
   }
 
-  for (size_t i = 0; i < args.norm_vals.size(); ++i) {
-    if (std::abs(args.norm_vals[i]) < 1e-10f) {
-      throw std::invalid_argument("norm_vals cannot contain zero values.");
+  for (size_t i = 0; i < args.std_vals.size(); ++i) {
+    if (std::abs(args.std_vals[i]) < 1e-10f) {
+      throw std::invalid_argument("std_vals cannot contain zero values.");
     }
   }
 
@@ -204,9 +204,9 @@ void GpuGenericCudaPreprocessor::updateParameterBuffers(
     m_cache.cached_mean_vals = args.mean_vals;
   }
 
-  if (m_cache.cached_norm_vals != args.norm_vals) {
-    m_cache.d_std.initFromHost(args.norm_vals, stream);
-    m_cache.cached_norm_vals = args.norm_vals;
+  if (m_cache.cached_std_vals != args.std_vals) {
+    m_cache.d_std.initFromHost(args.std_vals, stream);
+    m_cache.cached_std_vals = args.std_vals;
   }
 
   if (args.is_equal_scale && m_cache.cached_pad_vals != args.pad) {
@@ -594,9 +594,9 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
                               viewByteSize(image), cudaMemcpyHostToDevice));
 
   cuda_utils::CudaDeviceBuffer<float> d_mean(args.mean_vals.size());
-  cuda_utils::CudaDeviceBuffer<float> d_std(args.norm_vals.size());
+  cuda_utils::CudaDeviceBuffer<float> d_std(args.std_vals.size());
   d_mean.initFromHost(args.mean_vals);
-  d_std.initFromHost(args.norm_vals);
+  d_std.initFromHost(args.std_vals);
 
   size_t total_elements = static_cast<size_t>(args.model_input_shape.c) *
                           args.model_input_shape.h * args.model_input_shape.w;
@@ -743,9 +743,9 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
   }
 
   cuda_utils::CudaDeviceBuffer<float> d_mean(args.mean_vals.size());
-  cuda_utils::CudaDeviceBuffer<float> d_std(args.norm_vals.size());
+  cuda_utils::CudaDeviceBuffer<float> d_std(args.std_vals.size());
   d_mean.initFromHost(args.mean_vals);
-  d_std.initFromHost(args.norm_vals);
+  d_std.initFromHost(args.std_vals);
 
   cuda_utils::CudaDeviceBuffer<uint8_t *> d_src_ptrs(batch_size);
   cuda_utils::CudaDeviceBuffer<int> d_src_heights(batch_size);

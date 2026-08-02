@@ -6,8 +6,29 @@ set(3RDPARTY_DIR ${PROJECT_SOURCE_DIR}/3rdparty/target/${TARGET_OS}_${TARGET_ARC
 message(STATUS "3RDPARTY_DIR: ${3RDPARTY_DIR}")
 
 # Load OpenCV library
+#
+# The vendored copy under 3rdparty/target is preferred but not exclusive: the
+# prefix path is appended, so a missing vendored OpenCV falls back to the system
+# one. Having *both* is the dangerous case — two libopencv_core.so in one
+# process means passing a cv::Mat across a library boundary is UB — so warn.
 function(load_opencv)
     set(OPENCV_HOME ${3RDPARTY_DIR}/opencv)
+
+    # Probe by locating the file, never with find_package: a real find_package
+    # here would create OpenCV's imported targets from whichever copy it found
+    # first and the library would then link *that* one — causing the very
+    # problem this check exists to report.
+    if(EXISTS "${OPENCV_HOME}" AND NOT TARGET_OS STREQUAL "Android")
+        find_file(AI_CORE_SYSTEM_OPENCV_CONFIG
+            NAMES OpenCVConfig.cmake
+            PATHS /usr/lib /usr/lib64 /usr/local/lib /usr/share /usr/local/share
+            PATH_SUFFIXES cmake/opencv4 opencv4 ${CMAKE_LIBRARY_ARCHITECTURE}/cmake/opencv4
+            NO_DEFAULT_PATH)
+        mark_as_advanced(AI_CORE_SYSTEM_OPENCV_CONFIG)
+        if(AI_CORE_SYSTEM_OPENCV_CONFIG)
+            message(WARNING "A vendored OpenCV (${OPENCV_HOME}) coexists with a system OpenCV (${AI_CORE_SYSTEM_OPENCV_CONFIG}). If consumers of ai_core link the system one, the process ends up with two libopencv_core.so and cv::Mat cannot safely cross that boundary. Prefer removing one of them; verify with: ldd <your binary> | grep opencv_core")
+        endif()
+    endif()
 
     if(TARGET_OS STREQUAL "Android")
         set(OpenCV_INCLUDE_DIRS ${OPENCV_HOME}/jni/include)
@@ -145,7 +166,7 @@ function(load_tensorrt)
     set(TRT_ROOT ${3RDPARTY_DIR}/tensorrt)
     set(TRT_LIB_DIR ${TRT_ROOT}/lib)
 
-    list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/nvidia_modules")
+    list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/nvidia_modules")
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} PARENT_SCOPE)
 
     find_package(TensorRT REQUIRED)

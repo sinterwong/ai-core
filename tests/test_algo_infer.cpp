@@ -34,8 +34,6 @@ TEST(AlgoInferenceTest, YoloDet) {
   std::string image_path = (data_dir / "yolov11/image.png").string();
 
   cv::Mat image = cv::imread(image_path);
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
   AlgoModuleTypes module_types;
@@ -92,7 +90,8 @@ TEST(AlgoInferenceTest, YoloDet) {
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};
   frame_preprocess_arg.mean_vals = {0, 0, 0};
-  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.std_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::RGB888;
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.output_location = BufferLocation::CPU;
 
@@ -109,8 +108,10 @@ TEST(AlgoInferenceTest, YoloDet) {
 
   AlgoInput algo_input;
   FrameInput frame_input;
-  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
-  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
+  // BGR straight from imread; the preprocessor converts to the model's
+  // declared RGB888 input format.
+  frame_input.image = ai_core::interop::viewFromMat(image);
+  frame_input.roi = ai_core::Rect{0, 0, image.cols, image.rows};
   algo_input.setParams(frame_input);
 
   AlgoOutput algo_output;
@@ -171,7 +172,8 @@ TEST(AlgoInferenceTest, PurePointerPath) {
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};
   frame_preprocess_arg.mean_vals = {0, 0, 0};
-  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.std_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::RGB888;
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.output_location = BufferLocation::CPU;
   AlgoPreprocParams preproc_params;

@@ -85,7 +85,8 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};
   frame_preprocess_arg.mean_vals = {0, 0, 0};
-  frame_preprocess_arg.norm_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.std_vals = {255.f, 255.f, 255.f};
+  frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::RGB888;
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.output_location = ai_core::BufferLocation::CPU;
   preproc_params.setParams(frame_preprocess_arg);
@@ -93,11 +94,9 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
 
   ai_core::AlgoInput input;
   cv::Mat image = cv::imread("assets/data/yolov11/image.png");
-  cv::Mat image_rgb;
-  cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
   ai_core::FrameInput frame_input;
-  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
-  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
+  frame_input.image = ai_core::interop::viewFromMat(image);
+  frame_input.roi = ai_core::Rect{0, 0, image.cols, image.rows};
   input.setParams(frame_input);
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =

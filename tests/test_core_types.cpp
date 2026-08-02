@@ -115,6 +115,50 @@ TEST(ParamCenterTest, VisitDispatchesToHeldAlternative) {
   EXPECT_TRUE(visited_anchor);
 }
 
+// AlgoOutput's trailing DataPacket is the extension slot for out-of-tree
+// postprocessors: a plugin can return a result type this variant has never
+// heard of, still typed, without editing the header.
+namespace {
+struct PoseRet {
+  std::vector<Point2f> keypoints;
+  float score;
+};
+} // namespace
+
+TEST(AlgoOutputTest, DataPacketCarriesCustomPluginResults) {
+  PoseRet pose;
+  pose.keypoints = {{1.f, 2.f}, {3.f, 4.f}};
+  pose.score = 0.9f;
+
+  DataPacket packet;
+  packet.setParam("pose", pose);
+
+  AlgoOutput output;
+  output.setParams(packet);
+
+  const auto *held = output.getParams<DataPacket>();
+  ASSERT_NE(held, nullptr);
+  const auto restored = held->getParam<PoseRet>("pose");
+  ASSERT_EQ(restored.keypoints.size(), 2u);
+  EXPECT_FLOAT_EQ(restored.keypoints[1].x, 3.f);
+  EXPECT_FLOAT_EQ(restored.score, 0.9f);
+
+  // Still a variant: the built-in alternatives are unaffected.
+  EXPECT_EQ(output.getParams<ClsRet>(), nullptr);
+}
+
+TEST(AlgoOutputTest, BuiltinAlternativesStillWork) {
+  AlgoOutput output;
+  ClsRet cls;
+  cls.label = 3;
+  cls.score = 0.5f;
+  output.setParams(cls);
+
+  ASSERT_NE(output.getParams<ClsRet>(), nullptr);
+  EXPECT_EQ(output.getParams<ClsRet>()->label, 3);
+  EXPECT_EQ(output.getParams<DataPacket>(), nullptr);
+}
+
 // ============================================================================
 // InferErrorCode::to_string
 // ============================================================================

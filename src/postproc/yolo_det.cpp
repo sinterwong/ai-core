@@ -18,7 +18,6 @@ bool Yolov11Det::processTyped(const TensorData &model_output,
                               const FrameTransformContext &prep_args,
                               const AnchorDetParams &post_args,
                               AlgoOutput &algo_output) const {
-  const auto &input_shape = prep_args.model_input_shape;
   const auto &outputs = model_output;
 
   // just one output
@@ -50,8 +49,8 @@ bool Yolov11Det::processTyped(const TensorData &model_output,
         raw_data);
   }
 
-  std::vector<BBox> results = processRawOutput(
-      raw_data, input_shape, prep_args, post_args, signal_result_num - 4);
+  std::vector<BBox> results =
+      processRawOutput(raw_data, prep_args, post_args, signal_result_num - 4);
 
   DetRet det_ret;
   det_ret.bboxes = utils::nms(results, post_args.nms_thre, post_args.cond_thre);
@@ -123,11 +122,9 @@ bool Yolov11Det::batchProcessTyped(
     cv::transpose(single_output_mat, transposed_output);
 
     const auto &current_prep_args = prep_args[i];
-    const auto &input_shape = current_prep_args.model_input_shape;
 
-    std::vector<BBox> results =
-        processRawOutput(transposed_output, input_shape, current_prep_args,
-                         post_args, num_classes);
+    std::vector<BBox> results = processRawOutput(
+        transposed_output, current_prep_args, post_args, num_classes);
 
     DetRet det_ret;
     det_ret.bboxes =
@@ -138,20 +135,9 @@ bool Yolov11Det::batchProcessTyped(
 }
 
 std::vector<BBox> Yolov11Det::processRawOutput(
-    const cv::Mat &transposed_output, const Shape &input_shape,
-    const FrameTransformContext &prep_args, const AnchorDetParams &post_args,
-    int num_classes) const {
+    const cv::Mat &transposed_output, const FrameTransformContext &prep_args,
+    const AnchorDetParams &post_args, int num_classes) const {
   std::vector<BBox> results;
-  Shape origin_shape;
-  const auto &input_roi = prep_args.roi;
-  if (input_roi.area() > 0) {
-    origin_shape.w = input_roi.width;
-    origin_shape.h = input_roi.height;
-  } else {
-    origin_shape = prep_args.origin_shape;
-  }
-  auto [scaleX, scaleY] =
-      utils::scaleRatio(origin_shape, input_shape, prep_args.is_equal_scale);
 
   for (int i = 0; i < transposed_output.rows; ++i) {
     const float *data = transposed_output.ptr<float>(i);
@@ -166,27 +152,14 @@ std::vector<BBox> Yolov11Det::processRawOutput(
       result.score = score;
       result.label = class_id_point.x;
 
-      float x = data[0];
-      float y = data[1];
-      float w = data[2];
-      float h = data[3];
+      const float w = data[2];
+      const float h = data[3];
+      const Point2f tl =
+          prep_args.mapToSource({data[0] - 0.5f * w, data[1] - 0.5f * h});
+      const Point2f size = prep_args.mapSizeToSource(w, h);
 
-      x = x - 0.5 * w;
-      y = y - 0.5 * h;
-
-      if (prep_args.is_equal_scale) {
-        x = (x - prep_args.left_pad) / scaleX;
-        y = (y - prep_args.top_pad) / scaleY;
-      } else {
-        x = x / scaleX;
-        y = y / scaleY;
-      }
-      w = w / scaleX;
-      h = h / scaleY;
-      x += input_roi.x;
-      y += input_roi.y;
-      result.rect = Rect{static_cast<int>(x), static_cast<int>(y),
-                         static_cast<int>(w), static_cast<int>(h)};
+      result.rect = Rect{static_cast<int>(tl.x), static_cast<int>(tl.y),
+                         static_cast<int>(size.x), static_cast<int>(size.y)};
 
       results.push_back(result);
     }

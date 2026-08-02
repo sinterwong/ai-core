@@ -22,7 +22,7 @@ AlgoInput -> AlgoPreproc -> TensorData -> AlgoInferEngine -> TensorData -> AlgoP
 
 ### `AlgoInput` / `AlgoOutput`
 
-`AlgoInput` 当前可装 `FrameInput`（单帧图）或 `FrameInputWithMask`（带掩码区域）。`AlgoOutput` 可装 `ClsRet`、`DetRet`、`SegRet`、`DualRawSegRet`、`OCRRecoRet`、`FprClsRet`、`RawModelOutput` 等。
+`AlgoInput` 当前可装 `FrameInput`（单帧图）或 `FrameInputWithMask`（带掩码区域）。`AlgoOutput` 可装 `ClsRet`、`DetRet`、`SegRet`、`DualRawSegRet`、`OCRRecoRet`、`FprClsRet`、`RawModelOutput`，以及 `DataPacket`——库外插件的扩展位，用来吐这个 variant 不认识的自有结果类型而不必改本头文件。
 
 它们都是 `ParamCenter<std::variant<...>>`。用 `setParams<T>()` 存，用 `getParams<T>()` 取。类型不对就拿不到指针，不需要写 type cast。
 
@@ -91,7 +91,11 @@ struct AlgoInferParams {
 
 - `model_input_shape` — `{w, h, c}`
 - `need_resize`、`is_equal_scale`、`pad`
-- `mean_vals`、`norm_vals`
+- `mean_vals`、`std_vals` —— 语义是 `(v - mean) / std`，**`std_vals` 是除数**
+  （标准差），不是乘数。把 8bit 像素映射到 `[0,1]` 请填 `{255,255,255}`
+- `model_input_format` —— 模型训练时的通道序。预处理**会**按
+  `ImageView::format → model_input_format` 做转换，不是装饰性字段。
+  默认 `BGR888`（OpenCV 惯例）；ultralytics 系模型要填 `RGB888`
 - `hwc2chw`
 - `data_type`、`output_location` — 输出放 CPU 还是 GPU
 - `input_names` — 多输入模型时给出每个输入的名字
@@ -111,13 +115,14 @@ struct AlgoInferParams {
 内置（每个算法就是一个插件，按名字直接注册到工厂）：
 
 - `Yolov11Det` / `RTMDet` / `NanoDet` —— 锚框检测家族，参数 `AnchorDetParams`
-- `SoftmaxCls` / `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` —— 通用家族，参数 `GenericPostParams`
+- `SoftmaxCls` / `ArgmaxCls` / `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` —— 通用家族，参数 `GenericPostParams`
 - `SemanticSeg` —— 置信度过滤家族，参数 `ConfidenceFilterParams`
 
 参数：
 
 - `AnchorDetParams`：`cond_thre`、`nms_thre`、`output_names`
-- `GenericPostParams`：`output_names`
+- `GenericPostParams`：`output_names`、`keep_class_probs`（分类插件是否在
+  `ClsRet::probs` 里保留完整分布，默认 false）
 - `ConfidenceFilterParams`：`cond_thre`、`output_names`
 
 新增一个后处理算法 = 一个继承 `FramePostprocBase<ParamsT, RequiresPrepContext>` 的新 `.cpp` + 一行注册宏。

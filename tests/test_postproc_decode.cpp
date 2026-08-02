@@ -132,6 +132,146 @@ TEST(SoftmaxClsDecode, BatchDecodesEachRow) {
   EXPECT_EQ(outputs[1].getParams<ClsRet>()->label, 1);
 }
 
+// The whole distribution is computed on the way to the argmax; keep_class_probs
+// stops it being thrown away. Off by default so the common path allocates
+// nothing.
+TEST(SoftmaxClsDecode, KeepClassProbsExposesDistribution) {
+  TensorData model_output;
+  model_output.set("logits", floatBuffer({0.f, 2.f, 1.f}), {1, 3});
+
+  GenericPostParams params;
+  params.output_names = {"logits"};
+  params.keep_class_probs = true;
+  AlgoPostprocParams post_params;
+  post_params.setParams(params);
+
+  AlgoPostproc postproc("SoftmaxCls");
+  ASSERT_EQ(postproc.initialize(post_params), InferErrorCode::SUCCESS);
+
+  auto ctx = identityContext(4, 4);
+  AlgoOutput output;
+  ASSERT_EQ(postproc.process(model_output, output, ctx),
+            InferErrorCode::SUCCESS);
+
+  const auto *cls = output.getParams<ClsRet>();
+  ASSERT_NE(cls, nullptr);
+  ASSERT_EQ(cls->probs.size(), 3u);
+  const float sum = cls->probs[0] + cls->probs[1] + cls->probs[2];
+  EXPECT_NEAR(sum, 1.f, 1e-5);
+  EXPECT_NEAR(cls->probs[1], cls->score, 1e-6);
+}
+
+TEST(SoftmaxClsDecode, ProbsEmptyByDefault) {
+  TensorData model_output;
+  model_output.set("logits", floatBuffer({0.f, 2.f, 1.f}), {1, 3});
+
+  GenericPostParams params;
+  params.output_names = {"logits"};
+  AlgoPostprocParams post_params;
+  post_params.setParams(params);
+
+  AlgoPostproc postproc("SoftmaxCls");
+  ASSERT_EQ(postproc.initialize(post_params), InferErrorCode::SUCCESS);
+
+  auto ctx = identityContext(4, 4);
+  AlgoOutput output;
+  ASSERT_EQ(postproc.process(model_output, output, ctx),
+            InferErrorCode::SUCCESS);
+  EXPECT_TRUE(output.getParams<ClsRet>()->probs.empty());
+}
+
+// ============================================================================
+// ArgmaxCls
+// ============================================================================
+
+// For models that bake the softmax into the graph, the score must survive
+// untouched. Running SoftmaxCls on the same input would keep the label but
+// squash the score towards the 1/num_classes floor.
+TEST(ArgmaxClsDecode, PassesNormalizedScoreThrough) {
+  TensorData model_output;
+  model_output.set("scores", floatBuffer({0.1f, 0.7f, 0.2f}), {1, 3});
+
+  GenericPostParams params;
+  params.output_names = {"scores"};
+  AlgoPostprocParams post_params;
+  post_params.setParams(params);
+
+  AlgoPostproc postproc("ArgmaxCls");
+  ASSERT_EQ(postproc.initialize(post_params), InferErrorCode::SUCCESS);
+
+  auto ctx = identityContext(4, 4);
+  AlgoOutput output;
+  ASSERT_EQ(postproc.process(model_output, output, ctx),
+            InferErrorCode::SUCCESS);
+
+  const auto *cls = output.getParams<ClsRet>();
+  ASSERT_NE(cls, nullptr);
+  EXPECT_EQ(cls->label, 1);
+  EXPECT_FLOAT_EQ(cls->score, 0.7f);
+  EXPECT_TRUE(cls->probs.empty());
+}
+
+// The double-softmax failure this plugin exists to avoid: same label, wrecked
+// confidence.
+TEST(ArgmaxClsDecode, SoftmaxClsWouldCollapseConfidence) {
+  const std::vector<float> normalized{0.1f, 0.7f, 0.2f};
+  TensorData model_output;
+  model_output.set("scores", floatBuffer(normalized), {1, 3});
+
+  GenericPostParams params;
+  params.output_names = {"scores"};
+  AlgoPostprocParams post_params;
+  post_params.setParams(params);
+
+  auto ctx = identityContext(4, 4);
+
+  AlgoPostproc softmax("SoftmaxCls");
+  ASSERT_EQ(softmax.initialize(post_params), InferErrorCode::SUCCESS);
+  AlgoOutput soft_out;
+  ASSERT_EQ(softmax.process(model_output, soft_out, ctx),
+            InferErrorCode::SUCCESS);
+
+  AlgoPostproc argmax("ArgmaxCls");
+  ASSERT_EQ(argmax.initialize(post_params), InferErrorCode::SUCCESS);
+  AlgoOutput arg_out;
+  ASSERT_EQ(argmax.process(model_output, arg_out, ctx),
+            InferErrorCode::SUCCESS);
+
+  // Softmax is monotonic, so the label survives...
+  EXPECT_EQ(soft_out.getParams<ClsRet>()->label,
+            arg_out.getParams<ClsRet>()->label);
+  // ...but the confidence does not.
+  EXPECT_LT(soft_out.getParams<ClsRet>()->score,
+            arg_out.getParams<ClsRet>()->score);
+}
+
+TEST(ArgmaxClsDecode, BatchDecodesEachRow) {
+  TensorData model_output;
+  model_output.set("scores", floatBuffer({0.8f, 0.2f, /*row1*/ 0.3f, 0.7f}),
+                   {2, 2});
+
+  GenericPostParams params;
+  params.output_names = {"scores"};
+  params.keep_class_probs = true;
+  AlgoPostprocParams post_params;
+  post_params.setParams(params);
+
+  AlgoPostproc postproc("ArgmaxCls");
+  ASSERT_EQ(postproc.initialize(post_params), InferErrorCode::SUCCESS);
+
+  auto ctx = identityContext(4, 4);
+  std::vector<AlgoOutput> outputs;
+  ASSERT_EQ(postproc.batchProcess(model_output, outputs, ctx),
+            InferErrorCode::SUCCESS);
+
+  ASSERT_EQ(outputs.size(), 2u);
+  EXPECT_EQ(outputs[0].getParams<ClsRet>()->label, 0);
+  EXPECT_FLOAT_EQ(outputs[0].getParams<ClsRet>()->score, 0.8f);
+  EXPECT_EQ(outputs[1].getParams<ClsRet>()->label, 1);
+  EXPECT_EQ(outputs[1].getParams<ClsRet>()->probs,
+            (std::vector<float>{0.3f, 0.7f}));
+}
+
 // ============================================================================
 // FprCls
 // ============================================================================

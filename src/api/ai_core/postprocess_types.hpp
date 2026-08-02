@@ -1,5 +1,5 @@
 /**
- * @file postproc_types.hpp
+ * @file postprocess_types.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -18,6 +18,12 @@ namespace ai_core {
 
 struct GenericPostParams {
   std::vector<std::string> output_names;
+
+  // Classification postprocessors (SoftmaxCls / ArgmaxCls) already compute the
+  // whole class distribution before taking the argmax. Set this to keep it in
+  // ClsRet::probs instead of throwing it away; off by default so the common
+  // top-1 path stays allocation-free.
+  bool keep_class_probs = false;
 };
 
 struct ConfidenceFilterParams {

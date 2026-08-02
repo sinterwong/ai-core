@@ -127,7 +127,8 @@ TEST_P(OCRRecoInferTest, Normal) {
   frame_preprocess_arg.is_equal_scale = false;
   frame_preprocess_arg.pad = {0, 0, 0};
   frame_preprocess_arg.mean_vals = {0.f};
-  frame_preprocess_arg.norm_vals = {255.f};
+  frame_preprocess_arg.std_vals = {255.f};
+  frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::GRAY8;
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {"x"};
   frame_preprocess_arg.output_location = config.buffer_location;

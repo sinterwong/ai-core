@@ -116,8 +116,9 @@ DualRawSegRet UNetDualOutputSeg::processSingleItem(
   ret.mask = copyPlane("mask", mask_data, mask_shape);
 
   ret.roi = prep_args.roi;
-  ret.ratio = static_cast<float>(prep_args.model_input_shape.w) /
-              prep_args.origin_shape.w;
+  // Same derivation every other decoder uses: honours the ROI and the
+  // letterbox, instead of assuming the full frame width.
+  ret.ratio = prep_args.scaleRatio().first;
   ret.left_shift = prep_args.left_pad;
   ret.top_shift = prep_args.top_pad;
   return ret;

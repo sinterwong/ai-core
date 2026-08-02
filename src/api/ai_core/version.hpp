@@ -1,5 +1,5 @@
 /**
- * @file ai_core_version.hpp
+ * @file version.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
@@ -12,8 +12,8 @@
 #pragma once
 
 // for cmake
-#define AI_CORE_VER_MAJOR 1
-#define AI_CORE_VER_MINOR 2
+#define AI_CORE_VER_MAJOR 2
+#define AI_CORE_VER_MINOR 1
 #define AI_CORE_VER_PATCH 0
 
 #define AI_CORE_VERSION                                                        \

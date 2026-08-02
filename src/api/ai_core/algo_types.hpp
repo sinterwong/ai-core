@@ -25,9 +25,17 @@ using AlgoInput =
     ParamCenter<std::variant<std::monostate, FrameInput, FrameInputWithMask>>;
 
 // Algo output
+//
+// The trailing `DataPacket` is the extension slot: an out-of-tree postprocess
+// plugin that produces a result type this variant does not know about stores
+// it there typed (`packet.setParam("pose", PoseRet{...})`) and the consumer
+// reads it back with `getParams<DataPacket>()->getParam<PoseRet>("pose")`.
+// That keeps custom results type-safe without editing this header and
+// recompiling every downstream — no need to smuggle them through
+// `RawModelOutput`/`TensorData`.
 using AlgoOutput = ParamCenter<
     std::variant<std::monostate, ClsRet, DetRet, FprClsRet, RawModelOutput,
-                 SegRet, DualRawSegRet, OCRRecoRet>>;
+                 SegRet, DualRawSegRet, OCRRecoRet, DataPacket>>;
 
 // Algo preproc params
 using AlgoPreprocParams =

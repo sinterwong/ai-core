@@ -44,10 +44,12 @@ inline uint16_t floatToHalf(float f) {
 
 // One fused pass: read the prepared uint8 image and write normalized values in
 // the requested dtype/layout. Templating on Dst (float/uint16) and the layout
-// flag lets the compiler drop the per-pixel branches.
+// flag lets the compiler drop the per-pixel branches. `src_channel` maps each
+// destination channel to its source channel, so a BGR->RGB swap costs nothing
+// beyond an already-necessary read.
 template <typename Dst, bool Chw>
 void fusedWrite(const cv::Mat &img, Dst *dst, const float *scale,
-                const float *shift, int channels) {
+                const float *shift, const int *src_channel, int channels) {
   const int height = img.rows;
   const int width = img.cols;
   const size_t plane = static_cast<size_t>(height) * width;
@@ -66,7 +68,8 @@ void fusedWrite(const cv::Mat &img, Dst *dst, const float *scale,
     for (int x = 0; x < width; ++x) {
       const uint8_t *px = row + static_cast<size_t>(x) * channels;
       for (int c = 0; c < channels; ++c) {
-        const float v = static_cast<float>(px[c]) * scale[c] + shift[c];
+        const float v =
+            static_cast<float>(px[src_channel[c]]) * scale[c] + shift[c];
         if constexpr (Chw) {
           store(dst + c * plane + static_cast<size_t>(y) * width + x, v);
         } else {
@@ -90,7 +93,10 @@ CpuGenericCvPreprocessor::process(const FramePreprocessArg &params,
            "This is not supported. Output will be on CPU.";
   }
 
-  cv::Mat prepared = cropAndResize(params, frame_input, runtime_args);
+  const auto format_plan = utils::planPixelFormat(frame_input.image.format,
+                                                  params.model_input_format);
+  cv::Mat prepared =
+      cropAndResize(params, frame_input, format_plan, runtime_args);
 
   const size_t total_elements = static_cast<size_t>(prepared.channels()) *
                                 params.model_input_shape.h *
@@ -113,7 +119,7 @@ CpuGenericCvPreprocessor::process(const FramePreprocessArg &params,
                 << static_cast<int>(params.data_type);
     throw std::runtime_error("Unsupported data type");
   }
-  writeNormalizedLayout(prepared, params, result, 0);
+  writeNormalizedLayout(prepared, params, format_plan, result, 0);
   return result;
 }
 
@@ -132,6 +138,18 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
 
   const size_t batch_size = frames.size();
   runtime_args.resize(batch_size);
+
+  // The batch buffer is sized from model_input_shape.c, so the format the
+  // frames are converted to must agree with it — otherwise every frame after
+  // the first would be written at the wrong offset.
+  if (channelCount(args.model_input_format) != args.model_input_shape.c) {
+    LOG_ERROR_S << "model_input_format has "
+                << channelCount(args.model_input_format)
+                << " channels but model_input_shape.c is "
+                << args.model_input_shape.c << ".";
+    throw std::runtime_error(
+        "model_input_format and model_input_shape.c disagree on channel count");
+  }
 
   const int input_channels = args.model_input_shape.c;
   const int input_height = args.model_input_shape.h;
@@ -155,14 +173,19 @@ TypedBuffer CpuGenericCvPreprocessor::batchProcess(
   for (size_t i = 0; i < batch_size; ++i) {
     runtime_args[i].model_input_shape = args.model_input_shape;
     runtime_args[i].is_equal_scale = args.is_equal_scale;
-    cv::Mat prepared = cropAndResize(args, frames[i], runtime_args[i]);
-    writeNormalizedLayout(prepared, args, result, i * single_image_size);
+    const auto format_plan =
+        utils::planPixelFormat(frames[i].image.format, args.model_input_format);
+    cv::Mat prepared =
+        cropAndResize(args, frames[i], format_plan, runtime_args[i]);
+    writeNormalizedLayout(prepared, args, format_plan, result,
+                          i * single_image_size);
   }
   return result;
 }
 
 cv::Mat CpuGenericCvPreprocessor::cropAndResize(
     const FramePreprocessArg &params, const FrameInput &frame_input,
+    const utils::PixelFormatPlan &format_plan,
     FrameTransformContext &runtime_args) const {
   if (frame_input.image.empty()) {
     LOG_ERROR_S << "Input frame is empty.";
@@ -187,6 +210,15 @@ cv::Mat CpuGenericCvPreprocessor::cropAndResize(
 
   // Crop as a view (no copy); resize allocates the one working buffer we need.
   cv::Mat cropped = image(roi);
+
+  // Channel-count changes must materialize here, before padding, so that
+  // `params.pad` is interpreted in the model's channel order. Pure channel
+  // swaps are deferred to writeNormalizedLayout, which gets them for free.
+  if (format_plan.needs_cvt_color) {
+    cv::Mat converted;
+    cv::cvtColor(cropped, converted, format_plan.cvt_code);
+    cropped = converted;
+  }
 
   cv::Mat resized;
   if (params.need_resize) {
@@ -217,14 +249,22 @@ cv::Mat CpuGenericCvPreprocessor::cropAndResize(
 
 void CpuGenericCvPreprocessor::writeNormalizedLayout(
     const cv::Mat &prepared_u8, const FramePreprocessArg &params,
-    TypedBuffer &dst, size_t dst_offset_elems) const {
+    const utils::PixelFormatPlan &format_plan, TypedBuffer &dst,
+    size_t dst_offset_elems) const {
   const int channels = prepared_u8.channels();
+
+  // cvtColor already produced the model's channel order, so only the deferred
+  // swap remains.
+  std::array<int, 4> src_channel{0, 1, 2, 3};
+  if (!format_plan.needs_cvt_color) {
+    src_channel = format_plan.channel_map;
+  }
 
   if (!params.mean_vals.empty() &&
       (params.mean_vals.size() != static_cast<size_t>(channels) ||
-       params.norm_vals.size() != static_cast<size_t>(channels))) {
+       params.std_vals.size() != static_cast<size_t>(channels))) {
     throw std::runtime_error(
-        "mean_vals and norm_vals size must match input channels");
+        "mean_vals and std_vals size must match input channels");
   }
 
   // Fold (v - mean) / norm into v * scale + shift, per channel.
@@ -232,8 +272,8 @@ void CpuGenericCvPreprocessor::writeNormalizedLayout(
   std::array<float, 4> shift{0.f, 0.f, 0.f, 0.f};
   if (!params.mean_vals.empty()) {
     for (int c = 0; c < channels && c < 4; ++c) {
-      scale[c] = 1.f / params.norm_vals[c];
-      shift[c] = -params.mean_vals[c] / params.norm_vals[c];
+      scale[c] = 1.f / params.std_vals[c];
+      shift[c] = -params.mean_vals[c] / params.std_vals[c];
     }
   }
 
@@ -241,19 +281,19 @@ void CpuGenericCvPreprocessor::writeNormalizedLayout(
     float *out = dst.getHostPtr<float>() + dst_offset_elems;
     if (params.hwc2chw) {
       fusedWrite<float, true>(prepared_u8, out, scale.data(), shift.data(),
-                              channels);
+                              src_channel.data(), channels);
     } else {
       fusedWrite<float, false>(prepared_u8, out, scale.data(), shift.data(),
-                               channels);
+                               src_channel.data(), channels);
     }
   } else { // FLOAT16
     uint16_t *out = dst.getHostPtr<uint16_t>() + dst_offset_elems;
     if (params.hwc2chw) {
       fusedWrite<uint16_t, true>(prepared_u8, out, scale.data(), shift.data(),
-                                 channels);
+                                 src_channel.data(), channels);
     } else {
       fusedWrite<uint16_t, false>(prepared_u8, out, scale.data(), shift.data(),
-                                  channels);
+                                  src_channel.data(), channels);
     }
   }
 }

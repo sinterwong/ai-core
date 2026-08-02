@@ -118,7 +118,8 @@ TEST_P(OCRDetInferenceTest, Normal) {
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};
   frame_preprocess_arg.mean_vals = {123.675f, 116.28f, 103.53f};
-  frame_preprocess_arg.norm_vals = {58.395f, 57.12f, 57.375f};
+  frame_preprocess_arg.std_vals = {58.395f, 57.12f, 57.375f};
+  frame_preprocess_arg.model_input_format = ai_core::ImagePixelFormat::BGR888;
   frame_preprocess_arg.hwc2chw = true;
   frame_preprocess_arg.input_names = {config.input_name};
   frame_preprocess_arg.output_location = config.buffer_location;

@@ -26,6 +26,20 @@ jobs:
             'benchmarks/*.cc' \
             | xargs clang-format-21 --dry-run --Werror
 
+      # version.hpp is what CMake extracts the package version from, so it
+      # drifting behind CHANGELOG means shipping a mislabelled package.
+      - name: Check version.hpp matches CHANGELOG
+        run: |
+          HDR=src/api/ai_core/version.hpp
+          MAJOR=$(grep -oP 'AI_CORE_VER_MAJOR \K[0-9]+' $HDR)
+          MINOR=$(grep -oP 'AI_CORE_VER_MINOR \K[0-9]+' $HDR)
+          LATEST=$(grep -oP '^## v\K[0-9]+\.[0-9]+' CHANGELOG.md | head -1)
+          if [ "${MAJOR}.${MINOR}" != "$LATEST" ]; then
+            echo "version.hpp says ${MAJOR}.${MINOR}, CHANGELOG's newest entry is v${LATEST}" >&2
+            exit 1
+          fi
+          echo "version in sync: v${MAJOR}.${MINOR}"
+
   build-test:
     strategy:
       fail-fast: false
