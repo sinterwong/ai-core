@@ -176,6 +176,7 @@ More complete samples are in `examples/generic_image_infer.cpp`, `examples/ocr/`
 
 - [doc/Framework.md](doc/Framework.md) — framework structure and design
 - [doc/API.md](doc/API.md) — public API reference
+- [doc/PluginGuide.md](doc/PluginGuide.md) — writing plugins, tensor contracts
 
 ## License
 

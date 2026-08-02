@@ -12,6 +12,7 @@
 #include "vision_util.hpp"
 #include "gtest/gtest.h"
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace testing_vision_util {
 
@@ -225,6 +226,170 @@ TEST(NmsTest, KeepsDifferentClassesEvenIfOverlapping) {
   };
   auto kept = ai_core::utils::nms(boxes, 0.45f, 0.5f);
   EXPECT_EQ(kept.size(), 2u);
+}
+
+// ============================================================================
+// PixelFormatPlan / convertPixelFormat
+// ============================================================================
+
+using ai_core::ImagePixelFormat;
+using ai_core::utils::convertPixelFormat;
+using ai_core::utils::planPixelFormat;
+
+TEST(PlanPixelFormatTest, IdentityWhenFormatsMatch) {
+  for (auto fmt : {ImagePixelFormat::GRAY8, ImagePixelFormat::BGR888,
+                   ImagePixelFormat::RGB888, ImagePixelFormat::BGRA8888,
+                   ImagePixelFormat::RGBA8888}) {
+    auto plan = planPixelFormat(fmt, fmt);
+    EXPECT_TRUE(plan.isIdentity());
+    EXPECT_FALSE(plan.needs_cvt_color);
+  }
+}
+
+// Same channel count => pure permutation, foldable by the caller, no
+// cv::cvtColor pass required.
+TEST(PlanPixelFormatTest, SameChannelCountIsChannelPermutation) {
+  for (auto [from, to] :
+      {std::pair{ImagePixelFormat::BGR888, ImagePixelFormat::RGB888},
+       std::pair{ImagePixelFormat::RGB888, ImagePixelFormat::BGR888},
+       std::pair{ImagePixelFormat::BGRA8888, ImagePixelFormat::RGBA8888},
+       std::pair{ImagePixelFormat::RGBA8888, ImagePixelFormat::BGRA8888}}) {
+    auto plan = planPixelFormat(from, to);
+    EXPECT_FALSE(plan.needs_cvt_color);
+    EXPECT_FALSE(plan.isIdentity());
+    EXPECT_EQ(plan.channel_map, (std::array<int, 4>{2, 1, 0, 3}));
+  }
+}
+
+TEST(PlanPixelFormatTest, FromGray8) {
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::BGR888)
+               .cvt_code,
+           cv::COLOR_GRAY2BGR);
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::RGB888)
+               .cvt_code,
+           cv::COLOR_GRAY2RGB);
+  // Gray has no channel order: BGRA and RGBA expand identically.
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::BGRA8888)
+          .cvt_code,
+      cv::COLOR_GRAY2BGRA);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::RGBA8888)
+          .cvt_code,
+      cv::COLOR_GRAY2BGRA);
+}
+
+TEST(PlanPixelFormatTest, FromBgr888) {
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::BGR888, ImagePixelFormat::GRAY8)
+               .cvt_code,
+           cv::COLOR_BGR2GRAY);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::BGR888, ImagePixelFormat::BGRA8888)
+          .cvt_code,
+      cv::COLOR_BGR2BGRA);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::BGR888, ImagePixelFormat::RGBA8888)
+          .cvt_code,
+      cv::COLOR_BGR2RGBA);
+}
+
+TEST(PlanPixelFormatTest, FromRgb888) {
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::RGB888, ImagePixelFormat::GRAY8)
+               .cvt_code,
+           cv::COLOR_RGB2GRAY);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::RGB888, ImagePixelFormat::RGBA8888)
+          .cvt_code,
+      cv::COLOR_RGB2RGBA);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::RGB888, ImagePixelFormat::BGRA8888)
+          .cvt_code,
+      cv::COLOR_RGB2BGRA);
+}
+
+TEST(PlanPixelFormatTest, FromBgra8888) {
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::BGRA8888, ImagePixelFormat::GRAY8)
+          .cvt_code,
+      cv::COLOR_BGRA2GRAY);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::BGRA8888, ImagePixelFormat::BGR888)
+          .cvt_code,
+      cv::COLOR_BGRA2BGR);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::BGRA8888, ImagePixelFormat::RGB888)
+          .cvt_code,
+      cv::COLOR_BGRA2RGB);
+}
+
+TEST(PlanPixelFormatTest, FromRgba8888) {
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::RGBA8888, ImagePixelFormat::GRAY8)
+          .cvt_code,
+      cv::COLOR_RGBA2GRAY);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::RGBA8888, ImagePixelFormat::RGB888)
+          .cvt_code,
+      cv::COLOR_RGBA2RGB);
+  EXPECT_EQ(
+      planPixelFormat(ImagePixelFormat::RGBA8888, ImagePixelFormat::BGR888)
+          .cvt_code,
+      cv::COLOR_RGBA2BGR);
+}
+
+// An out-of-range "to" is not reachable through any explicit case, so it
+// falls through to the trailing throw regardless of "from".
+TEST(PlanPixelFormatTest, UnsupportedConversionThrows) {
+  const auto bogus = static_cast<ImagePixelFormat>(99);
+  EXPECT_THROW(planPixelFormat(ImagePixelFormat::GRAY8, bogus),
+              std::invalid_argument);
+  EXPECT_THROW(planPixelFormat(ImagePixelFormat::BGR888, bogus),
+              std::invalid_argument);
+  EXPECT_THROW(planPixelFormat(ImagePixelFormat::RGB888, bogus),
+              std::invalid_argument);
+  EXPECT_THROW(planPixelFormat(ImagePixelFormat::BGRA8888, bogus),
+              std::invalid_argument);
+  EXPECT_THROW(planPixelFormat(ImagePixelFormat::RGBA8888, bogus),
+              std::invalid_argument);
+}
+
+TEST(ConvertPixelFormatTest, IdentityReturnsSameData) {
+  cv::Mat src(4, 4, CV_8UC3, cv::Scalar(1, 2, 3));
+  cv::Mat dst = convertPixelFormat(src, ImagePixelFormat::BGR888,
+                                   ImagePixelFormat::BGR888);
+  EXPECT_EQ(dst.data, src.data);
+}
+
+TEST(ConvertPixelFormatTest, ThreeChannelPermutationSwapsFirstAndLast) {
+  cv::Mat src(1, 1, CV_8UC3, cv::Scalar(10, 20, 30));
+  cv::Mat dst = convertPixelFormat(src, ImagePixelFormat::BGR888,
+                                   ImagePixelFormat::RGB888);
+  const auto &px = dst.at<cv::Vec3b>(0, 0);
+  EXPECT_EQ(px[0], 30);
+  EXPECT_EQ(px[1], 20);
+  EXPECT_EQ(px[2], 10);
+}
+
+TEST(ConvertPixelFormatTest, FourChannelPermutationKeepsAlpha) {
+  cv::Mat src(1, 1, CV_8UC4, cv::Scalar(10, 20, 30, 40));
+  cv::Mat dst = convertPixelFormat(src, ImagePixelFormat::BGRA8888,
+                                   ImagePixelFormat::RGBA8888);
+  const auto &px = dst.at<cv::Vec4b>(0, 0);
+  EXPECT_EQ(px[0], 30);
+  EXPECT_EQ(px[1], 20);
+  EXPECT_EQ(px[2], 10);
+  EXPECT_EQ(px[3], 40);
+}
+
+TEST(ConvertPixelFormatTest, CvtColorPathExpandsGrayToColor) {
+  cv::Mat src(1, 1, CV_8UC1, cv::Scalar(42));
+  cv::Mat dst = convertPixelFormat(src, ImagePixelFormat::GRAY8,
+                                   ImagePixelFormat::BGR888);
+  ASSERT_EQ(dst.channels(), 3);
+  const auto &px = dst.at<cv::Vec3b>(0, 0);
+  EXPECT_EQ(px[0], 42);
+  EXPECT_EQ(px[1], 42);
+  EXPECT_EQ(px[2], 42);
 }
 
 } // namespace testing_vision_util

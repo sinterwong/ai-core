@@ -33,7 +33,7 @@ CORE_FILTERS=(
 )
 
 # Unit-test suites only (no model assets, no crashing integration teardown).
-UNIT_FILTER='TypedBufferTest.*:TensorDataTest.*:DataPacketTest.*:ParamCenterTest.*:FactoryTest.*:ImageViewTest.*:InteropTest.*:GeometryTest.*:CpuPreprocTest.*:FrameWithMaskTest.*:ParamBindingTest.*:*Decode*:EscaleResizeWithPadTest.*:CoordinateRestorationTest.*:ScaleRatioTest.*:NmsTest.*'
+UNIT_FILTER='TypedBufferTest.*:TensorDataTest.*:DataPacketTest.*:ParamCenterTest.*:FactoryTest.*:ImageViewTest.*:InteropTest.*:GeometryTest.*:CpuPreprocTest.*:FrameWithMaskTest.*:ParamBindingTest.*:*Decode*:EscaleResizeWithPadTest.*:CoordinateRestorationTest.*:ScaleRatioTest.*:NmsTest.*:PlanPixelFormatTest.*:ConvertPixelFormatTest.*'
 
 echo "== Configuring instrumented build =="
 cmake -B "${BUILD_DIR}" -G Ninja \

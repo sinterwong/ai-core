@@ -194,6 +194,7 @@ algo.terminate();
 
 - [doc/Framework.md](doc/Framework.md) — 框架结构与设计
 - [doc/API.md](doc/API.md) — 公共 API
+- [doc/PluginGuide.md](doc/PluginGuide.md) — 插件开发与张量契约
 
 ## 许可
 
