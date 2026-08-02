@@ -250,10 +250,10 @@ TEST(PlanPixelFormatTest, IdentityWhenFormatsMatch) {
 // cv::cvtColor pass required.
 TEST(PlanPixelFormatTest, SameChannelCountIsChannelPermutation) {
   for (auto [from, to] :
-      {std::pair{ImagePixelFormat::BGR888, ImagePixelFormat::RGB888},
-       std::pair{ImagePixelFormat::RGB888, ImagePixelFormat::BGR888},
-       std::pair{ImagePixelFormat::BGRA8888, ImagePixelFormat::RGBA8888},
-       std::pair{ImagePixelFormat::RGBA8888, ImagePixelFormat::BGRA8888}}) {
+       {std::pair{ImagePixelFormat::BGR888, ImagePixelFormat::RGB888},
+        std::pair{ImagePixelFormat::RGB888, ImagePixelFormat::BGR888},
+        std::pair{ImagePixelFormat::BGRA8888, ImagePixelFormat::RGBA8888},
+        std::pair{ImagePixelFormat::RGBA8888, ImagePixelFormat::BGRA8888}}) {
     auto plan = planPixelFormat(from, to);
     EXPECT_FALSE(plan.needs_cvt_color);
     EXPECT_FALSE(plan.isIdentity());
@@ -263,26 +263,24 @@ TEST(PlanPixelFormatTest, SameChannelCountIsChannelPermutation) {
 
 TEST(PlanPixelFormatTest, FromGray8) {
   EXPECT_EQ(planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::BGR888)
-               .cvt_code,
-           cv::COLOR_GRAY2BGR);
+                .cvt_code,
+            cv::COLOR_GRAY2BGR);
   EXPECT_EQ(planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::RGB888)
-               .cvt_code,
-           cv::COLOR_GRAY2RGB);
+                .cvt_code,
+            cv::COLOR_GRAY2RGB);
   // Gray has no channel order: BGRA and RGBA expand identically.
-  EXPECT_EQ(
-      planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::BGRA8888)
-          .cvt_code,
-      cv::COLOR_GRAY2BGRA);
-  EXPECT_EQ(
-      planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::RGBA8888)
-          .cvt_code,
-      cv::COLOR_GRAY2BGRA);
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::BGRA8888)
+                .cvt_code,
+            cv::COLOR_GRAY2BGRA);
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::GRAY8, ImagePixelFormat::RGBA8888)
+                .cvt_code,
+            cv::COLOR_GRAY2BGRA);
 }
 
 TEST(PlanPixelFormatTest, FromBgr888) {
   EXPECT_EQ(planPixelFormat(ImagePixelFormat::BGR888, ImagePixelFormat::GRAY8)
-               .cvt_code,
-           cv::COLOR_BGR2GRAY);
+                .cvt_code,
+            cv::COLOR_BGR2GRAY);
   EXPECT_EQ(
       planPixelFormat(ImagePixelFormat::BGR888, ImagePixelFormat::BGRA8888)
           .cvt_code,
@@ -295,8 +293,8 @@ TEST(PlanPixelFormatTest, FromBgr888) {
 
 TEST(PlanPixelFormatTest, FromRgb888) {
   EXPECT_EQ(planPixelFormat(ImagePixelFormat::RGB888, ImagePixelFormat::GRAY8)
-               .cvt_code,
-           cv::COLOR_RGB2GRAY);
+                .cvt_code,
+            cv::COLOR_RGB2GRAY);
   EXPECT_EQ(
       planPixelFormat(ImagePixelFormat::RGB888, ImagePixelFormat::RGBA8888)
           .cvt_code,
@@ -308,10 +306,9 @@ TEST(PlanPixelFormatTest, FromRgb888) {
 }
 
 TEST(PlanPixelFormatTest, FromBgra8888) {
-  EXPECT_EQ(
-      planPixelFormat(ImagePixelFormat::BGRA8888, ImagePixelFormat::GRAY8)
-          .cvt_code,
-      cv::COLOR_BGRA2GRAY);
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::BGRA8888, ImagePixelFormat::GRAY8)
+                .cvt_code,
+            cv::COLOR_BGRA2GRAY);
   EXPECT_EQ(
       planPixelFormat(ImagePixelFormat::BGRA8888, ImagePixelFormat::BGR888)
           .cvt_code,
@@ -323,10 +320,9 @@ TEST(PlanPixelFormatTest, FromBgra8888) {
 }
 
 TEST(PlanPixelFormatTest, FromRgba8888) {
-  EXPECT_EQ(
-      planPixelFormat(ImagePixelFormat::RGBA8888, ImagePixelFormat::GRAY8)
-          .cvt_code,
-      cv::COLOR_RGBA2GRAY);
+  EXPECT_EQ(planPixelFormat(ImagePixelFormat::RGBA8888, ImagePixelFormat::GRAY8)
+                .cvt_code,
+            cv::COLOR_RGBA2GRAY);
   EXPECT_EQ(
       planPixelFormat(ImagePixelFormat::RGBA8888, ImagePixelFormat::RGB888)
           .cvt_code,
@@ -342,15 +338,15 @@ TEST(PlanPixelFormatTest, FromRgba8888) {
 TEST(PlanPixelFormatTest, UnsupportedConversionThrows) {
   const auto bogus = static_cast<ImagePixelFormat>(99);
   EXPECT_THROW(planPixelFormat(ImagePixelFormat::GRAY8, bogus),
-              std::invalid_argument);
+               std::invalid_argument);
   EXPECT_THROW(planPixelFormat(ImagePixelFormat::BGR888, bogus),
-              std::invalid_argument);
+               std::invalid_argument);
   EXPECT_THROW(planPixelFormat(ImagePixelFormat::RGB888, bogus),
-              std::invalid_argument);
+               std::invalid_argument);
   EXPECT_THROW(planPixelFormat(ImagePixelFormat::BGRA8888, bogus),
-              std::invalid_argument);
+               std::invalid_argument);
   EXPECT_THROW(planPixelFormat(ImagePixelFormat::RGBA8888, bogus),
-              std::invalid_argument);
+               std::invalid_argument);
 }
 
 TEST(ConvertPixelFormatTest, IdentityReturnsSameData) {
