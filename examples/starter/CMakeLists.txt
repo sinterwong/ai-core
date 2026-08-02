@@ -20,7 +20,7 @@ add_executable(ai_core_starter main.cpp)
 target_link_libraries(ai_core_starter
     PRIVATE
         ai_core::ai_core          # core inference API
-        ai_core::ai_core_config   # optional JSON config module
+        ai_core::config           # optional JSON config module
         ${OpenCV_LIBS}            # only for image I/O in this example
 )
 target_include_directories(ai_core_starter PRIVATE ${OpenCV_INCLUDE_DIRS})

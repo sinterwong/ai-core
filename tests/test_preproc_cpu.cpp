@@ -35,6 +35,9 @@ std::vector<uint8_t> makeSyntheticImage(int width, int height, int channels) {
 FramePreprocessArg baseArg(int w, int h) {
   FramePreprocessArg arg;
   arg.model_input_shape = {w, h, 3};
+  // Matches makeInput's view format, so these tests exercise layout and
+  // normalization without a colour conversion in the way.
+  arg.model_input_format = ImagePixelFormat::RGB888;
   arg.need_resize = false;
   arg.is_equal_scale = false;
   arg.hwc2chw = true;
@@ -45,18 +48,86 @@ FramePreprocessArg baseArg(int w, int h) {
 }
 
 AlgoInput makeInput(const std::vector<uint8_t> &pixels, int w, int h,
-                    std::optional<Rect> roi = std::nullopt) {
+                    std::optional<Rect> roi = std::nullopt,
+                    ImagePixelFormat format = ImagePixelFormat::RGB888) {
   ImageView view;
   view.data = pixels.data();
   view.width = w;
   view.height = h;
-  view.format = ImagePixelFormat::RGB888;
+  view.format = format;
   FrameInput frame;
   frame.image = view;
   frame.roi = roi;
   AlgoInput input;
   input.setParams(frame);
   return input;
+}
+
+// ImageView::format is not decorative: the preprocessor converts the incoming
+// frame to FramePreprocessArg::model_input_format. A model trained on RGB fed
+// a BGR frame used to lose accuracy silently.
+TEST(CpuPreprocTest, ConvertsInputFormatToModelFormat) {
+  const int w = 4, h = 4;
+  auto pixels = makeSyntheticImage(w, h, 3);
+
+  auto arg = baseArg(w, h);
+  arg.model_input_format = ImagePixelFormat::RGB888;
+  AlgoPreprocParams params;
+  params.setParams(arg);
+
+  AlgoPreproc preproc("CpuGenericPreprocess");
+  ASSERT_EQ(preproc.initialize(params), InferErrorCode::SUCCESS);
+
+  // Same bytes, but declared BGR this time -> channels must come out reversed.
+  auto input = makeInput(pixels, w, h, std::nullopt, ImagePixelFormat::BGR888);
+  auto ctx = std::make_shared<RuntimeContext>();
+  TensorData model_input;
+  ASSERT_EQ(preproc.process(input, model_input, ctx), InferErrorCode::SUCCESS);
+
+  const float *data = model_input.at("input").buffer.getHostPtr<float>();
+  for (int c = 0; c < 3; ++c) {
+    for (int y = 0; y < h; ++y) {
+      for (int x = 0; x < w; ++x) {
+        EXPECT_FLOAT_EQ(data[c * h * w + y * w + x],
+                        static_cast<float>(y * 30 + x * 6 + (2 - c)))
+            << "c=" << c << " y=" << y << " x=" << x;
+      }
+    }
+  }
+}
+
+// A channel-count change (gray source, 3-channel model) goes through cvtColor
+// rather than the folded channel permutation.
+TEST(CpuPreprocTest, ExpandsGrayInputToThreeChannels) {
+  const int w = 4, h = 4;
+  auto pixels = makeSyntheticImage(w, h, 1);
+
+  auto arg = baseArg(w, h);
+  arg.model_input_format = ImagePixelFormat::BGR888;
+  AlgoPreprocParams params;
+  params.setParams(arg);
+
+  AlgoPreproc preproc("CpuGenericPreprocess");
+  ASSERT_EQ(preproc.initialize(params), InferErrorCode::SUCCESS);
+
+  auto input = makeInput(pixels, w, h, std::nullopt, ImagePixelFormat::GRAY8);
+  auto ctx = std::make_shared<RuntimeContext>();
+  TensorData model_input;
+  ASSERT_EQ(preproc.process(input, model_input, ctx), InferErrorCode::SUCCESS);
+
+  const Tensor &tensor = model_input.at("input");
+  EXPECT_EQ(tensor.shape, (std::vector<int>{1, 3, h, w}));
+  const float *data = tensor.buffer.getHostPtr<float>();
+  // Gray replicates across all three channels.
+  for (int y = 0; y < h; ++y) {
+    for (int x = 0; x < w; ++x) {
+      const float expected = static_cast<float>(y * 30 + x * 6);
+      for (int c = 0; c < 3; ++c) {
+        EXPECT_FLOAT_EQ(data[c * h * w + y * w + x], expected)
+            << "c=" << c << " y=" << y << " x=" << x;
+      }
+    }
+  }
 }
 
 TEST(CpuPreprocTest, ChwLayoutAndValues) {
@@ -128,7 +199,7 @@ TEST(CpuPreprocTest, MeanNormApplied) {
 
   auto arg = baseArg(w, h);
   arg.mean_vals = {10.f, 10.f, 10.f};
-  arg.norm_vals = {2.f, 2.f, 2.f};
+  arg.std_vals = {2.f, 2.f, 2.f};
   AlgoPreprocParams params;
   params.setParams(arg);
 
@@ -262,7 +333,7 @@ TEST(ParamBindingTest, StructurallyInvalidPreprocParamsRejected) {
 
   arg = baseArg(4, 4);
   arg.mean_vals = {1.f};
-  arg.norm_vals = {1.f, 2.f}; // size mismatch
+  arg.std_vals = {1.f, 2.f}; // size mismatch
   AlgoPreprocParams params3;
   params3.setParams(arg);
   EXPECT_EQ(preproc.initialize(params3), InferErrorCode::InferInvalidInput);
@@ -351,7 +422,7 @@ TEST(FrameWithMaskTest, RasterizesMaskChannel) {
   auto arg = baseArg(w, h);
   arg.model_input_shape.c = 4;
   arg.mean_vals = {0.f, 0.f, 0.f};
-  arg.norm_vals = {1.f, 1.f, 1.f};
+  arg.std_vals = {1.f, 1.f, 1.f};
   AlgoPreprocParams params;
   params.setParams(arg);
 
@@ -436,7 +507,7 @@ TEST(ParamBindingTest, PerCallOverrideWins) {
 
   auto arg = baseArg(w, h);
   arg.mean_vals = {10.f, 10.f, 10.f};
-  arg.norm_vals = {2.f, 2.f, 2.f};
+  arg.std_vals = {2.f, 2.f, 2.f};
   AlgoPreprocParams override_params;
   override_params.setParams(arg);
 

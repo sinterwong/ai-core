@@ -14,14 +14,25 @@
 #include "ai_core/opencv_interop.hpp"
 #include "cpu_generic_preprocessor.hpp"
 #include "frame_preprocessor_base.hpp"
+#include "vision_util.hpp"
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {
 
 namespace {
-// Crop the ROI, rasterize the mask regions into an extra channel and return
-// the merged image.
-cv::Mat buildImageWithMaskChannel(const FrameInputWithMask &input_with_mask) {
+// The composite carries a mask in its last channel, so it is not a colour
+// format any more. Report the 4-channel format whose first three channels
+// match the model's colour order, so the inner CPU preprocessor sees an
+// identity conversion and leaves the mask alone.
+ImagePixelFormat compositeFormat(ImagePixelFormat model_format) {
+  return model_format == ImagePixelFormat::RGB888 ? ImagePixelFormat::RGBA8888
+                                                  : ImagePixelFormat::BGRA8888;
+}
+
+// Crop the ROI, convert to the model's channel order, rasterize the mask
+// regions into an extra channel and return the merged image.
+cv::Mat buildImageWithMaskChannel(const FrameInputWithMask &input_with_mask,
+                                  ImagePixelFormat model_format) {
   const auto &frame_input = input_with_mask.frame_input;
 
   const cv::Mat image = interop::matFromView(frame_input.image);
@@ -29,6 +40,12 @@ cv::Mat buildImageWithMaskChannel(const FrameInputWithMask &input_with_mask) {
                                        : cv::Rect(0, 0, image.cols, image.rows);
 
   cv::Mat roi_image = image(roi);
+
+  // Colour conversion has to happen before the mask is appended: afterwards
+  // the extra channel would be mistaken for alpha.
+  roi_image = utils::convertPixelFormat(roi_image, frame_input.image.format,
+                                        model_format);
+
   cv::Mat mask = cv::Mat::zeros(roi_image.size(), CV_8UC1);
 
   for (const auto &region : input_with_mask.mask_regions) {
@@ -50,15 +67,18 @@ cv::Mat buildImageWithMaskChannel(const FrameInputWithMask &input_with_mask) {
   return image_with_mask;
 }
 
-// The mask becomes an extra channel, so mean/norm need one more entry.
+// The mask becomes an extra channel, so mean/std need one more entry. The
+// colour conversion has already been applied while compositing, so the format
+// is retagged to the composite's to keep the inner preprocessor a no-op.
 FramePreprocessArg extendParamsForMaskChannel(const FramePreprocessArg &args) {
   FramePreprocessArg new_params = args;
   if (!new_params.mean_vals.empty()) {
     new_params.mean_vals.push_back(new_params.mean_vals.back());
   }
-  if (!new_params.norm_vals.empty()) {
-    new_params.norm_vals.push_back(new_params.norm_vals.back());
+  if (!new_params.std_vals.empty()) {
+    new_params.std_vals.push_back(new_params.std_vals.back());
   }
+  new_params.model_input_format = compositeFormat(args.model_input_format);
   return new_params;
 }
 } // namespace
@@ -94,9 +114,11 @@ InferErrorCode FrameWithMaskPreprocess::process(
 
   // ROI has already been applied while building the masked image, so the
   // masked frame carries no ROI. The Mat must outlive the view.
-  cv::Mat masked_image = buildImageWithMaskChannel(*frame_input_with_mask);
+  cv::Mat masked_image = buildImageWithMaskChannel(
+      *frame_input_with_mask, params_ptr->model_input_format);
   FrameInput masked_frame_input;
-  masked_frame_input.image = interop::viewFromMat(masked_image);
+  masked_frame_input.image =
+      interop::viewFromMat(masked_image, new_params.model_input_format);
 
   cpu::CpuGenericCvPreprocessor processor;
   FrameTransformContext single_runtime_args;
@@ -156,13 +178,16 @@ InferErrorCode FrameWithMaskPreprocess::batchProcess(
       return InferErrorCode::InferInvalidInput;
     }
 
-    masked_images.push_back(buildImageWithMaskChannel(*frame_input_with_mask));
-    FrameInput current_masked_input;
-    current_masked_input.image = interop::viewFromMat(masked_images.back());
-    masked_frame_inputs.push_back(current_masked_input);
+    masked_images.push_back(buildImageWithMaskChannel(
+        *frame_input_with_mask, params_ptr->model_input_format));
+    masked_frame_inputs.push_back(FrameInput{});
   }
 
   FramePreprocessArg new_params = extendParamsForMaskChannel(*params_ptr);
+  for (size_t i = 0; i < masked_images.size(); ++i) {
+    masked_frame_inputs[i].image =
+        interop::viewFromMat(masked_images[i], new_params.model_input_format);
+  }
 
   cpu::CpuGenericCvPreprocessor processor;
   std::vector<FrameTransformContext> batch_runtime_args(input.size());

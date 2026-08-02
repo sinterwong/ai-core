@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2026
  *
  */
+#include "ai_core/preprocess_types.hpp"
 #include "vision_util.hpp"
 #include "gtest/gtest.h"
 #include <opencv2/core.hpp>
@@ -16,7 +17,21 @@ namespace testing_vision_util {
 
 using namespace ai_core;
 using ai_core::utils::escaleResizeWithPad;
-using ai_core::utils::scaleRatio;
+
+// Build the context a frame preprocessor would have produced for the given
+// letterbox, so the tests exercise exactly what the decoders consume.
+FrameTransformContext makeContext(const Shape &origin, const Shape &input,
+                                  bool equal_scale, int top_pad = 0,
+                                  int left_pad = 0, Rect roi = {}) {
+  FrameTransformContext ctx;
+  ctx.is_equal_scale = equal_scale;
+  ctx.origin_shape = origin;
+  ctx.model_input_shape = input;
+  ctx.roi = roi;
+  ctx.top_pad = top_pad;
+  ctx.left_pad = left_pad;
+  return ctx;
+}
 
 // escaleResizeWithPad must keep aspect ratio, center the resized image and
 // report the top/left padding used — postprocessors rely on these offsets to
@@ -87,9 +102,9 @@ TEST(EscaleResizeWithPadTest, NoUpscalePaddingWhenExactFit) {
 }
 
 // Round-trip: a point in the source image, mapped through the letterbox
-// transform (scale + pad) and restored with scaleRatio + pad offsets, must
-// land back on the original coordinates. This mirrors what the detection
-// postprocessors do.
+// transform (scale + pad) and restored with FrameTransformContext::mapToSource,
+// must land back on the original coordinates. This is exactly what the
+// detection postprocessors do.
 TEST(CoordinateRestorationTest, RoundTripThroughLetterbox) {
   const Shape origin_shape{200, 100, 3};
   const Shape input_shape{640, 640, 3};
@@ -99,37 +114,82 @@ TEST(CoordinateRestorationTest, RoundTripThroughLetterbox) {
   Shape pad_ret =
       escaleResizeWithPad(src, dst, input_shape.w, input_shape.h, {0, 0, 0});
 
-  auto [scaleX, scaleY] = scaleRatio(origin_shape, input_shape, true);
+  const FrameTransformContext ctx = makeContext(
+      origin_shape, input_shape, /*equal_scale=*/true, pad_ret.h, pad_ret.w);
+
+  auto [scaleX, scaleY] = ctx.scaleRatio();
   EXPECT_FLOAT_EQ(scaleX, scaleY); // equal-scale mode
 
   const float orig_x = 50.f;
   const float orig_y = 25.f;
 
   // Forward: source -> model input space
-  const float model_x = orig_x * scaleX + pad_ret.w;
-  const float model_y = orig_y * scaleY + pad_ret.h;
+  const Point2f model{orig_x * scaleX + pad_ret.w, orig_y * scaleY + pad_ret.h};
 
-  // Backward: model input space -> source (the postprocessor formula)
-  const float restored_x = (model_x - pad_ret.w) / scaleX;
-  const float restored_y = (model_y - pad_ret.h) / scaleY;
+  // Backward: model input space -> source
+  const Point2f restored = ctx.mapToSource(model);
 
-  EXPECT_NEAR(restored_x, orig_x, 1e-4);
-  EXPECT_NEAR(restored_y, orig_y, 1e-4);
+  EXPECT_NEAR(restored.x, orig_x, 1e-4);
+  EXPECT_NEAR(restored.y, orig_y, 1e-4);
+}
+
+// With a ROI set, the scale is derived from the ROI (what the model actually
+// saw) and the ROI origin is added back on the way out.
+TEST(CoordinateRestorationTest, RoundTripThroughRoiAndLetterbox) {
+  const Shape origin_shape{1920, 1080, 3};
+  const Shape input_shape{640, 640, 3};
+  const Rect roi{300, 200, 400, 200};
+
+  const FrameTransformContext ctx =
+      makeContext(origin_shape, input_shape, /*equal_scale=*/true,
+                  /*top_pad=*/160, /*left_pad=*/0, roi);
+
+  auto [scaleX, scaleY] = ctx.scaleRatio();
+  EXPECT_FLOAT_EQ(scaleX, std::min(640.f / 400.f, 640.f / 200.f));
+  EXPECT_FLOAT_EQ(scaleX, scaleY);
+
+  // A point at the ROI's top-left maps to the padded model origin and back.
+  const Point2f model{0.f + ctx.left_pad, 0.f + ctx.top_pad};
+  const Point2f restored = ctx.mapToSource(model);
+  EXPECT_NEAR(restored.x, roi.x, 1e-4);
+  EXPECT_NEAR(restored.y, roi.y, 1e-4);
+}
+
+// Sizes are translation-invariant: no padding subtracted, no ROI offset added.
+TEST(CoordinateRestorationTest, SizesIgnorePadAndRoiOffset) {
+  const FrameTransformContext ctx =
+      makeContext(Shape{200, 100, 3}, Shape{640, 640, 3},
+                  /*equal_scale=*/true, /*top_pad=*/160, /*left_pad=*/0,
+                  Rect{10, 20, 200, 100});
+  auto [scaleX, scaleY] = ctx.scaleRatio();
+  const Point2f size = ctx.mapSizeToSource(64.f, 32.f);
+  EXPECT_FLOAT_EQ(size.x, 64.f / scaleX);
+  EXPECT_FLOAT_EQ(size.y, 32.f / scaleY);
 }
 
 TEST(ScaleRatioTest, NonEqualScaleStretchesBothAxes) {
-  const Shape origin_shape{200, 100, 3};
-  const Shape input_shape{640, 640, 3};
-  auto [scaleX, scaleY] = scaleRatio(origin_shape, input_shape, false);
+  const FrameTransformContext ctx = makeContext(
+      Shape{200, 100, 3}, Shape{640, 640, 3}, /*equal_scale=*/false);
+  auto [scaleX, scaleY] = ctx.scaleRatio();
   EXPECT_FLOAT_EQ(scaleX, 640.f / 200.f);
   EXPECT_FLOAT_EQ(scaleY, 640.f / 100.f);
 }
 
 TEST(ScaleRatioTest, EqualScaleUsesMinRatioOnBothAxes) {
-  auto [rw, rh] = scaleRatio(Shape{200, 100, 3}, Shape{640, 640, 3},
-                             /*is_scale=*/true);
+  const FrameTransformContext ctx =
+      makeContext(Shape{200, 100, 3}, Shape{640, 640, 3}, /*equal_scale=*/true);
+  auto [rw, rh] = ctx.scaleRatio();
   EXPECT_FLOAT_EQ(rw, rh);
   EXPECT_FLOAT_EQ(rw, std::min(640.f / 200.f, 640.f / 100.f));
+}
+
+// A degenerate context must not divide by zero — it degrades to identity.
+TEST(ScaleRatioTest, EmptySourceShapeDegradesToIdentity) {
+  const FrameTransformContext ctx =
+      makeContext(Shape{0, 0, 3}, Shape{640, 640, 3}, /*equal_scale=*/true);
+  auto [rw, rh] = ctx.scaleRatio();
+  EXPECT_FLOAT_EQ(rw, 1.f);
+  EXPECT_FLOAT_EQ(rh, 1.f);
 }
 
 // ============================================================================

@@ -25,9 +25,19 @@ struct BBox {
   int label;
 };
 
+/**
+ * @brief Top-1 classification result.
+ *
+ * `probs` carries the full class distribution the postprocessor computed on
+ * the way to the argmax. It is empty unless
+ * `GenericPostParams::keep_class_probs` is set — sliding-window / voting
+ * consumers need the distribution, everyone else should not pay for the
+ * allocation.
+ */
 struct ClsRet {
   float score;
   int label;
+  std::vector<float> probs;
 };
 
 using RawModelOutput = TensorData;

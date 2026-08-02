@@ -34,7 +34,6 @@ public:
 
 private:
   std::vector<BBox> processRawOutput(const cv::Mat &transposed_output,
-                                     const Shape &input_shape,
                                      const FrameTransformContext &prep_args,
                                      const AnchorDetParams &post_args,
                                      int num_classes) const;

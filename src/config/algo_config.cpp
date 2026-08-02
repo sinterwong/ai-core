@@ -14,7 +14,10 @@
 
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <set>
+#include <string>
+#include <utility>
 
 namespace ai_core::config {
 namespace {
@@ -83,6 +86,22 @@ DeviceType toDeviceType(int v, const std::string &ctx) {
   return static_cast<DeviceType>(v);
 }
 
+ImagePixelFormat toPixelFormat(const std::string &v, const std::string &ctx) {
+  static const std::map<std::string, ImagePixelFormat> kFormats = {
+      {"GRAY8", ImagePixelFormat::GRAY8},
+      {"BGR888", ImagePixelFormat::BGR888},
+      {"RGB888", ImagePixelFormat::RGB888},
+      {"BGRA8888", ImagePixelFormat::BGRA8888},
+      {"RGBA8888", ImagePixelFormat::RGBA8888}};
+  auto it = kFormats.find(v);
+  if (it == kFormats.end()) {
+    fail(ctx + ".inputFormat",
+         "must be one of GRAY8/BGR888/RGB888/BGRA8888/RGBA8888, got '" + v +
+             "'");
+  }
+  return it->second;
+}
+
 DataType toDataType(int v, const std::string &ctx) {
   if (v < 0 || v > 4) {
     fail(ctx + ".dataType",
@@ -117,10 +136,15 @@ FramePreprocessArg parseFramePreprocessArg(const json &p) {
   }
 
   arg.mean_vals = optionalScalar<std::vector<float>>(p, "mean", {}, ctx);
-  arg.norm_vals = optionalScalar<std::vector<float>>(p, "std", {}, ctx);
-  if (arg.mean_vals.size() != arg.norm_vals.size()) {
+  arg.std_vals = optionalScalar<std::vector<float>>(p, "std", {}, ctx);
+  if (arg.mean_vals.size() != arg.std_vals.size()) {
     fail(ctx, "'mean' and 'std' must have the same length");
   }
+  // Channel order the model was trained on. The preprocessor converts the
+  // incoming frame to it, so getting this wrong costs accuracy silently.
+  arg.model_input_format = toPixelFormat(
+      optionalScalar<std::string>(p, "inputFormat", "BGR888", ctx), ctx);
+
   arg.pad = optionalScalar<std::vector<int>>(p, "pad", {}, ctx);
   arg.hwc2chw = optionalScalar<bool>(p, "hwc2chw", false, ctx);
   arg.need_resize = optionalScalar<bool>(p, "needResize", false, ctx);
@@ -159,36 +183,90 @@ AlgoInferParams parseInferParams(const json &p, const std::string &model_root) {
   return ip;
 }
 
-AlgoPostprocParams parsePostprocParams(const json &p,
-                                       const std::string &postproc_module) {
-  const std::string ctx = "postprocParams";
+// Which of the three postproc parameter families a module wants.
+enum class PostParamFamily { AnchorDet, ConfidenceFilter, Generic };
+
+// Built-in modules resolve by name. Anything else — an out-of-tree plugin —
+// is inferred from the keys present, or stated outright with "paramFamily".
+// Rejecting unknown names here would make custom plugins impossible to drive
+// from config, which is most of the point of having plugins.
+PostParamFamily resolvePostParamFamily(const json &p,
+                                       const std::string &postproc_module,
+                                       const std::string &ctx) {
   static const std::set<std::string> kAnchorDet = {"Yolov11Det", "RTMDet",
                                                    "NanoDet"};
   static const std::set<std::string> kGeneric = {
-      "SoftmaxCls", "FprCls", "RawModelOutput", "OCRReco", "UNetDualOutputSeg"};
+      "SoftmaxCls", "ArgmaxCls",      "FprCls",
+      "OCRReco",    "RawModelOutput", "UNetDualOutputSeg"};
   static const std::set<std::string> kConfidenceFilter = {"SemanticSeg"};
+
+  if (p.contains("paramFamily")) {
+    const auto family = requireScalar<std::string>(p, "paramFamily", ctx);
+    if (family == "anchorDet") {
+      return PostParamFamily::AnchorDet;
+    }
+    if (family == "confidenceFilter") {
+      return PostParamFamily::ConfidenceFilter;
+    }
+    if (family == "generic") {
+      return PostParamFamily::Generic;
+    }
+    fail(ctx + ".paramFamily",
+         "must be 'anchorDet', 'confidenceFilter' or 'generic', got '" +
+             family + "'");
+  }
+
+  if (kAnchorDet.count(postproc_module)) {
+    return PostParamFamily::AnchorDet;
+  }
+  if (kConfidenceFilter.count(postproc_module)) {
+    return PostParamFamily::ConfidenceFilter;
+  }
+  if (kGeneric.count(postproc_module)) {
+    return PostParamFamily::Generic;
+  }
+
+  // Unknown module: infer from the keys it was given.
+  if (p.contains("condThre") && p.contains("nmsThre")) {
+    return PostParamFamily::AnchorDet;
+  }
+  if (p.contains("condThre")) {
+    return PostParamFamily::ConfidenceFilter;
+  }
+  return PostParamFamily::Generic;
+}
+
+AlgoPostprocParams parsePostprocParams(const json &p,
+                                       const std::string &postproc_module) {
+  const std::string ctx = "postprocParams";
 
   requireArrayNonEmpty(p, "outputNames", ctx);
   auto output_names = p.at("outputNames").get<std::vector<std::string>>();
 
   AlgoPostprocParams params;
-  if (kAnchorDet.count(postproc_module)) {
+  switch (resolvePostParamFamily(p, postproc_module, ctx)) {
+  case PostParamFamily::AnchorDet: {
     AnchorDetParams a;
     a.cond_thre = requireScalar<float>(p, "condThre", ctx);
     a.nms_thre = requireScalar<float>(p, "nmsThre", ctx);
     a.output_names = std::move(output_names);
-    params.setParams(a);
-  } else if (kConfidenceFilter.count(postproc_module)) {
+    params.setParams(std::move(a));
+    break;
+  }
+  case PostParamFamily::ConfidenceFilter: {
     ConfidenceFilterParams c;
     c.cond_thre = requireScalar<float>(p, "condThre", ctx);
     c.output_names = std::move(output_names);
-    params.setParams(c);
-  } else if (kGeneric.count(postproc_module)) {
+    params.setParams(std::move(c));
+    break;
+  }
+  case PostParamFamily::Generic: {
     GenericPostParams g;
     g.output_names = std::move(output_names);
-    params.setParams(g);
-  } else {
-    fail("types.postproc", "unknown postproc module '" + postproc_module + "'");
+    g.keep_class_probs = optionalScalar<bool>(p, "keepClassProbs", false, ctx);
+    params.setParams(std::move(g));
+    break;
+  }
   }
   return params;
 }
@@ -209,10 +287,6 @@ AlgoConfig parseRoot(const json &root, const std::string &model_root) {
     cfg.infer_params.name = cfg.name;
   }
 
-  static const std::set<std::string> kFramePreproc = {
-      "CpuGenericPreprocess", "CudaGenericPreprocess",
-      "FrameWithMaskPreprocess"};
-
   const bool has_preproc_json = algo.contains("preprocParams");
   const bool has_preproc_module = !cfg.module_types.preproc_module.empty();
   if (has_preproc_json != has_preproc_module) {
@@ -220,10 +294,10 @@ AlgoConfig parseRoot(const json &root, const std::string &model_root) {
                       "or both absent");
   }
   if (has_preproc_json) {
-    if (!kFramePreproc.count(cfg.module_types.preproc_module)) {
-      fail("types.preproc",
-           "unknown preproc module '" + cfg.module_types.preproc_module + "'");
-    }
+    // No module-name whitelist: FramePreprocessArg is the only preprocess
+    // parameter family there is, and out-of-tree preprocess plugins consume
+    // the same struct. An unknown name fails later, at factory lookup, with a
+    // message that actually says the plugin was not registered.
     cfg.preproc_params.setParams(parseFramePreprocessArg(
         requireObject(algo, "preprocParams", "algorithm")));
     cfg.has_preproc = true;

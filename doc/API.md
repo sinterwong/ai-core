@@ -151,7 +151,13 @@ struct BBox {
   int   label;
 };
 
-struct ClsRet { float score; int label; };
+struct ClsRet {
+  float score;
+  int   label;
+  // 完整类别分布。仅当 GenericPostParams::keep_class_probs 打开时非空——
+  // 滑窗表决类下游需要它，其余场景不该为这次分配买单。
+  std::vector<float> probs;
+};
 
 struct FprClsRet {
   float score;
@@ -488,7 +494,9 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 | 推理 | `NCNNAlgoInference` | NCNN |
 | 推理 | `TrtAlgoInference` | TensorRT |
 | 后处理 | `Yolov11Det` / `RTMDet` / `NanoDet` | 锚框检测，参数 `AnchorDetParams` |
-| 后处理 | `SoftmaxCls` / `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` | 通用后处理，参数 `GenericPostParams` |
+| 后处理 | `SoftmaxCls` | 分类，输入是 **logits**（自己做 softmax），参数 `GenericPostParams` |
+| 后处理 | `ArgmaxCls` | 分类，输入**已归一化**（分数原样透传），参数 `GenericPostParams` |
+| 后处理 | `FprCls` / `RawModelOutput` / `OCRReco` / `UNetDualOutputSeg` | 通用后处理，参数 `GenericPostParams` |
 | 后处理 | `SemanticSeg` | 语义分割，参数 `ConfidenceFilterParams` |
 
 算法由插件名直接选择：`AlgoModuleTypes::postproc_module` 填上表中的名字即可，参数结构里不再有 `algo_type` 字段。
@@ -508,8 +516,14 @@ LOG_ERROR_FMT("infer failed, code = %d", static_cast<int>(code));
 
 ## 13. 配置模块 `ai_core::config`（可选）
 
-`<ai_core/config/algo_config.hpp>`，独立目标 `ai_core::ai_core_config`
-（`BUILD_AI_CORE_CONFIG=ON`，默认开）。从 JSON 加载并校验整条流水线定义，算法编排不写 C++。
+`<ai_core/config/algo_config.hpp>`，独立目标 `ai_core::config`
+（`BUILD_AI_CORE_CONFIG=ON`，默认开）。build tree 与安装导出同名。从 JSON 加载并校验整条流水线定义，算法编排不写 C++。
+
+后处理模块名**不再有白名单**：内置模块按名字走快路径，未命中时按 `postprocParams`
+里出现的键推断参数族（`condThre`+`nmsThre` → `AnchorDetParams`；仅 `condThre` →
+`ConfidenceFilterParams`；否则 `GenericPostParams`），也可以用
+`"paramFamily": "anchorDet" / "confidenceFilter" / "generic"` 显式指定。
+预处理侧同样不校验模块名。库外插件因此可以完全由配置驱动，与内置算法走同一条路径。
 
 ```cpp
 #include "ai_core/config/algo_config.hpp"

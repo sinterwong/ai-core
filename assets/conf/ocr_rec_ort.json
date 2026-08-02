@@ -23,6 +23,7 @@
                 0,
                 0
             ],
+            "inputFormat": "GRAY8",
             "isEqualScale": false,
             "needResize": true,
             "dataType": 0,

@@ -23,6 +23,37 @@
 
 namespace ai_core::dnn::mncnn {
 
+namespace {
+
+// ncnn encodes a conversion as `src | (dst << PIXEL_CONVERT_SHIFT)`; the plain
+// PIXEL_* value means "no conversion".
+int ncnnBaseFormat(ImagePixelFormat format) {
+  switch (format) {
+  case ImagePixelFormat::GRAY8:
+    return ncnn::Mat::PIXEL_GRAY;
+  case ImagePixelFormat::BGR888:
+    return ncnn::Mat::PIXEL_BGR;
+  case ImagePixelFormat::RGB888:
+    return ncnn::Mat::PIXEL_RGB;
+  case ImagePixelFormat::BGRA8888:
+    return ncnn::Mat::PIXEL_BGRA;
+  case ImagePixelFormat::RGBA8888:
+    return ncnn::Mat::PIXEL_RGBA;
+  }
+  LOG_ERROR_S << "Unsupported pixel format: " << static_cast<int>(format);
+  throw std::runtime_error("Unsupported pixel format for NCNN preprocessing.");
+}
+
+int ncnnPixelType(ImagePixelFormat from, ImagePixelFormat to) {
+  const int src = ncnnBaseFormat(from);
+  if (from == to) {
+    return src;
+  }
+  return src | (ncnnBaseFormat(to) << ncnn::Mat::PIXEL_CONVERT_SHIFT);
+}
+
+} // namespace
+
 TypedBuffer
 NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
                                  const FrameInput &input,
@@ -61,7 +92,7 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
 
   int target_width = args.model_input_shape.w;
   int target_height = args.model_input_shape.h;
-  int target_channels = cv_image_orig.channels();
+  int target_channels = channelCount(args.model_input_format);
 
   if (target_width <= 0 || target_height <= 0 || target_channels <= 0) {
     LOG_ERROR_S << "Invalid target dimensions in FramePreprocessArg: W="
@@ -86,31 +117,12 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
   }
 
   ncnn::Mat ncnn_in;
-  int ncnn_pixel_type = ncnn::Mat::PIXEL_BGR;
-  if (target_channels == 3) {
-    if (current_cv_mat.channels() == 3) {
-      ncnn_pixel_type = ncnn::Mat::PIXEL_BGR2RGB;
-    } else if (current_cv_mat.channels() == 1) {
-      ncnn_pixel_type = ncnn::Mat::PIXEL_GRAY2RGB;
-    } else {
-      LOG_ERROR_S << "Unsupported channel count " << current_cv_mat.channels()
-                  << " for 3-channel RGB output.";
-      throw std::runtime_error("Unsupported channel count for RGB output.");
-    }
-  } else if (target_channels == 1) {
-    if (current_cv_mat.channels() == 3)
-      ncnn_pixel_type = ::ncnn::Mat::PIXEL_BGR2GRAY;
-    else if (current_cv_mat.channels() == 1)
-      ncnn_pixel_type = ncnn::Mat::PIXEL_GRAY;
-    else {
-      LOG_ERROR_S << "Unsupported channel count " << current_cv_mat.channels()
-                  << " for 1-channel Gray output.";
-      throw std::runtime_error("Unsupported channel count for Gray output.");
-    }
-  } else {
-    LOG_ERROR_S << "Unsupported target channel count: " << target_channels;
-    throw std::runtime_error("Unsupported target channel count.");
-  }
+  // Derive the conversion from the declared formats rather than guessing from
+  // channel counts. This used to hardcode BGR->RGB, which silently disagreed
+  // with the CPU preprocessor (which did no conversion at all) for the same
+  // config.
+  const int ncnn_pixel_type =
+      ncnnPixelType(input.image.format, args.model_input_format);
 
   // Resize & Pad
   if (args.need_resize) {
@@ -170,39 +182,39 @@ NcnnGenericPreprocessor::process(const FramePreprocessArg &args,
   }
 
   // Normalization (mean subtraction and scaling)
-  if (!args.mean_vals.empty() || !args.norm_vals.empty()) {
+  if (!args.mean_vals.empty() || !args.std_vals.empty()) {
     if (args.mean_vals.size() != ncnn_in.c && !args.mean_vals.empty()) {
       LOG_ERROR_S << "mean_vals size (" << args.mean_vals.size()
                   << ") != ncnnIn.c (" << ncnn_in.c << ")";
       throw std::runtime_error(
           "MeanVals size mismatch with NCNN Mat channels.");
     }
-    if (args.norm_vals.size() != ncnn_in.c && !args.norm_vals.empty()) {
-      LOG_ERROR_S << "norm_vals size (" << args.norm_vals.size()
+    if (args.std_vals.size() != ncnn_in.c && !args.std_vals.empty()) {
+      LOG_ERROR_S << "std_vals size (" << args.std_vals.size()
                   << ") != ncnnIn.c (" << ncnn_in.c << ")";
       throw std::runtime_error(
-          "NormVals size mismatch with NCNN Mat channels.");
+          "std_vals size mismatch with NCNN Mat channels.");
     }
 
-    std::vector<float> ncnn_norm_vals = args.norm_vals;
-    if (!ncnn_norm_vals.empty()) {
-      std::transform(ncnn_norm_vals.begin(), ncnn_norm_vals.end(),
-                     ncnn_norm_vals.begin(),
+    std::vector<float> ncnn_scale_vals = args.std_vals;
+    if (!ncnn_scale_vals.empty()) {
+      std::transform(ncnn_scale_vals.begin(), ncnn_scale_vals.end(),
+                     ncnn_scale_vals.begin(),
                      [](float val) { return val == 0.0f ? 1.0f : 1.0f / val; });
     } else {
       if (!args.mean_vals.empty()) {
-        ncnn_norm_vals.assign(ncnn_in.c, 1.0f);
+        ncnn_scale_vals.assign(ncnn_in.c, 1.0f);
       }
     }
 
     std::vector<float> ncnn_mean_vals = args.mean_vals;
-    if (ncnn_mean_vals.empty() && !ncnn_norm_vals.empty()) {
+    if (ncnn_mean_vals.empty() && !ncnn_scale_vals.empty()) {
       ncnn_mean_vals.assign(ncnn_in.c, 0.0f);
     }
 
     ncnn_in.substract_mean_normalize(
         ncnn_mean_vals.empty() ? nullptr : ncnn_mean_vals.data(),
-        ncnn_norm_vals.empty() ? nullptr : ncnn_norm_vals.data());
+        ncnn_scale_vals.empty() ? nullptr : ncnn_scale_vals.data());
   }
 
   if (ncnn_in.elemsize != sizeof(float)) {

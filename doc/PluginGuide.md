@@ -27,7 +27,34 @@ per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`，
 
 预处理把坐标变换信息写进 `RuntimeContext::frame_transform`
 （`FrameTransformContext`：原始尺寸、ROI、缩放、padding），后处理读出来做坐标
-还原。自由扩展数据放 `RuntimeContext::extras`（`DataPacket`）。
+还原。**不要自己从这些字段推缩放比**——用 `FrameTransformContext` 自带的成员，
+它们是全仓唯一实现：
+
+```cpp
+ctx.sourceShape()              // 模型实际看到的区域（有 ROI 用 ROI，否则整帧）
+ctx.scaleRatio()               // {x, y} 缩放比，等比模式下两轴相同
+ctx.mapToSource({x, y})        // 模型输入坐标 -> 原图坐标（减 padding、加 ROI 偏移）
+ctx.mapSizeToSource(w, h)      // 尺寸映射：只除缩放比，不减 padding 不加偏移
+```
+
+自由扩展数据放 `RuntimeContext::extras`（`DataPacket`）。
+
+### 自定义结果类型
+
+`AlgoOutput` 的 variant 尾部有一个 `DataPacket`，这是库外插件吐**自有结果类型**
+的正门——不用改 ai-core 头文件，也不用借道 `RawModelOutput`/`TensorData`：
+
+```cpp
+// 插件侧
+PoseRet pose{/* ... */};
+DataPacket packet;
+packet.setParam("pose", pose);
+algo_output.setParams(std::move(packet));
+
+// 消费侧
+const auto *packet = output.getParams<DataPacket>();
+const PoseRet pose = packet->getParam<PoseRet>("pose");
+```
 
 ## 3. 后处理张量契约
 
@@ -39,7 +66,8 @@ per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`，
 | `Yolov11Det` | `AnchorDetParams` | `[0]` 预测 | `[1, 4+nc, anchors]`（属性优先，内部转置） | FP32 或 FP16 |
 | `NanoDet` | `AnchorDetParams` | `[0]` 预测 | `[1, anchors, nc+4]`（锚点优先：`scores..., x1,y1,x2,y2`） | FP32 |
 | `RTMDet` | `AnchorDetParams` | `[0]` 框 / `[1]` 类别 | 框 `[1, anchors, 4]`（角点 x1,y1,x2,y2）；类别 `[1, anchors, nc]` | FP32 |
-| `SoftmaxCls` | `GenericPostParams` | `[0]` logits | `[1, nc]` 或批量 `[N, nc]` | FP32 |
+| `SoftmaxCls` | `GenericPostParams` | `[0]` **logits** | `[1, nc]` 或批量 `[N, nc]` | FP32 |
+| `ArgmaxCls` | `GenericPostParams` | `[0]` **已归一化**分数 | `[1, nc]` 或批量 `[N, nc]` | FP32 |
 | `FprCls` | `GenericPostParams` | `[0]` 分数 / `[1]` birads | `[1, nc]` / `[1, nb]`（批量首维 N） | FP32 |
 | `OCRReco` | `GenericPostParams` | `[0]` 长度 / `[1]` argmax | 长度 `[N]`；argmax `[N, seq]`（CTC 折叠） | INT64 |
 | `SemanticSeg` | `ConfidenceFilterParams` | `[0]` 类别图 | `[1, nc, h, w]`（批量 `[N, nc, h, w]`） | FP32 |
@@ -48,7 +76,12 @@ per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`，
 
 - `nc` = 类别数，`nb` = birads 数，`anchors` = 锚点数，`seq` = 序列长。
 - `AnchorDetParams` 需 `condThre` + `nmsThre`；`ConfidenceFilterParams` 需
-  `condThre`；`GenericPostParams` 只需 `outputNames`。
+  `condThre`；`GenericPostParams` 只需 `outputNames`，另有可选的 `keepClassProbs`
+  （分类插件是否在 `ClsRet::probs` 里保留完整分布，默认 false）。
+- **`SoftmaxCls` 期望 logits，它自己会做一次 softmax。** 若模型已把 softmax 烘进
+  计算图（ultralytics 的 `*-cls` 导出就是如此，输出和为 1），用它会 softmax 两次：
+  softmax 单调所以**类别仍然正确**，坏掉的是**置信度**——会塌到接近 `1/nc` 的地板值。
+  这类模型请用 `ArgmaxCls`，配置里换一个字符串即可，调用侧零改动。
 - 检测类输出的坐标还原依赖预处理写入的 `FrameTransformContext`，缺失即返回
   `InferInvalidInput`。
 
@@ -57,6 +90,18 @@ per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`，
 内置帧预处理插件（`CpuGenericPreprocess` / `CudaGenericPreprocess` /
 `FrameWithMaskPreprocess`）消费 `FramePreprocessArg`，产出单个模型输入张量，名字
 取 `inputNames[0]`，shape 依 `hwc2chw` 为 `{N,C,H,W}` 或 `{N,H,W,C}`。
+
+两条容易踩的语义：
+
+- **归一化是 `(v - mean_vals[c]) / std_vals[c]`，`std_vals` 是除数**（标准差），
+  不是乘数。把 8bit 像素映射到 `[0,1]` 要填 `{255,255,255}` 而不是 `{1/255,...}`。
+  写反不会报错，只会把像素放大到 0~65025，让 head 里的 sigmoid 全部饱和——症状
+  看起来像后处理坏了。绑定参数时若发现 `std_vals` 全部 < 1 会打一条 warning。
+- **`model_input_format` 会被真正消费。** 预处理按
+  `ImageView::format → model_input_format` 做转换，调用方不必（也不应该）再自己
+  `cvtColor`。默认是 `BGR888`（OpenCV 惯例），ultralytics 系模型填 `RGB888`。
+  同通道数的互换（BGR↔RGB）折叠进归一化那一趟，零额外开销；通道数变化
+  （GRAY↔BGR、BGRA→BGR）走一次 `cvtColor`。
 `FrameWithMaskPreprocess` 把 mask 光栅化为额外通道，**调用方必须把
 `inputShape.c` 设为含 mask 的真实通道数**（3 图 + 1 mask = 4）。
 
@@ -69,4 +114,15 @@ per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`，
 4. JSON 配置里 `types.postproc` 填 `"MyDet"`，`postprocParams` 给
    `condThre/nmsThre/outputNames`。
 
-不需要改任何工厂或分发代码。
+不需要改任何工厂或分发代码，**也不需要改配置加载器**：`ai_core::config` 对未知的
+模块名不再报错，它按 `postprocParams` 里出现的键推断参数族——
+
+| 出现的键 | 推断出的参数族 |
+|---|---|
+| `condThre` + `nmsThre` | `AnchorDetParams` |
+| 仅 `condThre` | `ConfidenceFilterParams` |
+| 都没有 | `GenericPostParams` |
+
+推断不合意时用 `"paramFamily": "anchorDet" / "confidenceFilter" / "generic"`
+直接指定。预处理侧同理：`types.preproc` 填自定义插件名也能通过，因为
+`FramePreprocessArg` 是唯一的预处理参数族。

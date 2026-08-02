@@ -15,6 +15,7 @@
 #include "ai_core/preprocess_types.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "frame_preprocessor_base.hpp"
+#include "vision_util.hpp"
 
 namespace cv {
 class Mat;
@@ -33,18 +34,22 @@ public:
                            std::vector<FrameTransformContext> &) const override;
 
 private:
-  // Crop the ROI and resize to the model input size, staying 8-bit (no
-  // per-pixel float work here). Returns the prepared uint8 image.
+  // Crop the ROI, convert the pixel format when the conversion cannot be
+  // folded into the normalization pass, and resize to the model input size.
+  // Stays 8-bit (no per-pixel float work here); returns the prepared image.
   cv::Mat cropAndResize(const FramePreprocessArg &params,
                         const FrameInput &frame_input,
+                        const utils::PixelFormatPlan &format_plan,
                         FrameTransformContext &runtime_args) const;
 
-  // Single-pass fusion of normalization ((v - mean)/norm), dtype cast
-  // (fp32/fp16) and layout (HWC/CHW), writing directly into a fresh
-  // TypedBuffer. `dst_offset_elems` places the frame inside a batch buffer.
+  // Single-pass fusion of channel reordering, normalization
+  // ((v - mean)/std), dtype cast (fp32/fp16) and layout (HWC/CHW), writing
+  // directly into a fresh TypedBuffer. `dst_offset_elems` places the frame
+  // inside a batch buffer.
   void writeNormalizedLayout(const cv::Mat &prepared_u8,
-                             const FramePreprocessArg &params, TypedBuffer &dst,
-                             size_t dst_offset_elems) const;
+                             const FramePreprocessArg &params,
+                             const utils::PixelFormatPlan &format_plan,
+                             TypedBuffer &dst, size_t dst_offset_elems) const;
 };
 } // namespace ai_core::dnn::cpu
 #endif

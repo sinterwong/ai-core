@@ -119,7 +119,7 @@ private:
 
     // Host-side copies for change detection
     std::vector<float> cached_mean_vals;
-    std::vector<float> cached_norm_vals;
+    std::vector<float> cached_std_vals;
     std::vector<int> cached_pad_vals;
 
     // Working buffers

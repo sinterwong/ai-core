@@ -8,7 +8,7 @@
 
 [English](README_EN.md) | [简体中文](README.md)
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)
 
@@ -52,21 +52,42 @@ AI Core is a C++ library for running AI models on multiple backends (ONNX Runtim
 
 ### Clone and build
 
+The bootstrap script is the short path: dependencies, configure, build, install
+and tests in one command.
+
 ```bash
 git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
 cd ai-core
-mkdir -p 3rdparty/target/
+sudo apt-get install -y ninja-build libopencv-dev
+scripts/bootstrap.sh
+```
 
-# Pre-built third-party dependencies
-curl -L https://github.com/sinterwong/ai-core/releases/download/v1.1.1-alpha/dependency-Linux_x86_64.tgz -o dependency.tgz
-tar -xzf dependency.tgz -C 3rdparty/target/
+To do it by hand:
 
-mkdir build && cd build
-cmake .. -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
-         -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
+```bash
+# ONNX Runtime comes from the official release; OpenCV from the system
+# (apt libopencv-dev). Deliberately not one bundle with everything in it: a
+# vendored OpenCV alongside the system one means two libopencv_core.so in a
+# single process, and passing a cv::Mat across that boundary is UB with very
+# indirect symptoms.
+ORT_VERSION=1.20.1
+mkdir -p 3rdparty/target/Linux_x86_64
+curl -fL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" \
+  -o /tmp/ort.tgz
+tar -xzf /tmp/ort.tgz -C /tmp
+mv "/tmp/onnxruntime-linux-x64-${ORT_VERSION}" 3rdparty/target/Linux_x86_64/onnxruntime
 
-cmake --build . -j
-cmake --install .
+# The 1.20.x tarball ships lib/ + include/, but its own cmake export points at
+# lib64/ and include/onnxruntime. Without this, find_package resolves paths
+# that do not exist.
+ORT_CMAKE=3rdparty/target/Linux_x86_64/onnxruntime/lib/cmake/onnxruntime
+sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
+sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
+
+cmake -B build -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
+      -DWITH_ORT_ENGINE=ON -DWITH_TRT_ENGINE=OFF
+cmake --build build -j
+cmake --install build
 ```
 
 CMake options:
@@ -114,15 +135,21 @@ input.setParams(FrameInput{
 AlgoPreprocParams preproc_params;
 FramePreprocessArg arg;
 arg.model_input_shape = {640, 640, 3};
+// Normalization is (v - mean) / std — std_vals is a DIVISOR (a standard
+// deviation), not a multiplier. Scaling 8-bit pixels to [0,1] wants 255,
+// not 1/255.
 arg.mean_vals = {0.f, 0.f, 0.f};
-arg.norm_vals = {1.f, 1.f, 1.f};
+arg.std_vals = {255.f, 255.f, 255.f};
+// Channel order the model was trained on. The preprocessor converts
+// ImageView::format to this, so callers do not cvtColor themselves.
+// Defaults to BGR888; ultralytics-style models are RGB.
+arg.model_input_format = ImagePixelFormat::RGB888;
 arg.hwc2chw = true;
 arg.data_type = DataType::FLOAT32;
 preproc_params.setParams(arg);
 
 AlgoPostprocParams postproc_params;
 AnchorDetParams det_arg;
-det_arg.algo_type = AnchorDetParams::AlgoType::YoloDetV11;
 det_arg.cond_thre = 0.25f;
 det_arg.nms_thre = 0.45f;
 det_arg.output_names = {"output0"};

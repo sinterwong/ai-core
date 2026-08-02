@@ -8,29 +8,137 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef AI_CORE_INFERENCE_VISION_UTILS_HPP
-#define AI_CORE_INFERENCE_VISION_UTILS_HPP
+#include "vision_util.hpp"
 
+#include "ai_core/opencv_interop.hpp"
 #include "ai_core/output_types.hpp"
 #include "ai_core/preprocess_types.hpp"
-#include "ai_core/opencv_interop.hpp"
 #include <opencv2/opencv.hpp>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
 
 namespace ai_core::utils {
 
-std::pair<float, float> scaleRatio(Shape const &origin_shape,
-                                   Shape const &input_shape, bool is_scale) {
-  float rw, rh;
-  if (is_scale) {
-    rw = std::min(static_cast<float>(input_shape.w) / origin_shape.w,
-                  static_cast<float>(input_shape.h) / origin_shape.h);
-    rh = rw;
-  } else {
-    rw = static_cast<float>(input_shape.w) / origin_shape.w;
-    rh = static_cast<float>(input_shape.h) / origin_shape.h;
+PixelFormatPlan planPixelFormat(ImagePixelFormat from, ImagePixelFormat to) {
+  using F = ImagePixelFormat;
+  PixelFormatPlan plan;
+
+  if (from == to) {
+    return plan;
   }
-  return std::make_pair(rw, rh);
+
+  // Same channel count => pure channel permutation, foldable into the caller's
+  // normalization pass. Alpha (index 3) stays put.
+  if (channelCount(from) == channelCount(to)) {
+    plan.channel_map = {2, 1, 0, 3};
+    return plan;
+  }
+
+  plan.needs_cvt_color = true;
+  switch (from) {
+  case F::GRAY8:
+    switch (to) {
+    case F::BGR888:
+      plan.cvt_code = cv::COLOR_GRAY2BGR;
+      return plan;
+    case F::RGB888:
+      plan.cvt_code = cv::COLOR_GRAY2RGB;
+      return plan;
+    // Gray has no channel order, so BGRA and RGBA are the same expansion.
+    case F::BGRA8888:
+    case F::RGBA8888:
+      plan.cvt_code = cv::COLOR_GRAY2BGRA;
+      return plan;
+    default:
+      break;
+    }
+    break;
+  case F::BGR888:
+    switch (to) {
+    case F::GRAY8:
+      plan.cvt_code = cv::COLOR_BGR2GRAY;
+      return plan;
+    case F::BGRA8888:
+      plan.cvt_code = cv::COLOR_BGR2BGRA;
+      return plan;
+    case F::RGBA8888:
+      plan.cvt_code = cv::COLOR_BGR2RGBA;
+      return plan;
+    default:
+      break;
+    }
+    break;
+  case F::RGB888:
+    switch (to) {
+    case F::GRAY8:
+      plan.cvt_code = cv::COLOR_RGB2GRAY;
+      return plan;
+    case F::RGBA8888:
+      plan.cvt_code = cv::COLOR_RGB2RGBA;
+      return plan;
+    case F::BGRA8888:
+      plan.cvt_code = cv::COLOR_RGB2BGRA;
+      return plan;
+    default:
+      break;
+    }
+    break;
+  case F::BGRA8888:
+    switch (to) {
+    case F::GRAY8:
+      plan.cvt_code = cv::COLOR_BGRA2GRAY;
+      return plan;
+    case F::BGR888:
+      plan.cvt_code = cv::COLOR_BGRA2BGR;
+      return plan;
+    case F::RGB888:
+      plan.cvt_code = cv::COLOR_BGRA2RGB;
+      return plan;
+    default:
+      break;
+    }
+    break;
+  case F::RGBA8888:
+    switch (to) {
+    case F::GRAY8:
+      plan.cvt_code = cv::COLOR_RGBA2GRAY;
+      return plan;
+    case F::RGB888:
+      plan.cvt_code = cv::COLOR_RGBA2RGB;
+      return plan;
+    case F::BGR888:
+      plan.cvt_code = cv::COLOR_RGBA2BGR;
+      return plan;
+    default:
+      break;
+    }
+    break;
+  }
+
+  throw std::invalid_argument(
+      "Unsupported pixel format conversion: " +
+      std::to_string(static_cast<int>(from)) + " -> " +
+      std::to_string(static_cast<int>(to)));
+}
+
+cv::Mat convertPixelFormat(const cv::Mat &src, ImagePixelFormat from,
+                           ImagePixelFormat to) {
+  const PixelFormatPlan plan = planPixelFormat(from, to);
+  if (plan.isIdentity()) {
+    return src;
+  }
+  cv::Mat dst;
+  if (plan.needs_cvt_color) {
+    cv::cvtColor(src, dst, plan.cvt_code);
+  } else {
+    // Same channel count: a channel reversal. BGR2RGB and RGB2BGR are the same
+    // operation, likewise BGRA2RGBA / RGBA2BGRA.
+    cv::cvtColor(src, dst,
+                 src.channels() == 4 ? cv::COLOR_BGRA2RGBA
+                                     : cv::COLOR_BGR2RGB);
+  }
+  return dst;
 }
 
 float calculateIoU(const BBox &bbox1, const BBox &bbox2) {
@@ -103,4 +211,3 @@ Shape escaleResizeWithPad(const cv::Mat &src, cv::Mat &dst, int target_width,
 }
 
 } // namespace ai_core::utils
-#endif

@@ -2,14 +2,15 @@
 # Config file for the ai_core package.
 #
 # It defines the following:
-# - An imported target: ai_core::ai_core
+# - Imported targets: ai_core::ai_core, and ai_core::config when the JSON
+#   config module was built.
 # - The custom macro 'check_required_components' to ensure self-sufficiency.
 # ==================================================================================
 
-# --- Expanded from @PACKAGE_INIT@ by configure_package_config_file() ---
+# --- Expanded by configure_package_config_file() ---
 # Any changes to this file will be overwritten by the next CMake run.
 # The input file was ai_core-config.cmake.in
-# ----------------------------------------------------------------------
+# ---------------------------------------------------
 @PACKAGE_INIT@
 
 # --- Self-defined macro to avoid external dependencies ---

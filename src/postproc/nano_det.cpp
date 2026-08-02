@@ -103,17 +103,6 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
                    const_cast<float *>(output_data));
   int num_classes = stride - 4;
 
-  const auto &input_roi = prep_args.roi;
-  Shape origin_shape;
-  if (input_roi.area() > 0) {
-    origin_shape.w = input_roi.width;
-    origin_shape.h = input_roi.height;
-  } else {
-    origin_shape = prep_args.origin_shape;
-  }
-  auto [scaleX, scaleY] = utils::scaleRatio(
-      origin_shape, prep_args.model_input_shape, prep_args.is_equal_scale);
-
   std::vector<BBox> results;
   for (int i = 0; i < raw_data.rows; ++i) {
     const float *data = raw_data.ptr<float>(i);
@@ -130,19 +119,14 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
 
       // 接下来 4 个是坐标 (x1, y1, x2, y2)
       const float *bbox_data = data + num_classes;
-      float x1 = bbox_data[0];
-      float y1 = bbox_data[1];
-      float x2 = bbox_data[2];
-      float y2 = bbox_data[3];
 
-      // 映射原图尺寸
-      float w = (x2 - x1) / scaleX;
-      float h = (y2 - y1) / scaleY;
-      float x = (x1 - prep_args.left_pad) / scaleX + input_roi.x;
-      float y = (y1 - prep_args.top_pad) / scaleY + input_roi.y;
+      // 映射回原图坐标系
+      const Point2f tl = prep_args.mapToSource({bbox_data[0], bbox_data[1]});
+      const Point2f size = prep_args.mapSizeToSource(
+          bbox_data[2] - bbox_data[0], bbox_data[3] - bbox_data[1]);
 
-      result.rect = Rect{static_cast<int>(x), static_cast<int>(y),
-                         static_cast<int>(w), static_cast<int>(h)};
+      result.rect = Rect{static_cast<int>(tl.x), static_cast<int>(tl.y),
+                         static_cast<int>(size.x), static_cast<int>(size.y)};
       results.push_back(result);
     }
   }

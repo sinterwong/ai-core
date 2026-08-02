@@ -8,7 +8,7 @@
 
 [English](README_EN.md) | [简体中文](README.md)
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)
 
@@ -52,21 +52,38 @@ AI Core 是一个用于在多种推理后端（ONNX Runtime、NCNN、TensorRT）
 
 ### 拉取与构建
 
+最省事的路径是 bootstrap 脚本：拉依赖、配置、编译、安装、跑测试，一条命令。
+
 ```bash
 git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
 cd ai-core
-mkdir -p 3rdparty/target/
+sudo apt-get install -y ninja-build libopencv-dev
+scripts/bootstrap.sh
+```
 
-# 下载预编译的第三方依赖
-curl -L https://github.com/sinterwong/ai-core/releases/download/v1.1.1-alpha/dependency-Linux_x86_64.tgz -o dependency.tgz
-tar -xzf dependency.tgz -C 3rdparty/target/
+想手动走一遍的话：
 
-mkdir build && cd build
-cmake .. -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
-         -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=OFF
+```bash
+# ONNX Runtime 取官方发布版；OpenCV 用系统的（apt libopencv-dev）。
+# 刻意不用「一个大包带齐所有依赖」：自带 OpenCV 与系统 OpenCV 同时被加载进一个
+# 进程，cv::Mat 跨这道边界传递就是 UB，症状还很隐蔽。
+ORT_VERSION=1.20.1
+mkdir -p 3rdparty/target/Linux_x86_64
+curl -fL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" \
+  -o /tmp/ort.tgz
+tar -xzf /tmp/ort.tgz -C /tmp
+mv "/tmp/onnxruntime-linux-x64-${ORT_VERSION}" 3rdparty/target/Linux_x86_64/onnxruntime
 
-cmake --build . -j
-cmake --install .
+# 1.20.x 的 tarball 实际布局是 lib/ + include/，但它自带的 cmake export 指向
+# lib64/ 和 include/onnxruntime。不修则 find_package 解析出的路径不存在。
+ORT_CMAKE=3rdparty/target/Linux_x86_64/onnxruntime/lib/cmake/onnxruntime
+sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
+sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
+
+cmake -B build -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
+      -DWITH_ORT_ENGINE=ON -DWITH_TRT_ENGINE=OFF
+cmake --build build -j
+cmake --install build
 ```
 
 CMake 选项：
@@ -130,8 +147,13 @@ params.data_type = DataType::FLOAT32;
 AlgoPreprocParams preproc_params;
 FramePreprocessArg arg;
 arg.model_input_shape = {640, 640, 3};
+// 归一化是 (v - mean) / std —— std_vals 是除数（标准差），不是乘数。
+// 把 8bit 像素映射到 [0,1] 填 255，不是 1/255。
 arg.mean_vals = {0.f, 0.f, 0.f};
-arg.norm_vals = {1.f, 1.f, 1.f};
+arg.std_vals = {255.f, 255.f, 255.f};
+// 模型训练时的通道序。预处理会按 ImageView::format -> 这个值做转换，
+// 所以调用方不必自己 cvtColor。默认 BGR888；ultralytics 系模型是 RGB。
+arg.model_input_format = ImagePixelFormat::RGB888;
 arg.hwc2chw = true;
 arg.data_type = DataType::FLOAT32;
 preproc_params.setParams(arg);

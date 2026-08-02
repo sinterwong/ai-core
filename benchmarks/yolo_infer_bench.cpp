@@ -28,7 +28,8 @@ const static auto get_frame_preprocess_arg =
       arg.is_equal_scale = true;
       arg.pad = {0, 0, 0};
       arg.mean_vals = {0, 0, 0};
-      arg.norm_vals = {255.f, 255.f, 255.f};
+      arg.std_vals = {255.f, 255.f, 255.f};
+      arg.model_input_format = ai_core::ImagePixelFormat::RGB888;
       arg.hwc2chw = true;
       arg.input_names = input_names;
       arg.output_location = output_location;
@@ -37,22 +38,20 @@ const static auto get_frame_preprocess_arg =
 
 // ImageView is non-owning: the backing cv::Mat must outlive every view into
 // it. Keep the decoded image in a long-lived static alongside the AlgoInput.
-static cv::Mat &benchImageRgb() {
-  static cv::Mat image_rgb = [] {
+static cv::Mat &benchImageBgr() {
+  static cv::Mat image_bgr = [] {
     cv::Mat bgr = cv::imread("assets/data/yolov11/image.png");
-    cv::Mat rgb;
-    cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
-    return rgb;
+    return bgr;
   }();
-  return image_rgb;
+  return image_bgr;
 }
 
 const static auto algo_input = []() {
   ai_core::AlgoInput input;
-  cv::Mat &image_rgb = benchImageRgb();
+  cv::Mat &image = benchImageBgr();
   ai_core::FrameInput frame_input;
-  frame_input.image = ai_core::interop::viewFromMat(image_rgb);
-  frame_input.roi = ai_core::Rect{0, 0, image_rgb.cols, image_rgb.rows};
+  frame_input.image = ai_core::interop::viewFromMat(image);
+  frame_input.roi = ai_core::Rect{0, 0, image.cols, image.rows};
   input.setParams(frame_input);
   return input;
 }();
