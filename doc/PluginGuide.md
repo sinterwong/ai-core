@@ -4,7 +4,33 @@ AI Core 的三段流水线（预处理 / 推理 / 后处理）都是插件。新
 一行注册宏，无需改框架。本文说明怎么写插件，以及每个内置后处理插件的张量契约
 （输入张量的名字数量 / shape / dtype）。
 
-## 1. 注册一个插件
+## 1. 动态插件入口
+
+仓库内置插件与仓库外插件使用完全相同的动态库入口。核心不会自动注册任何
+OpenCV、推理框架或硬件后端：
+
+```cpp
+#include <ai_core/plugin_manager.hpp>
+
+ai_core::dnn::PluginManager::instance().load(
+    "/path/to/libmy_amd_infer.so");
+```
+
+插件动态库导出 `ai_core_register_plugin_v1`，在其中向传入的 `PluginRegistry`
+注册实现并填写 `PluginInfo`。插件载入后驻留到进程结束，不支持卸载，以保证
+creator 和已经创建的对象不会指向被卸载的代码。
+
+外部项目使用随包安装的 CMake helper：
+
+```cmake
+find_package(ai_core REQUIRED)
+ai_core_add_plugin(my_amd_infer
+    TYPE infer
+    SOURCES amd_infer.cpp
+    DEPENDENCIES amd_runtime::amd_runtime)
+```
+
+## 2. 注册一个源码内插件
 
 ```cpp
 #include "ai_core/plugin_registrar.hpp"
@@ -14,11 +40,13 @@ REGISTER_INFER_ENGINE(MyEngine);       // IInferEnginePlugin 子类
 REGISTER_POSTPROCESS_ALGO(MyPostproc); // IPostprocessPlugin 子类
 ```
 
-宏把类名字符串与构造函数绑定进对应工厂。内置插件由
-`registerDefaultPlugins()`（facade `initialize()` 自动调用）注册；自定义插件在
-自己的 .cpp 里执行上述宏即可，静态/动态链接皆可用。
+宏把类名字符串与构造函数绑定进进程级 `PluginRegistry`。动态插件应在统一
+入口函数中直接使用传入的 registry；宏主要保留给单体程序里的源码插件。
 
-## 2. 插件接口契约
+这些宏适合直接链接并由调用方显式执行注册代码的场景；可独立部署的插件应优先
+使用上面的统一动态入口。
+
+## 3. 插件接口契约
 
 三类插件统一用 `InferErrorCode` 返回；异常只允许存在于插件内部，不得穿透
 facade。`process` / `batchProcess` 是 `const` 且必须可重入——对象上不留可变的

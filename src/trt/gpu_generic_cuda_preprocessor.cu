@@ -13,6 +13,7 @@
 #include "cuda_stream.cuh"
 #include "cuda_utils.hpp"
 #include "gpu_generic_cuda_preprocessor.hpp"
+#include "cuda_buffer_storage.hpp"
 #include <cmath>
 #include <opencv2/core.hpp>
 
@@ -347,7 +348,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
+      allocateCudaDeviceBuffer(args.data_type, final_byte_size);
 
   if (args.data_type == DataType::FLOAT16) {
     cuda_op::fp32ToFp16Gpu(
@@ -524,7 +525,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
+      allocateCudaDeviceBuffer(args.data_type, final_byte_size);
 
   if (args.data_type == DataType::FLOAT16) {
     cuda_op::fp32ToFp16Gpu(
@@ -605,7 +606,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
       total_elements * TypedBuffer::getElementSize(args.data_type);
 
   TypedBuffer hwc_buffer =
-      TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
+      allocateCudaDeviceBuffer(DataType::FLOAT32, byte_size_f_p32);
 
   if (args.is_equal_scale) {
     float scale =
@@ -635,13 +636,13 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
+      allocateCudaDeviceBuffer(args.data_type, final_byte_size);
 
   TypedBuffer chw_buffer;
   TypedBuffer *source_buffer = &hwc_buffer;
 
   if (args.hwc2chw) {
-    chw_buffer = TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
+    chw_buffer = allocateCudaDeviceBuffer(DataType::FLOAT32, byte_size_f_p32);
     cuda_op::hwcToChwGpu(
         static_cast<const float *>(hwc_buffer.getRawDevicePtr()),
         static_cast<float *>(chw_buffer.getRawDevicePtr()),
@@ -766,7 +767,7 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
       total_elements * TypedBuffer::getElementSize(args.data_type);
 
   TypedBuffer hwc_batch_buffer =
-      TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
+      allocateCudaDeviceBuffer(DataType::FLOAT32, byte_size_f_p32);
 
   if (args.is_equal_scale) {
     cuda_utils::CudaDeviceBuffer<int> d_pad(args.pad.size());
@@ -816,14 +817,14 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
   }
 
   TypedBuffer final_device_buffer =
-      TypedBuffer::allocateGpu(args.data_type, final_byte_size);
+      allocateCudaDeviceBuffer(args.data_type, final_byte_size);
 
   TypedBuffer chw_batch_buffer;
   TypedBuffer *source_buffer = &hwc_batch_buffer;
 
   if (args.hwc2chw) {
     chw_batch_buffer =
-        TypedBuffer::allocateGpu(DataType::FLOAT32, byte_size_f_p32);
+        allocateCudaDeviceBuffer(DataType::FLOAT32, byte_size_f_p32);
     cuda_op::batchHwcToChwGpu(
         static_cast<const float *>(hwc_batch_buffer.getRawDevicePtr()),
         static_cast<float *>(chw_batch_buffer.getRawDevicePtr()),

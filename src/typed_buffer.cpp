@@ -60,7 +60,7 @@ TypedBuffer::TypedBuffer(const TypedBuffer &other)
 
   // Handle Accelerator Data (GPU or Pinned)
   if (other.m_accelBuffer) {
-    m_accelBuffer = IAcceleratorBuffer::clone(*other.m_accelBuffer);
+    m_accelBuffer = other.m_accelBuffer->clone();
   }
 }
 
@@ -90,7 +90,7 @@ TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
 
     // Handle Accelerator Data
     if (other.m_accelBuffer) {
-      m_accelBuffer = IAcceleratorBuffer::clone(*other.m_accelBuffer);
+      m_accelBuffer = other.m_accelBuffer->clone();
     }
   }
   return *this;
@@ -179,55 +179,26 @@ TypedBuffer TypedBuffer::wrapCpu(DataType type, const void *host_ptr,
   return buf;
 }
 
-TypedBuffer TypedBuffer::allocateGpu(DataType type, size_t size_bytes,
-                                     int device_id) {
-  TypedBuffer buf;
-  buf.m_dataType = type;
-  buf.m_location = BufferLocation::GpuDevice;
-  // Device memory is typically pageable on the GPU, but managed by Accelerator
-  buf.m_memoryType = BufferMemoryType::Pageable;
-  buf.m_deviceId = device_id;
-  size_t elem_size = getElementSize(type);
-  buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
-
-  if (size_bytes > 0) {
-    buf.m_accelBuffer =
-        IAcceleratorBuffer::create(size_bytes, AcceleratorMemoryType::Device);
+TypedBuffer TypedBuffer::fromStorage(DataType type,
+                                     std::unique_ptr<IBufferStorage> storage) {
+  if (!storage) {
+    throw std::invalid_argument("TypedBuffer storage must not be null");
   }
-  return buf;
-}
-
-TypedBuffer TypedBuffer::wrapGpu(DataType type, void *device_ptr,
-                                 size_t size_bytes, int device_id) {
-  TypedBuffer buf;
-  buf.m_dataType = type;
-  buf.m_location = BufferLocation::GpuDevice;
-  buf.m_memoryType = BufferMemoryType::Pageable;
-  buf.m_deviceId = device_id;
-  size_t elem_size = getElementSize(type);
-  buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
-
-  if (size_bytes > 0 && device_ptr) {
-    buf.m_accelBuffer = IAcceleratorBuffer::createReference(
-        device_ptr, size_bytes, AcceleratorMemoryType::Device,
-        /*manage_memory=*/false);
-  }
-  return buf;
-}
-
-TypedBuffer TypedBuffer::createPinnedHost(DataType type, size_t size_bytes) {
-  TypedBuffer buf;
-  buf.m_dataType = type;
-  buf.m_location = BufferLocation::CPU;
-  buf.m_memoryType = BufferMemoryType::Pinned;
-  size_t elem_size = getElementSize(type);
-  buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
-
-  if (size_bytes > 0) {
-    buf.m_accelBuffer = IAcceleratorBuffer::create(
-        size_bytes, AcceleratorMemoryType::HostPinned);
-  }
-  return buf;
+  TypedBuffer buffer;
+  buffer.m_dataType = type;
+  const auto descriptor = storage->descriptor();
+  buffer.m_location = descriptor.kind == MemoryKind::Device
+                          ? BufferLocation::GpuDevice
+                          : BufferLocation::CPU;
+  buffer.m_memoryType = descriptor.kind == MemoryKind::HostPinned
+                            ? BufferMemoryType::Pinned
+                            : descriptor.kind == MemoryKind::Unified
+                                  ? BufferMemoryType::Managed
+                                  : BufferMemoryType::Pageable;
+  buffer.m_deviceId = descriptor.device_id;
+  buffer.m_elementCount = storage->sizeBytes() / getElementSize(type);
+  buffer.m_accelBuffer = std::move(storage);
+  return buffer;
 }
 
 // ============================================================================
@@ -237,7 +208,7 @@ TypedBuffer TypedBuffer::createPinnedHost(DataType type, size_t size_bytes) {
 size_t TypedBuffer::getSizeBytes() const noexcept {
   // If backed by accelerator (Pinned or GPU), trust it
   if (m_accelBuffer) {
-    return m_accelBuffer->getSizeBytes();
+    return m_accelBuffer->sizeBytes();
   }
 
   // Otherwise, standard CPU logic
@@ -245,6 +216,15 @@ size_t TypedBuffer::getSizeBytes() const noexcept {
     return m_elementCount * getElementSize(m_dataType);
   }
   return m_cpuData.size();
+}
+
+std::string_view TypedBuffer::backend() const noexcept {
+  return m_accelBuffer ? m_accelBuffer->descriptor().backend
+                       : std::string_view{"cpu"};
+}
+
+MemoryKind TypedBuffer::memoryKind() const noexcept {
+  return m_accelBuffer ? m_accelBuffer->descriptor().kind : MemoryKind::Host;
 }
 
 int TypedBuffer::getDeviceId() const noexcept {
@@ -284,7 +264,7 @@ void *TypedBuffer::getRawHostPtr() {
 
   // 1. Check if it's Pinned Memory (held in AcceleratorBuffer)
   if (m_memoryType == BufferMemoryType::Pinned) {
-    return m_accelBuffer ? m_accelBuffer->get() : nullptr;
+    return m_accelBuffer ? m_accelBuffer->data() : nullptr;
   }
 
   // 2. Check External Ref
@@ -301,7 +281,7 @@ void *TypedBuffer::getRawDevicePtr() const {
     throw std::runtime_error(
         "Attempted to access Device pointer on Non-GPU buffer");
   }
-  return m_accelBuffer ? m_accelBuffer->get() : nullptr;
+  return m_accelBuffer ? m_accelBuffer->data() : nullptr;
 }
 
 // ============================================================================
@@ -319,8 +299,7 @@ void TypedBuffer::resizeDiscard(size_t new_element_count) {
 
   if (m_accelBuffer) {
     // Pinned host or GPU device storage: reallocate.
-    auto current_type = m_accelBuffer->getType();
-    m_accelBuffer = IAcceleratorBuffer::create(new_size_bytes, current_type);
+    m_accelBuffer = m_accelBuffer->allocate(new_size_bytes);
   } else {
     // CPU pageable. A wrapped external pointer is detached: this buffer is
     // being turned into an owned output buffer.

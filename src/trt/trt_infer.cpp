@@ -10,6 +10,7 @@
  */
 
 #include "trt_infer.hpp"
+#include "cuda_buffer_storage.hpp"
 #include "ai_core/error_code.hpp"
 #include "crypto.hpp"
 #include "trt_infer_stream.hpp"
@@ -169,7 +170,7 @@ std::shared_ptr<IExecutionContext> TrtAlgoInference::createExecutionContext() {
 
 TypedBuffer TrtAlgoInference::allocateAcceleratorBuffer(DataType type,
                                                         size_t size_bytes) {
-  return TypedBuffer::createPinnedHost(type, size_bytes);
+  return gpu::allocateCudaPinnedBuffer(type, size_bytes);
 }
 
 TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
@@ -186,7 +187,7 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
     size_t size_bytes = m_tensorSizeMap.at(input.name);
     std::vector<int> shape_int(input.shape.begin(), input.shape.end());
     ctx.inputs.set(input.name,
-                   TypedBuffer::createPinnedHost(input.data_type, size_bytes),
+                   gpu::allocateCudaPinnedBuffer(input.data_type, size_bytes),
                    std::move(shape_int));
   }
 
@@ -195,7 +196,7 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
     size_t size_bytes = m_tensorSizeMap.at(output.name);
     std::vector<int> shape_int(output.shape.begin(), output.shape.end());
     ctx.outputs.set(output.name,
-                    TypedBuffer::createPinnedHost(output.data_type, size_bytes),
+                    gpu::allocateCudaPinnedBuffer(output.data_type, size_bytes),
                     std::move(shape_int));
   }
 

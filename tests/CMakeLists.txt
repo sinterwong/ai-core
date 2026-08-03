@@ -16,7 +16,7 @@ endif()
 # ============================================================================
 # Source Files
 # ============================================================================
-file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "*.cpp" ".cc")
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "*.cpp" "*.cc")
 
 # ============================================================================
 # Dependencies Configuration
@@ -33,8 +33,8 @@ set(DEPENDENCY_INCLUDES
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core
-    encrypt::encrypt
     ${OpenCV_LIBS}
+    opencv_imgcodecs
     GTest::gtest
     GTest::gtest_main
     ${ANDROID_JIN_LIBS}
@@ -86,6 +86,20 @@ target_include_directories(ai_core_tests PRIVATE ${DEPENDENCY_INCLUDES})
 
 # Link dependencies
 target_link_libraries(ai_core_tests PRIVATE ${DEPENDENCY_LIBS})
+
+if(TARGET ai_core_plugin_preproc_opencv AND
+   TARGET ai_core_plugin_postproc_opencv)
+    target_link_libraries(ai_core_tests PRIVATE
+        ai_core::plugin_preproc_opencv
+        ai_core::plugin_postproc_opencv)
+    add_dependencies(ai_core_tests
+        ai_core_plugin_preproc_opencv
+        ai_core_plugin_postproc_opencv)
+    target_compile_definitions(ai_core_tests PRIVATE
+        AI_CORE_TEST_PREPROC_PLUGIN="$<TARGET_FILE:ai_core_plugin_preproc_opencv>"
+        AI_CORE_TEST_POSTPROC_PLUGIN="$<TARGET_FILE:ai_core_plugin_postproc_opencv>"
+    )
+endif()
 
 # ============================================================================
 # Compile Definitions

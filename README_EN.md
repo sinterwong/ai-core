@@ -46,9 +46,15 @@ AI Core is a C++ library for running AI models on multiple backends (ONNX Runtim
 
 - A C++20 compiler (GCC 11+, Clang 14+, MSVC 19.30+)
 - CMake 3.18+
-- OpenCV 4.x
-- ONNX Runtime (enabled by default)
-- Optional: NCNN, TensorRT, CUDA Toolkit
+- Core library: a C++20 compiler, with no third-party runtime dependency
+- Bundled OpenCV pre/post-process plugins: OpenCV 4.x
+- Optional inference plugins: ONNX Runtime, NCNN, TensorRT/CUDA
+
+Only the core is built by default. Enable repository-maintained plugins with
+`AI_CORE_BUILD_BUNDLED_PLUGINS=ON`; inference plugins remain controlled by
+`WITH_ORT_ENGINE`, `WITH_NCNN_ENGINE`, and `WITH_TRT_ENGINE`. In-tree and
+out-of-tree plugins are both loaded through `PluginManager` and are never
+folded into `libai_core.so`.
 
 ### Clone and build
 

@@ -9,7 +9,9 @@
  *
  */
 
-#include "ai_core/i_accelerator_buffer.hpp"
+#include "ai_core/buffer_storage.hpp"
+#include "ai_core/typed_buffer.hpp"
+#include "cuda_buffer_storage.hpp"
 #include "cuda_helper.cuh"
 #include <cstring>
 #include <cuda_runtime.h>
@@ -17,17 +19,18 @@
 
 namespace ai_core {
 
-class CudaAcceleratorBuffer : public IAcceleratorBuffer {
+class CudaAcceleratorBuffer : public IBufferStorage {
 public:
-  CudaAcceleratorBuffer(size_t size_bytes, AcceleratorMemoryType type)
-      : m_sizeBytes(size_bytes), m_type(type), m_ownsMemory(true) {
+  CudaAcceleratorBuffer(size_t size_bytes, MemoryKind type, int device_id = 0)
+      : m_sizeBytes(size_bytes), m_type(type), m_deviceId(device_id),
+        m_ownsMemory(true) {
 
     if (m_sizeBytes == 0)
       return;
 
-    if (m_type == AcceleratorMemoryType::Device) {
+    if (m_type == MemoryKind::Device) {
       CHECK_CUDA_ERROR(cudaMalloc(&m_ptr, m_sizeBytes));
-    } else if (m_type == AcceleratorMemoryType::HostPinned) {
+    } else if (m_type == MemoryKind::HostPinned) {
       CHECK_CUDA_ERROR(cudaMallocHost(&m_ptr, m_sizeBytes));
       // Optional: Zero-init pinned memory implies generic CPU usage
       std::memset(m_ptr, 0, m_sizeBytes);
@@ -35,13 +38,13 @@ public:
   }
 
   CudaAcceleratorBuffer(void *ptr, size_t size_bytes,
-                        AcceleratorMemoryType type, bool manage)
+                        MemoryKind type, bool manage, int device_id = 0)
       : m_ptr(ptr), m_sizeBytes(size_bytes), m_type(type),
-        m_ownsMemory(manage) {}
+        m_deviceId(device_id), m_ownsMemory(manage) {}
 
   ~CudaAcceleratorBuffer() override {
     if (m_ptr && m_ownsMemory) {
-      if (m_type == AcceleratorMemoryType::Device) {
+      if (m_type == MemoryKind::Device) {
         cudaFree(m_ptr);
       } else {
         cudaFreeHost(m_ptr);
@@ -56,13 +59,14 @@ public:
   // Clone constructor helper
   CudaAcceleratorBuffer(const CudaAcceleratorBuffer &other, bool)
       : m_sizeBytes(other.m_sizeBytes), m_type(other.m_type),
+        m_deviceId(other.m_deviceId),
         m_ownsMemory(true) {
 
     if (m_sizeBytes == 0)
       return;
 
     // Allocate
-    if (m_type == AcceleratorMemoryType::Device) {
+    if (m_type == MemoryKind::Device) {
       CHECK_CUDA_ERROR(cudaMalloc(&m_ptr, m_sizeBytes));
       // Copy (Device to Device)
       CHECK_CUDA_ERROR(cudaMemcpy(m_ptr, other.m_ptr, m_sizeBytes,
@@ -74,44 +78,43 @@ public:
     }
   }
 
-  void *get() const override { return m_ptr; }
-  size_t getSizeBytes() const override { return m_sizeBytes; }
-  AcceleratorMemoryType getType() const override { return m_type; }
+  void *data() noexcept override { return m_ptr; }
+  const void *data() const noexcept override { return m_ptr; }
+  size_t sizeBytes() const noexcept override { return m_sizeBytes; }
+  MemoryDescriptor descriptor() const noexcept override {
+    return {m_type, "cuda", m_deviceId};
+  }
+  std::unique_ptr<IBufferStorage> clone() const override {
+    return std::make_unique<CudaAcceleratorBuffer>(*this, true);
+  }
+  std::unique_ptr<IBufferStorage> allocate(size_t bytes) const override {
+    return std::make_unique<CudaAcceleratorBuffer>(bytes, m_type, m_deviceId);
+  }
 
 private:
   void *m_ptr{nullptr};
   size_t m_sizeBytes{0};
-  AcceleratorMemoryType m_type;
+  MemoryKind m_type;
+  int m_deviceId{0};
   bool m_ownsMemory;
 };
 
-// ============================================================================
-// Factory Implementation
-// ============================================================================
-
-std::unique_ptr<IAcceleratorBuffer>
-IAcceleratorBuffer::create(size_t size_bytes, AcceleratorMemoryType type) {
-  return std::make_unique<CudaAcceleratorBuffer>(size_bytes, type);
-}
-
-std::unique_ptr<IAcceleratorBuffer>
-IAcceleratorBuffer::createReference(void *ptr, size_t size_bytes,
-                                    AcceleratorMemoryType type,
-                                    bool manage_memory) {
-  return std::make_unique<CudaAcceleratorBuffer>(ptr, size_bytes, type,
-                                                 manage_memory);
-}
-
-std::unique_ptr<IAcceleratorBuffer>
-IAcceleratorBuffer::clone(const IAcceleratorBuffer &other) {
-  // Dynamic cast ensures we are cloning a compatible CUDA buffer
-  const auto *cuda_impl = dynamic_cast<const CudaAcceleratorBuffer *>(&other);
-  if (!cuda_impl) {
-    throw std::runtime_error(
-        "Cannot clone incompatible accelerator buffer type.");
-  }
-  // Invoke private clone constructor
-  return std::make_unique<CudaAcceleratorBuffer>(*cuda_impl, true);
-}
-
 } // namespace ai_core
+
+namespace ai_core::dnn::gpu {
+
+TypedBuffer allocateCudaDeviceBuffer(DataType type, size_t size_bytes,
+                                     int device_id) {
+  return TypedBuffer::fromStorage(
+      type, std::make_unique<CudaAcceleratorBuffer>(
+                size_bytes, MemoryKind::Device, device_id));
+}
+
+TypedBuffer allocateCudaPinnedBuffer(DataType type, size_t size_bytes,
+                                     int device_id) {
+  return TypedBuffer::fromStorage(
+      type, std::make_unique<CudaAcceleratorBuffer>(
+                size_bytes, MemoryKind::HostPinned, device_id));
+}
+
+} // namespace ai_core::dnn::gpu

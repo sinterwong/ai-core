@@ -10,7 +10,6 @@
  */
 #include "algo_infer_engine_impl.hpp"
 #include "ai_core/algo_types.hpp"
-#include "ai_core/default_plugins.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
 
@@ -20,12 +19,12 @@ AlgoInferEngine::Impl::Impl(const std::string &module_name,
     : m_moduleName(module_name), m_inferParams(infer_params) {};
 
 InferErrorCode AlgoInferEngine::Impl::initialize() {
-  registerDefaultPlugins();
   try {
     AlgoConstructParams temp_infer_params;
     temp_infer_params.setParam("params", m_inferParams);
     m_engine =
-        InferEngineFactory::instance().create(m_moduleName, temp_infer_params);
+        PluginRegistry::instance().createInferenceEngine(m_moduleName,
+                                                         temp_infer_params);
 
     if (m_engine == nullptr) {
       LOG_ERROR_S << "Failed to create inference engine for name: "

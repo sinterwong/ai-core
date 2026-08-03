@@ -9,7 +9,6 @@
  *
  */
 #include "algo_preproc_impl.hpp"
-#include "ai_core/default_plugins.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
 #include "param_validation.hpp"
@@ -26,10 +25,10 @@ AlgoPreproc::Impl::initialize(const AlgoPreprocParams &preproc_params) {
   }
   m_boundParams = preproc_params;
 
-  registerDefaultPlugins();
   try {
     m_preprocessor =
-        PreprocFactory::instance().create(m_moduleName, AlgoConstructParams{});
+        PluginRegistry::instance().createPreprocessor(m_moduleName,
+                                                      AlgoConstructParams{});
     if (m_preprocessor == nullptr) {
       LOG_ERROR_S << "Failed to create preprocessor for module: "
                   << m_moduleName;

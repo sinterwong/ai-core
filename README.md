@@ -46,9 +46,13 @@ AI Core 是一个用于在多种推理后端（ONNX Runtime、NCNN、TensorRT）
 
 - C++20 兼容的编译器（GCC 11+、Clang 14+、MSVC 19.30+）
 - CMake 3.18+
-- OpenCV 4.x
-- ONNX Runtime（默认启用）
-- 可选：NCNN、TensorRT、CUDA Toolkit
+- 核心库：C++20 编译器，无第三方运行时依赖
+- 官方 OpenCV preproc/postproc 插件：OpenCV 4.x
+- 可选 infer 插件：ONNX Runtime、NCNN、TensorRT/CUDA
+
+默认只构建核心。官方插件通过 `AI_CORE_BUILD_BUNDLED_PLUGINS=ON` 开启，具体
+后端仍由 `WITH_ORT_ENGINE`、`WITH_NCNN_ENGINE`、`WITH_TRT_ENGINE` 控制。
+仓库内与仓库外插件都通过 `PluginManager` 动态加载，不会编入 `libai_core.so`。
 
 ### 拉取与构建
 

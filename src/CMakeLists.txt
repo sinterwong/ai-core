@@ -1,19 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
 
-# Enable CUDA if TensorRT engine is enabled
-if(WITH_TRT_ENGINE)
-    project(AICoreSrc VERSION ${AI_CORE_VERSION} LANGUAGES CXX CUDA)
-else()
-    project(AICoreSrc VERSION ${AI_CORE_VERSION} LANGUAGES CXX)
-endif()
+project(AICoreSrc VERSION ${AI_CORE_VERSION} LANGUAGES CXX)
 
 # Enable position independent code for shared library
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# ============================================================================
-# Load Dependencies
-# ============================================================================
-load_opencv()
 
 # Android-specific configuration
 if(TARGET_OS STREQUAL "Android")
@@ -22,15 +12,9 @@ if(TARGET_OS STREQUAL "Android")
 endif()
 
 # Base dependencies
-set(DEPENDENCY_INCLUDES
-    ${OpenCV_INCLUDE_DIRS}
-)
+set(DEPENDENCY_INCLUDES)
 
-set(DEPENDENCY_LIBS
-    encrypt::encrypt
-    ${OpenCV_LIBS}
-    ${ANDROID_JIN_LIBS}
-)
+set(DEPENDENCY_LIBS ${ANDROID_JIN_LIBS})
 
 # Public API headers
 # Recursively find all headers in api/ai_core/
@@ -54,90 +38,18 @@ set(AI_CORE_SOURCES
     algo_postproc_impl.cpp
     # core value types + utilities
     typed_buffer.cpp
-    vision_util.cpp
     logger.cpp
     infer_base.cpp
-    device_buffer_impl_stub.cpp
-    # preprocessing
-    preproc/cpu_generic_preprocessor.cpp
-    preproc/frame_with_mask_prep.cpp
-    preproc/generic_frame_preproc_base.cpp
-    # postprocessing
-    postproc/yolo_det.cpp
-    postproc/nano_det.cpp
-    postproc/rtm_det.cpp
-    postproc/softmax_cls.cpp
-    postproc/argmax_cls.cpp
-    postproc/fpr_cls.cpp
-    postproc/semantic_seg.cpp
-    postproc/unet_dual_out_seg.cpp
-    postproc/ocr_reco.cpp
-    postproc/raw_output.cpp
-    # plugin registrars
-    registrar/default_plugins.cpp
-    registrar/preproc_registrar.cpp
-    registrar/postproc_registrar.cpp
-    registrar/infer_engine_registrar.cpp
+    plugin_registry.cpp
+    plugin_manager.cpp
 )
 
 # Private headers are only used for IDE indexing; globbing them is harmless.
-file(GLOB AI_CORE_PRIVATE_HEADERS CONFIGURE_DEPENDS
-    "*.hpp" "preproc/*.hpp" "postproc/*.hpp" "registrar/*.hpp")
-
-# ONNX Runtime engine
-if(WITH_ORT_ENGINE)
-    message(STATUS "Configuring ONNX Runtime engine module")
-    load_onnxruntime()
-    add_subdirectory(ort)
-    list(APPEND DEPENDENCY_LIBS onnxruntime::onnxruntime)
-endif()
-
-# NCNN engine
-if(WITH_NCNN_ENGINE)
-    message(STATUS "Configuring NCNN engine module")
-    load_openmp()
-    load_ncnn()
-    add_subdirectory(ncnn)
-
-    list(APPEND DEPENDENCY_INCLUDES
-        ${NCNN_INCLUDE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/ncnn
-    )
-    list(APPEND DEPENDENCY_LIBS ${NCNN_MODULE_LIBS})
-endif()
-
-# TensorRT engine
-if(WITH_TRT_ENGINE)
-    message(STATUS "Configuring TensorRT engine module")
-    load_cuda()
-    load_tensorrt()
-
-    # CUDA architectures: overridable via AI_CORE_CUDA_ARCHITECTURES,
-    # defaults to the GPUs present on the build machine.
-    if(AI_CORE_CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES ${AI_CORE_CUDA_ARCHITECTURES})
-    else()
-        set(CMAKE_CUDA_ARCHITECTURES native)
-    endif()
-
-    add_subdirectory(trt)
-
-    list(APPEND DEPENDENCY_INCLUDES
-        ${TensorRT_INCLUDE_DIR}
-        ${CUDAToolkit_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/trt
-    )
-    list(APPEND DEPENDENCY_LIBS ${TRT_MODULE_LIBS})
-endif()
+file(GLOB AI_CORE_PRIVATE_HEADERS CONFIGURE_DEPENDS "*.hpp")
 
 add_library(ai_core SHARED
     ${AI_CORE_SOURCES}
     ${AI_CORE_PRIVATE_HEADERS}
-
-    # Conditionally include engine module object files
-    $<$<BOOL:${WITH_ORT_ENGINE}>:$<TARGET_OBJECTS:ai_ort_module>>
-    $<$<BOOL:${WITH_NCNN_ENGINE}>:$<TARGET_OBJECTS:ai_ncnn_module>>
-    $<$<BOOL:${WITH_TRT_ENGINE}>:$<TARGET_OBJECTS:ai_trt_module>>
 )
 
 # Create namespaced alias for modern CMake usage
@@ -145,13 +57,6 @@ add_library(ai_core::ai_core ALIAS ai_core)
 
 # Set C++ standard using target property (modern CMake style)
 target_compile_features(ai_core PUBLIC cxx_std_20)
-
-# Apply TensorRT-specific properties if enabled
-if(WITH_TRT_ENGINE)
-    message(STATUS "Applying TensorRT consumer properties to ai_core")
-    set_target_properties(ai_core PROPERTIES ${AI_TRT_CONSUMER_PROPERTIES})
-    target_compile_options(ai_core PRIVATE ${AI_TRT_CONSUMER_COMPILE_OPTIONS})
-endif()
 
 # Configure include directories
 target_include_directories(ai_core
@@ -164,28 +69,14 @@ target_include_directories(ai_core
 )
 
 # Link dependencies
-# opencv_core is public: the API headers expose cv::Rect / cv::Mat types
 target_link_libraries(ai_core
-    PUBLIC opencv_core
-    PRIVATE ${DEPENDENCY_LIBS}
+    PRIVATE ${DEPENDENCY_LIBS} ${CMAKE_DL_LIBS}
 )
 
 # ============================================================================
 # Compile Definitions
 # ============================================================================
 # Define macros based on enabled engines
-if(WITH_ORT_ENGINE)
-    target_compile_definitions(ai_core PRIVATE WITH_ORT)
-endif()
-
-if(WITH_NCNN_ENGINE)
-    target_compile_definitions(ai_core PRIVATE WITH_NCNN)
-endif()
-
-if(WITH_TRT_ENGINE)
-    target_compile_definitions(ai_core PRIVATE WITH_TRT)
-endif()
-
 # ============================================================================
 # Installation
 # ============================================================================
@@ -287,6 +178,7 @@ install(
     FILES
         "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config-version.cmake"
+        "${CMAKE_SOURCE_DIR}/cmake/AICorePlugin.cmake"
     DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
     COMPONENT dev
 )

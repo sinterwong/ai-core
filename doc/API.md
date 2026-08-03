@@ -215,14 +215,12 @@ static TypedBuffer createFromCpu(DataType type, std::vector<uint8_t>&& data);
 
 static TypedBuffer wrapCpu(DataType type, const void* host_ptr, size_t size_bytes);
 
-static TypedBuffer allocateGpu(DataType type, size_t size_bytes, int device_id = 0);
-static TypedBuffer wrapGpu(DataType type, void* device_ptr,
-                           size_t size_bytes, int device_id = 0);
-
-static TypedBuffer createPinnedHost(DataType type, size_t size_bytes);
+static TypedBuffer fromStorage(DataType type,
+                               std::unique_ptr<IBufferStorage> storage);
 ```
 
-`wrapCpu` / `wrapGpu` 是零拷贝、永不拥有的包装，缓冲区生命周期由调用方管理；拷贝一个 wrap 出来的 `TypedBuffer` 会深拷贝成自有存储。
+`wrapCpu` 是零拷贝、永不拥有的包装。设备和 pinned 内存由后端插件实现
+`IBufferStorage`，核心不直接调用 CUDA、ROCm 或其它厂商运行时。
 
 ### 访问
 
@@ -481,7 +479,8 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 
 宏把字符串 `"MyPreproc"` 等与默认构造函数 / `AlgoConstructParams` 构造函数绑定。
 
-内置插件由 `ai_core::dnn::registerDefaultPlugins()`（`<ai_core/default_plugins.hpp>`）显式注册；facade 的 `initialize()` 会自动调用，静态/动态链接皆可用。绕过 facade 直接用工厂时先手动调用一次。注册自己的插件时，在自己的代码里执行上述宏即可（例如放在插件 `.cpp` 的一个初始化函数中）。
+核心不再隐式注册插件。官方与外部插件都先通过 `PluginManager::load()` 加载，
+再由同一个 `PluginRegistry` 创建。插件必须在流水线初始化和并发请求开始前载入。
 
 ### 内置插件一览
 
