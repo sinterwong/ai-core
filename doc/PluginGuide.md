@@ -17,8 +17,20 @@ ai_core::dnn::PluginManager::instance().load(
 ```
 
 插件动态库导出 `ai_core_register_plugin_v1`，在其中向传入的 `PluginRegistry`
-注册实现并填写 `PluginInfo`。插件载入后驻留到进程结束，不支持卸载，以保证
+注册实现并填写 `PluginInfo`（API 版本、名称、版本、provider、能力列表）。入口
+调用是事务性的：返回失败、抛出异常或 API 版本不匹配时，期间新增的注册项会
+全部回滚，动态库也会立即卸载。插件载入成功后驻留到进程结束，不支持卸载，以保证
 creator 和已经创建的对象不会指向被卸载的代码。
+
+除逐个加载外，也可以扫描目录。自动发现依次扫描显式路径、
+`AI_CORE_PLUGIN_PATH`（Linux/macOS 用 `:`，Windows 用 `;` 分隔）以及安装目录
+`<libdir>/ai_core/plugins`。可发现的动态库名须包含 `ai_core_plugin_`：
+
+```cpp
+auto &plugins = ai_core::dnn::PluginManager::instance();
+plugins.loadDirectory("/opt/my-product/plugins");
+plugins.discover();
+```
 
 外部项目使用随包安装的 CMake helper：
 
@@ -135,7 +147,7 @@ const PoseRet pose = packet->getParam<PoseRet>("pose");
 
 ## 5. 新增一个检测头的最小步骤
 
-1. 新建 `src/postproc/my_det.{hpp,cpp}`，继承 `FramePostprocBase<AnchorDetParams,
+1. 新建 `plugins/postproc/my-det/my_det.{hpp,cpp}`，继承 `FramePostprocBase<AnchorDetParams,
    true>`（`true` = 需要预处理变换上下文做坐标还原）。
 2. 实现 `processTyped` / `batchProcessTyped` 两个纯虚 hook。
 3. 在 .cpp 里 `REGISTER_POSTPROCESS_ALGO(MyDet);`。

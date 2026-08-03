@@ -40,6 +40,18 @@ PluginRegistry &PluginRegistry::instance() {
   return registry;
 }
 
+PluginRegistry::Snapshot PluginRegistry::snapshot() const {
+  std::shared_lock lock(m_mutex);
+  return {m_preprocessors, m_inferenceEngines, m_postprocessors};
+}
+
+void PluginRegistry::restore(Snapshot snapshot) {
+  std::unique_lock lock(m_mutex);
+  m_preprocessors = std::move(snapshot.preprocessors);
+  m_inferenceEngines = std::move(snapshot.inference_engines);
+  m_postprocessors = std::move(snapshot.postprocessors);
+}
+
 template <class Map, class Creator>
 bool PluginRegistry::add(Map &map, std::string name, Creator creator) {
   if (name.empty() || !creator) {

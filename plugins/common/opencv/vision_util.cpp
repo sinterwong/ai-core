@@ -13,7 +13,9 @@
 #include "ai_core/opencv_interop.hpp"
 #include "ai_core/output_types.hpp"
 #include "ai_core/preprocess_types.hpp"
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/dnn/dnn.hpp>
+#include <opencv2/imgproc.hpp>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>

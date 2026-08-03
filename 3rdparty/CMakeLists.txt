@@ -10,7 +10,12 @@ set(WITH_GTEST OFF CACHE BOOL "Disable gtest for glog")
 if(AI_CORE_BUILD_BUNDLED_PLUGINS AND
    (AI_CORE_PLUGIN_VISION OR WITH_ORT_ENGINE OR WITH_NCNN_ENGINE OR WITH_TRT_ENGINE))
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/opencv/CMakeLists.txt")
-        set(BUILD_LIST core,imgproc,dnn CACHE STRING
+        set(AI_CORE_OPENCV_MODULES core,imgproc,dnn)
+        if(BUILD_AI_CORE_TESTS)
+            list(APPEND AI_CORE_OPENCV_MODULES imgcodecs)
+        endif()
+        list(JOIN AI_CORE_OPENCV_MODULES "," AI_CORE_OPENCV_BUILD_LIST)
+        set(BUILD_LIST "${AI_CORE_OPENCV_BUILD_LIST}" CACHE STRING
             "OpenCV modules required by ai-core plugins" FORCE)
         set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build bundled OpenCV statically" FORCE)
         set(BUILD_TESTS OFF CACHE BOOL "Disable OpenCV tests" FORCE)
@@ -23,6 +28,12 @@ if(AI_CORE_BUILD_BUNDLED_PLUGINS AND
         # archive. Keep source checkouts self-contained and reproducible.
         set(WITH_IPP OFF CACHE BOOL "Disable downloaded IPPICV binaries" FORCE)
         set(WITH_ITT OFF CACHE BOOL "Disable Intel ITT instrumentation" FORCE)
+        set(WITH_OPENCL OFF CACHE BOOL "Disable OpenCV OpenCL runtime" FORCE)
+        set(WITH_OPENGL OFF CACHE BOOL "Disable OpenCV OpenGL support" FORCE)
+        set(WITH_VA OFF CACHE BOOL "Disable OpenCV VA-API support" FORCE)
+        set(WITH_VA_INTEL OFF CACHE BOOL "Disable Intel VA extensions" FORCE)
+        set(WITH_VTK OFF CACHE BOOL "Disable OpenCV VTK support" FORCE)
+        set(WITH_GTK OFF CACHE BOOL "Disable OpenCV GTK support" FORCE)
 
         if(NOT TARGET opencv_core)
             add_subdirectory(opencv EXCLUDE_FROM_ALL)

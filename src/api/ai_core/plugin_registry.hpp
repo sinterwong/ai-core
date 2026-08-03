@@ -16,6 +16,8 @@
 
 namespace ai_core::dnn {
 
+class PluginManager;
+
 /** The one process-wide registry used by bundled and out-of-tree plugins. */
 class PluginRegistry final {
 public:
@@ -50,7 +52,16 @@ public:
   std::vector<std::string> postprocessors() const;
 
 private:
+  struct Snapshot {
+    std::unordered_map<std::string, PreprocCreator> preprocessors;
+    std::unordered_map<std::string, InferCreator> inference_engines;
+    std::unordered_map<std::string, PostprocCreator> postprocessors;
+  };
+
   PluginRegistry() = default;
+
+  Snapshot snapshot() const;
+  void restore(Snapshot snapshot);
 
   template <class Map, class Creator>
   bool add(Map &map, std::string name, Creator creator);
@@ -59,6 +70,8 @@ private:
   std::unordered_map<std::string, PreprocCreator> m_preprocessors;
   std::unordered_map<std::string, InferCreator> m_inferenceEngines;
   std::unordered_map<std::string, PostprocCreator> m_postprocessors;
+
+  friend class PluginManager;
 };
 
 } // namespace ai_core::dnn

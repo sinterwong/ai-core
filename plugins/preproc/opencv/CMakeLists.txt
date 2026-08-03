@@ -1,10 +1,10 @@
 load_opencv()
 
 set(AI_CORE_PREPROC_OPENCV_SOURCES
-    ${PROJECT_SOURCE_DIR}/src/vision_util.cpp
-    ${PROJECT_SOURCE_DIR}/src/preproc/cpu_generic_preprocessor.cpp
-    ${PROJECT_SOURCE_DIR}/src/preproc/frame_with_mask_prep.cpp
-    ${PROJECT_SOURCE_DIR}/src/preproc/generic_frame_preproc_base.cpp
+    ${PROJECT_SOURCE_DIR}/plugins/common/opencv/vision_util.cpp
+    preproc/cpu_generic_preprocessor.cpp
+    preproc/frame_with_mask_prep.cpp
+    preproc/generic_frame_preproc_base.cpp
     register.cpp
 )
 
@@ -12,7 +12,9 @@ add_library(ai_core_plugin_preproc_opencv SHARED ${AI_CORE_PREPROC_OPENCV_SOURCE
 add_library(ai_core::plugin_preproc_opencv ALIAS ai_core_plugin_preproc_opencv)
 target_compile_features(ai_core_plugin_preproc_opencv PRIVATE cxx_std_20)
 target_include_directories(ai_core_plugin_preproc_opencv PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/plugins/common/include
+    ${PROJECT_SOURCE_DIR}/plugins/common/opencv
     ${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(ai_core_plugin_preproc_opencv PRIVATE

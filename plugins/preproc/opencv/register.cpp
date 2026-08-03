@@ -9,7 +9,11 @@ using namespace ai_core::dnn;
 
 extern "C" AI_CORE_PLUGIN_EXPORT bool
 ai_core_register_plugin_v1(PluginRegistry &registry, PluginInfo &info) {
-  info = {"ai_core.preproc.opencv", "2.1.0", "ai-core"};
+  info = {.name = "ai_core.preproc.opencv",
+          .version = "2.1.0",
+          .provider = "ai-core",
+          .description = "OpenCV CPU preprocessing",
+          .capabilities = {"preproc", "backend:cpu", "framework:opencv"}};
   bool ok = true;
   ok &= registry.registerPreprocessor(
       "CpuGenericPreprocess", [](const DataPacket &) {

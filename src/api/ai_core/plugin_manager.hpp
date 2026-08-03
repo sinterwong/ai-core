@@ -4,6 +4,8 @@
 #include "ai_core/plugin_registry.hpp"
 
 #include <mutex>
+#include <filesystem>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -15,9 +17,12 @@ inline constexpr std::string_view AI_CORE_PLUGIN_ENTRYPOINT =
     "ai_core_register_plugin_v1";
 
 struct PluginInfo {
+  std::uint32_t api_version{AI_CORE_PLUGIN_API_VERSION};
   std::string name;
   std::string version;
   std::string provider;
+  std::string description;
+  std::vector<std::string> capabilities;
 };
 
 /** Loads plugin DSOs and keeps them resident for the process lifetime. */
@@ -26,6 +31,10 @@ public:
   static PluginManager &instance();
 
   PluginInfo load(const std::string &path);
+  std::vector<PluginInfo> loadDirectory(const std::filesystem::path &directory);
+  std::vector<PluginInfo>
+  discover(const std::vector<std::filesystem::path> &search_paths = {});
+  std::vector<std::filesystem::path> defaultSearchPaths() const;
   std::vector<PluginInfo> loadedPlugins() const;
 
 private:

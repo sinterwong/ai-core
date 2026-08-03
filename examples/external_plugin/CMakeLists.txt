@@ -7,3 +7,5 @@ ai_core_add_plugin(example_amd_infer
     TYPE infer
     SOURCES amd_infer_plugin.cpp
 )
+set_target_properties(example_amd_infer PROPERTIES
+    OUTPUT_NAME ai_core_plugin_example_amd)

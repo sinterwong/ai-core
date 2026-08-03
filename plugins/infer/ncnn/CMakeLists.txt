@@ -3,14 +3,15 @@ load_ncnn()
 load_opencv()
 
 add_library(ai_core_plugin_ncnn SHARED
-    ${PROJECT_SOURCE_DIR}/src/ncnn/ncnn_infer.cpp
-    ${PROJECT_SOURCE_DIR}/src/ncnn/ncnn_generic_preprocessor.cpp
+    ncnn/ncnn_infer.cpp
+    ncnn/ncnn_generic_preprocessor.cpp
     register.cpp
 )
 add_library(ai_core::plugin_ncnn ALIAS ai_core_plugin_ncnn)
 target_compile_features(ai_core_plugin_ncnn PRIVATE cxx_std_20)
 target_include_directories(ai_core_plugin_ncnn PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/plugins/common/include
     ${NCNN_INCLUDE_DIR}
     ${OpenCV_INCLUDE_DIRS}
 )

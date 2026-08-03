@@ -10,12 +10,12 @@ else()
 endif()
 
 add_library(ai_core_plugin_tensorrt SHARED
-    ${PROJECT_SOURCE_DIR}/src/trt/trt_infer.cpp
-    ${PROJECT_SOURCE_DIR}/src/trt/trt_utils.cpp
-    ${PROJECT_SOURCE_DIR}/src/trt/trt_infer_stream.cpp
-    ${PROJECT_SOURCE_DIR}/src/trt/cuda_utils.cu
-    ${PROJECT_SOURCE_DIR}/src/trt/cuda_accelerator_buffer_impl.cu
-    ${PROJECT_SOURCE_DIR}/src/trt/gpu_generic_cuda_preprocessor.cu
+    trt/trt_infer.cpp
+    trt/trt_utils.cpp
+    trt/trt_infer_stream.cpp
+    trt/cuda_utils.cu
+    trt/cuda_accelerator_buffer_impl.cu
+    trt/gpu_generic_cuda_preprocessor.cu
     register.cpp
 )
 add_library(ai_core::plugin_tensorrt ALIAS ai_core_plugin_tensorrt)
@@ -27,8 +27,9 @@ set_target_properties(ai_core_plugin_tensorrt PROPERTIES
 )
 target_compile_definitions(ai_core_plugin_tensorrt PRIVATE WITH_TRT=1)
 target_include_directories(ai_core_plugin_tensorrt PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/src/trt
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/trt
+    ${PROJECT_SOURCE_DIR}/plugins/common/include
     ${TensorRT_INCLUDE_DIR}
     ${CUDAToolkit_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}

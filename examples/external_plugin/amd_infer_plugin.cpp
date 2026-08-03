@@ -27,7 +27,11 @@ private:
 
 extern "C" AI_CORE_PLUGIN_EXPORT bool ai_core_register_plugin_v1(
     ai_core::dnn::PluginRegistry &registry, ai_core::dnn::PluginInfo &info) {
-  info = {"example.infer.amd", "1.0.0", "example"};
+  info = {.name = "example.infer.amd",
+          .version = "1.0.0",
+          .provider = "example",
+          .description = "Out-of-tree AMD inference plugin example",
+          .capabilities = {"infer", "backend:amd"}};
   return registry.registerInferenceEngine(
       "ExampleAmdInference", [](const ai_core::DataPacket &params) {
         return std::make_shared<ExampleAmdInference>(params);

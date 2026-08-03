@@ -1,17 +1,17 @@
 load_opencv()
 
 set(AI_CORE_POSTPROC_OPENCV_SOURCES
-    ${PROJECT_SOURCE_DIR}/src/vision_util.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/yolo_det.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/nano_det.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/rtm_det.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/softmax_cls.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/argmax_cls.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/fpr_cls.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/semantic_seg.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/unet_dual_out_seg.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/ocr_reco.cpp
-    ${PROJECT_SOURCE_DIR}/src/postproc/raw_output.cpp
+    ${PROJECT_SOURCE_DIR}/plugins/common/opencv/vision_util.cpp
+    postproc/yolo_det.cpp
+    postproc/nano_det.cpp
+    postproc/rtm_det.cpp
+    postproc/softmax_cls.cpp
+    postproc/argmax_cls.cpp
+    postproc/fpr_cls.cpp
+    postproc/semantic_seg.cpp
+    postproc/unet_dual_out_seg.cpp
+    postproc/ocr_reco.cpp
+    postproc/raw_output.cpp
     register.cpp
 )
 
@@ -21,7 +21,8 @@ add_library(ai_core::plugin_postproc_opencv ALIAS
     ai_core_plugin_postproc_opencv)
 target_compile_features(ai_core_plugin_postproc_opencv PRIVATE cxx_std_20)
 target_include_directories(ai_core_plugin_postproc_opencv PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/plugins/common/opencv
     ${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(ai_core_plugin_postproc_opencv PRIVATE

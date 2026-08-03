@@ -14,7 +14,7 @@
 #include "ai_core/algo_types.hpp"
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/tensor_data.hpp"
-#include "frame_preprocessor_base.hpp"
+#include "preproc/frame_preprocessor_base.hpp"
 
 namespace ai_core::dnn {
 

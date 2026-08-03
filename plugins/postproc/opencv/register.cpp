@@ -17,7 +17,11 @@ using namespace ai_core::dnn;
 
 extern "C" AI_CORE_PLUGIN_EXPORT bool
 ai_core_register_plugin_v1(PluginRegistry &registry, PluginInfo &info) {
-  info = {"ai_core.postproc.opencv", "2.1.0", "ai-core"};
+  info = {.name = "ai_core.postproc.opencv",
+          .version = "2.1.0",
+          .provider = "ai-core",
+          .description = "OpenCV model postprocessing",
+          .capabilities = {"postproc", "backend:cpu", "framework:opencv"}};
   bool ok = true;
 #define AI_CORE_REGISTER_POSTPROCESSOR(Type)                                  \
   ok &= registry.registerPostprocessor(#Type, [](const DataPacket &) {         \

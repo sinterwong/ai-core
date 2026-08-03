@@ -24,12 +24,12 @@ CORE_FILTERS=(
   --filter 'src/api/ai_core/opencv_interop\.hpp'
   --filter 'src/api/ai_core/common_types\.hpp'
   --filter 'src/typed_buffer\.cpp'
-  --filter 'src/vision_util\.cpp'
+  --filter 'plugins/common/opencv/vision_util\.cpp'
   --filter 'src/param_validation\.hpp'
-  --filter 'src/preproc/cpu_generic_preprocessor\.cpp'
-  --filter 'src/preproc/frame_with_mask_prep\.cpp'
-  --filter 'src/preproc/generic_frame_preproc_base\.cpp'
-  --filter 'src/postproc/.*\.cpp'
+  --filter 'plugins/preproc/opencv/preproc/cpu_generic_preprocessor\.cpp'
+  --filter 'plugins/preproc/opencv/preproc/frame_with_mask_prep\.cpp'
+  --filter 'plugins/preproc/opencv/preproc/generic_frame_preproc_base\.cpp'
+  --filter 'plugins/postproc/opencv/postproc/.*\.cpp'
 )
 
 # Unit-test suites only (no model assets, no crashing integration teardown).

@@ -22,7 +22,14 @@ function(load_opencv)
                 "Bundled OpenCV was not configured by 3rdparty/CMakeLists.txt")
         endif()
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_dnn PARENT_SCOPE)
-        set(OpenCV_INCLUDE_DIRS "" PARENT_SCOPE)
+        set(OpenCV_INCLUDE_DIRS
+            "${3RDPARTY_ROOT}/opencv/include"
+            "${3RDPARTY_ROOT}/opencv/modules/core/include"
+            "${3RDPARTY_ROOT}/opencv/modules/imgproc/include"
+            "${3RDPARTY_ROOT}/opencv/modules/dnn/include"
+            "${3RDPARTY_ROOT}/opencv/modules/imgcodecs/include"
+            "${CMAKE_BINARY_DIR}"
+            PARENT_SCOPE)
         message(STATUS "OpenCV: bundled source build (core,imgproc,dnn)")
         return()
     endif()

@@ -14,7 +14,7 @@
 #include "ai_core/input_types.hpp"
 #include "ai_core/preprocess_types.hpp"
 #include "ai_core/typed_buffer.hpp"
-#include "frame_preprocessor_base.hpp"
+#include "preproc/frame_preprocessor_base.hpp"
 #include "vision_util.hpp"
 
 namespace cv {

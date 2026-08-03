@@ -2,13 +2,13 @@ load_onnxruntime()
 load_opencv()
 
 add_library(ai_core_plugin_onnxruntime SHARED
-    ${PROJECT_SOURCE_DIR}/src/ort/ort_infer.cpp
+    ort/ort_infer.cpp
     register.cpp
 )
 add_library(ai_core::plugin_onnxruntime ALIAS ai_core_plugin_onnxruntime)
 target_compile_features(ai_core_plugin_onnxruntime PRIVATE cxx_std_20)
 target_include_directories(ai_core_plugin_onnxruntime PRIVATE
-    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(ai_core_plugin_onnxruntime PRIVATE

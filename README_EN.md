@@ -64,18 +64,16 @@ and tests in one command.
 ```bash
 git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
 cd ai-core
-sudo apt-get install -y ninja-build libopencv-dev
+sudo apt-get install -y ninja-build
 scripts/bootstrap.sh
 ```
 
 To do it by hand:
 
 ```bash
-# ONNX Runtime comes from the official release; OpenCV from the system
-# (apt libopencv-dev). Deliberately not one bundle with everything in it: a
-# vendored OpenCV alongside the system one means two libopencv_core.so in a
-# single process, and passing a cv::Mat across that boundary is UB with very
-# indirect symptoms.
+# ONNX Runtime currently comes from its official release. OpenCV 4.10.0 is a
+# pinned source submodule, trimmed by 3rdparty/CMakeLists.txt and linked
+# statically into only the plugins that need it.
 ORT_VERSION=1.20.1
 mkdir -p 3rdparty/target/Linux_x86_64
 curl -fL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" \
@@ -91,7 +89,8 @@ sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
 sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
 
 cmake -B build -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
-      -DWITH_ORT_ENGINE=ON -DWITH_TRT_ENGINE=OFF
+      -DAI_CORE_BUILD_BUNDLED_PLUGINS=ON -DWITH_ORT_ENGINE=ON \
+      -DWITH_TRT_ENGINE=OFF
 cmake --build build -j
 cmake --install build
 ```
@@ -103,7 +102,9 @@ CMake options:
 | `BUILD_AI_CORE_TESTS` | OFF | Build unit tests |
 | `BUILD_AI_CORE_BENCHMARKS` | OFF | Build benchmarks |
 | `BUILD_AI_CORE_EXAMPLES` | OFF | Build examples |
-| `WITH_ORT_ENGINE` | ON | ONNX Runtime backend |
+| `AI_CORE_BUILD_BUNDLED_PLUGINS` | OFF | Build repository-maintained plugins |
+| `AI_CORE_PLUGIN_VISION` | ON | Build OpenCV pre/post-process plugins |
+| `WITH_ORT_ENGINE` | OFF | ONNX Runtime plugin |
 | `WITH_NCNN_ENGINE` | OFF | NCNN backend |
 | `WITH_TRT_ENGINE` | OFF | TensorRT backend |
 

@@ -31,9 +31,13 @@ set(BENCHMARK_SOURCES
 set(DEPENDENCY_INCLUDES
     ${OpenCV_INCLUDE_DIRS}
     ${PROJECT_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ort
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ncnn
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/trt
+    ${CMAKE_SOURCE_DIR}/plugins/common/include
+    ${CMAKE_SOURCE_DIR}/plugins/common/opencv
+    ${CMAKE_SOURCE_DIR}/plugins/preproc/opencv
+    ${CMAKE_SOURCE_DIR}/plugins/postproc/opencv
+    ${CMAKE_SOURCE_DIR}/plugins/infer/onnxruntime
+    ${CMAKE_SOURCE_DIR}/plugins/infer/ncnn
+    ${CMAKE_SOURCE_DIR}/plugins/infer/tensorrt
 )
 
 set(DEPENDENCY_LIBS
