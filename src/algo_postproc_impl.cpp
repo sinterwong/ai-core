@@ -55,8 +55,7 @@ AlgoPostproc::Impl::process(const TensorData &model_output, AlgoOutput &output,
       postproc_override != nullptr ? *postproc_override : m_boundParams;
   try {
     const auto ret =
-        m_postprocessor->process(model_output, params, output,
-                                 runtime_context);
+        m_postprocessor->process(model_output, params, output, runtime_context);
     if (ret != InferErrorCode::SUCCESS) {
       LOG_ERROR_S << "Failed to postprocess output.";
       return ret;
@@ -84,8 +83,8 @@ InferErrorCode AlgoPostproc::Impl::batchProcess(
   const AlgoPostprocParams &params =
       postproc_override != nullptr ? *postproc_override : m_boundParams;
   try {
-    const auto ret = m_postprocessor->batchProcess(model_output, params,
-                                                   output, runtime_context);
+    const auto ret = m_postprocessor->batchProcess(model_output, params, output,
+                                                   runtime_context);
     if (ret != InferErrorCode::SUCCESS) {
       LOG_ERROR_S << "Failed to batch postprocess output.";
       return ret;

@@ -26,9 +26,10 @@ AlgoInference::initialize(const AlgoPreprocParams &preproc_params,
   return m_pImpl->initialize(preproc_params, postproc_params);
 }
 
-InferErrorCode AlgoInference::infer(const AlgoInput &input, AlgoOutput &output,
-                                    const AlgoPreprocParams *preproc_override,
-                                    const AlgoPostprocParams *postproc_override) {
+InferErrorCode
+AlgoInference::infer(const AlgoInput &input, AlgoOutput &output,
+                     const AlgoPreprocParams *preproc_override,
+                     const AlgoPostprocParams *postproc_override) {
   return m_pImpl->infer(input, output, preproc_override, postproc_override);
 }
 
@@ -51,8 +52,8 @@ const AlgoModuleTypes &AlgoInference::getModuleTypes() const noexcept {
   return m_pImpl->getModuleTypes();
 }
 
-std::shared_ptr<IAsyncInferEngine> AlgoInference::getAsyncEngine() const
-    noexcept {
+std::shared_ptr<IAsyncInferEngine>
+AlgoInference::getAsyncEngine() const noexcept {
   return m_pImpl->getAsyncEngine();
 }
 

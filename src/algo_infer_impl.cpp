@@ -38,8 +38,7 @@ AlgoInference::Impl::initialize(const AlgoPreprocParams &preproc_params,
     LOG_ERROR_S << "Failed to initialize inference engine.";
     return InferErrorCode::InitFailed;
   }
-  if (m_postprocessor->initialize(postproc_params) !=
-      InferErrorCode::SUCCESS) {
+  if (m_postprocessor->initialize(postproc_params) != InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "Failed to initialize postprocessor.";
     return InferErrorCode::InitFailed;
   }
@@ -47,10 +46,10 @@ AlgoInference::Impl::initialize(const AlgoPreprocParams &preproc_params,
   return InferErrorCode::SUCCESS;
 }
 
-InferErrorCode AlgoInference::Impl::infer(
-    const AlgoInput &input, AlgoOutput &output,
-    const AlgoPreprocParams *preproc_override,
-    const AlgoPostprocParams *postproc_override) {
+InferErrorCode
+AlgoInference::Impl::infer(const AlgoInput &input, AlgoOutput &output,
+                           const AlgoPreprocParams *preproc_override,
+                           const AlgoPostprocParams *postproc_override) {
 
   if (!m_initialized) {
     LOG_ERROR_S << "Please initialize first";

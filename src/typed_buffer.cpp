@@ -191,8 +191,8 @@ TypedBuffer TypedBuffer::allocateGpu(DataType type, size_t size_bytes,
   buf.m_elementCount = (elem_size > 0) ? size_bytes / elem_size : 0;
 
   if (size_bytes > 0) {
-    buf.m_accelBuffer = IAcceleratorBuffer::create(
-        size_bytes, AcceleratorMemoryType::Device);
+    buf.m_accelBuffer =
+        IAcceleratorBuffer::create(size_bytes, AcceleratorMemoryType::Device);
   }
   return buf;
 }

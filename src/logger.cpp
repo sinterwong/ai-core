@@ -655,10 +655,8 @@ void Logger::configure(const LoggerConfig &config) {
       m_impl->ring_buffer =
           std::make_unique<SPSCRingBuffer<LogEntry>>(config.async_queue_size);
       m_impl->running.store(true, std::memory_order_release);
-      m_impl->worker_thread =
-          std::make_unique<std::thread>([impl = m_impl.get()] {
-            impl->asyncWorker();
-          });
+      m_impl->worker_thread = std::make_unique<std::thread>(
+          [impl = m_impl.get()] { impl->asyncWorker(); });
     } else if (!config.async_enabled &&
                m_impl->running.load(std::memory_order_acquire)) {
       // Stop async worker

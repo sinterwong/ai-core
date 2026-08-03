@@ -1,7 +1,7 @@
 #include "generic_image_infer.hpp"
+#include "ai_core/config/algo_config.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
-#include "ai_core/config/algo_config.hpp"
 
 namespace ai_core::example {
 GenericImageInfer::GenericImageInfer(const std::string &config_path) {
@@ -75,7 +75,8 @@ GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
   }
 
   std::vector<AlgoOutput> algo_outputs;
-  if (mEngine->batchInfer(algo_inputs, algo_outputs) != InferErrorCode::SUCCESS) {
+  if (mEngine->batchInfer(algo_inputs, algo_outputs) !=
+      InferErrorCode::SUCCESS) {
     LOG_ERROR_S << "engine batch infer failed";
     return {};
   }

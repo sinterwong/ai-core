@@ -34,8 +34,8 @@ const ModelInfo &AlgoInferEngine::getModelInfo() const noexcept {
   return m_pImpl->getModelInfo();
 }
 
-std::shared_ptr<IAsyncInferEngine> AlgoInferEngine::getAsyncEngine() const
-    noexcept {
+std::shared_ptr<IAsyncInferEngine>
+AlgoInferEngine::getAsyncEngine() const noexcept {
   return m_pImpl->getAsyncEngine();
 }
 

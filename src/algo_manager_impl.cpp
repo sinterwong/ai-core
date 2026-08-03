@@ -11,8 +11,8 @@
 
 #include "algo_manager_impl.hpp"
 #include "ai_core/logger.hpp"
-#include <ostream>
 #include <mutex>
+#include <ostream>
 
 namespace ai_core::dnn {
 

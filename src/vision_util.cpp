@@ -116,10 +116,9 @@ PixelFormatPlan planPixelFormat(ImagePixelFormat from, ImagePixelFormat to) {
     break;
   }
 
-  throw std::invalid_argument(
-      "Unsupported pixel format conversion: " +
-      std::to_string(static_cast<int>(from)) + " -> " +
-      std::to_string(static_cast<int>(to)));
+  throw std::invalid_argument("Unsupported pixel format conversion: " +
+                              std::to_string(static_cast<int>(from)) + " -> " +
+                              std::to_string(static_cast<int>(to)));
 }
 
 cv::Mat convertPixelFormat(const cv::Mat &src, ImagePixelFormat from,
@@ -135,8 +134,7 @@ cv::Mat convertPixelFormat(const cv::Mat &src, ImagePixelFormat from,
     // Same channel count: a channel reversal. BGR2RGB and RGB2BGR are the same
     // operation, likewise BGRA2RGBA / RGBA2BGRA.
     cv::cvtColor(src, dst,
-                 src.channels() == 4 ? cv::COLOR_BGRA2RGBA
-                                     : cv::COLOR_BGR2RGB);
+                 src.channels() == 4 ? cv::COLOR_BGRA2RGBA : cv::COLOR_BGR2RGB);
   }
   return dst;
 }

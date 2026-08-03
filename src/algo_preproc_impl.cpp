@@ -42,10 +42,10 @@ AlgoPreproc::Impl::initialize(const AlgoPreprocParams &preproc_params) {
   return InferErrorCode::SUCCESS;
 }
 
-InferErrorCode AlgoPreproc::Impl::process(
-    const AlgoInput &input, TensorData &model_input,
-    std::shared_ptr<RuntimeContext> &runtime_context,
-    const AlgoPreprocParams *preproc_override) {
+InferErrorCode
+AlgoPreproc::Impl::process(const AlgoInput &input, TensorData &model_input,
+                           std::shared_ptr<RuntimeContext> &runtime_context,
+                           const AlgoPreprocParams *preproc_override) {
   if (m_preprocessor == nullptr) {
     LOG_ERROR_S << "Preprocessor is not initialized: " << m_moduleName;
     return InferErrorCode::NotInitialized;

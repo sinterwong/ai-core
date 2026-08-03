@@ -40,8 +40,8 @@ IAcceleratorBuffer::create(size_t sizeBytes, AcceleratorMemoryType type) {
 
 std::unique_ptr<IAcceleratorBuffer>
 IAcceleratorBuffer::createReference(void *ptr, size_t sizeBytes,
-                                       AcceleratorMemoryType type,
-                                       bool manageMemory) {
+                                    AcceleratorMemoryType type,
+                                    bool manageMemory) {
   throw std::runtime_error(
       "Cannot create GPU buffer: CUDA support is not compiled.");
 }
