@@ -51,14 +51,23 @@ endif()
 # Engine-specific dependencies
 if(WITH_ORT_ENGINE)
     load_onnxruntime()
-    list(APPEND DEPENDENCY_LIBS onnxruntime::onnxruntime)
+    list(APPEND DEPENDENCY_LIBS
+        onnxruntime::onnxruntime
+        ai_core::plugin_onnxruntime)
+    list(APPEND TEST_PLUGIN_DEFINITIONS
+        AI_CORE_TEST_ORT_PLUGIN="$<TARGET_FILE:ai_core_plugin_onnxruntime>")
 endif()
 
 if(WITH_NCNN_ENGINE)
     load_openmp()
     load_ncnn()
     list(APPEND DEPENDENCY_INCLUDES ${NCNN_INCLUDE_DIR})
-    list(APPEND DEPENDENCY_LIBS ${NCNN_LIBS} ${OpenMP_CXX_FLAGS})
+    list(APPEND DEPENDENCY_LIBS
+        ${NCNN_LIBS}
+        OpenMP::OpenMP_CXX
+        ai_core::plugin_ncnn)
+    list(APPEND TEST_PLUGIN_DEFINITIONS
+        AI_CORE_TEST_NCNN_PLUGIN="$<TARGET_FILE:ai_core_plugin_ncnn>")
 endif()
 
 if(WITH_TRT_ENGINE)
@@ -69,7 +78,11 @@ if(WITH_TRT_ENGINE)
         ${CUDAToolkit_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/trt
     )
-    list(APPEND DEPENDENCY_LIBS TensorRT::nvinfer)
+    list(APPEND DEPENDENCY_LIBS
+        TensorRT::nvinfer
+        ai_core::plugin_tensorrt)
+    list(APPEND TEST_PLUGIN_DEFINITIONS
+        AI_CORE_TEST_TRT_PLUGIN="$<TARGET_FILE:ai_core_plugin_tensorrt>")
 endif()
 
 # ============================================================================
@@ -99,6 +112,7 @@ target_include_directories(ai_core_tests PRIVATE ${DEPENDENCY_INCLUDES})
 
 # Link dependencies
 target_link_libraries(ai_core_tests PRIVATE ${DEPENDENCY_LIBS})
+target_compile_definitions(ai_core_tests PRIVATE ${TEST_PLUGIN_DEFINITIONS})
 
 if(TARGET ai_core_plugin_preproc_opencv AND
    TARGET ai_core_plugin_postproc_opencv)

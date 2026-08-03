@@ -46,7 +46,7 @@ static cv::Mat &benchImageBgr() {
   return image_bgr;
 }
 
-const static auto algo_input = []() {
+static ai_core::AlgoInput makeAlgoInput() {
   ai_core::AlgoInput input;
   cv::Mat &image = benchImageBgr();
   ai_core::FrameInput frame_input;
@@ -54,7 +54,7 @@ const static auto algo_input = []() {
   frame_input.roi = ai_core::Rect{0, 0, image.cols, image.rows};
   input.setParams(frame_input);
   return input;
-}();
+}
 
 #ifdef WITH_ORT
 static void BM_ORT_CPU_DATA_YoloInfer(benchmark::State &state) {
@@ -75,7 +75,7 @@ static void BM_ORT_CPU_DATA_YoloInfer(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CpuGenericPreprocess");
   preproc.initialize(preproc_params);
 
-  ai_core::AlgoInput input = algo_input;
+  ai_core::AlgoInput input = makeAlgoInput();
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
@@ -121,7 +121,7 @@ static void BM_NCNN_CPU_DATA_YoloInfer(benchmark::State &state) {
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
-  ai_core::AlgoInput input = algo_input;
+  ai_core::AlgoInput input = makeAlgoInput();
   ai_core::TensorData model_input;
   preproc.process(input, model_input, runtime_context);
 

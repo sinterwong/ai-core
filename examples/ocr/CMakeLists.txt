@@ -33,7 +33,21 @@ set(DEPENDENCY_LIBS
     ai_core::ai_core
     ai_core::config
     ${OpenCV_LIBS}
+    opencv_imgcodecs
 )
+
+if(TARGET ai_core_plugin_preproc_opencv AND
+   TARGET ai_core_plugin_postproc_opencv)
+    list(APPEND DEPENDENCY_LIBS
+        ai_core::plugin_preproc_opencv
+        ai_core::plugin_postproc_opencv)
+endif()
+if(TARGET ai_core_plugin_onnxruntime)
+    list(APPEND DEPENDENCY_LIBS ai_core::plugin_onnxruntime)
+endif()
+if(TARGET ai_core_plugin_ncnn)
+    list(APPEND DEPENDENCY_LIBS ai_core::plugin_ncnn)
+endif()
 
 # ============================================================================
 # OCR Example Executable
@@ -48,6 +62,21 @@ target_include_directories(ai_core_example_ocr PRIVATE ${DEPENDENCY_INCLUDES})
 
 # Link dependencies
 target_link_libraries(ai_core_example_ocr PRIVATE ${DEPENDENCY_LIBS})
+
+if(TARGET ai_core_plugin_preproc_opencv AND
+   TARGET ai_core_plugin_postproc_opencv)
+    target_compile_definitions(ai_core_example_ocr PRIVATE
+        AI_CORE_EXAMPLE_PREPROC_PLUGIN="$<TARGET_FILE:ai_core_plugin_preproc_opencv>"
+        AI_CORE_EXAMPLE_POSTPROC_PLUGIN="$<TARGET_FILE:ai_core_plugin_postproc_opencv>")
+endif()
+if(TARGET ai_core_plugin_onnxruntime)
+    target_compile_definitions(ai_core_example_ocr PRIVATE
+        AI_CORE_EXAMPLE_ORT_PLUGIN="$<TARGET_FILE:ai_core_plugin_onnxruntime>")
+endif()
+if(TARGET ai_core_plugin_ncnn)
+    target_compile_definitions(ai_core_example_ocr PRIVATE
+        AI_CORE_EXAMPLE_NCNN_PLUGIN="$<TARGET_FILE:ai_core_plugin_ncnn>")
+endif()
 
 # ============================================================================
 # Installation

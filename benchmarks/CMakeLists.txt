@@ -45,8 +45,17 @@ set(DEPENDENCY_LIBS
     encrypt::encrypt
     benchmark::benchmark
     ${OpenCV_LIBS}
+    opencv_imgcodecs
     ${ANDROID_JIN_LIBS}
 )
+
+if(TARGET ai_core_plugin_preproc_opencv)
+    list(APPEND DEPENDENCY_LIBS ai_core::plugin_preproc_opencv)
+endif()
+
+if(TARGET ai_core_plugin_postproc_opencv)
+    list(APPEND DEPENDENCY_LIBS ai_core::plugin_postproc_opencv)
+endif()
 
 # Engine-specific dependencies
 if(WITH_ORT_ENGINE)
@@ -55,14 +64,19 @@ if(WITH_ORT_ENGINE)
         ${ONNXRUNTIME_INCLUDE_DIR}
         ${ONNXRUNTIME_INCLUDE_DIR}/onnxruntime
     )
-    list(APPEND DEPENDENCY_LIBS ${ONNXRUNTIME_LIBS})
+    list(APPEND DEPENDENCY_LIBS
+        onnxruntime::onnxruntime
+        ai_core::plugin_onnxruntime)
 endif()
 
 if(WITH_NCNN_ENGINE)
     load_openmp()
     load_ncnn()
     list(APPEND DEPENDENCY_INCLUDES ${NCNN_INCLUDE_DIR})
-    list(APPEND DEPENDENCY_LIBS ${NCNN_LIBS} ${OpenMP_CXX_FLAGS})
+    list(APPEND DEPENDENCY_LIBS
+        ${NCNN_LIBS}
+        OpenMP::OpenMP_CXX
+        ai_core::plugin_ncnn)
 endif()
 
 if(WITH_TRT_ENGINE)
@@ -73,7 +87,9 @@ if(WITH_TRT_ENGINE)
         ${CUDAToolkit_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/trt
     )
-    list(APPEND DEPENDENCY_LIBS TensorRT::nvinfer)
+    list(APPEND DEPENDENCY_LIBS
+        TensorRT::nvinfer
+        ai_core::plugin_tensorrt)
 endif()
 
 # ============================================================================
@@ -95,19 +111,35 @@ target_include_directories(ai_core_benchmarks PRIVATE ${DEPENDENCY_INCLUDES})
 # Link dependencies
 target_link_libraries(ai_core_benchmarks PRIVATE ${DEPENDENCY_LIBS})
 
+if(TARGET ai_core_plugin_preproc_opencv)
+    target_compile_definitions(ai_core_benchmarks PRIVATE
+        AI_CORE_BENCH_PREPROC_PLUGIN="$<TARGET_FILE:ai_core_plugin_preproc_opencv>")
+endif()
+
+if(TARGET ai_core_plugin_postproc_opencv)
+    target_compile_definitions(ai_core_benchmarks PRIVATE
+        AI_CORE_BENCH_POSTPROC_PLUGIN="$<TARGET_FILE:ai_core_plugin_postproc_opencv>")
+endif()
+
 # ============================================================================
 # Compile Definitions
 # ============================================================================
 if(WITH_ORT_ENGINE)
-    target_compile_definitions(ai_core_benchmarks PRIVATE WITH_ORT)
+    target_compile_definitions(ai_core_benchmarks PRIVATE
+        WITH_ORT
+        AI_CORE_BENCH_ORT_PLUGIN="$<TARGET_FILE:ai_core_plugin_onnxruntime>")
 endif()
 
 if(WITH_NCNN_ENGINE)
-    target_compile_definitions(ai_core_benchmarks PRIVATE WITH_NCNN)
+    target_compile_definitions(ai_core_benchmarks PRIVATE
+        WITH_NCNN
+        AI_CORE_BENCH_NCNN_PLUGIN="$<TARGET_FILE:ai_core_plugin_ncnn>")
 endif()
 
 if(WITH_TRT_ENGINE)
-    target_compile_definitions(ai_core_benchmarks PRIVATE WITH_TRT)
+    target_compile_definitions(ai_core_benchmarks PRIVATE
+        WITH_TRT
+        AI_CORE_BENCH_TRT_PLUGIN="$<TARGET_FILE:ai_core_plugin_tensorrt>")
 endif()
 
 # ============================================================================

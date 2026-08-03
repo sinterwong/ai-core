@@ -20,47 +20,56 @@
 #include <opencv2/opencv.hpp>
 
 #ifdef WITH_ORT
-const static auto engine = []() {
-  ai_core::AlgoInferParams infer_params;
-  infer_params.model_path = "assets/models/yolov11n-fp16.onnx";
-  infer_params.name = "yolov11n";
-  infer_params.device_type = ai_core::DeviceType::CPU;
-  infer_params.data_type = ai_core::DataType::FLOAT16;
+static std::shared_ptr<ai_core::dnn::AlgoInferEngine> getEngine() {
+  static const auto engine = []() {
+    ai_core::AlgoInferParams infer_params;
+    infer_params.model_path = "assets/models/yolov11n-fp16.onnx";
+    infer_params.name = "yolov11n";
+    infer_params.device_type = ai_core::DeviceType::CPU;
+    infer_params.data_type = ai_core::DataType::FLOAT16;
 
-  std::shared_ptr<ai_core::dnn::AlgoInferEngine> engine;
-  engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("OrtAlgoInference",
-                                                           infer_params);
-  engine->initialize();
+    std::shared_ptr<ai_core::dnn::AlgoInferEngine> engine;
+    engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("OrtAlgoInference",
+                                                             infer_params);
+    engine->initialize();
+    return engine;
+  }();
   return engine;
-}();
+}
 #elif WITH_NCNN
-const static auto engine = []() {
-  ai_core::AlgoInferParams inferParams;
-  inferParams.modelPath = "assets/models/yolov11n.ncnn";
-  inferParams.name = "yolov11n";
-  inferParams.deviceType = ai_core::DeviceType::CPU;
-  inferParams.dataType = ai_core::DataType::FLOAT32;
+static std::shared_ptr<ai_core::dnn::AlgoInferEngine> getEngine() {
+  static const auto engine = []() {
+    ai_core::AlgoInferParams inferParams;
+    inferParams.modelPath = "assets/models/yolov11n.ncnn";
+    inferParams.name = "yolov11n";
+    inferParams.deviceType = ai_core::DeviceType::CPU;
+    inferParams.dataType = ai_core::DataType::FLOAT32;
 
-  std::shared_ptr<ai_core::dnn::AlgoInferEngine> engine;
-  engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("NCNNAlgoInference",
-                                                           inferParams);
-  engine->initialize();
+    std::shared_ptr<ai_core::dnn::AlgoInferEngine> engine;
+    engine = std::make_shared<ai_core::dnn::AlgoInferEngine>(
+        "NCNNAlgoInference", inferParams);
+    engine->initialize();
+    return engine;
+  }();
   return engine;
-}();
+}
 #elif WITH_TRT
-const static auto engine = []() {
-  ai_core::AlgoInferParams inferParams;
-  inferParams.modelPath = "assets/models/yolov11n_trt_fp16.engine";
-  inferParams.name = "yolov11n";
-  inferParams.deviceType = ai_core::DeviceType::GPU;
-  inferParams.dataType = ai_core::DataType::FLOAT32;
+static std::shared_ptr<ai_core::dnn::AlgoInferEngine> getEngine() {
+  static const auto engine = []() {
+    ai_core::AlgoInferParams inferParams;
+    inferParams.modelPath = "assets/models/yolov11n_trt_fp16.engine";
+    inferParams.name = "yolov11n";
+    inferParams.deviceType = ai_core::DeviceType::GPU;
+    inferParams.dataType = ai_core::DataType::FLOAT32;
 
-  std::shared_ptr<ai_core::dnn::AlgoInferEngine> engine;
-  engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("TrtAlgoInference",
-                                                           inferParams);
-  engine->initialize();
+    std::shared_ptr<ai_core::dnn::AlgoInferEngine> engine;
+    engine = std::make_shared<ai_core::dnn::AlgoInferEngine>("TrtAlgoInference",
+                                                             inferParams);
+    engine->initialize();
+    return engine;
+  }();
   return engine;
-}();
+}
 #endif
 
 #if defined(WITH_ORT) || defined(WITH_NCNN) || defined(WITH_TRT)
@@ -106,7 +115,7 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
   preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
-  engine->infer(model_input, model_output);
+  getEngine()->infer(model_input, model_output);
 
   ai_core::dnn::AlgoPostproc postproc("Yolov11Det");
 
