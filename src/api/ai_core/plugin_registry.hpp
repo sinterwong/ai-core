@@ -35,7 +35,8 @@ public:
   bool registerPostprocessor(std::string name, PostprocCreator creator);
 
   std::shared_ptr<IPreprocessPlugin>
-  createPreprocessor(std::string_view name, const DataPacket &params = {}) const;
+  createPreprocessor(std::string_view name,
+                     const DataPacket &params = {}) const;
   std::shared_ptr<IInferEnginePlugin>
   createInferenceEngine(std::string_view name,
                         const DataPacket &params = {}) const;

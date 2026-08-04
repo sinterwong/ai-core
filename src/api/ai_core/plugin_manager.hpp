@@ -3,9 +3,9 @@
 
 #include "ai_core/plugin_registry.hpp"
 
-#include <mutex>
-#include <filesystem>
 #include <cstdint>
+#include <filesystem>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -55,8 +55,8 @@ private:
 #endif
 
 extern "C" {
-using AiCoreRegisterPluginV1 = bool (*)(
-    ai_core::dnn::PluginRegistry &, ai_core::dnn::PluginInfo &);
+using AiCoreRegisterPluginV1 = bool (*)(ai_core::dnn::PluginRegistry &,
+                                        ai_core::dnn::PluginInfo &);
 }
 
 #endif

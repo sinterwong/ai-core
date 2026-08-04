@@ -25,8 +25,9 @@ private:
 };
 } // namespace
 
-extern "C" AI_CORE_PLUGIN_EXPORT bool ai_core_register_plugin_v1(
-    ai_core::dnn::PluginRegistry &registry, ai_core::dnn::PluginInfo &info) {
+extern "C" AI_CORE_PLUGIN_EXPORT bool
+ai_core_register_plugin_v1(ai_core::dnn::PluginRegistry &registry,
+                           ai_core::dnn::PluginInfo &info) {
   info = {.name = "example.infer.amd",
           .version = "1.0.0",
           .provider = "example",

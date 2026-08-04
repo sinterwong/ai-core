@@ -30,8 +30,7 @@ public:
   virtual size_t sizeBytes() const noexcept = 0;
   virtual MemoryDescriptor descriptor() const noexcept = 0;
   virtual std::unique_ptr<IBufferStorage> clone() const = 0;
-  virtual std::unique_ptr<IBufferStorage>
-  allocate(size_t size_bytes) const = 0;
+  virtual std::unique_ptr<IBufferStorage> allocate(size_t size_bytes) const = 0;
 };
 
 } // namespace ai_core

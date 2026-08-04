@@ -38,6 +38,23 @@ if(AI_CORE_BUILD_BUNDLED_PLUGINS AND
         if(NOT TARGET opencv_core)
             add_subdirectory(opencv EXCLUDE_FROM_ALL)
         endif()
+
+        # OpenCV's x86 SIMD resize implementation deliberately performs
+        # unaligned scalar loads. UBSan's alignment check diagnoses those
+        # internals even though the instructions support unaligned access.
+        # Keep sanitizers enabled for ai-core while excluding only this check
+        # from the source-vendored OpenCV targets.
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND
+           CMAKE_CXX_FLAGS MATCHES "fsanitize=.*undefined")
+            foreach(AI_CORE_OPENCV_TARGET
+                    opencv_core opencv_imgproc opencv_dnn opencv_imgcodecs)
+                if(TARGET ${AI_CORE_OPENCV_TARGET})
+                    target_compile_options(${AI_CORE_OPENCV_TARGET} PRIVATE
+                        -fno-sanitize=alignment
+                        $<$<CXX_COMPILER_ID:Clang>:-fno-sanitize=function>)
+                endif()
+            endforeach()
+        endif()
     endif()
 endif()
 
