@@ -178,7 +178,7 @@ install(
     FILES
         "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config-version.cmake"
-        "${CMAKE_SOURCE_DIR}/cmake/AICorePlugin.cmake"
+        "${CMAKE_CURRENT_LIST_DIR}/../cmake/AICorePlugin.cmake"
     DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
     COMPONENT dev
 )

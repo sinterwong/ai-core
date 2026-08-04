@@ -122,6 +122,14 @@ jobs:
       - name: Install
         run: cmake --install build
 
+      - name: Verify super-build install layout
+        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
+        run: |
+          cmake -S tests/superbuild -B build-superbuild -G Ninja \
+            -DCMAKE_INSTALL_PREFIX=$PWD/install-superbuild
+          cmake --install build-superbuild --component dev
+          test -f install-superbuild/lib/cmake/ai_core/AICorePlugin.cmake
+
       - name: Test
         working-directory: install
         env:
