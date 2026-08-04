@@ -13,6 +13,29 @@
 namespace testing_typed_buffer {
 using namespace ai_core;
 
+class FakeAmdStorage final : public IBufferStorage {
+public:
+  explicit FakeAmdStorage(size_t bytes, int device = 1)
+      : bytes_(bytes), device_(device) {}
+
+  void *data() noexcept override { return bytes_.data(); }
+  const void *data() const noexcept override { return bytes_.data(); }
+  size_t sizeBytes() const noexcept override { return bytes_.size(); }
+  MemoryDescriptor descriptor() const noexcept override {
+    return {MemoryKind::Device, "rocm", device_};
+  }
+  std::unique_ptr<IBufferStorage> clone() const override {
+    return std::make_unique<FakeAmdStorage>(*this);
+  }
+  std::unique_ptr<IBufferStorage> allocate(size_t bytes) const override {
+    return std::make_unique<FakeAmdStorage>(bytes, device_);
+  }
+
+private:
+  std::vector<uint8_t> bytes_;
+  int device_;
+};
+
 std::vector<uint8_t> floatBytes(const std::vector<float> &values) {
   std::vector<uint8_t> bytes(values.size() * sizeof(float));
   std::memcpy(bytes.data(), values.data(), bytes.size());
@@ -28,6 +51,23 @@ TEST(TypedBufferTest, DefaultConstructedIsEmpty) {
   EXPECT_EQ(buf.memoryType(), BufferMemoryType::Pageable);
   EXPECT_FALSE(buf.isReference());
   EXPECT_FALSE(buf.isPinned());
+}
+
+TEST(TypedBufferTest, ExternalBackendOwnsDeviceStoragePolicy) {
+  auto buffer = TypedBuffer::fromStorage(
+      DataType::FLOAT32, std::make_unique<FakeAmdStorage>(16, 2));
+  EXPECT_EQ(buffer.backend(), "rocm");
+  EXPECT_EQ(buffer.memoryKind(), MemoryKind::Device);
+  EXPECT_EQ(buffer.getDeviceId(), 2);
+  EXPECT_EQ(buffer.getElementCount(), 4u);
+
+  TypedBuffer copy = buffer;
+  EXPECT_EQ(copy.backend(), "rocm");
+  EXPECT_NE(copy.getRawDevicePtr(), buffer.getRawDevicePtr());
+
+  buffer.resizeDiscard(8);
+  EXPECT_EQ(buffer.getSizeBytes(), 32u);
+  EXPECT_EQ(buffer.backend(), "rocm");
 }
 
 TEST(TypedBufferTest, GetElementSize) {
@@ -167,34 +207,5 @@ TEST(TypedBufferTest, ClearResetsState) {
   EXPECT_EQ(buf.getSizeBytes(), 0u);
   EXPECT_EQ(buf.dataType(), DataType::FLOAT32);
 }
-
-#ifdef WITH_TRT
-TEST(TypedBufferTest, PinnedHostAllocationAndResizeContract) {
-  TypedBuffer buf = TypedBuffer::createPinnedHost(DataType::FLOAT32, 64);
-  EXPECT_TRUE(buf.isPinned());
-  EXPECT_EQ(buf.location(), BufferLocation::CPU);
-  EXPECT_EQ(buf.getElementCount(), 16u);
-  EXPECT_NE(buf.getRawHostPtr(), nullptr);
-
-  // Preserving resize is CPU-pageable-only by contract
-  EXPECT_THROW(buf.resizePreserving(32), std::logic_error);
-  EXPECT_NO_THROW(buf.resizeDiscard(32));
-  EXPECT_EQ(buf.getElementCount(), 32u);
-}
-
-TEST(TypedBufferTest, GpuAllocateAndWrap) {
-  TypedBuffer gpu = TypedBuffer::allocateGpu(DataType::FLOAT32, 64);
-  EXPECT_EQ(gpu.location(), BufferLocation::GpuDevice);
-  EXPECT_EQ(gpu.getElementCount(), 16u);
-  ASSERT_NE(gpu.getRawDevicePtr(), nullptr);
-  EXPECT_THROW(gpu.getRawHostPtr(), std::runtime_error);
-  EXPECT_THROW(gpu.resizePreserving(32), std::logic_error);
-
-  TypedBuffer wrapped =
-      TypedBuffer::wrapGpu(DataType::FLOAT32, gpu.getRawDevicePtr(), 64);
-  EXPECT_EQ(wrapped.getRawDevicePtr(), gpu.getRawDevicePtr());
-  EXPECT_EQ(wrapped.getElementCount(), 16u);
-}
-#endif
 
 } // namespace testing_typed_buffer

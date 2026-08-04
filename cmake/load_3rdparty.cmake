@@ -12,6 +12,28 @@ message(STATUS "3RDPARTY_DIR: ${3RDPARTY_DIR}")
 # one. Having *both* is the dangerous case — two libopencv_core.so in one
 # process means passing a cv::Mat across a library boundary is UB — so warn.
 function(load_opencv)
+    # A pinned source submodule is the reproducible path. OpenCV becomes part
+    # of this build (no separate user installation step) while remaining a
+    # private implementation detail of the plugins. Its build policy and
+    # module selection live in 3rdparty/CMakeLists.txt.
+    if(EXISTS "${3RDPARTY_ROOT}/opencv/CMakeLists.txt")
+        if(NOT TARGET opencv_core)
+            message(FATAL_ERROR
+                "Bundled OpenCV was not configured by 3rdparty/CMakeLists.txt")
+        endif()
+        set(OpenCV_LIBS opencv_core opencv_imgproc opencv_dnn PARENT_SCOPE)
+        set(OpenCV_INCLUDE_DIRS
+            "${3RDPARTY_ROOT}/opencv/include"
+            "${3RDPARTY_ROOT}/opencv/modules/core/include"
+            "${3RDPARTY_ROOT}/opencv/modules/imgproc/include"
+            "${3RDPARTY_ROOT}/opencv/modules/dnn/include"
+            "${3RDPARTY_ROOT}/opencv/modules/imgcodecs/include"
+            "${CMAKE_BINARY_DIR}"
+            PARENT_SCOPE)
+        message(STATUS "OpenCV: bundled source build (core,imgproc,dnn)")
+        return()
+    endif()
+
     set(OPENCV_HOME ${3RDPARTY_DIR}/opencv)
 
     # Probe by locating the file, never with find_package: a real find_package
@@ -67,7 +89,7 @@ function(load_opencv)
     else()
         set(OpenCV_LIBRARY_DIR ${OPENCV_HOME}/lib)
         list(APPEND CMAKE_PREFIX_PATH ${OpenCV_LIBRARY_DIR}/cmake)
-        find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgproc highgui video videoio imgcodecs calib3d)
+        find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgproc dnn)
 
         if(OpenCV_INCLUDE_DIRS)
             message(STATUS "OpenCV library status:")

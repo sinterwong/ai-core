@@ -44,9 +44,10 @@ class TensorData;  // 按插入序存放的 Tensor 集合，set / find / at 按�
 
 带类型的内存缓冲区，能同时表示 CPU 内存、GPU 显存和 Pinned Host 内存。提供：
 
-- 静态工厂：`createFromCpu`（拥有）、`allocateGpu`、`createPinnedHost`（分配）、`wrapCpu`、`wrapGpu`（零拷贝非拥有包装）
+- CPU 工厂：`createFromCpu`（拥有）、`wrapCpu`（零拷贝非拥有包装）
+- 插件存储：`fromStorage` 接收插件实现的 `IBufferStorage`；CUDA、ROCm 等后端自行负责分配、复制与释放
 - `getHostPtr<T>()` / `getRawHostPtr()` / `getRawDevicePtr()`
-- 元信息：`dataType`、`location`、`memoryType`、`getSizeBytes`、`getElementCount`
+- 元信息：`dataType`、`memoryKind`、`backend`、`getDeviceId`、`getSizeBytes`、`getElementCount`
 
 `getHostPtr<T>()` 会校验当前位置是 CPU，且 `sizeof(T)` 与 `dataType` 匹配。位置或类型不匹配时直接抛异常，避免静默错误。
 
@@ -145,7 +146,8 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 
 宏的副作用是把字符串 `"MyPreproc"` 和对应的构造器放进工厂的 map。`AlgoModuleTypes` 写哪个名字，就调用哪个。
 
-内置插件通过 `ai_core::dnn::registerDefaultPlugins()`（`<ai_core/default_plugins.hpp>`）显式注册。该函数幂等且线程安全，`AlgoPreproc` / `AlgoInferEngine` / `AlgoPostproc` 的 `initialize()` 会自动调用它，静态链接与动态链接行为一致；只有在绕过 facade 直接使用工厂时才需要手动调用。
+核心不内置默认插件。官方与外部插件都由 `PluginManager::load()` 加载，并通过
+统一的 `ai_core_register_plugin_v1` 入口注册。加载应在流水线初始化和并发请求开始前完成。
 
 ## 自定义插件
 

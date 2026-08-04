@@ -61,6 +61,7 @@ jobs:
         -DBUILD_AI_CORE_TESTS=ON
         -DBUILD_AI_CORE_BENCHMARKS=ON
         -DBUILD_AI_CORE_EXAMPLES=OFF
+        -DAI_CORE_BUILD_BUNDLED_PLUGINS=ON
         -DWITH_ORT_ENGINE=ON
         -DWITH_NCNN_ENGINE=OFF
         -DWITH_TRT_ENGINE=OFF
@@ -77,6 +78,7 @@ jobs:
     - name: Set up test env
       run: |
         echo "LD_LIBRARY_PATH=${{ github.workspace }}/install/lib:\
+        ${{ github.workspace }}/install/lib/ai_core/plugins:\
         ${{ github.workspace }}/build/3rdparty/encryption-tool/x86_64/lib:\
         ${{ github.workspace }}/build/3rdparty/logger/x86_64/lib:\
         ${{ github.workspace }}/3rdparty/target/Linux_x86_64/onnxruntime/lib:\

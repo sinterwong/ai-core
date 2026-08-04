@@ -24,12 +24,12 @@ CORE_FILTERS=(
   --filter 'src/api/ai_core/opencv_interop\.hpp'
   --filter 'src/api/ai_core/common_types\.hpp'
   --filter 'src/typed_buffer\.cpp'
-  --filter 'src/vision_util\.cpp'
+  --filter 'plugins/common/opencv/vision_util\.cpp'
   --filter 'src/param_validation\.hpp'
-  --filter 'src/preproc/cpu_generic_preprocessor\.cpp'
-  --filter 'src/preproc/frame_with_mask_prep\.cpp'
-  --filter 'src/preproc/generic_frame_preproc_base\.cpp'
-  --filter 'src/postproc/.*\.cpp'
+  --filter 'plugins/preproc/opencv/preproc/cpu_generic_preprocessor\.cpp'
+  --filter 'plugins/preproc/opencv/preproc/frame_with_mask_prep\.cpp'
+  --filter 'plugins/preproc/opencv/preproc/generic_frame_preproc_base\.cpp'
+  --filter 'plugins/postproc/opencv/postproc/.*\.cpp'
 )
 
 # Unit-test suites only (no model assets, no crashing integration teardown).
@@ -40,6 +40,7 @@ cmake -B "${BUILD_DIR}" -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \
   -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
   -DBUILD_AI_CORE_TESTS=ON \
+  -DAI_CORE_BUILD_BUNDLED_PLUGINS=ON \
   -DWITH_ORT_ENGINE=ON -DWITH_NCNN_ENGINE=OFF -DWITH_TRT_ENGINE=OFF \
   -DCMAKE_CXX_FLAGS="--coverage -O0 -g" \
   -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
@@ -51,7 +52,7 @@ cmake --install "${BUILD_DIR}" >/dev/null
 
 echo "== Running unit tests =="
 find "${BUILD_DIR}" -name '*.gcda' -delete
-LIBS="${INSTALL_DIR}/lib:$(ls -d "${ROOT}"/3rdparty/target/Linux_x86_64/*/lib 2>/dev/null | tr '\n' ':')"
+LIBS="${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/ai_core/plugins:$(ls -d "${ROOT}"/3rdparty/target/Linux_x86_64/*/lib 2>/dev/null | tr '\n' ':')${LD_LIBRARY_PATH:-}"
 ( cd "${INSTALL_DIR}" && LD_LIBRARY_PATH="${LIBS}" \
     ./tests/ai_core_tests --gtest_filter="${UNIT_FILTER}" )
 

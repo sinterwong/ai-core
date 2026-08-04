@@ -2,7 +2,7 @@
   "[cuda-cpp]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
-  "cmake.installPrefix": "${workspaceFolder}/build",
+  "cmake.installPrefix": "${workspaceFolder}/install",
   "cmake.configureSettings": {
     "CMAKE_BUILD_TYPE": "${buildType}",
     "CMAKE_INSTALL_PREFIX": "${workspaceFolder}/install",
@@ -18,9 +18,11 @@
     "-DBUILD_AI_CORE_TESTS=ON",
     "-DBUILD_AI_CORE_BENCHMARKS=ON",
     "-DBUILD_AI_CORE_EXAMPLES=ON",
+    "-DAI_CORE_BUILD_BUNDLED_PLUGINS=ON",
+    "-DAI_CORE_PLUGIN_VISION=ON",
     "-DWITH_ORT_ENGINE=ON",
     "-DWITH_NCNN_ENGINE=ON",
-    "-DWITH_TRT_ENGINE=ON",
+    "-DWITH_TRT_ENGINE=OFF",
     // "-DCMAKE_TOOLCHAIN_FILE=/home/sinter/softwares/android-ndk-r27c/build/cmake/android.toolchain.cmake",
     // "-DANDROID_ABI=arm64-v8a",
     // "-DANDROID_PLATFORM=android-24",

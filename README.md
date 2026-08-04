@@ -46,9 +46,13 @@ AI Core 是一个用于在多种推理后端（ONNX Runtime、NCNN、TensorRT）
 
 - C++20 兼容的编译器（GCC 11+、Clang 14+、MSVC 19.30+）
 - CMake 3.18+
-- OpenCV 4.x
-- ONNX Runtime（默认启用）
-- 可选：NCNN、TensorRT、CUDA Toolkit
+- 核心库：C++20 编译器，无第三方运行时依赖
+- 官方 OpenCV preproc/postproc 插件：OpenCV 4.x
+- 可选 infer 插件：ONNX Runtime、NCNN、TensorRT/CUDA
+
+默认只构建核心。官方插件通过 `AI_CORE_BUILD_BUNDLED_PLUGINS=ON` 开启，具体
+后端仍由 `WITH_ORT_ENGINE`、`WITH_NCNN_ENGINE`、`WITH_TRT_ENGINE` 控制。
+仓库内与仓库外插件都通过 `PluginManager` 动态加载，不会编入 `libai_core.so`。
 
 ### 拉取与构建
 
@@ -57,16 +61,15 @@ AI Core 是一个用于在多种推理后端（ONNX Runtime、NCNN、TensorRT）
 ```bash
 git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
 cd ai-core
-sudo apt-get install -y ninja-build libopencv-dev
+sudo apt-get install -y ninja-build
 scripts/bootstrap.sh
 ```
 
 想手动走一遍的话：
 
 ```bash
-# ONNX Runtime 取官方发布版；OpenCV 用系统的（apt libopencv-dev）。
-# 刻意不用「一个大包带齐所有依赖」：自带 OpenCV 与系统 OpenCV 同时被加载进一个
-# 进程，cv::Mat 跨这道边界传递就是 UB，症状还很隐蔽。
+# ONNX Runtime 暂取官方发布版；OpenCV 4.10.0 已作为源码 submodule 固定，
+# 由 3rdparty/CMakeLists.txt 裁剪并静态链接进需要它的插件。
 ORT_VERSION=1.20.1
 mkdir -p 3rdparty/target/Linux_x86_64
 curl -fL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" \
@@ -81,7 +84,8 @@ sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
 sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
 
 cmake -B build -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
-      -DWITH_ORT_ENGINE=ON -DWITH_TRT_ENGINE=OFF
+      -DAI_CORE_BUILD_BUNDLED_PLUGINS=ON -DWITH_ORT_ENGINE=ON \
+      -DWITH_TRT_ENGINE=OFF
 cmake --build build -j
 cmake --install build
 ```
@@ -93,7 +97,9 @@ CMake 选项：
 | `BUILD_AI_CORE_TESTS` | OFF | 构建单元测试 |
 | `BUILD_AI_CORE_BENCHMARKS` | OFF | 构建 benchmark |
 | `BUILD_AI_CORE_EXAMPLES` | OFF | 构建示例 |
-| `WITH_ORT_ENGINE` | ON | ONNX Runtime 后端 |
+| `AI_CORE_BUILD_BUNDLED_PLUGINS` | OFF | 构建仓库内维护的插件 |
+| `AI_CORE_PLUGIN_VISION` | ON | 构建 OpenCV 预处理/后处理插件 |
+| `WITH_ORT_ENGINE` | OFF | ONNX Runtime 插件 |
 | `WITH_NCNN_ENGINE` | OFF | NCNN 后端 |
 | `WITH_TRT_ENGINE` | OFF | TensorRT 后端 |
 

@@ -11,8 +11,8 @@
 #ifndef AI_CORE_TYPED_BUFFER_HPP
 #define AI_CORE_TYPED_BUFFER_HPP
 
+#include "ai_core/buffer_storage.hpp"
 #include "ai_core/common_types.hpp"
-#include "ai_core/i_accelerator_buffer.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -82,26 +82,9 @@ public:
   static TypedBuffer wrapCpu(DataType type, const void *host_ptr,
                              size_t size_bytes);
 
-  /**
-   * @brief Allocate a new GPU device buffer.
-   */
-  static TypedBuffer allocateGpu(DataType type, size_t size_bytes,
-                                 int device_id = 0);
-
-  /**
-   * @brief Wrap an existing GPU pointer without taking ownership. The caller
-   * keeps the allocation alive for the buffer's lifetime.
-   */
-  static TypedBuffer wrapGpu(DataType type, void *device_ptr, size_t size_bytes,
-                             int device_id = 0);
-
-  /**
-   * @brief Create a Pinned (Page-locked) Host buffer
-   *
-   * Optimized for async H2D/D2H transfers.
-   * Internally uses IAcceleratorBuffer with HostPinned type.
-   */
-  static TypedBuffer createPinnedHost(DataType type, size_t size_bytes);
+  /** Adopt storage implemented by any in-tree or out-of-tree backend plugin. */
+  static TypedBuffer fromStorage(DataType type,
+                                 std::unique_ptr<IBufferStorage> storage);
 
   // ============================================================================
   // Property Queries
@@ -114,6 +97,8 @@ public:
   size_t getSizeBytes() const noexcept;
   size_t getElementCount() const noexcept { return m_elementCount; }
   int getDeviceId() const noexcept;
+  std::string_view backend() const noexcept;
+  MemoryKind memoryKind() const noexcept;
 
   bool isPinned() const noexcept {
     return m_memoryType == BufferMemoryType::Pinned;
@@ -144,9 +129,8 @@ public:
    * @brief Resize to `new_element_count`; contents are unspecified afterwards.
    *
    * Works for every memory type (pageable / pinned / GPU) - accelerator
-   * buffers reallocate instead of copying. This is the right call for output
-   * buffers that are about to be overwritten. A wrapped external buffer
-   * (wrapCpu/wrapGpu) is detached and replaced by owned storage.
+   * buffers reallocate through their owning plugin. This is the right call for
+   * output buffers that are about to be overwritten.
    */
   void resizeDiscard(size_t new_element_count);
 
@@ -181,7 +165,7 @@ private:
   bool m_isExternalRef{false};
 
   // Unified Accelerator Storage (Handles both GPU VRAM and CPU Pinned RAM)
-  std::unique_ptr<IAcceleratorBuffer> m_accelBuffer;
+  std::unique_ptr<IBufferStorage> m_accelBuffer;
 
   int m_deviceId{0};
 };

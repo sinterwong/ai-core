@@ -25,7 +25,7 @@ namespace ai_core {
  *
  * @par Thread safety
  * @ref registerCreator is not synchronized and is expected to run at startup
- * (via the REGISTER_* macros / registerDefaultPlugins) before any concurrent
+ * (via an explicit plugin entrypoint) before any concurrent
  * use. Once registration is complete, @ref create and @ref isRegistered are
  * read-only and safe to call concurrently. Do not register from one thread
  * while another creates.

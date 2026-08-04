@@ -110,6 +110,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DCMAKE_INSTALL_PREFIX=$PWD/install \
             -DBUILD_AI_CORE_TESTS=ON \
+            -DAI_CORE_BUILD_BUNDLED_PLUGINS=ON \
             -DWITH_ORT_ENGINE=ON \
             -DWITH_NCNN_ENGINE=OFF \
             -DWITH_TRT_ENGINE=OFF \
@@ -129,7 +130,7 @@ jobs:
           ASAN_OPTIONS: detect_leaks=0
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: |
-          export LD_LIBRARY_PATH=$PWD/lib:$GITHUB_WORKSPACE/3rdparty/target/Linux_x86_64/onnxruntime/lib
+          export LD_LIBRARY_PATH=$PWD/lib:$PWD/lib/ai_core/plugins:$GITHUB_WORKSPACE/3rdparty/target/Linux_x86_64/onnxruntime/lib
           ./tests/ai_core_tests
 
   coverage:

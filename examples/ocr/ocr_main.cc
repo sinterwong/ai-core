@@ -9,11 +9,23 @@
  *
  */
 #include "ai_core/logger.hpp"
+#include "ai_core/plugin_manager.hpp"
 #include "ocr_utils.hpp"
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
 int main(int argc, char *argv[]) {
+
+#ifdef AI_CORE_EXAMPLE_PREPROC_PLUGIN
+  ai_core::dnn::PluginManager::instance().load(AI_CORE_EXAMPLE_PREPROC_PLUGIN);
+  ai_core::dnn::PluginManager::instance().load(AI_CORE_EXAMPLE_POSTPROC_PLUGIN);
+#endif
+#ifdef AI_CORE_EXAMPLE_ORT_PLUGIN
+  ai_core::dnn::PluginManager::instance().load(AI_CORE_EXAMPLE_ORT_PLUGIN);
+#endif
+#ifdef AI_CORE_EXAMPLE_NCNN_PLUGIN
+  ai_core::dnn::PluginManager::instance().load(AI_CORE_EXAMPLE_NCNN_PLUGIN);
+#endif
 
   if (argc != 5) {
     std::cerr << "Usage: " << argv[0]

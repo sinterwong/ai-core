@@ -23,11 +23,24 @@ option(BUILD_AI_CORE_TESTS "Build unit tests" OFF)
 option(BUILD_AI_CORE_BENCHMARKS "Build benchmarks" OFF)
 option(BUILD_AI_CORE_EXAMPLES "Build examples" OFF)
 option(BUILD_AI_CORE_CONFIG "Build the JSON config module (ai_core::config)" ON)
+option(AI_CORE_BUILD_BUNDLED_PLUGINS "Build plugins maintained in this repository" OFF)
+option(AI_CORE_PLUGIN_VISION "Build bundled OpenCV pre/post-process plugins" ON)
 
 # Inference engine options
-option(WITH_ORT_ENGINE "Build with ONNX Runtime engine" ON)
-option(WITH_NCNN_ENGINE "Build with NCNN engine" OFF)
-option(WITH_TRT_ENGINE "Build with TensorRT engine" OFF)
+option(WITH_ORT_ENGINE "Build bundled ONNX Runtime inference plugin" OFF)
+option(WITH_NCNN_ENGINE "Build bundled NCNN inference plugin" OFF)
+option(WITH_TRT_ENGINE "Build bundled TensorRT inference plugin" OFF)
+
+if((WITH_ORT_ENGINE OR WITH_NCNN_ENGINE OR WITH_TRT_ENGINE) AND
+   NOT AI_CORE_BUILD_BUNDLED_PLUGINS)
+    message(FATAL_ERROR
+        "Inference plugin requested while AI_CORE_BUILD_BUNDLED_PLUGINS=OFF")
+endif()
+
+if(BUILD_AI_CORE_TESTS AND NOT AI_CORE_BUILD_BUNDLED_PLUGINS)
+    message(FATAL_ERROR
+        "BUILD_AI_CORE_TESTS requires AI_CORE_BUILD_BUNDLED_PLUGINS=ON")
+endif()
 
 # ============================================================================
 # Build Configuration
@@ -39,6 +52,7 @@ message(STATUS "Build configuration:")
 message(STATUS "  Tests:       ${BUILD_AI_CORE_TESTS}")
 message(STATUS "  Benchmarks:  ${BUILD_AI_CORE_BENCHMARKS}")
 message(STATUS "  Examples:    ${BUILD_AI_CORE_EXAMPLES}")
+message(STATUS "  Bundled plugins: ${AI_CORE_BUILD_BUNDLED_PLUGINS}")
 message(STATUS "")
 message(STATUS "Inference engines:")
 message(STATUS "  ONNX Runtime: ${WITH_ORT_ENGINE}")
@@ -125,6 +139,10 @@ add_subdirectory(3rdparty)
 
 # Main library
 add_subdirectory(src)
+
+if(AI_CORE_BUILD_BUNDLED_PLUGINS)
+    add_subdirectory(plugins)
+endif()
 
 # Optional components
 if(BUILD_AI_CORE_TESTS)

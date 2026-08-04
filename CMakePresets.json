@@ -12,6 +12,8 @@
         "BUILD_AI_CORE_TESTS": "ON",
         "BUILD_AI_CORE_EXAMPLES": "ON",
         "BUILD_AI_CORE_CONFIG": "ON",
+        "AI_CORE_BUILD_BUNDLED_PLUGINS": "ON",
+        "AI_CORE_PLUGIN_VISION": "ON",
         "WITH_ORT_ENGINE": "ON"
       }
     },
