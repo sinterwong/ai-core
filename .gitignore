@@ -11,6 +11,8 @@
 
 build/
 build*/
+.deps/
+# Keep pre-v2 local SDK symlinks out of the worktree during migration.
 3rdparty/target
 install/
 install-*/

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
 
-# Specialized libraries can be compiled separately, soft-linked to the 3RDPARTY_DIR, and then handled independently.
-set(3RDPARTY_ROOT ${PROJECT_SOURCE_DIR}/3rdparty)
-set(3RDPARTY_DIR ${PROJECT_SOURCE_DIR}/3rdparty/target/${TARGET_OS}_${TARGET_ARCH})
-message(STATUS "3RDPARTY_DIR: ${3RDPARTY_DIR}")
+# Source dependencies and downloaded SDKs have deliberately separate roots.
+set(3RDPARTY_ROOT ${PROJECT_SOURCE_DIR}/third_party)
+set(3RDPARTY_DIR ${PROJECT_SOURCE_DIR}/.deps/${TARGET_OS}_${TARGET_ARCH})
+message(STATUS "AI_CORE_DEPS_ROOT: ${3RDPARTY_DIR}")
 
 # Load OpenCV library
 #
@@ -16,18 +16,18 @@ function(load_opencv)
     # of this build (no separate user installation step) while remaining a
     # private implementation detail of the plugins. Its build policy and
     # module selection live in 3rdparty/CMakeLists.txt.
-    if(EXISTS "${3RDPARTY_ROOT}/opencv/CMakeLists.txt")
+    if(EXISTS "${3RDPARTY_ROOT}/plugins/opencv/CMakeLists.txt")
         if(NOT TARGET opencv_core)
             message(FATAL_ERROR
                 "Bundled OpenCV was not configured by 3rdparty/CMakeLists.txt")
         endif()
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_dnn PARENT_SCOPE)
         set(OpenCV_INCLUDE_DIRS
-            "${3RDPARTY_ROOT}/opencv/include"
-            "${3RDPARTY_ROOT}/opencv/modules/core/include"
-            "${3RDPARTY_ROOT}/opencv/modules/imgproc/include"
-            "${3RDPARTY_ROOT}/opencv/modules/dnn/include"
-            "${3RDPARTY_ROOT}/opencv/modules/imgcodecs/include"
+            "${3RDPARTY_ROOT}/plugins/opencv/include"
+            "${3RDPARTY_ROOT}/plugins/opencv/modules/core/include"
+            "${3RDPARTY_ROOT}/plugins/opencv/modules/imgproc/include"
+            "${3RDPARTY_ROOT}/plugins/opencv/modules/dnn/include"
+            "${3RDPARTY_ROOT}/plugins/opencv/modules/imgcodecs/include"
             "${CMAKE_BINARY_DIR}"
             PARENT_SCOPE)
         message(STATUS "OpenCV: bundled source build (core,imgproc,dnn)")

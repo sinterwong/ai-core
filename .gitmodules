@@ -1,15 +1,20 @@
-[submodule "3rdparty/encryption-tool"]
-	path = 3rdparty/encryption-tool
-	url = https://github.com/sinterwong/encryption-tool.git
-	branch = master
-[submodule "3rdparty/googletest"]
-	path = 3rdparty/googletest
-	url = https://github.com/google/googletest.git
-	branch = main
-[submodule "3rdparty/benchmark"]
-	path = 3rdparty/benchmark
-	url = https://github.com/google/benchmark.git
-	branch = main
-[submodule "3rdparty/opencv"]
-	path = 3rdparty/opencv
+[submodule "third_party/config/nlohmann_json"]
+	path = third_party/config/nlohmann_json
+	url = https://github.com/nlohmann/json.git
+	shallow = true
+[submodule "third_party/plugins/opencv"]
+	path = third_party/plugins/opencv
 	url = https://github.com/opencv/opencv.git
+	shallow = true
+[submodule "third_party/plugins/encryption_tool"]
+	path = third_party/plugins/encryption_tool
+	url = https://github.com/sinterwong/encryption-tool.git
+	shallow = true
+[submodule "third_party/testing/googletest"]
+	path = third_party/testing/googletest
+	url = https://github.com/google/googletest.git
+	shallow = true
+[submodule "third_party/benchmarking/google_benchmark"]
+	path = third_party/benchmarking/google_benchmark
+	url = https://github.com/google/benchmark.git
+	shallow = true

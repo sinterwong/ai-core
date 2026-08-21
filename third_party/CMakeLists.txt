@@ -5,14 +5,14 @@ set(BUILD_TESTING OFF CACHE BOOL "Disable testing for 3rdparty libs")
 set(WITH_GTEST OFF CACHE BOOL "Disable gtest for glog")
 
 # OpenCV is source-vendored and deliberately configured here so that all
-# dependency policy stays below 3rdparty/. Consumers above this directory only
+# dependency policy stays below third_party/. Consumers above this directory only
 # request OpenCV targets; they do not control how OpenCV itself is built.
 if(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV OR
    AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV OR
    AI_CORE_BUILD_PLUGIN_ONNXRUNTIME OR
    AI_CORE_BUILD_PLUGIN_NCNN OR
    AI_CORE_BUILD_PLUGIN_TENSORRT)
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/opencv/CMakeLists.txt")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/plugins/opencv/CMakeLists.txt")
         set(AI_CORE_OPENCV_MODULES core,imgproc,dnn)
         if(AI_CORE_BUILD_TESTS)
             list(APPEND AI_CORE_OPENCV_MODULES imgcodecs)
@@ -39,7 +39,7 @@ if(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV OR
         set(WITH_GTK OFF CACHE BOOL "Disable OpenCV GTK support" FORCE)
 
         if(NOT TARGET opencv_core)
-            add_subdirectory(opencv EXCLUDE_FROM_ALL)
+            add_subdirectory(plugins/opencv EXCLUDE_FROM_ALL)
         endif()
 
         # OpenCV's x86 SIMD resize implementation deliberately performs
@@ -65,11 +65,11 @@ if((AI_CORE_BUILD_PLUGIN_ONNXRUNTIME OR
     AI_CORE_BUILD_PLUGIN_NCNN OR
     AI_CORE_BUILD_PLUGIN_TENSORRT) AND NOT TARGET encrypt)
     message(STATUS "encrypt target not found. Adding subdirectory...")
-    add_subdirectory(encryption-tool EXCLUDE_FROM_ALL)
+    add_subdirectory(plugins/encryption_tool EXCLUDE_FROM_ALL)
 endif()
 
 # libai_core.so and the test binaries need libencrypt.so at runtime, but
-# EXCLUDE_FROM_ALL skips encryption-tool's own install rules, so install the
+# EXCLUDE_FROM_ALL skips encryption_tool's own install rules, so install the
 # runtime artifact alongside the project's libraries.
 if(TARGET encrypt)
     set_target_properties(encrypt PROPERTIES EXCLUDE_FROM_ALL FALSE)
@@ -79,7 +79,7 @@ endif()
 if(AI_CORE_BUILD_TESTS)
     if(NOT TARGET gtest)
         message(STATUS "gtest target not found. Adding subdirectory...")
-        add_subdirectory(googletest EXCLUDE_FROM_ALL)
+        add_subdirectory(testing/googletest EXCLUDE_FROM_ALL)
     else()
         message(STATUS "gtest target already exists. Skipping.")
     endif()
@@ -90,11 +90,14 @@ if(AI_CORE_BUILD_BENCHMARKS)
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable test for benchmark")
     if(NOT TARGET benchmark)
         message(STATUS "benchmark target not found. Adding subdirectory...")
-        add_subdirectory(benchmark EXCLUDE_FROM_ALL)
+        add_subdirectory(benchmarking/google_benchmark EXCLUDE_FROM_ALL)
     else()
         message(STATUS "benchmark target already exists. Skipping.")
     endif()
 endif()
 
-file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR})
-file(COPY nlohmann DESTINATION ${PROJECT_INCLUDE_DIR})
+if(AI_CORE_BUILD_CONFIG)
+    file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR})
+    file(COPY config/nlohmann_json/include/nlohmann
+        DESTINATION ${PROJECT_INCLUDE_DIR})
+endif()

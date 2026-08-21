@@ -138,7 +138,7 @@ message(INFO "Building project components")
 message(INFO "================================")
 
 # Third-party libraries
-add_subdirectory(3rdparty)
+add_subdirectory(third_party)
 
 # Main library
 add_subdirectory(src)
