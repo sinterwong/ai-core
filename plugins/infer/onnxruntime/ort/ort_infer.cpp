@@ -1,7 +1,9 @@
 
 #include "ort_infer.hpp"
 #include "ai_core/logger.hpp"
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
 #include "crypto.hpp"
+#endif
 #include <numeric>
 #include <opencv2/opencv.hpp>
 #include <thread>
@@ -87,6 +89,7 @@ InferErrorCode OrtAlgoInference::initialize() {
 
     std::vector<unsigned char> engine_data;
     if (m_params.need_decrypt) {
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
       auto crypto_config =
           encrypt::Crypto::deriveKeyFromCommit(m_params.decryptkey_str);
       encrypt::Crypto crypto(crypto_config);
@@ -99,6 +102,10 @@ InferErrorCode OrtAlgoInference::initialize() {
                     << m_params.model_path;
         return InferErrorCode::InitModelLoadFailed;
       }
+#else
+      LOG_ERROR_S << "Encrypted-model support is disabled for this plugin";
+      return InferErrorCode::InitDecryptionFailed;
+#endif
     }
 
     if (engine_data.empty()) {

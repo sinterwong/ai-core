@@ -1,7 +1,9 @@
 
 #include "ncnn_infer.hpp"
 #include "ai_core/logger.hpp"
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
 #include "crypto.hpp"
+#endif
 #include <cctype>
 #include <ncnn/cpu.h>
 #include <ostream>
@@ -76,6 +78,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
     std::string bin_path = m_params.model_path + ".bin";
 
     if (m_params.need_decrypt) {
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
       int model_load_ret = -1;
       LOG_INFO_S << "Decrypting model weights: " << bin_path;
       std::vector<uint8_t> model_data;
@@ -136,6 +139,10 @@ InferErrorCode NCNNAlgoInference::initialize() {
         LOG_INFO_S
             << "Successfully loaded decrypted model weights from memory.";
       }
+#else
+      LOG_ERROR_S << "Encrypted-model support is disabled for this plugin";
+      return InferErrorCode::InitDecryptionFailed;
+#endif
     } else {
       if (m_net.load_model(bin_path.c_str()) != 0) {
         LOG_ERROR_S << "Failed to load model weights: " << bin_path;

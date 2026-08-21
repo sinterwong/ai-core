@@ -1,7 +1,8 @@
 enable_language(CUDA)
-load_cuda()
-load_tensorrt()
-load_opencv()
+include("${AI_CORE_CMAKE_DIR}/dependencies/InferenceSDKs.cmake")
+include("${AI_CORE_CMAKE_DIR}/dependencies/OpenCV.cmake")
+ai_core_load_tensorrt()
+ai_core_load_opencv()
 
 if(AI_CORE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES ${AI_CORE_CUDA_ARCHITECTURES})
@@ -31,17 +32,18 @@ target_include_directories(ai_core_plugin_tensorrt PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/trt
     ${PROJECT_SOURCE_DIR}/plugins/common/include
-    ${TensorRT_INCLUDE_DIR}
-    ${CUDAToolkit_INCLUDE_DIRS}
-    ${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(ai_core_plugin_tensorrt PRIVATE
     ai_core::ai_core
     TensorRT::nvinfer
     CUDA::cudart_static
-    encrypt::encrypt
-    ${OpenCV_LIBS}
+    ai_core::opencv
 )
+if(AI_CORE_ENABLE_MODEL_DECRYPTION)
+    target_compile_definitions(ai_core_plugin_tensorrt PRIVATE
+        AI_CORE_ENABLE_MODEL_DECRYPTION=1)
+    target_link_libraries(ai_core_plugin_tensorrt PRIVATE encrypt::encrypt)
+endif()
 install(TARGETS ai_core_plugin_tensorrt
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/ai_core/plugins
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/ai_core/plugins

@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.18)
 
+if(AI_CORE_ENABLE_MODEL_DECRYPTION AND
+   (AI_CORE_BUILD_PLUGIN_ONNXRUNTIME OR
+    AI_CORE_BUILD_PLUGIN_NCNN OR
+    AI_CORE_BUILD_PLUGIN_TENSORRT))
+    include("${AI_CORE_CMAKE_DIR}/dependencies/Encryption.cmake")
+    ai_core_load_encryption()
+endif()
+
 if(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV)
     add_subdirectory(preproc/opencv)
 endif()

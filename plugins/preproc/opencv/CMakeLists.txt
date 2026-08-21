@@ -1,4 +1,5 @@
-load_opencv()
+include("${AI_CORE_CMAKE_DIR}/dependencies/OpenCV.cmake")
+ai_core_load_opencv()
 
 set(AI_CORE_PREPROC_OPENCV_SOURCES
     ${PROJECT_SOURCE_DIR}/plugins/common/opencv/vision_util.cpp
@@ -15,11 +16,10 @@ target_include_directories(ai_core_plugin_preproc_opencv PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/plugins/common/include
     ${PROJECT_SOURCE_DIR}/plugins/common/opencv
-    ${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(ai_core_plugin_preproc_opencv PRIVATE
     ai_core::ai_core
-    ${OpenCV_LIBS}
+    ai_core::opencv
 )
 set_target_properties(ai_core_plugin_preproc_opencv PROPERTIES
     VERSION ${AI_CORE_VERSION}

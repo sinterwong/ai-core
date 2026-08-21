@@ -13,6 +13,9 @@ ai_core_extract_version()
 # Declare project
 project(AICore VERSION ${AI_CORE_VERSION} LANGUAGES CXX)
 
+set(AI_CORE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(AI_CORE_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Use standard installation directories
 include(GNUInstallDirs)
 
@@ -92,19 +95,13 @@ if(NOT TARGET_ARCH)
     set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
+include(cmake/dependencies/Common.cmake)
+
 message(STATUS "")
 message(STATUS "Platform information:")
 message(STATUS "  Target OS:          ${TARGET_OS}")
 message(STATUS "  Target architecture: ${TARGET_ARCH}")
 message(STATUS "  Build type:         ${CMAKE_BUILD_TYPE}")
-
-# ============================================================================
-# Third-Party Dependencies
-# ============================================================================
-message(INFO "================================")
-message(INFO "Loading third-party dependencies")
-message(INFO "================================")
-include(cmake/load_3rdparty.cmake)
 
 # ============================================================================
 # Output Directories
@@ -136,9 +133,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_DIR}/lib)
 message(INFO "================================")
 message(INFO "Building project components")
 message(INFO "================================")
-
-# Third-party libraries
-add_subdirectory(third_party)
 
 # Main library
 add_subdirectory(src)

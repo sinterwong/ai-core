@@ -1,8 +1,10 @@
 
 #include "trt_infer.hpp"
-#include "cuda_buffer_storage.hpp"
 #include "ai_core/error_code.hpp"
+#include "cuda_buffer_storage.hpp"
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
 #include "crypto.hpp"
+#endif
 #include "trt_infer_stream.hpp"
 #include "trt_utils.hpp"
 #include <filesystem>
@@ -231,6 +233,7 @@ InferErrorCode TrtAlgoInference::loadEngineFromPath(const std::string &path,
 
   std::vector<char> engine_data;
   if (needs_decrypt) {
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
     LOG_INFO_S << "Decrypting TensorRT engine: " << path;
     std::vector<unsigned char> decrypted_data;
     auto crypto_config =
@@ -245,6 +248,10 @@ InferErrorCode TrtAlgoInference::loadEngineFromPath(const std::string &path,
       return InferErrorCode::InitModelLoadFailed;
     }
     engine_data.assign(decrypted_data.begin(), decrypted_data.end());
+#else
+    LOG_ERROR_S << "Encrypted-model support is disabled for this plugin";
+    return InferErrorCode::InitDecryptionFailed;
+#endif
   } else {
     std::ifstream engine_file(path, std::ios::binary);
     if (!engine_file) {

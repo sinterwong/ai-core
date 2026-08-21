@@ -8,16 +8,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Security key for examples
 set(COMMIT_CODE "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25")
 
-# ============================================================================
-# Load Dependencies
-# ============================================================================
-load_opencv()
-
-# Android-specific configuration
-if(TARGET_OS STREQUAL "Android")
-    load_android_env()
-    list(APPEND ANDROID_JIN_LIBS mediandk)
-endif()
+include("${AI_CORE_CMAKE_DIR}/dependencies/OpenCV.cmake")
+include("${AI_CORE_CMAKE_DIR}/dependencies/Platform.cmake")
+ai_core_load_opencv()
+ai_core_load_platform()
 
 # ============================================================================
 # Source Files
@@ -31,14 +25,13 @@ set(EXAMPLES_SOURCES
 # ============================================================================
 set(DEPENDENCY_INCLUDES
     ${PROJECT_INCLUDE_DIR}
-    ${OpenCV_INCLUDE_DIRS}
 )
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core
     ai_core::config
-    ${OpenCV_LIBS}
-    ${ANDROID_JIN_LIBS}
+    ai_core::opencv
+    ai_core::platform
 )
 
 # ============================================================================

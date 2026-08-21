@@ -2,16 +2,12 @@ cmake_minimum_required(VERSION 3.18)
 
 project(Benchmarks)
 
-# ============================================================================
-# Load Dependencies
-# ============================================================================
-load_opencv()
-
-# Android-specific configuration
-if(TARGET_OS STREQUAL "Android")
-    load_android_env()
-    list(APPEND ANDROID_JIN_LIBS mediandk)
-endif()
+include("${AI_CORE_CMAKE_DIR}/dependencies/DevTools.cmake")
+include("${AI_CORE_CMAKE_DIR}/dependencies/OpenCV.cmake")
+include("${AI_CORE_CMAKE_DIR}/dependencies/Platform.cmake")
+ai_core_load_benchmark()
+ai_core_load_opencv()
+ai_core_load_platform()
 
 # ============================================================================
 # Source Files
@@ -29,24 +25,21 @@ set(BENCHMARK_SOURCES
 # ============================================================================
 # Base dependencies
 set(DEPENDENCY_INCLUDES
-    ${OpenCV_INCLUDE_DIRS}
     ${PROJECT_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/plugins/common/include
-    ${CMAKE_SOURCE_DIR}/plugins/common/opencv
-    ${CMAKE_SOURCE_DIR}/plugins/preproc/opencv
-    ${CMAKE_SOURCE_DIR}/plugins/postproc/opencv
-    ${CMAKE_SOURCE_DIR}/plugins/infer/onnxruntime
-    ${CMAKE_SOURCE_DIR}/plugins/infer/ncnn
-    ${CMAKE_SOURCE_DIR}/plugins/infer/tensorrt
+    ${AI_CORE_SOURCE_DIR}/plugins/common/include
+    ${AI_CORE_SOURCE_DIR}/plugins/common/opencv
+    ${AI_CORE_SOURCE_DIR}/plugins/preproc/opencv
+    ${AI_CORE_SOURCE_DIR}/plugins/postproc/opencv
+    ${AI_CORE_SOURCE_DIR}/plugins/infer/onnxruntime
+    ${AI_CORE_SOURCE_DIR}/plugins/infer/ncnn
+    ${AI_CORE_SOURCE_DIR}/plugins/infer/tensorrt
 )
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core
-    encrypt::encrypt
     benchmark::benchmark
-    ${OpenCV_LIBS}
-    opencv_imgcodecs
-    ${ANDROID_JIN_LIBS}
+    ai_core::opencv_imgcodecs
+    ai_core::platform
 )
 
 if(TARGET ai_core_plugin_preproc_opencv)
@@ -59,36 +52,21 @@ endif()
 
 # Engine-specific dependencies
 if(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME)
-    load_onnxruntime()
-    list(APPEND DEPENDENCY_INCLUDES
-        ${ONNXRUNTIME_INCLUDE_DIR}
-        ${ONNXRUNTIME_INCLUDE_DIR}/onnxruntime
-    )
     list(APPEND DEPENDENCY_LIBS
         onnxruntime::onnxruntime
         ai_core::plugin_onnxruntime)
 endif()
 
 if(AI_CORE_BUILD_PLUGIN_NCNN)
-    load_openmp()
-    load_ncnn()
-    list(APPEND DEPENDENCY_INCLUDES ${NCNN_INCLUDE_DIR})
     list(APPEND DEPENDENCY_LIBS
-        ${NCNN_LIBS}
-        OpenMP::OpenMP_CXX
+        ai_core::ncnn
         ai_core::plugin_ncnn)
 endif()
 
 if(AI_CORE_BUILD_PLUGIN_TENSORRT)
-    load_cuda()
-    load_tensorrt()
-    list(APPEND DEPENDENCY_INCLUDES
-        ${TensorRT_INCLUDE_DIR}
-        ${CUDAToolkit_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/trt
-    )
     list(APPEND DEPENDENCY_LIBS
         TensorRT::nvinfer
+        CUDA::cudart_static
         ai_core::plugin_tensorrt)
 endif()
 

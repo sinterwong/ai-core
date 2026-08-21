@@ -5,16 +5,8 @@ project(AICoreSrc VERSION ${AI_CORE_VERSION} LANGUAGES CXX)
 # Enable position independent code for shared library
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Android-specific configuration
-if(TARGET_OS STREQUAL "Android")
-    load_android_env()
-    list(APPEND ANDROID_JIN_LIBS mediandk)
-endif()
-
-# Base dependencies
-set(DEPENDENCY_INCLUDES)
-
-set(DEPENDENCY_LIBS ${ANDROID_JIN_LIBS})
+include("${AI_CORE_CMAKE_DIR}/dependencies/Platform.cmake")
+ai_core_load_platform()
 
 # Public API headers live outside the implementation tree so consumers cannot
 # accidentally depend on private headers.
@@ -67,13 +59,10 @@ target_include_directories(ai_core
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${DEPENDENCY_INCLUDES}
 )
 
 # Link dependencies
-target_link_libraries(ai_core
-    PRIVATE ${DEPENDENCY_LIBS} ${CMAKE_DL_LIBS}
-)
+target_link_libraries(ai_core PRIVATE ai_core::platform ${CMAKE_DL_LIBS})
 
 # ============================================================================
 # Compile Definitions
@@ -105,6 +94,8 @@ install(
 # Optional module: ai_core::config (JSON pipeline loader)
 # ============================================================================
 if(AI_CORE_BUILD_CONFIG)
+    include("${AI_CORE_CMAKE_DIR}/dependencies/NlohmannJson.cmake")
+    ai_core_load_nlohmann_json()
     message(STATUS "Configuring config module (ai_core::config)")
     add_library(ai_core_config SHARED config/algo_config.cpp)
     add_library(ai_core::config ALIAS ai_core_config)
@@ -113,10 +104,10 @@ if(AI_CORE_BUILD_CONFIG)
         PUBLIC
             $<BUILD_INTERFACE:${AI_CORE_PUBLIC_INCLUDE_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-        PRIVATE
-            ${PROJECT_INCLUDE_DIR} # nlohmann/json.hpp
     )
-    target_link_libraries(ai_core_config PUBLIC ai_core::ai_core)
+    target_link_libraries(ai_core_config
+        PUBLIC ai_core::ai_core
+        PRIVATE nlohmann_json::nlohmann_json)
     # EXPORT_NAME makes the installed target `ai_core::config` too, matching the
     # build-tree ALIAS above — consumers use one name either way.
     set_target_properties(ai_core_config PROPERTIES
