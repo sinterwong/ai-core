@@ -6,10 +6,10 @@ on:
   pull_request:
 
 env:
-  ORT_VERSION: 1.20.1
+  AI_CORE_ONNXRUNTIME_VERSION: 1.20.1
 
 jobs:
-  clang-format:
+  source-quality:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -20,165 +20,104 @@ jobs:
           sudo apt-get install -y clang-format-21
       - name: Check formatting
         run: |
-          git ls-files 'src/**/*.hpp' 'src/**/*.cpp' 'src/**/*.cu' \
-            'tests/*.cpp' 'tests/*.cc' 'examples/**/*.cpp' \
-            'examples/**/*.hpp' 'examples/**/*.cc' 'benchmarks/*.cpp' \
-            'benchmarks/*.cc' \
-            | xargs clang-format-21 --dry-run --Werror
-
-      # version.hpp is what CMake extracts the package version from, so it
-      # drifting behind CHANGELOG means shipping a mislabelled package.
-      - name: Check version.hpp matches CHANGELOG
+          git ls-files '*.hpp' '*.cpp' '*.cc' '*.cu' \
+            | xargs -r clang-format-21 --dry-run --Werror
+      - name: Check release version
         run: |
-          HDR=src/api/ai_core/version.hpp
-          MAJOR=$(grep -oP 'AI_CORE_VER_MAJOR \K[0-9]+' $HDR)
-          MINOR=$(grep -oP 'AI_CORE_VER_MINOR \K[0-9]+' $HDR)
-          LATEST=$(grep -oP '^## v\K[0-9]+\.[0-9]+' CHANGELOG.md | head -1)
-          if [ "${MAJOR}.${MINOR}" != "$LATEST" ]; then
-            echo "version.hpp says ${MAJOR}.${MINOR}, CHANGELOG's newest entry is v${LATEST}" >&2
-            exit 1
-          fi
-          echo "version in sync: v${MAJOR}.${MINOR}"
+          header=include/ai_core/version.hpp
+          major=$(grep -oP 'AI_CORE_VER_MAJOR \K[0-9]+' "${header}")
+          minor=$(grep -oP 'AI_CORE_VER_MINOR \K[0-9]+' "${header}")
+          patch=$(grep -oP 'AI_CORE_VER_PATCH \K[0-9]+' "${header}")
+          latest=$(grep -oP '^## v\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | head -1)
+          test "${major}.${minor}.${patch}" = "${latest}"
 
-  build-test:
+  core-zero-deps:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Configure core without submodules
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake --preset core
+      - run: cmake --build --preset core
+      - name: Verify core runtime dependency allowlist
+        run: |
+          library=build/core/x86_64/lib/libai_core.so
+          unexpected=$(ldd "${library}" | awk '/=>/ {print $1}' \
+            | grep -Ev '^(libstdc\+\+|libgcc_s|libc|libm|libdl|libpthread|librt)\.so' || true)
+          test -z "${unexpected}" || {
+            echo "unexpected core dependencies: ${unexpected}" >&2
+            exit 1
+          }
+      - name: Verify installed package consumer
+        run: |
+          cmake --install build/core --prefix install/core
+          cmake -S tests/package-consumer -B build/package-consumer -G Ninja \
+            -DCMAKE_PREFIX_PATH=$PWD/install/core
+          cmake --build build/package-consumer
+
+  component-tests:
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        compiler: [gcc, clang]
-        build_type: [Release, Debug]
+        include:
+          - preset: core-tests
+            profiles: testing
+          - preset: config-tests
+            profiles: config testing
+          - preset: vision-tests
+            profiles: vision testing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Initialize profile dependencies
+        run: scripts/deps.sh init ${{ matrix.profiles }}
+      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --build --preset ${{ matrix.preset }}
+      - run: ctest --preset ${{ matrix.preset }}
+
+  onnxruntime-integration:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
-
-      # Fetch LFS assets (test models/images) via cache to save LFS bandwidth;
-      # only asset changes hit the LFS servers.
-      - name: Compute LFS asset key
-        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-
-      - name: Cache LFS assets
-        uses: actions/cache@v4
-        with:
-          path: .git/lfs
-          key: lfs-${{ hashFiles('.lfs-assets-id') }}
-
-      - name: Fetch LFS assets
-        run: git lfs pull
-
-      - name: Install dependencies
+          submodules: false
+          lfs: true
+      - name: Install OpenCV
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libopencv-dev
-
+          sudo apt-get install -y libopencv-dev
       - name: Cache ONNX Runtime
-        id: cache-ort
         uses: actions/cache@v4
         with:
-          path: 3rdparty/target/Linux_x86_64/onnxruntime
-          key: onnxruntime-linux-x64-${{ env.ORT_VERSION }}
-
-      - name: Download ONNX Runtime
-        if: steps.cache-ort.outputs.cache-hit != 'true'
-        run: |
-          wget -q https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz
-          mkdir -p 3rdparty/target/Linux_x86_64
-          tar -xzf onnxruntime-linux-x64-${ORT_VERSION}.tgz
-          mv onnxruntime-linux-x64-${ORT_VERSION} 3rdparty/target/Linux_x86_64/onnxruntime
-
-      # The 1.20.1 release tarball ships libs in lib/ and headers in include/,
-      # but its cmake export references lib64/ and include/onnxruntime.
-      # Runs unconditionally: the broken copy is cached.
-      - name: Patch ONNX Runtime cmake export
-        run: |
-          ORT_CMAKE=3rdparty/target/Linux_x86_64/onnxruntime/lib/cmake/onnxruntime
-          sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
-          sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
-
-      - name: Configure
-        run: |
-          if [ "${{ matrix.compiler }}" = "clang" ]; then
-            export CC=clang CXX=clang++
-          else
-            export CC=gcc CXX=g++
-          fi
-          EXTRA_FLAGS=""
-          if [ "${{ matrix.build_type }}" = "Debug" ]; then
-            EXTRA_FLAGS="-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined -DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address,undefined"
-          fi
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DCMAKE_INSTALL_PREFIX=$PWD/install \
-            -DBUILD_AI_CORE_TESTS=ON \
-            -DAI_CORE_BUILD_BUNDLED_PLUGINS=ON \
-            -DWITH_ORT_ENGINE=ON \
-            -DWITH_NCNN_ENGINE=OFF \
-            -DWITH_TRT_ENGINE=OFF \
-            $EXTRA_FLAGS
-
-      - name: Build
-        run: cmake --build build -j$(nproc)
-
-      - name: Install
-        run: cmake --install build
-
-      - name: Verify super-build install layout
-        if: matrix.compiler == 'gcc' && matrix.build_type == 'Release'
-        run: |
-          cmake -S tests/superbuild -B build-superbuild -G Ninja \
-            -DCMAKE_INSTALL_PREFIX=$PWD/install-superbuild
-          cmake --install build-superbuild --component dev
-          test -f install-superbuild/lib/cmake/ai_core/AICorePlugin.cmake
-
-      - name: Test
-        working-directory: install
-        env:
-          # ORT and OpenCV internals report leaks we do not control; UBSan
-          # failures and ASan memory errors still fail the job.
-          ASAN_OPTIONS: detect_leaks=0
-          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: |
-          export LD_LIBRARY_PATH=$PWD/lib:$PWD/lib/ai_core/plugins:$GITHUB_WORKSPACE/3rdparty/target/Linux_x86_64/onnxruntime/lib
-          ./tests/ai_core_tests
+          path: .deps/Linux_x86_64/onnxruntime
+          key: onnxruntime-linux-x64-${{ env.AI_CORE_ONNXRUNTIME_VERSION }}
+      - name: Initialize profile dependencies
+        run: scripts/deps.sh init config onnxruntime testing
+      - run: cmake --preset developer
+      - run: cmake --build --preset developer
+      - run: ctest --preset developer
 
   coverage:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build libopencv-dev gcovr
-
-      - name: Cache ONNX Runtime
-        id: cache-ort
-        uses: actions/cache@v4
-        with:
-          path: 3rdparty/target/Linux_x86_64/onnxruntime
-          key: onnxruntime-linux-x64-${{ env.ORT_VERSION }}
-
-      - name: Download ONNX Runtime
-        if: steps.cache-ort.outputs.cache-hit != 'true'
-        run: |
-          wget -q https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz
-          mkdir -p 3rdparty/target/Linux_x86_64
-          tar -xzf onnxruntime-linux-x64-${ORT_VERSION}.tgz
-          mv onnxruntime-linux-x64-${ORT_VERSION} 3rdparty/target/Linux_x86_64/onnxruntime
-
-      # The 1.20.1 release tarball ships libs in lib/ and headers in include/,
-      # but its cmake export references lib64/ and include/onnxruntime.
-      # Runs unconditionally: the broken copy is cached.
-      - name: Patch ONNX Runtime cmake export
-        run: |
-          ORT_CMAKE=3rdparty/target/Linux_x86_64/onnxruntime/lib/cmake/onnxruntime
-          sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
-          sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
-
-      - name: Core-component coverage (>= 80%)
-        env:
-          CC: gcc
-          CXX: g++
-        run: scripts/coverage.sh 80
+          submodules: false
+      - name: Install coverage tool
+        run: sudo apt-get update && sudo apt-get install -y gcovr
+      - run: scripts/coverage.sh 80

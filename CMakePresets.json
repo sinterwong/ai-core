@@ -1,65 +1,154 @@
 {
   "version": 3,
-  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "installDir": "${sourceDir}/install",
+      "installDir": "${sourceDir}/install/${presetName}",
       "cacheVariables": {
-        "BUILD_AI_CORE_TESTS": "ON",
-        "BUILD_AI_CORE_EXAMPLES": "ON",
-        "BUILD_AI_CORE_CONFIG": "ON",
-        "AI_CORE_BUILD_BUNDLED_PLUGINS": "ON",
-        "AI_CORE_PLUGIN_VISION": "ON",
-        "WITH_ORT_ENGINE": "ON"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
-      "name": "release",
-      "displayName": "Release (ORT)",
-      "inherits": "base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "name": "core",
+      "displayName": "Core only (zero third-party dependencies)",
+      "inherits": "base"
     },
     {
-      "name": "release-all-backends",
-      "displayName": "Release (ORT + NCNN + TRT)",
-      "inherits": "release",
+      "name": "core-tests",
+      "displayName": "Core unit tests",
+      "inherits": "core",
       "cacheVariables": {
-        "BUILD_AI_CORE_BENCHMARKS": "ON",
-        "WITH_NCNN_ENGINE": "ON",
-        "WITH_TRT_ENGINE": "ON"
+        "AI_CORE_BUILD_TESTS": "ON"
       }
     },
     {
-      "name": "debug-asan",
-      "displayName": "Debug + ASan/UBSan (ORT)",
+      "name": "config",
+      "displayName": "Core + JSON config",
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address,undefined"
+        "AI_CORE_BUILD_CONFIG": "ON"
       }
     },
     {
-      "name": "coverage",
-      "displayName": "Debug + coverage (ORT)",
+      "name": "config-tests",
+      "displayName": "Core + JSON config tests",
+      "inherits": "config",
+      "cacheVariables": {
+        "AI_CORE_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "vision",
+      "displayName": "OpenCV plugins (bundled provider)",
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS": "--coverage -O0 -g",
-        "CMAKE_EXE_LINKER_FLAGS": "--coverage",
-        "CMAKE_SHARED_LINKER_FLAGS": "--coverage"
+        "AI_CORE_OPENCV_PROVIDER": "BUNDLED",
+        "AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV": "ON",
+        "AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV": "ON"
+      }
+    },
+    {
+      "name": "vision-tests",
+      "displayName": "OpenCV plugin tests",
+      "inherits": "vision",
+      "cacheVariables": {
+        "AI_CORE_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "onnxruntime",
+      "displayName": "ONNX Runtime plugin (system OpenCV)",
+      "inherits": "base",
+      "cacheVariables": {
+        "AI_CORE_OPENCV_PROVIDER": "SYSTEM",
+        "AI_CORE_BUILD_PLUGIN_ONNXRUNTIME": "ON"
+      }
+    },
+    {
+      "name": "developer",
+      "displayName": "Config + vision + ONNX Runtime + tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "AI_CORE_OPENCV_PROVIDER": "SYSTEM",
+        "AI_CORE_BUILD_CONFIG": "ON",
+        "AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV": "ON",
+        "AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV": "ON",
+        "AI_CORE_BUILD_PLUGIN_ONNXRUNTIME": "ON",
+        "AI_CORE_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "ncnn",
+      "displayName": "NCNN plugin (system OpenCV)",
+      "inherits": "base",
+      "cacheVariables": {
+        "AI_CORE_OPENCV_PROVIDER": "SYSTEM",
+        "AI_CORE_BUILD_PLUGIN_NCNN": "ON"
+      }
+    },
+    {
+      "name": "tensorrt",
+      "displayName": "TensorRT plugin (system OpenCV)",
+      "inherits": "base",
+      "cacheVariables": {
+        "AI_CORE_OPENCV_PROVIDER": "SYSTEM",
+        "AI_CORE_BUILD_PLUGIN_TENSORRT": "ON"
+      }
+    },
+    {
+      "name": "all-backends",
+      "displayName": "All plugins and developer tools",
+      "inherits": "developer",
+      "cacheVariables": {
+        "AI_CORE_BUILD_PLUGIN_NCNN": "ON",
+        "AI_CORE_BUILD_PLUGIN_TENSORRT": "ON",
+        "AI_CORE_ENABLE_MODEL_DECRYPTION": "ON",
+        "AI_CORE_BUILD_BENCHMARKS": "ON",
+        "AI_CORE_BUILD_EXAMPLES": "ON"
       }
     }
   ],
   "buildPresets": [
-    { "name": "release", "configurePreset": "release" },
-    { "name": "release-all-backends", "configurePreset": "release-all-backends" },
-    { "name": "debug-asan", "configurePreset": "debug-asan" },
-    { "name": "coverage", "configurePreset": "coverage" }
+    { "name": "core", "configurePreset": "core" },
+    { "name": "core-tests", "configurePreset": "core-tests" },
+    { "name": "config", "configurePreset": "config" },
+    { "name": "config-tests", "configurePreset": "config-tests" },
+    { "name": "vision", "configurePreset": "vision" },
+    { "name": "vision-tests", "configurePreset": "vision-tests" },
+    { "name": "onnxruntime", "configurePreset": "onnxruntime" },
+    { "name": "developer", "configurePreset": "developer" },
+    { "name": "ncnn", "configurePreset": "ncnn" },
+    { "name": "tensorrt", "configurePreset": "tensorrt" },
+    { "name": "all-backends", "configurePreset": "all-backends" }
+  ],
+  "testPresets": [
+    {
+      "name": "core-tests",
+      "configurePreset": "core-tests",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "config-tests",
+      "configurePreset": "config-tests",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "vision-tests",
+      "configurePreset": "vision-tests",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "developer",
+      "configurePreset": "developer",
+      "output": { "outputOnFailure": true }
+    }
   ]
 }
