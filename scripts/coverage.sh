@@ -15,14 +15,14 @@ GCOV="${GCOV:-gcov}"
 # Core components: data types + decode logic. Backend engines (ort/ncnn/trt)
 # are integration-tested, not counted here.
 CORE_FILTERS=(
-  --filter 'src/api/ai_core/typed_buffer\.hpp'
-  --filter 'src/api/ai_core/tensor_data\.hpp'
-  --filter 'src/api/ai_core/data_packet\.hpp'
-  --filter 'src/api/ai_core/param_center\.hpp'
-  --filter 'src/api/ai_core/type_safe_factory\.hpp'
-  --filter 'src/api/ai_core/image_view\.hpp'
-  --filter 'src/api/ai_core/opencv_interop\.hpp'
-  --filter 'src/api/ai_core/common_types\.hpp'
+  --filter 'include/ai_core/typed_buffer\.hpp'
+  --filter 'include/ai_core/tensor_data\.hpp'
+  --filter 'include/ai_core/data_packet\.hpp'
+  --filter 'include/ai_core/param_center\.hpp'
+  --filter 'include/ai_core/type_safe_factory\.hpp'
+  --filter 'include/ai_core/image_view\.hpp'
+  --filter 'include/ai_core/opencv_interop\.hpp'
+  --filter 'include/ai_core/common_types\.hpp'
   --filter 'src/typed_buffer\.cpp'
   --filter 'plugins/common/opencv/vision_util\.cpp'
   --filter 'src/param_validation\.hpp'

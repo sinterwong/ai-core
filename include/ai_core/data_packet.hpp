@@ -1,0 +1,90 @@
+#ifndef AI_CORE_UTILS_DATA_PACKET_HPP
+#define AI_CORE_UTILS_DATA_PACKET_HPP
+
+#include <any>
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <stdexcept>
+#include <string>
+
+namespace ai_core {
+using DataPacketId = uint64_t;
+
+/**
+ * @brief Type-erased key/value bag for plugin construction params and
+ * free-form runtime extensions.
+ *
+ * @par Thread safety
+ * Value type with no internal synchronization; concurrent const access is
+ * safe, concurrent mutation requires external synchronization.
+ */
+struct DataPacket {
+  DataPacketId id;
+  std::map<std::string, std::any> params;
+
+  /**
+   * @brief Return a copy of the value stored under `key`.
+   * @throws std::runtime_error If the key is absent or has a different type.
+   */
+  template <typename T> T getParam(const std::string &key) const {
+    auto it = params.find(key);
+    if (it == params.end()) {
+      throw std::runtime_error("Missing required parameter: " + key);
+    }
+    try {
+      return std::any_cast<T>(it->second);
+    } catch (const std::out_of_range &oor) {
+      throw std::runtime_error("Key not found: " + key);
+    } catch (const std::bad_any_cast &e) {
+      throw std::runtime_error("Invalid parameter type for key '" + key +
+                               "'. Expected type: " + typeid(T).name());
+    }
+  }
+
+  /**
+   * @brief Return no value for an absent key and a copy for a present key.
+   * @throws std::runtime_error If a present value has a different type.
+   */
+  template <typename T>
+  std::optional<T> getOptionalParam(const std::string &key) const {
+    auto it = params.find(key);
+    if (it == params.end()) {
+      return std::nullopt;
+    }
+    try {
+      return std::any_cast<T>(it->second);
+    } catch (const std::out_of_range &oor) {
+      throw std::runtime_error("Key not found: " + key);
+    } catch (const std::bad_any_cast &e) {
+      throw std::runtime_error("Invalid parameter type for optional key '" +
+                               key + "'. Expected type: " + typeid(T).name());
+    }
+  }
+
+  template <typename T> void setParam(const std::string &key, T value) {
+    params[key] = std::move(value);
+  }
+
+  bool has(const std::string &key) const { return params.count(key) > 0; }
+
+  template <typename T> bool has() const {
+    for (const auto &pair : params) {
+      if (pair.second.type() == typeid(T)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  template <typename T> bool has(const std::string &key) const {
+    auto it = params.find(key);
+    if (it == params.end()) {
+      return false;
+    }
+    return it->second.type() == typeid(T);
+  }
+};
+} // namespace ai_core
+
+#endif
