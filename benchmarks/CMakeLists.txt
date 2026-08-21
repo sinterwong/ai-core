@@ -2,6 +2,14 @@ cmake_minimum_required(VERSION 3.18)
 
 project(Benchmarks)
 
+if(NOT TARGET ai_core_plugin_preproc_opencv OR
+   NOT TARGET ai_core_plugin_postproc_opencv)
+    message(FATAL_ERROR
+        "Benchmarks require both OpenCV plugins. Enable "
+        "AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV and "
+        "AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV.")
+endif()
+
 include("${AI_CORE_CMAKE_DIR}/dependencies/DevTools.cmake")
 include("${AI_CORE_CMAKE_DIR}/dependencies/OpenCV.cmake")
 include("${AI_CORE_CMAKE_DIR}/dependencies/Platform.cmake")

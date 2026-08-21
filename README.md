@@ -8,199 +8,146 @@
 
 [English](README_EN.md) | [简体中文](README.md)
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)
 
-AI Core 是一个用于在多种推理后端（ONNX Runtime、NCNN、TensorRT）上部署模型的 C++ 库。流水线由三段组成：预处理、推理、后处理。每一段都通过插件方式注册，按名称拼装，便于扩展。
+AI Core 用插件组合预处理、推理和后处理流水线，支持 ONNX Runtime、NCNN、
+TensorRT 以及库外自定义后端。
 
-## 数据流
+## v2 依赖边界
 
-```
-+-----------+     +-----------------+     +-----------------+
-|           |     |                 |     |                 |
-| AlgoInput |---->| Preproc Plugin  |---->|  TensorData (in)|
-|           |     | (e.g. FrameProc)|     |                 |
-+-----------+     +-----------------+     +-----------------+
-                                                   |
-                                                   v
-                                           +-----------------+
-                                           |                 |
-                                           | Inference Engine|
-                                           | (e.g., TensorRT)|
-                                           +-----------------+
-                                                    |
-                                                    v
-+-----------+     +------------------+     +------------------+
-|           |     |                  |     |                  |
-| AlgoOutput|<----| Postproc Plugin  |<----| TensorData (out) |
-|           |     | (e.g. YOLO_DET ) |     |                  |
-+-----------+     +------------------+     +------------------+
-```
+默认构建只有 `libai_core`。它不发现、编译或链接任何第三方库，动态依赖仅限
+C++ 与操作系统基础运行库。config、每个官方插件以及开发工具都是独立的 opt-in
+组件；打开哪个组件，才解析哪个组件拥有的依赖。
 
-`TensorData` 是插件之间传递的张量集合。`AlgoInput` / `AlgoOutput` 是流水线两端的输入/输出。
+- `third_party/config/`：config 源码依赖。
+- `third_party/plugins/`：官方插件源码依赖。
+- `third_party/testing/`、`third_party/benchmarking/`：仅开发工具使用。
+- `.deps/<OS>_<ARCH>/`：不入 Git 的预编译 SDK，例如 ONNX Runtime、NCNN、
+  TensorRT。
 
-## 编译
+所有 Git submodule 固定到 gitlink commit，不跟踪浮动分支。无需再对仓库执行
+递归 submodule 初始化；使用 `scripts/deps.sh init <profile>` 按需拉取。
 
-### 依赖
+## 快速开始
 
-- C++20 兼容的编译器（GCC 11+、Clang 14+、MSVC 19.30+）
-- CMake 3.18+
-- 核心库：C++20 编译器，无第三方运行时依赖
-- 官方 OpenCV preproc/postproc 插件：OpenCV 4.x
-- 可选 infer 插件：ONNX Runtime、NCNN、TensorRT/CUDA
-
-默认只构建核心。官方插件通过 `AI_CORE_BUILD_BUNDLED_PLUGINS=ON` 开启，具体
-后端仍由 `WITH_ORT_ENGINE`、`WITH_NCNN_ENGINE`、`WITH_TRT_ENGINE` 控制。
-仓库内与仓库外插件都通过 `PluginManager` 动态加载，不会编入 `libai_core.so`。
-
-### 拉取与构建
-
-最省事的路径是 bootstrap 脚本：拉依赖、配置、编译、安装、跑测试，一条命令。
+只构建零第三方依赖的 core：
 
 ```bash
-git clone --recurse-submodules https://github.com/sinterwong/ai-core.git
+git clone https://github.com/sinterwong/ai-core.git
 cd ai-core
-sudo apt-get install -y ninja-build
+cmake --preset core
+cmake --build --preset core
+cmake --install build/core
+```
+
+构建某个组件时先初始化同名依赖 profile：
+
+```bash
+# JSON config
+scripts/deps.sh init config
+cmake --preset config
+cmake --build --preset config
+
+# 仓库固定版本的 OpenCV 插件
+scripts/deps.sh init vision
+cmake --preset vision
+cmake --build --preset vision
+
+# 常用开发组合：config + vision + ONNX Runtime + tests
+# developer preset 使用系统 OpenCV。
+scripts/deps.sh init config onnxruntime testing
+cmake --preset developer
+cmake --build --preset developer
+ctest --preset developer
+```
+
+`scripts/bootstrap.sh` 提供完整的一键开发构建，默认使用固定的 bundled OpenCV；
+可用 `--opencv-provider SYSTEM` 切换到系统 OpenCV。
+
+```bash
 scripts/bootstrap.sh
 ```
 
-想手动走一遍的话：
+可用 profile：`core`、`config`、`vision`、`onnxruntime`、`ncnn`、`tensorrt`、
+`decryption`、`testing`、`benchmarking`、`developer`。NCNN/TensorRT 不提供通用的
+公开下载包，可分别通过 `AI_CORE_NCNN_ARCHIVE`、`AI_CORE_TENSORRT_ARCHIVE`
+向 profile 提供 SDK tar 包，或直接设置对应的 CMake root。
+
+## CMake 选项
+
+所有选项默认 `OFF`。
+
+| 选项 | 说明 |
+| --- | --- |
+| `AI_CORE_BUILD_CONFIG` | 构建 JSON config 模块 |
+| `AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV` | 构建 OpenCV 预处理插件 |
+| `AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV` | 构建 OpenCV 后处理插件 |
+| `AI_CORE_BUILD_PLUGIN_ONNXRUNTIME` | 构建 ONNX Runtime 推理插件 |
+| `AI_CORE_BUILD_PLUGIN_NCNN` | 构建 NCNN 推理插件 |
+| `AI_CORE_BUILD_PLUGIN_TENSORRT` | 构建 TensorRT 推理插件 |
+| `AI_CORE_ENABLE_MODEL_DECRYPTION` | 为已启用的推理插件加入模型解密支持 |
+| `AI_CORE_BUILD_TESTS` | 构建按依赖边界拆分的测试 |
+| `AI_CORE_BUILD_BENCHMARKS` | 构建 benchmark |
+| `AI_CORE_BUILD_EXAMPLES` | 构建示例（要求 config） |
+
+依赖定位参数：
+
+- `AI_CORE_OPENCV_PROVIDER=BUNDLED|SYSTEM`，默认 `BUNDLED`。
+- `AI_CORE_DEPS_ROOT`，默认 `.deps/<OS>_<ARCH>`。
+- `AI_CORE_ONNXRUNTIME_ROOT`、`AI_CORE_NCNN_ROOT`、`AI_CORE_TENSORRT_ROOT`。
+- `AI_CORE_CUDA_ARCHITECTURES`。
+
+缺失依赖会在 configure 阶段报出精确路径、对应 profile 和可覆盖的 root，不会扫描
+隐式系统目录或回退到另一套 SDK。
+
+## 测试
 
 ```bash
-# ONNX Runtime 暂取官方发布版；OpenCV 4.10.0 已作为源码 submodule 固定，
-# 由 3rdparty/CMakeLists.txt 裁剪并静态链接进需要它的插件。
-ORT_VERSION=1.20.1
-mkdir -p 3rdparty/target/Linux_x86_64
-curl -fL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" \
-  -o /tmp/ort.tgz
-tar -xzf /tmp/ort.tgz -C /tmp
-mv "/tmp/onnxruntime-linux-x64-${ORT_VERSION}" 3rdparty/target/Linux_x86_64/onnxruntime
+scripts/deps.sh init testing
+cmake --preset core-tests
+cmake --build --preset core-tests
+ctest --preset core-tests
 
-# 1.20.x 的 tarball 实际布局是 lib/ + include/，但它自带的 cmake export 指向
-# lib64/ 和 include/onnxruntime。不修则 find_package 解析出的路径不存在。
-ORT_CMAKE=3rdparty/target/Linux_x86_64/onnxruntime/lib/cmake/onnxruntime
-sed -i 's#/lib64/#/lib/#g' $ORT_CMAKE/onnxruntimeTargets-release.cmake
-sed -i 's#/include/onnxruntime"#/include"#g' $ORT_CMAKE/onnxruntimeTargets.cmake
+# 按标签执行：core / config / vision / backend
+ctest --test-dir build/developer -L backend --output-on-failure
 
-cmake -B build -DBUILD_AI_CORE_EXAMPLES=ON -DBUILD_AI_CORE_TESTS=ON \
-      -DAI_CORE_BUILD_BUNDLED_PLUGINS=ON -DWITH_ORT_ENGINE=ON \
-      -DWITH_TRT_ENGINE=OFF
-cmake --build build -j
-cmake --install build
-```
-
-CMake 选项：
-
-| 选项 | 默认值 | 说明 |
-| --- | --- | --- |
-| `BUILD_AI_CORE_TESTS` | OFF | 构建单元测试 |
-| `BUILD_AI_CORE_BENCHMARKS` | OFF | 构建 benchmark |
-| `BUILD_AI_CORE_EXAMPLES` | OFF | 构建示例 |
-| `AI_CORE_BUILD_BUNDLED_PLUGINS` | OFF | 构建仓库内维护的插件 |
-| `AI_CORE_PLUGIN_VISION` | ON | 构建 OpenCV 预处理/后处理插件 |
-| `WITH_ORT_ENGINE` | OFF | ONNX Runtime 插件 |
-| `WITH_NCNN_ENGINE` | OFF | NCNN 后端 |
-| `WITH_TRT_ENGINE` | OFF | TensorRT 后端 |
-
-## 模型资产
-
-单元测试不依赖任何模型（用构造的张量数据）。集成测试需要模型资产：
-
-- 基础模型（ONNX / NCNN）是源产物。
-- TensorRT `.engine` 是机器相关的派生产物，不入库，由脚本从 ONNX 本地重建。
-
-```bash
-# 确保基础模型存在（缺失时从 $AI_CORE_MODEL_BASE_URL 下载）并重建 TRT 引擎
-scripts/fetch_models.sh
-# 仅重建 TRT 引擎（需要 trtexec 在 PATH，或用 TRTEXEC= 指定）
-TRTEXEC=/path/to/trtexec scripts/fetch_models.sh --trt-only
-```
-
-## 测试与覆盖率
-
-```bash
-# 全部测试（install/ 下运行，需 LD_LIBRARY_PATH 指向 3rdparty libs）
-cd install && LD_LIBRARY_PATH=$PWD/lib:<3rdparty-libs> ./tests/ai_core_tests
-
-# 核心组件行覆盖率门禁（≥80%，只跑无资产单测）
+# core 行覆盖率门禁
 scripts/coverage.sh
 ```
 
-## 使用
+只打开 tests 时只产生 core suite，不会引入 OpenCV 或推理 SDK。模型资产仅由
+backend 集成测试使用；机器相关的 TensorRT engine 通过 `scripts/fetch_models.sh`
+本地生成。
 
-`AlgoInference` 是流水线入口，构造时给出三段插件的名字和推理参数：
+## 安装与消费
 
-```cpp
-#include "ai_core/algo_inference.hpp"
-#include "ai_core/algo_types.hpp"
-#include "ai_core/opencv_interop.hpp"
+安装组件名为 `runtime`、`development`、`config`、`plugin-preproc-opencv`、
+`plugin-postproc-opencv`、`plugin-onnxruntime`、`plugin-ncnn`、`plugin-tensorrt`、
+`tests`、`benchmarks`、`examples` 和 `assets`。
 
-using namespace ai_core;
-
-AlgoModuleTypes modules{
-    "CpuGenericPreprocess", // 预处理插件
-    "OrtAlgoInference",     // 推理后端
-    "Yolov11Det"            // 后处理插件
-};
-
-AlgoInferParams params;
-params.name = "yolov11";
-params.model_path = "models/yolov11.onnx";
-params.device_type = DeviceType::CPU;
-params.data_type = DataType::FLOAT32;
-
-AlgoPreprocParams preproc_params;
-FramePreprocessArg arg;
-arg.model_input_shape = {640, 640, 3};
-// 归一化是 (v - mean) / std —— std_vals 是除数（标准差），不是乘数。
-// 把 8bit 像素映射到 [0,1] 填 255，不是 1/255。
-arg.mean_vals = {0.f, 0.f, 0.f};
-arg.std_vals = {255.f, 255.f, 255.f};
-// 模型训练时的通道序。预处理会按 ImageView::format -> 这个值做转换，
-// 所以调用方不必自己 cvtColor。默认 BGR888；ultralytics 系模型是 RGB。
-arg.model_input_format = ImagePixelFormat::RGB888;
-arg.hwc2chw = true;
-arg.data_type = DataType::FLOAT32;
-preproc_params.setParams(arg);
-
-AlgoPostprocParams postproc_params;
-AnchorDetParams det_arg;
-det_arg.cond_thre = 0.25f;
-det_arg.nms_thre = 0.45f;
-det_arg.output_names = {"output0"};
-postproc_params.setParams(det_arg);
-
-dnn::AlgoInference algo(modules, params);
-algo.initialize(preproc_params, postproc_params);
-
-// 图像输入是非拥有视图：像素来自任何来源（此处用 OpenCV 解码，经
-// opt-in 的 opencv_interop 零拷贝转换）
-cv::Mat image = cv::imread("test.jpg");
-AlgoInput input;
-input.setParams(FrameInput{interop::viewFromMat(image), std::nullopt});
-
-AlgoOutput output;
-if (algo.infer(input, output) != InferErrorCode::SUCCESS) {
-    // 处理错误
-}
-
-if (auto* det = output.getParams<DetRet>()) {
-    for (const auto& box : det->bboxes) {
-        // ...
-    }
-}
-
-algo.terminate();
+```cmake
+find_package(ai_core 2.0 REQUIRED COMPONENTS core config)
+target_link_libraries(my_app PRIVATE ai_core::ai_core ai_core::config)
 ```
 
-更完整的例子参考 `examples/generic_image_infer.cpp`、`examples/ocr/` 和 `tests/`。
+插件还会导出 `ai_core::plugin_preproc_opencv`、
+`ai_core::plugin_postproc_opencv`、`ai_core::plugin_onnxruntime`、
+`ai_core::plugin_ncnn`、`ai_core::plugin_tensorrt`。运行期插件目录由 package config
+变量 `ai_core_PLUGIN_DIR` 给出。外部插件使用 `AICorePlugin.cmake` 中的
+`ai_core_add_plugin()` 创建。
 
-## 文档
+## 使用与文档
 
-- [docs/Framework.md](docs/Framework.md) — 框架结构与设计
+应用通过 `PluginManager` 显式加载所需插件，再用 `AlgoInference` 按注册名组合三段
+流水线。公共 API 不暴露第三方类型；需要 OpenCV 互转时显式包含
+`<ai_core/opencv_interop.hpp>`。
+
+- [docs/Framework.md](docs/Framework.md) — 框架结构与线程模型
 - [docs/API.md](docs/API.md) — 公共 API
 - [docs/PluginGuide.md](docs/PluginGuide.md) — 插件开发与张量契约
+- [examples/starter](examples/starter) — 已安装 package 的最小消费工程
 
 ## 许可
 

@@ -86,7 +86,7 @@ struct AlgoInferParams {
 
 构造时传插件名。`initialize()` 阶段从 `PreprocFactory` 取出对应实现。`process()` 内部把任务转给该插件。
 
-内置：`CpuGenericPreprocess`（单帧，OpenCV CPU）、`CudaGenericPreprocess`（单帧，CUDA，需 `WITH_TRT_ENGINE`）、`FrameWithMaskPreprocess`（带掩码，CPU）。执行设备由插件名决定，不再有运行期分发字段。
+内置：`CpuGenericPreprocess`（单帧，OpenCV CPU）、`CudaGenericPreprocess`（单帧，CUDA，需启用 TensorRT 插件）、`FrameWithMaskPreprocess`（带掩码，CPU）。执行设备由插件名决定，不再有运行期分发字段。
 
 参数见 `FramePreprocessArg`：
 

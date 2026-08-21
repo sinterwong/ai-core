@@ -4,14 +4,14 @@
 
 ## 依赖
 
-- `WITH_TRT_ENGINE=ON`（异步能力由 TensorRT 后端提供）。
+- `AI_CORE_BUILD_PLUGIN_TENSORRT=ON`（异步能力由 TensorRT 后端提供）。
 - 一个 TensorRT 引擎：`scripts/fetch_models.sh --trt-only` 从 ONNX 重建。
 
 ## 运行
 
 ```bash
 cd install
-LD_LIBRARY_PATH=$PWD/lib:<3rdparty-libs> \
+LD_LIBRARY_PATH=$PWD/lib:<sdk-libs> \
   ./bin/ai_core_example_async_pipeline [engine_path] [num_workers] [total_frames]
 # 默认: assets/models/yolov11n_trt_fp16.engine 4 400
 ```

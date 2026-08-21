@@ -13,7 +13,11 @@
 #define _AI_CORE_STR(s) #s
 #define AI_CORE_PROJECT_VERSION(major, minor, patch)                           \
   "v" _AI_CORE_STR(major.minor.patch)
+#define AI_CORE_SEMVER(major, minor, patch) _AI_CORE_STR(major.minor.patch)
 
 #define AI_CORE_VERSION_STR                                                    \
   AI_CORE_PROJECT_VERSION(AI_CORE_VER_MAJOR, AI_CORE_VER_MINOR,                \
                           AI_CORE_VER_PATCH)
+
+#define AI_CORE_SEMVER_STR                                                     \
+  AI_CORE_SEMVER(AI_CORE_VER_MAJOR, AI_CORE_VER_MINOR, AI_CORE_VER_PATCH)

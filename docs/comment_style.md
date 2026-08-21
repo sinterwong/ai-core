@@ -5,7 +5,7 @@ contracts, constraints, and intent; they do not narrate the implementation.
 
 This guide applies to first-party C++ code under `include/`, `src/`, `plugins/`,
 `tests/`, `benchmarks/`, and `examples/`. Do not reformat vendored code under
-`3rdparty/` to match it.
+`third_party/` to match it.
 
 ## Language and tone
 

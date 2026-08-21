@@ -1,8 +1,28 @@
 # Changelog
 
-本项目无外部用户、无兼容包袱；v1.4 之前的接口变更一律不留兼容别名。**v1.4 起公共 API 终态，此后只加不改**——v2.1 是唯一的例外，见下。
+本项目无外部用户、无兼容包袱；v1.4 之前的接口变更一律不留兼容别名。**v1.4 起公共 API 终态，此后只加不改**——v2.0.0 是唯一的例外，见下。
 
-## v2.1 — 下游反馈收口（2026-08）
+## v2.0.0 — 组件化依赖边界（2026-08）
+
+本版确立最终构建架构：默认 `libai_core` 零第三方库依赖，config、官方插件、
+测试、benchmark 和示例全部显式 opt-in。
+
+**依赖与交付：**
+
+- 所有构建选项统一为 `AI_CORE_BUILD_*` / `AI_CORE_ENABLE_*`，默认关闭；删除全局
+  bundled 开关和旧 backend 开关，不保留兼容别名。
+- `third_party/` 按 `config`、`plugins`、`testing`、`benchmarking` 职责分层；源码
+  submodule 固定 gitlink commit。预编译 SDK 移到不入库的 `.deps/<OS>_<ARCH>`。
+- 删除全局依赖 loader。每个组件只通过自己的 namespaced CMake target 解析依赖，
+  OpenCV provider 和各 SDK root 均显式可控，不再扫描隐式 fallback 路径。
+- core、config 和每个插件分别安装，package export 支持
+  `find_package(ai_core COMPONENTS ...)`；插件 DSO 带统一的 2.0.0 SONAME/版本元数据。
+- 测试拆为 `core`、`config`、`vision`、`backend` 四个 CTest label。只打开 tests
+  不再引入 OpenCV 或推理 SDK。
+- 新增 `scripts/deps.sh` profile 入口，并统一 bootstrap、coverage、presets 与 CI。
+  CI 的 core job 不初始化任何 submodule，并检查 `libai_core` 动态依赖 allowlist。
+
+**公共 API 与下游反馈：**
 
 来自 ai-sdk 集成的 16 条反馈。**本版含 break**，是 v1.4「只加不改」承诺的一次有意破例：两条都属于「字段名/字段语义会导致静默错误」，留着比改掉代价更大。
 
@@ -24,19 +44,24 @@
 
 **修复：**
 
-- `scripts/bootstrap.sh` / README / `scripts/x86_build.sh` 里三处指向三个不同 release tag 的依赖包链接，其中两个已 404，照 README 走必然卡在 `tar: not in gzip format`。改为与 CI 同源：ONNX Runtime 取 Microsoft 官方发布版，OpenCV 用系统包。`curl` 加 `-f` 让 404 在下载阶段就失败。
-- 顺带消除 OpenCV 双实例风险：不再解出 vendored OpenCV。`load_opencv()` 在检测到 vendored 与系统 OpenCV 并存时告警；bootstrap 结尾断言 `ldd | grep -c opencv_core == 1`。
-- CI 里 patch onnxruntime cmake export 的两条 `sed`（`lib64/`→`lib/`、`include/onnxruntime`→`include`）下沉进 `scripts/bootstrap.sh`，手动流程与 CI 一致。
-- `load_3rdparty.cmake` 的 `load_tensorrt()` 用 `CMAKE_SOURCE_DIR` 而非 `PROJECT_SOURCE_DIR`，super-build + TRT 组合下找不到 `FindTensorRT.cmake`。
+- `scripts/bootstrap.sh`、README 和旧构建脚本曾各自维护不同的依赖包链接，其中两个
+  已 404。现统一由 `scripts/deps.sh` 获取 Microsoft 官方 ONNX Runtime，`curl -f`
+  让下载错误在解包前失败。
+- OpenCV 改为互斥的 `BUNDLED|SYSTEM` provider；一个构建只解析一个 provider，
+  避免同一进程混入两套 `libopencv_core`。
+- ONNX Runtime 发布包的 CMake export 布局修正收敛到 `scripts/deps.sh`，手动流程、
+  bootstrap 与 CI 使用同一实现。
+- TensorRT 依赖加载曾使用错误的 source root，super-build 组合下找不到
+  `FindTensorRT.cmake`；v2 的组件级 loader 已消除此全局路径问题。
 - `UNetDualOutputSeg` 的 `DualRawSegRet::ratio` 此前按整帧宽度推导，忽略 ROI 与等比缩放；改用统一的 `scaleRatio()`。
 - 4 处 doxygen `@file` 与真实文件名不符。
 - `version.hpp` 停在 1.2.0 而 CHANGELOG 已到 v2.0，安装出来的包版本是错的。CI 新增一条断言，让两者不能再各走各的。
 
-## v2.0 — 产品起手能力（2026-07）
+### 产品起手能力（2026-07 开始落地）
 
-新增（公共 API 只加不改）：
+新增：
 
-- **`ai_core::config` 模块**（`<ai_core/config/algo_config.hpp>`，`BUILD_AI_CORE_CONFIG`）：JSON 加载整条流水线 + schema 校验（`ConfigError`）。统一 camelCase 键，修复 v1.3 记录的 snake/camelCase 不一致 bug，OCR 示例端到端跑通。
+- **`ai_core::config` 模块**（`<ai_core/config/algo_config.hpp>`，`AI_CORE_BUILD_CONFIG`）：JSON 加载整条流水线 + schema 校验（`ConfigError`）。统一 camelCase 键，修复 v1.3 记录的 snake/camelCase 不一致 bug，OCR 示例端到端跑通。
 - **`to_string(InferErrorCode)`** + `operator<<`；facade 错误日志带 stage + 错误码。
 - **`AlgoInference::getAsyncEngine()` / `AlgoInferEngine::getAsyncEngine()`**（v1.7）：异步正门。
 - `AlgoInferParams.intra/inter_op_num_threads`（v1.6）：ORT 线程可配。

@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.18)
 
 project(AICoreExamples VERSION ${AI_CORE_VERSION})
 
+if(NOT TARGET ai_core_config)
+    message(FATAL_ERROR
+        "Examples require the config component. "
+        "Configure with -DAI_CORE_BUILD_CONFIG=ON.")
+endif()
+
 # Enable position independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 

@@ -11,9 +11,12 @@ project(ai_core_starter LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ai_core-config.cmake pulls in its own dependencies (OpenCV) via
-# find_dependency, so this single call is enough.
-find_package(ai_core CONFIG REQUIRED)
+find_package(ai_core 2.0 CONFIG REQUIRED COMPONENTS
+    core
+    config
+    plugin_preproc_opencv
+    plugin_postproc_opencv
+    plugin_onnxruntime)
 find_package(OpenCV REQUIRED)
 
 add_executable(ai_core_starter main.cpp)
@@ -24,3 +27,5 @@ target_link_libraries(ai_core_starter
         ${OpenCV_LIBS}            # only for image I/O in this example
 )
 target_include_directories(ai_core_starter PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_compile_definitions(ai_core_starter PRIVATE
+    "AI_CORE_PLUGIN_DIR=\"${ai_core_PLUGIN_DIR}\"")

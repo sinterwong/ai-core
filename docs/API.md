@@ -487,7 +487,7 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 | 阶段 | 名字 | 用途 |
 | --- | --- | --- |
 | 预处理 | `CpuGenericPreprocess` | 单帧图通用预处理（OpenCV CPU） |
-| 预处理 | `CudaGenericPreprocess` | 单帧图通用预处理（CUDA，需 `WITH_TRT_ENGINE`） |
+| 预处理 | `CudaGenericPreprocess` | 单帧图通用预处理（CUDA，需 TensorRT 插件） |
 | 预处理 | `FrameWithMaskPreprocess` | 带掩码区域的图（CPU） |
 | 推理 | `OrtAlgoInference` | ONNX Runtime |
 | 推理 | `NCNNAlgoInference` | NCNN |
@@ -516,7 +516,7 @@ LOG_ERROR_FMT("infer failed, code = %d", static_cast<int>(code));
 ## 13. 配置模块 `ai_core::config`（可选）
 
 `<ai_core/config/algo_config.hpp>`，独立目标 `ai_core::config`
-（`BUILD_AI_CORE_CONFIG=ON`，默认开）。build tree 与安装导出同名。从 JSON 加载并校验整条流水线定义，算法编排不写 C++。
+（`AI_CORE_BUILD_CONFIG=ON`，默认关）。build tree 与安装导出同名。从 JSON 加载并校验整条流水线定义，算法编排不写 C++。
 
 后处理模块名**不再有白名单**：内置模块按名字走快路径，未命中时按 `postprocParams`
 里出现的键推断参数族（`condThre`+`nmsThre` → `AnchorDetParams`；仅 `condThre` →
