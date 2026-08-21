@@ -1,13 +1,3 @@
-/**
- * @file ocr_main.cc
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-09-15
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/logger.hpp"
 #include "ai_core/plugin_manager.hpp"
 #include "ocr_utils.hpp"

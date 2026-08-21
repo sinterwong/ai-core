@@ -1,13 +1,3 @@
-/**
- * @file ocr_reco.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-25
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_INFERENCE_VISION_OCR_RECO_HPP
 #define AI_CORE_INFERENCE_VISION_OCR_RECO_HPP
 

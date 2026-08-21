@@ -1,9 +1,3 @@
-/**
- * @file main.cpp
- * @brief Minimal ai_core starter: load a JSON pipeline definition, run one
- * detection, print the boxes. Copy this directory, point it at your model +
- * config, and you have a working product skeleton.
- */
 #include "ai_core/algo_inference.hpp"
 #include "ai_core/config/algo_config.hpp"
 #include "ai_core/logger.hpp"

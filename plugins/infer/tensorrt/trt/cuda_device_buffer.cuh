@@ -11,12 +11,7 @@ namespace ai_core::cuda_utils {
 
 template <typename T> class CudaHostBuffer;
 
-/**
- * @brief 只读设备内存视图
- *
- * 用于将 buffer 作为 kernel 输入参数传递。
- * 轻量级，可按值传递。
- */
+/** Non-owning device-memory range passed to read-only kernel parameters. */
 template <typename T> struct DeviceReadSpan {
   const T *ptr;
   size_t count;
@@ -27,12 +22,7 @@ template <typename T> struct DeviceReadSpan {
   __host__ __device__ const T &operator[](size_t i) const { return ptr[i]; }
 };
 
-/**
- * @brief 可写设备内存视图
- *
- * 用于将 buffer 作为 kernel 输出参数传递。
- * 包含预期写入的元素数量，kernel 应写满这个数量。
- */
+/** Non-owning device-memory range that a kernel is expected to fill. */
 template <typename T> struct DeviceWriteSpan {
   T *ptr;
   size_t count;
@@ -46,14 +36,12 @@ template <typename T> struct DeviceWriteSpan {
 };
 
 /**
- * @brief CUDA 设备内存管理类
+ * @brief Move-only CUDA device allocation with vector-like size and capacity.
  *
- * 设计理念：通过明确语义的 API 引导正确使用
- *
- * - 只读访问：使用 readSpan() 或 readPtr()
- * - 写入访问：使用 writeSpan(count) 或 writePtr(count)
- * - 追加写入：使用 appendSpan(count) 或 appendPtr(count)
- * - 不安全访问：使用 unsafePtr()（需手动调用 unsafeSetSize）
+ * `size()` is the initialized or reserved-for-write prefix; `capacity()` is
+ * the allocated element count. Methods accepting a CUDA stream may enqueue
+ * work, so referenced host/device memory must remain valid until that stream
+ * completes.
  */
 template <typename T> class CudaDeviceBuffer {
 public:
@@ -69,11 +57,9 @@ public:
 
   ~CudaDeviceBuffer() { freeMemory(); }
 
-  // 禁止拷贝
   CudaDeviceBuffer(const CudaDeviceBuffer &) = delete;
   CudaDeviceBuffer &operator=(const CudaDeviceBuffer &) = delete;
 
-  // 允许移动
   CudaDeviceBuffer(CudaDeviceBuffer &&other) noexcept
       : m_size(other.m_size), m_capacity(other.m_capacity), m_ptr(other.m_ptr) {
     other.m_size = 0;
@@ -95,48 +81,20 @@ public:
     return *this;
   }
 
-  // ==========================================================================
-  // 属性查询
-  // ==========================================================================
-  /// 当前有效元素数量
   size_t size() const { return m_size; }
 
-  /// 当前分配的容量
   size_t capacity() const { return m_capacity; }
 
-  /// 有效数据的字节数
   size_t bytes() const { return m_size * sizeof(T); }
 
-  /// 容量的字节数
   size_t capacityBytes() const { return m_capacity * sizeof(T); }
 
-  /// 是否为空
   bool empty() const { return m_size == 0; }
 
-  /// 是否已分配内存
   explicit operator bool() const { return m_ptr != nullptr; }
 
-  // ==========================================================================
-  // 只读访问 API（用于 Kernel 输入）
-  // ==========================================================================
-  /**
-   * @brief 获取只读视图
-   *
-   * 用于将 buffer 作为 kernel 的输入参数。
-   *
-   * @code
-   * auto input = buffer.readSpan();
-   * myKernel<<<...>>>(input.data(), input.size(), ...);
-   * @endcode
-   */
   DeviceReadSpan<T> readSpan() const { return {m_ptr, m_size}; }
 
-  /**
-   * @brief 获取只读视图（指定范围）
-   *
-   * @param offset 起始偏移量（元素数）
-   * @param count 元素数量
-   */
   DeviceReadSpan<T> readSpan(size_t offset, size_t count) const {
     if (offset + count > m_size) {
       throw std::out_of_range("readSpan: range exceeds valid size");
@@ -144,63 +102,23 @@ public:
     return {m_ptr + offset, count};
   }
 
-  /**
-   * @brief 获取只读指针
-   *
-   * 便捷方法，等价于 readSpan().data()
-   */
   const T *readPtr() const { return m_ptr; }
 
-  // ==========================================================================
-  // 写入访问 API（用于 Kernel 输出）
-  // ==========================================================================
   /**
-   * @brief 准备写入，获取可写视图
+   * @brief Reserve `count` output elements and mark them as the valid range.
    *
-   * 此方法会：
-   * 1. 确保容量足够（必要时扩容）
-   * 2. 立即将 size 设置为 count
-   *
-   * 调用者承诺会写满 count 个元素。
-   *
-   * @code
-   * auto output = buffer.writeSpan(numElements);
-   * myKernel<<<...>>>(input, output.data(), output.size());
-   * // 无需手动设置 size
-   * @endcode
-   *
-   * @param count 预期写入的元素数量
-   * @param stream 用于可能的内存操作的 CUDA stream
+   * Existing data may be discarded if growth reallocates the buffer.
    */
   DeviceWriteSpan<T> writeSpan(size_t count, cudaStream_t stream = 0) {
     prepareForWrite(count, stream);
     return {m_ptr, count};
   }
 
-  /**
-   * @brief 准备写入，获取可写指针
-   *
-   * 等价于 writeSpan(count).data()，但返回裸指针。
-   * size 会立即更新为 count。
-   *
-   * @param count 预期写入的元素数量
-   * @param stream 用于可能的内存操作的 CUDA stream
-   */
   T *writePtr(size_t count, cudaStream_t stream = 0) {
     prepareForWrite(count, stream);
     return m_ptr;
   }
 
-  /**
-   * @brief 准备在指定偏移处写入
-   *
-   * 用于需要在特定位置写入的场景。
-   * 会确保容量足够，并更新 size 为 offset + count。
-   *
-   * @param offset 写入的起始偏移量（元素数）
-   * @param count 写入的元素数量
-   * @param stream CUDA stream
-   */
   DeviceWriteSpan<T> writeSpanAt(size_t offset, size_t count,
                                  cudaStream_t stream = 0) {
     size_t required_size = offset + count;
@@ -211,35 +129,11 @@ public:
     return {m_ptr + offset, count};
   }
 
-  // ==========================================================================
-  // 追加写入 API
-  // ==========================================================================
-  /**
-   * @brief 在现有数据末尾追加写入
-   *
-   * 返回从当前 size 位置开始的可写视图。
-   * size 会更新为原 size + count。
-   *
-   * @code
-   * // 第一批数据
-   * buffer.writeSpan(100);
-   * kernel1<<<...>>>(buffer.writePtr(100));
-   *
-   * // 追加更多数据
-   * auto appendView = buffer.appendSpan(50);
-   * kernel2<<<...>>>(appendView.data(), appendView.size());
-   * // buffer.size() 现在是 150
-   * @endcode
-   *
-   * @param count 追加的元素数量
-   * @param stream CUDA stream
-   */
   DeviceWriteSpan<T> appendSpan(size_t count, cudaStream_t stream = 0) {
     size_t offset = m_size;
     size_t new_size = m_size + count;
 
     if (new_size > m_capacity) {
-      // 扩容策略：至少翻倍或满足需求
       size_t new_capacity = std::max(m_capacity * 2, new_size);
       reallocate(new_capacity, true, stream);
     }
@@ -248,39 +142,19 @@ public:
     return {m_ptr + offset, count};
   }
 
-  /**
-   * @brief 追加写入，返回裸指针
-   */
   T *appendPtr(size_t count, cudaStream_t stream = 0) {
     return appendSpan(count, stream).ptr;
   }
 
-  // ==========================================================================
-  // 不安全/低级访问（用于复杂场景）
-  // ==========================================================================
   /**
-   * @brief 获取裸指针（不安全）
+   * @brief Return the allocation without changing its valid size.
    *
-   * @warning 此方法不会自动更新 size。
-   * 如果通过此指针写入了超过当前 size 的数据，
-   * 必须调用 unsafeSetSize() 手动更新。
-   *
-   * 适用场景：
-   * - 条件写入（实际写入量在运行时确定）
-   * - 多次部分写入
-   * - 与旧代码集成
+   * A caller writing beyond `size()` must subsequently call
+   * `unsafeSetSize()` before exposing the data.
    */
   T *unsafePtr() { return m_ptr; }
   const T *unsafePtr() const { return m_ptr; }
 
-  /**
-   * @brief 手动设置有效大小（不安全）
-   *
-   * 仅在使用 unsafePtr() 后需要更新 size 时使用。
-   *
-   * @param new_size 新的有效元素数量
-   * @throw std::length_error 如果 new_size > capacity
-   */
   void unsafeSetSize(size_t new_size) {
     if (new_size > m_capacity) {
       throw std::length_error(
@@ -289,14 +163,6 @@ public:
     m_size = new_size;
   }
 
-  // ==========================================================================
-  // 内存管理
-  // ==========================================================================
-  /**
-   * @brief 预留容量
-   *
-   * 确保容量至少为 newCapacity，不改变 size。
-   */
   void reserve(size_t new_capacity, cudaStream_t stream = 0) {
     if (new_capacity <= m_capacity) {
       return;
@@ -304,13 +170,6 @@ public:
     reallocate(new_capacity, true, stream);
   }
 
-  /**
-   * @brief 调整大小
-   *
-   * @param new_size 新的元素数量
-   * @param preserveData 是否保留现有数据
-   * @param stream CUDA stream
-   */
   void resize(size_t new_size, bool preserve_data = true,
               cudaStream_t stream = 0) {
     if (new_size == m_size) {
@@ -331,14 +190,8 @@ public:
     m_size = new_size;
   }
 
-  /**
-   * @brief 清空数据（不释放内存）
-   */
   void clear() { m_size = 0; }
 
-  /**
-   * @brief 释放多余内存，使 capacity == size
-   */
   void shrinkToFit(cudaStream_t stream = 0) {
     if (m_capacity == m_size) {
       return;
@@ -360,9 +213,6 @@ public:
     m_capacity = m_size;
   }
 
-  /**
-   * @brief 完全重置，释放所有内存
-   */
   void reset() {
     freeMemory();
     m_size = 0;
@@ -375,21 +225,12 @@ public:
     std::swap(m_capacity, other.m_capacity);
   }
 
-  // ==========================================================================
-  // GPU 内存操作
-  // ==========================================================================
-  /**
-   * @brief 将有效数据区域清零
-   */
   void clearAsync(int byte_value = 0, cudaStream_t stream = 0) {
     if (m_size == 0 || !m_ptr)
       return;
     CHECK_CUDA_ERROR(cudaMemsetAsync(m_ptr, byte_value, bytes(), stream));
   }
 
-  /**
-   * @brief 清零指定范围
-   */
   void clearRangeAsync(size_t offset, size_t count, int byte_value = 0,
                        cudaStream_t stream = 0) {
     if (count == 0)
@@ -401,16 +242,7 @@ public:
         cudaMemsetAsync(m_ptr + offset, byte_value, count * sizeof(T), stream));
   }
 
-  // ==========================================================================
-  // Host <-> Device 数据传输
-  // ==========================================================================
-  // -------------------- Host -> Device (初始化/覆盖) --------------------
 
-  /**
-   * @brief 从 host 数据初始化 buffer
-   *
-   * 完全覆盖 buffer 内容，size 设置为 count。
-   */
   void initFromHost(const T *src_ptr, size_t count, cudaStream_t stream = 0) {
     if (count == 0) {
       m_size = 0;
@@ -434,16 +266,7 @@ public:
     initFromHost(src.readPtr(), src.size(), stream);
   }
 
-  // -------------------- Host -> Device (写入到指定位置) --------------------
 
-  /**
-   * @brief 从 host 写入到指定位置
-   *
-   * @param srcPtr 源数据指针
-   * @param dstOffset 目标偏移量（元素数）
-   * @param count 元素数量
-   * @param stream CUDA stream
-   */
   void writeFromHost(const T *src_ptr, size_t dst_offset, size_t count,
                      cudaStream_t stream = 0) {
     if (count == 0)
@@ -461,11 +284,8 @@ public:
     m_size = std::max(m_size, required_size);
   }
 
-  // -------------------- Device -> Host --------------------
+  // Device-to-host transfers enqueue on `stream` unless stated otherwise.
 
-  /**
-   * @brief 读取所有有效数据到 host
-   */
   void readToHost(T *dst_ptr, cudaStream_t stream = 0) const {
     if (m_size == 0)
       return;
@@ -473,9 +293,6 @@ public:
                                      cudaMemcpyDeviceToHost, stream));
   }
 
-  /**
-   * @brief 读取指定范围到 host
-   */
   void readToHost(T *dst_ptr, size_t src_offset, size_t count,
                   cudaStream_t stream = 0) const {
     if (count == 0)
@@ -488,9 +305,6 @@ public:
                                      stream));
   }
 
-  /**
-   * @brief 读取到 vector（同步操作）
-   */
   std::vector<T> toVector(cudaStream_t stream = 0) const {
     std::vector<T> result(m_size);
     if (m_size > 0) {
@@ -500,11 +314,6 @@ public:
     return result;
   }
 
-  /**
-   * @brief 读取到 CudaHostBuffer
-   *
-   * 会调整目标 buffer 的 size 以匹配源数据。
-   */
   void readToHost(CudaHostBuffer<T> &dst, cudaStream_t stream = 0) const {
     if (m_size == 0) {
       dst.clear();
@@ -518,11 +327,8 @@ public:
     readToHost(dst.writePtr(m_size), stream);
   }
 
-  // -------------------- Device -> Device --------------------
+  // Device-to-device transfers preserve source data and update destination size.
 
-  /**
-   * @brief 从另一个 buffer 初始化
-   */
   void initFromDevice(const CudaDeviceBuffer<T> &src, cudaStream_t stream = 0) {
     if (src.empty()) {
       m_size = 0;
@@ -538,9 +344,6 @@ public:
     m_size = src.size();
   }
 
-  /**
-   * @brief 从另一个 buffer 的指定范围拷贝
-   */
   void writeFromDevice(const CudaDeviceBuffer<T> &src, size_t src_offset,
                        size_t dst_offset, size_t count,
                        cudaStream_t stream = 0) {
@@ -566,7 +369,8 @@ public:
 private:
   void prepareForWrite(size_t count, cudaStream_t stream) {
     if (count > m_capacity) {
-      reallocate(count, false, stream); // 写入操作不需要保留旧数据
+      // The caller will overwrite the entire valid range.
+      reallocate(count, false, stream);
     }
     m_size = count;
   }
@@ -600,7 +404,7 @@ private:
   T *m_ptr;
 };
 
-// ADL swap
+// Enables unqualified `swap` without exposing allocation details.
 template <typename T>
 void swap(CudaDeviceBuffer<T> &a, CudaDeviceBuffer<T> &b) noexcept {
   a.swap(b);

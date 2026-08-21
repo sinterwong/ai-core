@@ -1,13 +1,3 @@
-/**
- * @file test_ocr_det.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-22
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/i_infer_engine.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"

@@ -1,13 +1,3 @@
-/**
- * @file frame_with_mask_prep.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-31
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "frame_with_mask_prep.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/logger.hpp"

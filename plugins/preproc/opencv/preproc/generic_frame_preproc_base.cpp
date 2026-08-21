@@ -1,13 +1,3 @@
-/**
- * @file generic_frame_preproc_base.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2026-07-17
- *
- * @copyright Copyright (c) 2026
- *
- */
 #include "generic_frame_preproc_base.hpp"
 #include "ai_core/logger.hpp"
 

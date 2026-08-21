@@ -1,13 +1,3 @@
-/**
- * @file ncnn_infer.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-01-17
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #ifndef AI_CORE_NCNN_INFERENCE_HPP
 #define AI_CORE_NCNN_INFERENCE_HPP
@@ -53,7 +43,6 @@ protected:
   ncnn::Net m_net;
   ncnn::PoolAllocator m_blobPoolAllocator;
   ncnn::PoolAllocator m_workspacePoolAllocator;
-  // For manually managed memory if needed
   std::vector<void *> m_pAlignedBuffers;
 
   mutable std::mutex m_mtx;

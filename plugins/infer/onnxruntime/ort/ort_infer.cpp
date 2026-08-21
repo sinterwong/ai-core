@@ -1,13 +1,3 @@
-/**
- * @file ort_dnn_infer.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-01-18
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "ort_infer.hpp"
 #include "ai_core/logger.hpp"
@@ -123,12 +113,10 @@ InferErrorCode OrtAlgoInference::initialize() {
     m_memoryInfo = std::make_unique<Ort::MemoryInfo>(
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault));
 
-    // Build ModelInfo and store names
     Ort::AllocatorWithDefaultOptions allocator;
     m_modelInfo = std::make_shared<ModelInfo>();
     m_modelInfo->name = m_params.name;
 
-    // Get input info
     size_t num_input_nodes = m_session->GetInputCount();
     m_inputNames.reserve(num_input_nodes);
     for (size_t i = 0; i < num_input_nodes; i++) {
@@ -140,7 +128,7 @@ InferErrorCode OrtAlgoInference::initialize() {
 
       ModelInfo::TensorInfo ti;
       ti.name = input_name.get();
-      // This will correctly have -1 for dynamic dims
+      // Preserve negative dimensions so callers can identify dynamic axes.
       ti.shape = tensor_info.GetShape();
       ti.data_type = ortDataTypeToAiCore(tensor_info.GetElementType());
 
@@ -156,7 +144,6 @@ InferErrorCode OrtAlgoInference::initialize() {
       m_modelInfo->inputs.push_back(std::move(ti));
     }
 
-    // Get output info
     size_t num_output_nodes = m_session->GetOutputCount();
     m_outputNames.reserve(num_output_nodes);
     for (size_t i = 0; i < num_output_nodes; i++) {

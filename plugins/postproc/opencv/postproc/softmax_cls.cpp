@@ -1,13 +1,3 @@
-/**
- * @file softmax_cls.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-01-19
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "softmax_cls.hpp"
 #include "ai_core/logger.hpp"
 #include <opencv2/core.hpp>

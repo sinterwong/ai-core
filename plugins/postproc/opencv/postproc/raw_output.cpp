@@ -1,13 +1,3 @@
-/**
- * @file raw_output.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-02-15
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "raw_output.hpp"
 #include "ai_core/logger.hpp"

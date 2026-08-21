@@ -1,13 +1,3 @@
-/**
- * @file frame_with_mask_prep.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-31
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_PREPROCESS_SINGLE_FRAME_WITH_MASK_INPUT_HPP
 #define AI_CORE_PREPROCESS_SINGLE_FRAME_WITH_MASK_INPUT_HPP
 

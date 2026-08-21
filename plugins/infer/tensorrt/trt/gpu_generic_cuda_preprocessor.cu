@@ -1,13 +1,3 @@
-/**
- * @file gpu_generic_cuda_preprocessor.cu
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief GPU-accelerated frame preprocessor implementation
- * @version 0.2
- * @date 2025-07-14
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/logger.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "cuda_stream.cuh"
@@ -36,10 +26,6 @@ inline size_t viewByteSize(const ImageView &image) {
 }
 } // namespace
 
-// ===========================================================================
-// CudaStream Implementation
-// ===========================================================================
-
 void GpuGenericCudaPreprocessor::CachedResources::reset() {
   d_mean.reset();
   d_std.reset();
@@ -61,16 +47,11 @@ void GpuGenericCudaPreprocessor::CachedResources::reset() {
   d_pad_xs.reset();
 }
 
-// ===========================================================================
-// GpuGenericCudaPreprocessor Implementation
-// ===========================================================================
-
 GpuGenericCudaPreprocessor::GpuGenericCudaPreprocessor()
     : GpuGenericCudaPreprocessor(Config::defaults()) {}
 
 GpuGenericCudaPreprocessor::GpuGenericCudaPreprocessor(const Config &config)
     : m_config(config) {
-  // Only create stream for sequential mode
   if (!config.enable_parallel) {
     m_stream = std::make_unique<CudaStream>(
         config.use_high_priority_stream ? CudaStream::Priority::High
@@ -169,10 +150,6 @@ void GpuGenericCudaPreprocessor::validatePreprocessArgs(
   }
 }
 
-// ===========================================================================
-// Public Interface - Dispatch to appropriate implementation
-// ===========================================================================
-
 TypedBuffer
 GpuGenericCudaPreprocessor::process(const FramePreprocessArg &args,
                                     const FrameInput &input,
@@ -193,10 +170,6 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcess(
     return batchProcessSequential(args, inputs, runtime_args);
   }
 }
-
-// ===========================================================================
-// Sequential Mode - Helper Functions
-// ===========================================================================
 
 void GpuGenericCudaPreprocessor::updateParameterBuffers(
     const FramePreprocessArg &args, cudaStream_t stream) const {
@@ -256,10 +229,6 @@ void GpuGenericCudaPreprocessor::ensureWorkingBufferCapacity(
   }
 }
 
-// ===========================================================================
-// Sequential Mode Implementation
-// ===========================================================================
-
 TypedBuffer GpuGenericCudaPreprocessor::processSequential(
     const FramePreprocessArg &args, const FrameInput &input,
     FrameTransformContext &runtime_args) const {
@@ -269,16 +238,13 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
   requirePackedView(input.image);
   validatePreprocessArgs(args, input.image.channels());
 
-  // Lock for thread safety
   std::lock_guard<std::mutex> lock(m_mutex);
 
   cudaStream_t stream = m_stream->get();
 
-  // Update cached parameters if changed
   updateParameterBuffers(args, stream);
   ensureWorkingBufferCapacity(args, 1, stream);
 
-  // Set ROI
   runtime_args.roi =
       input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
   runtime_args.origin_shape = {input.image.width, input.image.height,
@@ -296,7 +262,7 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
   int src_w = roi.width > 0 ? roi.width : image.width;
   int src_c = image.channels();
 
-  // Upload input image using cached buffer (avoids alloc/free per call)
+  // Reuse upload storage to avoid a device allocation on every call.
   size_t input_image_size = viewByteSize(image);
   if (m_cache.d_input_image.capacity() < input_image_size) {
     m_cache.d_input_image.reserve(input_image_size, stream);
@@ -361,9 +327,8 @@ TypedBuffer GpuGenericCudaPreprocessor::processSequential(
                                      cudaMemcpyDeviceToDevice, stream));
   }
 
-  // Synchronize to ensure all operations complete before mutex is released.
-  // This prevents race conditions when another thread acquires the lock and
-  // potentially reallocates cached buffers (via updateParameterBuffers).
+  // Cached buffers may be reallocated by the next lock holder, so finish all
+  // work that references them before releasing the mutex.
   CHECK_CUDA_ERROR(cudaDeviceSynchronize());
 
   if (args.output_location == BufferLocation::GpuDevice) {
@@ -400,7 +365,6 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
     }
   }
 
-  // Lock for thread safety
   std::lock_guard<std::mutex> lock(m_mutex);
 
   cudaStream_t stream = m_stream->get();
@@ -410,7 +374,6 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
 
   runtime_args.resize(batch_size);
 
-  // Ensure we have enough cached input image buffers
   if (m_cache.d_batch_input_images.size() < batch_size) {
     m_cache.d_batch_input_images.resize(batch_size);
   }
@@ -439,7 +402,6 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
                                std::to_string(i));
     }
 
-    // Use cached buffer, expand if needed
     size_t image_size = viewByteSize(input.image);
     if (m_cache.d_batch_input_images[i].capacity() < image_size) {
       m_cache.d_batch_input_images[i].reserve(image_size, stream);
@@ -538,9 +500,8 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
                                      cudaMemcpyDeviceToDevice, stream));
   }
 
-  // Synchronize to ensure all operations complete before mutex is released.
-  // This prevents race conditions when another thread acquires the lock and
-  // potentially reallocates cached buffers (via updateParameterBuffers).
+  // Cached buffers may be reallocated by the next lock holder, so finish all
+  // work that references them before releasing the mutex.
   CHECK_CUDA_ERROR(cudaDeviceSynchronize());
 
   if (args.output_location == BufferLocation::GpuDevice) {
@@ -554,10 +515,6 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessSequential(
   }
 }
 
-// ===========================================================================
-// Parallel Mode Implementation (no caching, each call independent)
-// ===========================================================================
-
 TypedBuffer GpuGenericCudaPreprocessor::processParallel(
     const FramePreprocessArg &args, const FrameInput &input,
     FrameTransformContext &runtime_args) const {
@@ -567,11 +524,9 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
   requirePackedView(input.image);
   validatePreprocessArgs(args, input.image.channels());
 
-  // Use default stream (nullptr) for parallel mode
-  // Each call is independent, CUDA handles synchronization
+  // Independent allocations let concurrent calls safely use the default stream.
   cudaStream_t stream = nullptr;
 
-  // Set ROI
   runtime_args.roi =
       input.roi.value_or(Rect{0, 0, input.image.width, input.image.height});
   runtime_args.origin_shape = {input.image.width, input.image.height,
@@ -589,7 +544,6 @@ TypedBuffer GpuGenericCudaPreprocessor::processParallel(
   int src_w = roi.width > 0 ? roi.width : image.width;
   int src_c = image.channels();
 
-  // Allocate all buffers fresh for this call
   cuda_utils::DeviceByteBuffer d_input_image(viewByteSize(image));
   CHECK_CUDA_ERROR(cudaMemcpy(d_input_image.unsafePtr(), image.data,
                               viewByteSize(image), cudaMemcpyHostToDevice));
@@ -702,7 +656,6 @@ TypedBuffer GpuGenericCudaPreprocessor::batchProcessParallel(
 
   runtime_args.resize(batch_size);
 
-  // Allocate all buffers fresh
   std::vector<cuda_utils::DeviceByteBuffer> d_input_images;
   d_input_images.reserve(batch_size);
 

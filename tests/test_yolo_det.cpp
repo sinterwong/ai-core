@@ -109,7 +109,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
   AlgoPreprocParams preproc_params;
   FramePreprocessArg frame_preprocess_arg;
   frame_preprocess_arg.model_input_shape = {640, 640, 3};
-  frame_preprocess_arg.data_type = config.preproc_data_type; // 使用 config
+  frame_preprocess_arg.data_type = config.preproc_data_type;
   frame_preprocess_arg.need_resize = true;
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};

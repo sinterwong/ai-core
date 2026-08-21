@@ -1,13 +1,3 @@
-/**
- * @file unet_dual_out_seg.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-31
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_INFERENCE_VISION_UNET_DAUL_OUTPUTS_HPP
 #define AI_CORE_INFERENCE_VISION_UNET_DAUL_OUTPUTS_HPP
 

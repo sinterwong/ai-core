@@ -121,10 +121,8 @@ TEST(AlgoInferenceTest, YoloDet) {
   checkResults(det_ret);
 }
 
-// v1.4 acceptance: the full inference chain must work from a raw pixel
-// pointer, without any OpenCV type crossing the public API. The image is
-// loaded with OpenCV only to obtain pixel bytes; the pipeline sees a plain
-// uint8_t buffer wrapped in an ImageView.
+// Protect the public boundary: OpenCV only supplies pixels, while the pipeline
+// receives a plain byte buffer through `ImageView`.
 TEST(AlgoInferenceTest, PurePointerPath) {
 #ifndef WITH_ORT
   GTEST_SKIP() << "Pure pointer path test uses the ORT backend.";

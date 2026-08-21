@@ -1,13 +1,3 @@
-/**
- * @file dnn_infer.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-09
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "trt_infer.hpp"
 #include "cuda_buffer_storage.hpp"
@@ -27,10 +17,6 @@ TrtAlgoInference::TrtAlgoInference(const AlgoConstructParams &params)
 }
 
 TrtAlgoInference::~TrtAlgoInference() { terminate(); }
-
-// ============================================================================
-// IInferEnginePlugin Implementation
-// ============================================================================
 
 InferErrorCode TrtAlgoInference::initialize() {
   std::lock_guard<std::mutex> lock(m_mutex);
@@ -149,10 +135,6 @@ InferErrorCode TrtAlgoInference::terminate() {
   return InferErrorCode::SUCCESS;
 }
 
-// ============================================================================
-// IAsyncInferEngine Implementation
-// ============================================================================
-
 std::shared_ptr<IExecutionContext> TrtAlgoInference::createExecutionContext() {
   if (!m_isInitialized) {
     throw std::runtime_error("Cannot create stream: engine not initialized");
@@ -182,7 +164,6 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
   ContextPackage ctx;
   ctx.context = createExecutionContext();
 
-  // Pre-allocate pinned input buffers based on max sizes
   for (const auto &input : m_modelInfo->inputs) {
     size_t size_bytes = m_tensorSizeMap.at(input.name);
     std::vector<int> shape_int(input.shape.begin(), input.shape.end());
@@ -191,7 +172,6 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
                    std::move(shape_int));
   }
 
-  // Pre-allocate pinned output buffers based on max sizes
   for (const auto &output : m_modelInfo->outputs) {
     size_t size_bytes = m_tensorSizeMap.at(output.name);
     std::vector<int> shape_int(output.shape.begin(), output.shape.end());
@@ -203,10 +183,6 @@ TrtAlgoInference::ContextPackage TrtAlgoInference::createContextPackage() {
   LOG_INFO_S << "Created stream context with pre-allocated buffers";
   return ctx;
 }
-
-// ============================================================================
-// Internal Implementation
-// ============================================================================
 
 void TrtAlgoInference::releaseResources() {
   LOG_INFO_S << "Releasing TensorRT resources for model: " << m_params.name;
@@ -337,7 +313,7 @@ InferErrorCode TrtAlgoInference::setupBindings() {
 
   const int32_t num_io_tensors = m_engine->getNbIOTensors();
 
-  // Set input shapes to MAX for buffer allocation
+  // Maximum profile shapes determine the capacity of reusable buffers.
   for (int32_t i = 0; i < num_io_tensors; ++i) {
     const char *name = m_engine->getIOTensorName(i);
     if (m_engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT) {
@@ -405,7 +381,6 @@ InferErrorCode TrtAlgoInference::setupBindings() {
       return InferErrorCode::InitBindingFailed;
     }
 
-    // Populate ModelInfo
     ModelInfo::TensorInfo tensor_info;
     tensor_info.name = name;
 

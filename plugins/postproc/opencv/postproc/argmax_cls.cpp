@@ -1,13 +1,3 @@
-/**
- * @file argmax_cls.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2026-08-02
- *
- * @copyright Copyright (c) 2026
- *
- */
 #include "argmax_cls.hpp"
 #include "ai_core/logger.hpp"
 #include <opencv2/core.hpp>

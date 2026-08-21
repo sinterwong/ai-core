@@ -1,13 +1,3 @@
-/**
- * @file yoloDet.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-01-19
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "nano_det.hpp"
 #include "ai_core/logger.hpp"
 #include "vision_util.hpp"
@@ -106,7 +96,7 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
   std::vector<BBox> results;
   for (int i = 0; i < raw_data.rows; ++i) {
     const float *data = raw_data.ptr<float>(i);
-    // 前 numClasses 个是分数
+    // NanoDet packs class scores before the four box coordinates.
     cv::Mat scores(1, num_classes, CV_32F, const_cast<float *>(data));
     cv::Point class_id_point;
     double score;
@@ -117,10 +107,8 @@ DetRet NanoDet::processSingle(const float *output_data, int num_anchors,
       result.score = score;
       result.label = class_id_point.x;
 
-      // 接下来 4 个是坐标 (x1, y1, x2, y2)
       const float *bbox_data = data + num_classes;
 
-      // 映射回原图坐标系
       const Point2f tl = prep_args.mapToSource({bbox_data[0], bbox_data[1]});
       const Point2f size = prep_args.mapSizeToSource(
           bbox_data[2] - bbox_data[0], bbox_data[3] - bbox_data[1]);

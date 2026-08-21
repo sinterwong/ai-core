@@ -1,23 +1,3 @@
-/**
- * @file async_pipeline_main.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief End-to-end async inference pipeline: the framework's performance
- * showcase. Demonstrates the supported path to concurrency —
- *
- *   AlgoInferEngine::getAsyncEngine()   (front door, no dynamic_cast)
- *     -> a pool of IExecutionContext    (one CUDA stream each)
- *     -> pinned host buffers            (async, overlappable H2D/D2H)
- *     -> CUDA Graph                     (amortized launch overhead)
- *     -> N worker threads pulling from a shared frame queue
- *
- * Each worker owns one execution context (contexts are NOT thread-safe) and
- * runs inferAsync + synchronize, so compute on different streams overlaps.
- *
- * @version 0.1
- * @date 2026-07-18
- *
- * @copyright Copyright (c) 2026
- */
 #include "ai_core/algo_types.hpp"
 #include "ai_core/infer_async.hpp"
 #include "ai_core/infer_config.hpp"

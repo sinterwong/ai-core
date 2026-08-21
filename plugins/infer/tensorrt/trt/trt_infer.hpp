@@ -1,13 +1,3 @@
-/**
- * @file trt_infer.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-09
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_TENSORRT_INFERENCE_HPP
 #define AI_CORE_TENSORRT_INFERENCE_HPP
 
@@ -28,7 +18,6 @@
 
 namespace ai_core::dnn {
 
-// Forward declaration
 class TrtInferStream;
 
 class TrtFrameworkLogger : public nvinfer1::ILogger {
@@ -58,98 +47,51 @@ public:
 };
 
 /**
- * @brief TensorRT-based inference engine with async capabilities
+ * @brief TensorRT backend with synchronous pooling and explicit async contexts.
  *
- * This class now extends IAsyncInferEngine to provide both synchronous
- * (via base class infer()) and asynchronous (via IExecutionContext) inference.
+ * Runtime, engine, and model metadata are shared. Each `TrtInferStream` owns a
+ * TensorRT execution context, CUDA stream, device buffers, pinned output
+ * buffers, and optional CUDA graph.
  *
- * Key Design Changes:
- * - Inherits IAsyncInferEngine instead of IInferEnginePlugin
- * - infer() uses inferWithoutGraph for backward compatibility (single-threaded
- * sync)
- * - createExecutionContext() creates independent TrtInferStream with isolated
- * resources
- * - CUDA Graph is only available through TrtInferStream::setGraphEnabled()
- *
- * Resource Ownership:
- * - Shared (owned by TrtAlgoInference):
- *   - IRuntime, ICudaEngine, ModelInfo
- * - Per-Stream (owned by TrtInferStream):
- *   - IExecutionContext, cudaStream_t, Device Buffers, CUDA Graph
- *
- * Thread Safety:
- * - infer(): Thread-safe AND concurrent — each call borrows an execution
- *   context from a pool and runs on its own CUDA stream, so N threads reach
- *   ~N-way parallelism instead of serializing on one mutex.
- * - createExecutionContext(): Thread-safe, returns independent stream
- * - Each TrtInferStream: NOT thread-safe, use one per thread
+ * @par Thread safety
+ * `infer()` borrows an execution context from a synchronized pool, so calls may
+ * execute concurrently. `createExecutionContext()` is also thread-safe. Each
+ * returned context remains single-owner and is not itself thread-safe.
  */
 class TrtAlgoInference : public IAsyncInferEngine {
 public:
   explicit TrtAlgoInference(const AlgoConstructParams &params);
   ~TrtAlgoInference() override;
 
-  // Non-copyable, non-movable
   TrtAlgoInference(const TrtAlgoInference &) = delete;
   TrtAlgoInference &operator=(const TrtAlgoInference &) = delete;
   TrtAlgoInference(TrtAlgoInference &&) = delete;
   TrtAlgoInference &operator=(TrtAlgoInference &&) = delete;
 
-  // ============================================================================
-  // IInferEnginePlugin Interface (Backward Compatible Sync Mode)
-  // ============================================================================
-
   InferErrorCode initialize() override;
 
   /**
-   * @brief Synchronous inference (backward compatible)
-   *
-   * Uses a dedicated default stream internally, always uses inferWithoutGraph.
-   * Thread-safe via internal mutex.
-   *
-   * @note For multi-threaded or high-performance scenarios, use
-   *       createExecutionContext() + IExecutionContext::inferAsync() instead.
+   * @brief Run synchronously on a context borrowed from the internal pool.
    */
   InferErrorCode infer(const TensorData &inputs, TensorData &outputs) override;
 
   const ModelInfo &getModelInfo() override;
   InferErrorCode terminate() override;
 
-  // ============================================================================
-  // IAsyncInferEngine Interface (New Async Capabilities)
-  // ============================================================================
-
   /**
-   * @brief Create an independent inference stream
-   *
-   * Each stream has its own:
-   * - cudaStream_t
-   * - IExecutionContext
-   * - Device buffers (managed by CudaDeviceBuffer)
-   * - Pinned output buffers (managed by CudaHostBuffer)
-   * - CUDA Graph resources (optional, via setGraphEnabled)
-   *
-   * @return std::shared_ptr<IExecutionContext> A new independent stream
-   * @throws std::runtime_error if engine not initialized
+   * @brief Create an independently buffered TensorRT execution context.
+   * @throws std::runtime_error If the engine is not initialized.
    */
   std::shared_ptr<IExecutionContext> createExecutionContext() override;
 
   /**
-   * @brief Allocate pinned host memory
-   *
-   * Uses cudaMallocHost internally. The returned TypedBuffer has:
-   * - location = BufferLocation::CPU
-   * - memoryType = BufferMemoryType::Pinned
-   *
-   * @param type Data type
-   * @param sizeBytes Size in bytes
-   * @return TypedBuffer backed by pinned memory
+   * @brief Allocate owned CUDA-pinned host memory.
    */
   TypedBuffer allocateAcceleratorBuffer(DataType type,
                                         size_t size_bytes) override;
 
   /**
-   * @brief Create stream with pre-allocated pinned I/O buffers
+   * @brief Create a context with pinned buffers sized from model metadata.
    *
    * Allocates pinned buffers for all model inputs/outputs based on
    * max shapes from optimization profile.
@@ -159,9 +101,7 @@ public:
 private:
   friend class TrtInferStream;
 
-  // ============================================================================
-  // Initialization Helpers
-  // ============================================================================
+  // Initialization helpers
 
   static int64_t calculateVolume(const nvinfer1::Dims &dims);
   InferErrorCode loadEngineFromPath(const std::string &path,
@@ -170,15 +110,7 @@ private:
   InferErrorCode setupPinnedOutputBuffers();
   void releaseResources();
 
-  // ============================================================================
-  // Sync Mode Inference (for backward compatible infer())
-  // ============================================================================
-
-  /**
-   * @brief Standard sync inference without CUDA Graph
-   *
-   * Used by infer() for backward compatibility.
-   */
+  /** Execute on the legacy default context without CUDA graph capture. */
   InferErrorCode inferWithoutGraph(const TensorData &inputs,
                                    TensorData &outputs);
 
@@ -186,59 +118,39 @@ private:
   void copyInputsToDevice(const TensorData &inputs);
   void copyOutputsToHost(TensorData &outputs);
 
-  // ============================================================================
-  // Member Variables - Shared Resources
-  // ============================================================================
-
   AlgoInferParams m_params;
   TrtFrameworkLogger m_logger;
 
-  // TRT core components (shared across all streams)
+  // Streams retain shared engine ownership so their contexts cannot outlive it.
   std::unique_ptr<nvinfer1::IRuntime> m_runtime;
-  // Use shared_ptr so that streams can keep the engine alive
-  // This prevents "destroying engine before context" errors
   std::shared_ptr<nvinfer1::ICudaEngine> m_engine;
 
-  // Model metadata (shared, read-only after init)
+  // Shared metadata is immutable after initialization.
   std::shared_ptr<ModelInfo> m_modelInfo;
 
-  // Binding metadata (shared, read-only after init)
   std::unordered_set<std::string> m_dynamicInputTensorNames;
   std::unordered_map<std::string, size_t> m_tensorSizeMap;
   bool m_allInputsStatic{true};
 
   bool m_isInitialized{false};
 
-  // ============================================================================
-  // Member Variables - Default Stream Resources (for sync infer())
-  // ============================================================================
-
-  // Execution context for default sync stream
+  // Default-context resources used by `inferWithoutGraph()`.
   std::unique_ptr<nvinfer1::IExecutionContext> m_context;
-
-  // CUDA stream for default sync path
   cudaStream_t m_stream{nullptr};
-
-  // Device buffers for default sync path
   std::vector<cuda_utils::DeviceByteBuffer> m_managedBuffers;
   std::unordered_map<std::string, void *> m_tensorAddressMap;
 
-  // Pinned output buffers for default sync path
   std::unordered_map<std::string, cuda_utils::CudaHostBuffer<uint8_t>>
       m_pinnedOutputBuffers;
 
-  // Cached input shapes (to avoid redundant setInputShape calls)
+  // Avoid redundant TensorRT shape updates on the default context.
   std::unordered_map<std::string, std::vector<int64_t>> m_cachedInputShapes;
 
   // Guards initialize()/terminate() lifecycle only.
   mutable std::mutex m_mutex;
 
-  // ============================================================================
-  // Execution-context pool (concurrent sync infer())
-  // ============================================================================
-
-  // Idle execution contexts available for borrowing. Grows lazily up to the
-  // number of concurrent infer() callers. Guarded by m_poolMutex.
+  // The idle pool grows lazily to the peak number of concurrent `infer()`
+  // callers and is guarded by `m_poolMutex`.
   std::mutex m_poolMutex;
   std::vector<std::shared_ptr<IExecutionContext>> m_idlePool;
 

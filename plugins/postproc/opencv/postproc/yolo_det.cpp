@@ -1,13 +1,3 @@
-/**
- * @file yoloDet.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-01-19
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "yolo_det.hpp"
 #include "ai_core/logger.hpp"
 #include "vision_util.hpp"
@@ -20,7 +10,6 @@ bool Yolov11Det::processTyped(const TensorData &model_output,
                               AlgoOutput &algo_output) const {
   const auto &outputs = model_output;
 
-  // just one output
   if (outputs.size() != 1) {
     LOG_ERROR_S << "AnchorDetParams(Yolov11Det) unexpected size of outputs "
                 << outputs.size();

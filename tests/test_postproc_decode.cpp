@@ -1,8 +1,3 @@
-/**
- * @file test_postproc_decode.cpp
- * @brief Unit tests for every postprocessor's decode logic, driven by
- * synthetic tensors through the AlgoPostproc facade. No model assets.
- */
 #include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/algo_types.hpp"
 #include "gtest/gtest.h"
@@ -80,9 +75,7 @@ std::shared_ptr<RuntimeContext> identityContext(int w, int h) {
   return ctx;
 }
 
-// ============================================================================
 // SoftmaxCls
-// ============================================================================
 
 TEST(SoftmaxClsDecode, PicksArgmaxWithSoftmaxScore) {
   TensorData model_output;
@@ -180,9 +173,7 @@ TEST(SoftmaxClsDecode, ProbsEmptyByDefault) {
   EXPECT_TRUE(output.getParams<ClsRet>()->probs.empty());
 }
 
-// ============================================================================
 // ArgmaxCls
-// ============================================================================
 
 // For models that bake the softmax into the graph, the score must survive
 // untouched. Running SoftmaxCls on the same input would keep the label but
@@ -272,9 +263,7 @@ TEST(ArgmaxClsDecode, BatchDecodesEachRow) {
             (std::vector<float>{0.3f, 0.7f}));
 }
 
-// ============================================================================
 // FprCls
-// ============================================================================
 
 TEST(FprClsDecode, ArgmaxOnScoresAndBirads) {
   TensorData model_output;
@@ -303,9 +292,7 @@ TEST(FprClsDecode, ArgmaxOnScoresAndBirads) {
   EXPECT_NEAR(fpr->score_probs[2], 0.2f, 1e-6);
 }
 
-// ============================================================================
 // OCRReco (CTC collapse)
-// ============================================================================
 
 TEST(OcrRecoDecode, CtcRemovesBlanksAndRepeats) {
   TensorData model_output;
@@ -331,9 +318,7 @@ TEST(OcrRecoDecode, CtcRemovesBlanksAndRepeats) {
   EXPECT_EQ(ocr->outputs, (std::vector<int64_t>{4, 7, 9}));
 }
 
-// ============================================================================
 // RawModelOutput passthrough
-// ============================================================================
 
 TEST(RawOutputDecode, PassesTensorsThrough) {
   TensorData model_output;
@@ -389,9 +374,7 @@ TEST(RawOutputDecode, BatchIsUnsupported) {
             InferErrorCode::InferOutputError);
 }
 
-// ============================================================================
 // Yolov11Det
-// ============================================================================
 
 TEST(YoloDetDecode, DecodesSingleStrongBox) {
   // Layout [1, 4 + nc, anchors], attribute-major: 2 classes, 3 anchors.
@@ -575,9 +558,7 @@ TEST(YoloDetDecode, MissingTransformContextFails) {
             InferErrorCode::InferInvalidInput);
 }
 
-// ============================================================================
 // NanoDet
-// ============================================================================
 
 TEST(NanoDetDecode, DecodesCornerBoxLayout) {
   // Layout [1, anchors, nc + 4], anchor-major rows: [scores..., x1,y1,x2,y2]
@@ -615,9 +596,7 @@ TEST(NanoDetDecode, DecodesCornerBoxLayout) {
   EXPECT_EQ(det->bboxes[0].rect, (Rect{10, 20, 100, 50}));
 }
 
-// ============================================================================
 // RTMDet
-// ============================================================================
 
 TEST(RtmDetDecode, DecodesSplitDetClsTensors) {
   const int nc = 2, anchors = 2;
@@ -660,9 +639,7 @@ TEST(RtmDetDecode, DecodesSplitDetClsTensors) {
   EXPECT_EQ(det->bboxes[0].rect, (Rect{50, 60, 100, 60}));
 }
 
-// ============================================================================
 // SemanticSeg
-// ============================================================================
 
 TEST(SemanticSegDecode, ExtractsContourForConfidentClass) {
   // [1, 2, 4, 4]: class 1 confident in the lower-right 2x2 block.
@@ -710,9 +687,7 @@ TEST(SemanticSegDecode, ExtractsContourForConfidentClass) {
   }
 }
 
-// ============================================================================
 // UNetDualOutputSeg
-// ============================================================================
 
 TEST(UnetDualSegDecode, ReturnsOwningTensors) {
   // Shapes are {1, W, H}; the decoder reads height = shape[2].
@@ -753,9 +728,7 @@ TEST(UnetDualSegDecode, ReturnsOwningTensors) {
   }
 }
 
-// ============================================================================
 // Batch decode paths
-// ============================================================================
 
 TEST(FprClsDecode, BatchDecodesEachRow) {
   TensorData model_output;
