@@ -1,6 +1,6 @@
 
 #include "trt_infer_stream.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "trt_infer.hpp"
 #include "trt_utils.hpp"
 #include <cstring>

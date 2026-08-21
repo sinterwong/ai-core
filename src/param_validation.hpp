@@ -3,7 +3,7 @@
 
 #include "ai_core/algo_types.hpp"
 #include "ai_core/error_code.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <algorithm>
 
 namespace ai_core::dnn {

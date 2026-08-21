@@ -1,5 +1,5 @@
 #include "trt_utils.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 
 namespace ai_core::trt_utils {
 

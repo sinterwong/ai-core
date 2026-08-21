@@ -11,6 +11,7 @@ add_library(ai_core::plugin_onnxruntime ALIAS ai_core_plugin_onnxruntime)
 target_compile_features(ai_core_plugin_onnxruntime PRIVATE cxx_std_20)
 target_include_directories(ai_core_plugin_onnxruntime PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${AI_CORE_SOURCE_DIR}/src
 )
 target_link_libraries(ai_core_plugin_onnxruntime PRIVATE
     ai_core::ai_core

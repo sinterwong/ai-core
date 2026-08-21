@@ -1,5 +1,5 @@
 #include "algo_preproc_impl.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
 #include "param_validation.hpp"
 

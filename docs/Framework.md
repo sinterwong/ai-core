@@ -190,7 +190,7 @@ mgr.infer("det", input, output);
 
 | 类型 | 契约 |
 |---|---|
-| `Logger` | 完全并发安全（日志宏可任意线程调用）；重配置建议启动期做 |
+| `Runtime` 日志配置 | 完全并发安全；配置作用于进程内 core 与官方插件，重配置建议启动期做 |
 | `AlgoManager` | 完全并发安全（`shared_mutex`）：注册/查找/推理可并发 |
 | `AlgoInference` / `AlgoInferEngine` / `AlgoPreproc` / `AlgoPostproc` | 单实例 `infer`/`process` 并发安全（调用私有 scratch + 后端自锁）；`initialize`/`terminate` 需独占 |
 | 推理后端并行度 | ORT：`Session::Run` 并发；NCNN：内部串行；TensorRT：通过 execution context pool 并发 |

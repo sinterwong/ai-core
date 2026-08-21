@@ -1,7 +1,8 @@
 #include "generic_image_infer.hpp"
 #include "ai_core/config/algo_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
+
+#include <iostream>
 
 namespace ai_core::example {
 GenericImageInfer::GenericImageInfer(const std::string &config_path) {
@@ -12,7 +13,7 @@ GenericImageInfer::GenericImageInfer(const std::string &config_path) {
 
   if (mEngine->initialize(mParams.preproc_params, mParams.postproc_params) !=
       InferErrorCode::SUCCESS) {
-    LOG_ERROR_S << "engine initialize failed";
+    std::cerr << "engine initialize failed";
     throw std::runtime_error("Detector engine initialize failed");
   }
 }
@@ -20,7 +21,7 @@ GenericImageInfer::GenericImageInfer(const std::string &config_path) {
 AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
                                          const cv::Rect &roi) {
   if (image.empty()) {
-    LOG_ERROR_S << "Input image is empty";
+    std::cerr << "Input image is empty";
     return {};
   }
 
@@ -37,7 +38,7 @@ AlgoOutput GenericImageInfer::operator()(const cv::Mat &image,
 
   AlgoOutput algo_output;
   if (mEngine->infer(algo_input, algo_output) != InferErrorCode::SUCCESS) {
-    LOG_ERROR_S << "engine infer failed";
+    std::cerr << "engine infer failed";
     return {};
   }
 
@@ -48,18 +49,18 @@ std::vector<ai_core::AlgoOutput>
 GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
                               const std::vector<cv::Rect> &rois) {
   if (images.empty()) {
-    LOG_ERROR_S << "Input images vector is empty";
+    std::cerr << "Input images vector is empty";
     return {};
   }
   if (images.size() != rois.size()) {
-    LOG_ERROR_S << "Input images and rois vectors must have the same size";
+    std::cerr << "Input images and rois vectors must have the same size";
     return {};
   }
 
   std::vector<AlgoInput> algo_inputs(images.size());
   for (size_t i = 0; i < images.size(); ++i) {
     if (images[i].empty()) {
-      LOG_WARNING_S << "Input image at index " << i << " is empty, skipping.";
+      std::cerr << "Input image at index " << i << " is empty, skipping.";
       continue;
     }
 
@@ -77,7 +78,7 @@ GenericImageInfer::operator()(const std::vector<cv::Mat> &images,
   std::vector<AlgoOutput> algo_outputs;
   if (mEngine->batchInfer(algo_inputs, algo_outputs) !=
       InferErrorCode::SUCCESS) {
-    LOG_ERROR_S << "engine batch infer failed";
+    std::cerr << "engine batch infer failed";
     return {};
   }
   return algo_outputs;

@@ -1,6 +1,6 @@
 #include "algo_infer_engine_impl.hpp"
 #include "ai_core/algo_types.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
 
 namespace ai_core::dnn {

@@ -57,9 +57,12 @@ jobs:
       - name: Verify installed package consumer
         run: |
           cmake --install build/core --prefix install/core
+          test ! -e install/core/include/ai_core/logger.hpp
+          test -e install/core/include/ai_core/runtime.hpp
           cmake -S tests/package-consumer -B build/package-consumer -G Ninja \
             -DCMAKE_PREFIX_PATH=$PWD/install/core
           cmake --build build/package-consumer
+          build/package-consumer/ai_core_package_consumer
 
   component-tests:
     runs-on: ubuntu-24.04

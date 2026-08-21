@@ -12,6 +12,7 @@ add_library(ai_core::plugin_ncnn ALIAS ai_core_plugin_ncnn)
 target_compile_features(ai_core_plugin_ncnn PRIVATE cxx_std_20)
 target_include_directories(ai_core_plugin_ncnn PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${AI_CORE_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/plugins/common/include
 )
 target_link_libraries(ai_core_plugin_ncnn PRIVATE

@@ -1,5 +1,5 @@
 #include "softmax_cls.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <opencv2/core.hpp>
 #include <utility>
 

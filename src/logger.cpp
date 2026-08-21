@@ -1,4 +1,4 @@
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 
 #include <algorithm>
 #include <condition_variable>
@@ -263,14 +263,16 @@ public:
       writeFile(entry);
     }
 
+    std::vector<Logger::LogCallback> callback_snapshot;
     {
       std::lock_guard lock(callback_mutex);
-      for (const auto &cb : callbacks) {
-        try {
-          cb(entry);
-        } catch (...) {
-          // A user callback must not break other sinks or the worker thread.
-        }
+      callback_snapshot = callbacks;
+    }
+    for (const auto &cb : callback_snapshot) {
+      try {
+        cb(entry);
+      } catch (...) {
+        // A user callback must not break other sinks or the worker thread.
       }
     }
   }
@@ -711,14 +713,12 @@ void Logger::setPattern(const std::string &pattern) {
   m_impl->config.pattern = pattern;
 }
 
-void Logger::addCallback(LogCallback callback) {
-  std::lock_guard lock(m_impl->callback_mutex);
-  m_impl->callbacks.push_back(std::move(callback));
-}
-
-void Logger::clearCallbacks() noexcept {
+void Logger::setCallback(LogCallback callback) {
   std::lock_guard lock(m_impl->callback_mutex);
   m_impl->callbacks.clear();
+  if (callback) {
+    m_impl->callbacks.push_back(std::move(callback));
+  }
 }
 
 void Logger::log(LogLevel level, std::string_view message,
@@ -864,3 +864,34 @@ std::string hexDump(const void *data, size_t size, size_t bytes_per_line) {
 }
 
 } // namespace ai_core::logging
+
+namespace ai_core {
+
+void Runtime::configureLogging(const LoggingConfig &config) {
+  logging::Logger::instance().configure(config);
+}
+
+LoggingConfig Runtime::loggingConfig() {
+  return logging::Logger::instance().config();
+}
+
+void Runtime::setLogHandler(LogHandler handler) {
+  auto &logger = logging::Logger::instance();
+  if (!handler) {
+    logger.setCallback({});
+    return;
+  }
+
+  logger.setCallback(
+      [handler = std::move(handler)](const logging::LogEntry &entry) {
+        const LogRecord record{
+            entry.level,         entry.message,           entry.timestamp,
+            entry.location.file, entry.location.function, entry.location.line,
+            entry.thread_id,     entry.category};
+        handler(record);
+      });
+}
+
+void Runtime::flushLogs() { logging::Logger::instance().flush(); }
+
+} // namespace ai_core

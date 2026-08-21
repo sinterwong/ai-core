@@ -37,6 +37,9 @@
 
 **新增（只加不改）：**
 
+- **日志实现转为内部接口**：`logger.hpp` 与 `LOG_*` 宏不再安装；下游通过
+  `<ai_core/runtime.hpp>` 的 `Runtime::configureLogging()` 配置 core/官方插件日志，
+  通过 `setLogHandler()` 接入自己的日志后端，不依赖内部 Logger 单例。
 - **`AlgoOutput` variant 尾部加 `DataPacket`**：库外插件吐自有结果类型的正门（`packet.setParam("pose", PoseRet{...})`），不必改 ai-core 头文件、不必重编下游、不必借道 `RawModelOutput`/`TensorData`。
 - **`ArgmaxCls` 内置后处理**：给已归一化输出取 top-1、分数原样透传。ultralytics 的 `*-cls` 导出把 softmax 烘进了计算图，用 `SoftmaxCls` 会 softmax 两次——类别对、**置信度塌到 `1/nc` 地板值**，按置信度做阈值或表决的下游会中招。`SoftmaxCls` 的文档补上「期望 logits」这个前提。
 - **`ClsRet::probs` + `GenericPostParams::keep_class_probs`**：完整类别分布本来就在后处理里算出来了，开关打开就不丢（默认关，行为与之前完全一致）。滑窗表决类下游不必再对硬判决表决。

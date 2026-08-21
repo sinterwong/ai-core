@@ -502,14 +502,23 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc);
 
 ## 12. 日志
 
-`<ai_core/logger.hpp>` 提供流式和格式化两种用法：
+日志写入器与 `LOG_*` 宏是 core 和官方插件的内部接口，不再作为 SDK 头文件安装。
+下游通过高层运行时接口 `<ai_core/runtime.hpp>` 配置 ai-core 产生的诊断：
 
 ```cpp
-LOG_INFO_S << "load model: " << path;
-LOG_ERROR_FMT("infer failed, code = %d", static_cast<int>(code));
+#include <ai_core/runtime.hpp>
+
+ai_core::LoggingConfig logging;
+logging.min_level = ai_core::LogLevel::Info;
+logging.console_enabled = true;
+logging.file_enabled = false;
+ai_core::Runtime::configureLogging(logging);
 ```
 
-日志级别（`LogLevel`）：`Trace / Debug / Info / Warning / Error / Fatal / Off`。运行时通过 `ai_core::logging::Logger::instance().setLevel(...)` 调整。`LOG_*` 宏在编译期会按 `AI_CORE_LOG_LEVEL` 过滤，不会把禁用级别的字符串拼进二进制。
+日志级别为 `Trace / Debug / Info / Warning / Error / Fatal / Off`。配置是进程级的，
+应尽量在加载插件和创建流水线前完成。需要接入下游自己的日志后端时，使用
+`Runtime::setLogHandler()`；回调里的 `LogRecord` 字符串视图只在本次调用期间有效。
+`Runtime::flushLogs()` 可排空异步队列并刷新 sink。
 
 `to_string(InferErrorCode)`（`<ai_core/error_code.hpp>`）返回错误码的稳定可读名，`operator<<` 打印 `Name(number)`，日志/排错直接用。
 

@@ -1,4 +1,4 @@
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "cuda_buffer_storage.hpp"
 #include "cuda_stream.cuh"

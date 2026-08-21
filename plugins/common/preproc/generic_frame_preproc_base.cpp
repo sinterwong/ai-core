@@ -1,5 +1,5 @@
 #include "preproc/generic_frame_preproc_base.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 
 namespace ai_core::dnn {
 

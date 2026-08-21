@@ -1,6 +1,6 @@
 
 #include "ort_infer.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
 #include "crypto.hpp"
 #endif

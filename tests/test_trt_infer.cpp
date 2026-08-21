@@ -4,12 +4,13 @@
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
+#include "ai_core/runtime.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/cuda_generic_preprocess.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
+#include <iostream>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -26,11 +27,12 @@ using namespace ai_core::dnn;
 class TrtInferenceTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    ai_core::logging::Logger::instance().setLevel(
-        ai_core::logging::LogLevel::Trace);
-    ai_core::logging::Logger::instance().enableConsole(true);
-    ai_core::logging::Logger::instance().enableFile(false);
-    ai_core::logging::Logger::instance().enableColor(true);
+    LoggingConfig config;
+    config.min_level = LogLevel::Trace;
+    config.console_enabled = true;
+    config.file_enabled = false;
+    config.color_enabled = true;
+    Runtime::configureLogging(config);
 
     m_framePreproc = std::make_shared<CudaGenericPreprocess>();
     ASSERT_NE(m_framePreproc, nullptr);
@@ -493,7 +495,7 @@ TEST_F(TrtInferenceTest, PerformanceComparisonWithGraph) {
     double avg_ms =
         std::chrono::duration<double, std::milli>(end - start).count() /
         bench_iterations;
-    LOG_INFO_S << "Without CUDA Graph: " << avg_ms << " ms/inference";
+    std::clog << "Without CUDA Graph: " << avg_ms << " ms/inference";
   }
 
   // Benchmark with graph
@@ -517,7 +519,7 @@ TEST_F(TrtInferenceTest, PerformanceComparisonWithGraph) {
     double avg_ms =
         std::chrono::duration<double, std::milli>(end - start).count() /
         bench_iterations;
-    LOG_INFO_S << "With CUDA Graph: " << avg_ms << " ms/inference";
+    std::clog << "With CUDA Graph: " << avg_ms << " ms/inference";
   }
 
   engine->terminate();

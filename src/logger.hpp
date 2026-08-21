@@ -1,5 +1,9 @@
 #pragma once
 
+// Internal logging implementation shared by ai-core and maintained plugins.
+// Downstream code configures it through <ai_core/runtime.hpp>.
+#include "ai_core/runtime.hpp"
+
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -12,16 +16,8 @@
 
 namespace ai_core::logging {
 
-/** Severity ordered from most verbose to disabled. */
-enum class LogLevel : uint8_t {
-  Trace = 0,
-  Debug = 1,
-  Info = 2,
-  Warning = 3,
-  Error = 4,
-  Fatal = 5,
-  Off = 6
-};
+using ::ai_core::LogLevel;
+using LoggerConfig = ::ai_core::LoggingConfig;
 
 // Define before including this header to remove lower levels at compile time.
 #ifndef AI_CORE_LOG_LEVEL
@@ -53,37 +49,13 @@ struct LogEntry {
   std::chrono::system_clock::time_point timestamp;
   SourceLocation location;
   uint64_t thread_id = 0;
-  std::string_view
-      category; ///< Non-owning; the category must outlive this entry.
+  std::string category;
 
   LogEntry() noexcept = default;
 
   /** Capture the current timestamp and calling thread identifier. */
   LogEntry(LogLevel lvl, std::string msg, SourceLocation loc,
            std::string_view cat = {}) noexcept;
-};
-
-/** Process-wide sink, formatting, and asynchronous queue settings. */
-struct LoggerConfig {
-  LogLevel min_level = LogLevel::Debug;
-  bool console_enabled = true;
-  bool file_enabled = false;
-  bool color_enabled = true;
-  bool async_enabled = false;
-  bool show_thread_id = true;
-  bool show_source_location = true;
-  bool show_category = true;
-  bool json_output = false;
-
-  std::string file_path = "app.log";
-  size_t max_file_size = 10 * 1024 * 1024; ///< Rotation threshold in bytes.
-  int max_backup_count = 5;
-  size_t async_queue_size = 8192;  ///< Maximum queued entries in async mode.
-  size_t flush_interval_ms = 1000; ///< Periodic flush interval in milliseconds.
-
-  // Tokens: %T timestamp, %L level, %t thread, %s source, %c category,
-  // and %m message.
-  std::string pattern = "[%T] [%L] [%t] [%s] %m";
 };
 
 /**
@@ -121,9 +93,8 @@ public:
   void setFilePath(const std::string &path);
   void setPattern(const std::string &pattern);
 
-  /** Add a callback invoked for each accepted entry. */
-  void addCallback(LogCallback callback);
-  void clearCallbacks() noexcept;
+  /** Replace the callback invoked for each accepted entry. */
+  void setCallback(LogCallback callback);
 
   /** Emit one message; prefer the macros below when source capture is wanted.
    */

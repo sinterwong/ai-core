@@ -1,6 +1,6 @@
 
 #include "raw_output.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <opencv2/opencv.hpp>
 
 namespace ai_core::dnn {

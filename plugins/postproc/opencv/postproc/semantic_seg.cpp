@@ -1,5 +1,5 @@
 #include "semantic_seg.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "ai_core/postprocess_types.hpp"
 #include "vision_util.hpp"
 #include <opencv2/opencv.hpp>

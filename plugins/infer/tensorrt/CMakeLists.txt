@@ -34,6 +34,7 @@ target_compile_definitions(ai_core_plugin_tensorrt PRIVATE WITH_TRT=1)
 target_include_directories(ai_core_plugin_tensorrt PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/trt
+    ${AI_CORE_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/plugins/common/include
 )
 target_link_libraries(ai_core_plugin_tensorrt PRIVATE

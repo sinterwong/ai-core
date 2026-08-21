@@ -1,6 +1,5 @@
 #include "ai_core/algo_inference.hpp"
 #include "ai_core/config/algo_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
 #include "ai_core/plugin_manager.hpp"
 

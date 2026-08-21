@@ -23,6 +23,7 @@ add_library(ai_core::plugin_postproc_opencv ALIAS
 target_compile_features(ai_core_plugin_postproc_opencv PRIVATE cxx_std_20)
 target_include_directories(ai_core_plugin_postproc_opencv PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${AI_CORE_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/plugins/common/opencv
 )
 target_link_libraries(ai_core_plugin_postproc_opencv PRIVATE

@@ -1,6 +1,6 @@
 #include "unet_dual_out_seg.hpp"
 
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 
 #include <cstring>
 

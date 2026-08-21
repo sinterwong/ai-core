@@ -2,7 +2,7 @@
 
 #include "ai_core/opencv_interop.hpp"
 
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <algorithm>
 #include <ncnn/mat.h>
 #include <ncnn/option.h>

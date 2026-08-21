@@ -24,6 +24,7 @@ endfunction()
 # enabling tests no longer causes OpenCV or an inference SDK to be discovered.
 ai_core_add_test_suite(ai_core_core_tests core
     test_core_types.cpp
+    test_runtime.cpp
     test_tensor_data.cpp
     test_typed_buffer.cpp
 )

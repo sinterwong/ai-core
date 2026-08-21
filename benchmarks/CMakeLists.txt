@@ -34,6 +34,7 @@ set(BENCHMARK_SOURCES
 # Base dependencies
 set(DEPENDENCY_INCLUDES
     ${PROJECT_INCLUDE_DIR}
+    ${AI_CORE_SOURCE_DIR}/src
     ${AI_CORE_SOURCE_DIR}/plugins/common/include
     ${AI_CORE_SOURCE_DIR}/plugins/common/opencv
     ${AI_CORE_SOURCE_DIR}/plugins/preproc/opencv

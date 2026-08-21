@@ -1,12 +1,13 @@
-#include "ai_core/logger.hpp"
 #include "ai_core/plugin_manager.hpp"
+#include "ai_core/runtime.hpp"
 #include <benchmark/benchmark.h>
 
 const static auto temp_init_log = []() {
-  ai_core::logging::Logger::instance().setLevel(
-      ai_core::logging::LogLevel::Warning);
-  ai_core::logging::Logger::instance().enableConsole(true);
-  ai_core::logging::Logger::instance().enableFile(false);
+  ai_core::LoggingConfig config;
+  config.min_level = ai_core::LogLevel::Warning;
+  config.console_enabled = true;
+  config.file_enabled = false;
+  ai_core::Runtime::configureLogging(config);
   return true;
 }();
 

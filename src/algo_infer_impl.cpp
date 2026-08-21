@@ -1,7 +1,7 @@
 #include <chrono>
 
 #include "ai_core/error_code.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "algo_infer_impl.hpp"
 

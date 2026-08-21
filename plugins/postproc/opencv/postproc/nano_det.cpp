@@ -1,5 +1,5 @@
 #include "nano_det.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "vision_util.hpp"
 #include <opencv2/core.hpp>
 
