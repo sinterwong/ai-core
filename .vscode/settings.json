@@ -2,12 +2,19 @@
   "[cuda-cpp]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
-  "cmake.installPrefix": "${workspaceFolder}/install/android-arm64",
+  // Platform switch: uncomment one value in each Linux/Android pair and
+  // comment the other value. Linux x86_64 is active below.
+  // Linux x86_64:
+  "cmake.installPrefix": "${workspaceFolder}/install/linux-x86-64",
+  // // Android arm64:
+  // "cmake.installPrefix": "${workspaceFolder}/install/android-arm64",
   "cmake.configureSettings": {
     "CMAKE_BUILD_TYPE": "${buildType}",
-    "CMAKE_INSTALL_PREFIX": "${workspaceFolder}/install/android-arm64",
+    // Linux x86_64:
+    "CMAKE_INSTALL_PREFIX": "${workspaceFolder}/install/linux-x86-64",
+    // // Android arm64:
+    // "CMAKE_INSTALL_PREFIX": "${workspaceFolder}/install/android-arm64",
   },
-  // "cmake.generator": "Visual Studio 17 2022",
   "cmake.generator": "Ninja",
   "cmake.exportCompileCommandsFile": true,
   "cmake.environment": {
@@ -23,15 +30,23 @@
     "-DAI_CORE_BUILD_BENCHMARKS=ON",
     "-DAI_CORE_BUILD_EXAMPLES=ON",
     "-DAI_CORE_OPENCV_PROVIDER=SYSTEM",
-    "-DAI_CORE_DEPS_ROOT=${workspaceFolder}/.deps/Android_aarch64",
-    "-DAI_CORE_OPENCV_ROOT=${workspaceFolder}/.deps/Android_aarch64/opencv",
-    "-DCMAKE_TOOLCHAIN_FILE=${env:ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
-    "-DANDROID_ABI=arm64-v8a",
-    "-DANDROID_PLATFORM=android-24",
-    "-DANDROID_STL=c++_shared",
+    // Linux x86_64 (host compiler; TensorRT SDK: .deps/Linux_x86_64/tensorrt):
+    "-DAI_CORE_BUILD_PLUGIN_TENSORRT=ON",
+    "-DAI_CORE_DEPS_ROOT=${workspaceFolder}/.deps/Linux_x86_64",
+    "-DAI_CORE_OPENCV_ROOT=${workspaceFolder}/.deps/Linux_x86_64/opencv",
+    // // Android arm64:
+    // "-DAI_CORE_DEPS_ROOT=${workspaceFolder}/.deps/Android_aarch64",
+    // "-DAI_CORE_OPENCV_ROOT=${workspaceFolder}/.deps/Android_aarch64/opencv",
+    // "-DCMAKE_TOOLCHAIN_FILE=${env:ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+    // "-DANDROID_ABI=arm64-v8a",
+    // "-DANDROID_PLATFORM=android-24",
+    // "-DANDROID_STL=c++_shared",
   ],
   "cmake.options.statusBarVisibility": "compact",
-  "cmake.buildDirectory": "${workspaceFolder}/build/android-arm64",
+  // Linux x86_64:
+  "cmake.buildDirectory": "${workspaceFolder}/build/linux-x86-64",
+  // // Android arm64:
+  // "cmake.buildDirectory": "${workspaceFolder}/build/android-arm64",
   "git.terminalAuthentication": true,
   "memory-view.showMemoryPanel": false,
 }
