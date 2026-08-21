@@ -1,9 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # use samples
 # ./encrypt_file.sh 689bc3e3bdf1c5f2cff81725011ba7d3c0089b25 models/ configs/models
 
-CRYPTOR_EXEC="/home/sinter/workspace/sk_breast/install/tools/cryptor"
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CRYPTOR_EXEC="${CRYPTOR_EXEC:-${ROOT}/build/encryption-tool/x86_64/bin/cryptor}"
 
 if [ "$#" -ne 3 ]; then
     echo "Error: 参数数量不正确。"
@@ -18,7 +21,8 @@ OUTPUT_DIR="$3"
 
 if [ ! -x "$CRYPTOR_EXEC" ]; then
     echo "Error:加密程序 '$CRYPTOR_EXEC' 不存在或没有执行权限。" >&2
-    echo "请确保 '$CRYPTOR_EXEC' 在当前目录并且是可执行的。" >&2
+    echo "先运行 scripts/deps.sh init decryption 并构建 encryption-tool tools，" >&2
+    echo "或通过 CRYPTOR_EXEC 指定已有 cryptor。" >&2
     exit 1
 fi
 
@@ -28,10 +32,6 @@ if [ ! -d "$INPUT_DIR" ]; then
 fi
 
 mkdir -p "$OUTPUT_DIR"
-if [ $? -ne 0 ]; then
-    echo "Error:无法创建输出目录 '$OUTPUT_DIR'。" >&2
-    exit 1
-fi
 
 echo "开始处理目录: '$INPUT_DIR'"
 echo "Commit ID: $COMMIT"
