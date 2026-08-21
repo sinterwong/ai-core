@@ -104,7 +104,7 @@ install(
 # ============================================================================
 # Optional module: ai_core::config (JSON pipeline loader)
 # ============================================================================
-if(BUILD_AI_CORE_CONFIG)
+if(AI_CORE_BUILD_CONFIG)
     message(STATUS "Configuring config module (ai_core::config)")
     add_library(ai_core_config SHARED config/algo_config.cpp)
     add_library(ai_core::config ALIAS ai_core_config)

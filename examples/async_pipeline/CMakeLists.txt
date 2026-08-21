@@ -3,8 +3,9 @@ cmake_minimum_required(VERSION 3.18)
 project(AICoreExampleAsyncPipeline VERSION ${AI_CORE_VERSION})
 
 # The async pipeline showcase needs the TensorRT backend (IAsyncInferEngine).
-if(NOT WITH_TRT_ENGINE)
-    message(STATUS "async_pipeline example skipped (WITH_TRT_ENGINE=OFF)")
+if(NOT AI_CORE_BUILD_PLUGIN_TENSORRT)
+    message(STATUS
+        "async_pipeline example skipped (AI_CORE_BUILD_PLUGIN_TENSORRT=OFF)")
     return()
 endif()
 

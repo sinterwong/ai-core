@@ -44,12 +44,12 @@ set(DEPENDENCY_LIBS
     ${ANDROID_JIN_LIBS}
 )
 
-if(BUILD_AI_CORE_CONFIG)
+if(AI_CORE_BUILD_CONFIG)
     list(APPEND DEPENDENCY_LIBS ai_core::config)
 endif()
 
 # Engine-specific dependencies
-if(WITH_ORT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME)
     load_onnxruntime()
     list(APPEND DEPENDENCY_LIBS
         onnxruntime::onnxruntime
@@ -58,7 +58,7 @@ if(WITH_ORT_ENGINE)
         AI_CORE_TEST_ORT_PLUGIN="$<TARGET_FILE:ai_core_plugin_onnxruntime>")
 endif()
 
-if(WITH_NCNN_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_NCNN)
     load_openmp()
     load_ncnn()
     list(APPEND DEPENDENCY_INCLUDES ${NCNN_INCLUDE_DIR})
@@ -70,7 +70,7 @@ if(WITH_NCNN_ENGINE)
         AI_CORE_TEST_NCNN_PLUGIN="$<TARGET_FILE:ai_core_plugin_ncnn>")
 endif()
 
-if(WITH_TRT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_TENSORRT)
     load_cuda()
     load_tensorrt()
     list(APPEND DEPENDENCY_INCLUDES
@@ -133,15 +133,15 @@ endif()
 # ============================================================================
 # Compile Definitions
 # ============================================================================
-if(WITH_ORT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME)
     target_compile_definitions(ai_core_tests PRIVATE WITH_ORT)
 endif()
 
-if(WITH_NCNN_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_NCNN)
     target_compile_definitions(ai_core_tests PRIVATE WITH_NCNN)
 endif()
 
-if(WITH_TRT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_TENSORRT)
     target_compile_definitions(ai_core_tests PRIVATE WITH_TRT)
 endif()
 

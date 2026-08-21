@@ -19,27 +19,29 @@ include(GNUInstallDirs)
 # ============================================================================
 # Build Options
 # ============================================================================
-option(BUILD_AI_CORE_TESTS "Build unit tests" OFF)
-option(BUILD_AI_CORE_BENCHMARKS "Build benchmarks" OFF)
-option(BUILD_AI_CORE_EXAMPLES "Build examples" OFF)
-option(BUILD_AI_CORE_CONFIG "Build the JSON config module (ai_core::config)" ON)
-option(AI_CORE_BUILD_BUNDLED_PLUGINS "Build plugins maintained in this repository" OFF)
-option(AI_CORE_PLUGIN_VISION "Build bundled OpenCV pre/post-process plugins" ON)
+option(AI_CORE_BUILD_CONFIG "Build the JSON config module (ai_core::config)" OFF)
+option(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV
+    "Build the OpenCV preprocessing plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV
+    "Build the OpenCV postprocessing plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME
+    "Build the ONNX Runtime inference plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_NCNN "Build the NCNN inference plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_TENSORRT
+    "Build the TensorRT inference plugin" OFF)
+option(AI_CORE_ENABLE_MODEL_DECRYPTION
+    "Enable encrypted-model support in inference plugins" OFF)
+option(AI_CORE_BUILD_TESTS "Build tests" OFF)
+option(AI_CORE_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(AI_CORE_BUILD_EXAMPLES "Build examples" OFF)
 
-# Inference engine options
-option(WITH_ORT_ENGINE "Build bundled ONNX Runtime inference plugin" OFF)
-option(WITH_NCNN_ENGINE "Build bundled NCNN inference plugin" OFF)
-option(WITH_TRT_ENGINE "Build bundled TensorRT inference plugin" OFF)
-
-if((WITH_ORT_ENGINE OR WITH_NCNN_ENGINE OR WITH_TRT_ENGINE) AND
-   NOT AI_CORE_BUILD_BUNDLED_PLUGINS)
-    message(FATAL_ERROR
-        "Inference plugin requested while AI_CORE_BUILD_BUNDLED_PLUGINS=OFF")
-endif()
-
-if(BUILD_AI_CORE_TESTS AND NOT AI_CORE_BUILD_BUNDLED_PLUGINS)
-    message(FATAL_ERROR
-        "BUILD_AI_CORE_TESTS requires AI_CORE_BUILD_BUNDLED_PLUGINS=ON")
+set(AI_CORE_BUILD_ANY_PLUGIN OFF)
+if(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV OR
+   AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV OR
+   AI_CORE_BUILD_PLUGIN_ONNXRUNTIME OR
+   AI_CORE_BUILD_PLUGIN_NCNN OR
+   AI_CORE_BUILD_PLUGIN_TENSORRT)
+    set(AI_CORE_BUILD_ANY_PLUGIN ON)
 endif()
 
 # ============================================================================
@@ -49,15 +51,16 @@ message(INFO "================================")
 message(STATUS "AICore version: ${AI_CORE_VERSION}")
 message(INFO "================================")
 message(STATUS "Build configuration:")
-message(STATUS "  Tests:       ${BUILD_AI_CORE_TESTS}")
-message(STATUS "  Benchmarks:  ${BUILD_AI_CORE_BENCHMARKS}")
-message(STATUS "  Examples:    ${BUILD_AI_CORE_EXAMPLES}")
-message(STATUS "  Bundled plugins: ${AI_CORE_BUILD_BUNDLED_PLUGINS}")
-message(STATUS "")
-message(STATUS "Inference engines:")
-message(STATUS "  ONNX Runtime: ${WITH_ORT_ENGINE}")
-message(STATUS "  NCNN:         ${WITH_NCNN_ENGINE}")
-message(STATUS "  TensorRT:     ${WITH_TRT_ENGINE}")
+message(STATUS "  Config:                ${AI_CORE_BUILD_CONFIG}")
+message(STATUS "  OpenCV preprocessor:   ${AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV}")
+message(STATUS "  OpenCV postprocessor:  ${AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV}")
+message(STATUS "  ONNX Runtime plugin:   ${AI_CORE_BUILD_PLUGIN_ONNXRUNTIME}")
+message(STATUS "  NCNN plugin:           ${AI_CORE_BUILD_PLUGIN_NCNN}")
+message(STATUS "  TensorRT plugin:       ${AI_CORE_BUILD_PLUGIN_TENSORRT}")
+message(STATUS "  Model decryption:      ${AI_CORE_ENABLE_MODEL_DECRYPTION}")
+message(STATUS "  Tests:                 ${AI_CORE_BUILD_TESTS}")
+message(STATUS "  Benchmarks:            ${AI_CORE_BUILD_BENCHMARKS}")
+message(STATUS "  Examples:              ${AI_CORE_BUILD_EXAMPLES}")
 message(STATUS "")
 message(STATUS "Installation prefix: ${CMAKE_INSTALL_PREFIX}")
 
@@ -140,28 +143,28 @@ add_subdirectory(3rdparty)
 # Main library
 add_subdirectory(src)
 
-if(AI_CORE_BUILD_BUNDLED_PLUGINS)
+if(AI_CORE_BUILD_ANY_PLUGIN)
     add_subdirectory(plugins)
 endif()
 
 # Optional components
-if(BUILD_AI_CORE_TESTS)
+if(AI_CORE_BUILD_TESTS)
     message(STATUS "Adding tests to build")
     add_subdirectory(tests)
 endif()
 
-if(BUILD_AI_CORE_BENCHMARKS)
+if(AI_CORE_BUILD_BENCHMARKS)
     message(STATUS "Adding benchmarks to build")
     add_subdirectory(benchmarks)
 endif()
 
-if(BUILD_AI_CORE_EXAMPLES)
+if(AI_CORE_BUILD_EXAMPLES)
     message(STATUS "Adding examples to build")
     add_subdirectory(examples)
 endif()
 
 # Assets (test/benchmark resources)
-if(BUILD_AI_CORE_TESTS OR BUILD_AI_CORE_BENCHMARKS)
+if(AI_CORE_BUILD_TESTS OR AI_CORE_BUILD_BENCHMARKS)
     message(STATUS "Adding asset resources to build")
     add_subdirectory(assets)
 endif()

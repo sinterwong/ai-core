@@ -7,11 +7,14 @@ set(WITH_GTEST OFF CACHE BOOL "Disable gtest for glog")
 # OpenCV is source-vendored and deliberately configured here so that all
 # dependency policy stays below 3rdparty/. Consumers above this directory only
 # request OpenCV targets; they do not control how OpenCV itself is built.
-if(AI_CORE_BUILD_BUNDLED_PLUGINS AND
-   (AI_CORE_PLUGIN_VISION OR WITH_ORT_ENGINE OR WITH_NCNN_ENGINE OR WITH_TRT_ENGINE))
+if(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV OR
+   AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV OR
+   AI_CORE_BUILD_PLUGIN_ONNXRUNTIME OR
+   AI_CORE_BUILD_PLUGIN_NCNN OR
+   AI_CORE_BUILD_PLUGIN_TENSORRT)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/opencv/CMakeLists.txt")
         set(AI_CORE_OPENCV_MODULES core,imgproc,dnn)
-        if(BUILD_AI_CORE_TESTS)
+        if(AI_CORE_BUILD_TESTS)
             list(APPEND AI_CORE_OPENCV_MODULES imgcodecs)
         endif()
         list(JOIN AI_CORE_OPENCV_MODULES "," AI_CORE_OPENCV_BUILD_LIST)
@@ -58,7 +61,9 @@ if(AI_CORE_BUILD_BUNDLED_PLUGINS AND
     endif()
 endif()
 
-if((WITH_ORT_ENGINE OR WITH_NCNN_ENGINE OR WITH_TRT_ENGINE) AND NOT TARGET encrypt)
+if((AI_CORE_BUILD_PLUGIN_ONNXRUNTIME OR
+    AI_CORE_BUILD_PLUGIN_NCNN OR
+    AI_CORE_BUILD_PLUGIN_TENSORRT) AND NOT TARGET encrypt)
     message(STATUS "encrypt target not found. Adding subdirectory...")
     add_subdirectory(encryption-tool EXCLUDE_FROM_ALL)
 endif()
@@ -71,7 +76,7 @@ if(TARGET encrypt)
     install(TARGETS encrypt LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
-if(BUILD_AI_CORE_TESTS)
+if(AI_CORE_BUILD_TESTS)
     if(NOT TARGET gtest)
         message(STATUS "gtest target not found. Adding subdirectory...")
         add_subdirectory(googletest EXCLUDE_FROM_ALL)
@@ -80,7 +85,7 @@ if(BUILD_AI_CORE_TESTS)
     endif()
 endif()
 
-if(BUILD_AI_CORE_BENCHMARKS)
+if(AI_CORE_BUILD_BENCHMARKS)
     set(BUILD_SHARED_LIBS OFF)
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable test for benchmark")
     if(NOT TARGET benchmark)

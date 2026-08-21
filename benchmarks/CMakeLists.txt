@@ -58,7 +58,7 @@ if(TARGET ai_core_plugin_postproc_opencv)
 endif()
 
 # Engine-specific dependencies
-if(WITH_ORT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME)
     load_onnxruntime()
     list(APPEND DEPENDENCY_INCLUDES
         ${ONNXRUNTIME_INCLUDE_DIR}
@@ -69,7 +69,7 @@ if(WITH_ORT_ENGINE)
         ai_core::plugin_onnxruntime)
 endif()
 
-if(WITH_NCNN_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_NCNN)
     load_openmp()
     load_ncnn()
     list(APPEND DEPENDENCY_INCLUDES ${NCNN_INCLUDE_DIR})
@@ -79,7 +79,7 @@ if(WITH_NCNN_ENGINE)
         ai_core::plugin_ncnn)
 endif()
 
-if(WITH_TRT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_TENSORRT)
     load_cuda()
     load_tensorrt()
     list(APPEND DEPENDENCY_INCLUDES
@@ -124,19 +124,19 @@ endif()
 # ============================================================================
 # Compile Definitions
 # ============================================================================
-if(WITH_ORT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME)
     target_compile_definitions(ai_core_benchmarks PRIVATE
         WITH_ORT
         AI_CORE_BENCH_ORT_PLUGIN="$<TARGET_FILE:ai_core_plugin_onnxruntime>")
 endif()
 
-if(WITH_NCNN_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_NCNN)
     target_compile_definitions(ai_core_benchmarks PRIVATE
         WITH_NCNN
         AI_CORE_BENCH_NCNN_PLUGIN="$<TARGET_FILE:ai_core_plugin_ncnn>")
 endif()
 
-if(WITH_TRT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_TENSORRT)
     target_compile_definitions(ai_core_benchmarks PRIVATE
         WITH_TRT
         AI_CORE_BENCH_TRT_PLUGIN="$<TARGET_FILE:ai_core_plugin_tensorrt>")
