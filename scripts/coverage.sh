@@ -28,7 +28,7 @@ CORE_FILTERS=(
   --filter 'src/param_validation\.hpp'
   --filter 'plugins/preproc/opencv/preproc/cpu_generic_preprocessor\.cpp'
   --filter 'plugins/preproc/opencv/preproc/frame_with_mask_prep\.cpp'
-  --filter 'plugins/preproc/opencv/preproc/generic_frame_preproc_base\.cpp'
+  --filter 'plugins/common/preproc/generic_frame_preproc_base\.cpp'
   --filter 'plugins/postproc/opencv/postproc/.*\.cpp'
 )
 

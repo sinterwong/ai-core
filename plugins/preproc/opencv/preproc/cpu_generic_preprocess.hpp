@@ -2,7 +2,7 @@
 #define AI_CORE_CPU_GENERIC_PREPROCESS_HPP
 
 #include "cpu_generic_preprocessor.hpp"
-#include "generic_frame_preproc_base.hpp"
+#include "preproc/generic_frame_preproc_base.hpp"
 
 namespace ai_core::dnn {
 

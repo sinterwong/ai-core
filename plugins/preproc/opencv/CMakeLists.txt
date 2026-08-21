@@ -2,9 +2,9 @@ load_opencv()
 
 set(AI_CORE_PREPROC_OPENCV_SOURCES
     ${PROJECT_SOURCE_DIR}/plugins/common/opencv/vision_util.cpp
+    ${PROJECT_SOURCE_DIR}/plugins/common/preproc/generic_frame_preproc_base.cpp
     preproc/cpu_generic_preprocessor.cpp
     preproc/frame_with_mask_prep.cpp
-    preproc/generic_frame_preproc_base.cpp
     register.cpp
 )
 

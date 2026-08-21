@@ -1,4 +1,4 @@
-#include "generic_frame_preproc_base.hpp"
+#include "preproc/generic_frame_preproc_base.hpp"
 #include "ai_core/logger.hpp"
 
 namespace ai_core::dnn {

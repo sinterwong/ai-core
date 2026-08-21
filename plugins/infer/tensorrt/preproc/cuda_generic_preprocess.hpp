@@ -3,8 +3,8 @@
 
 #ifdef WITH_TRT
 
-#include "generic_frame_preproc_base.hpp"
-#include "gpu_generic_cuda_preprocessor.hpp"
+#include "preproc/generic_frame_preproc_base.hpp"
+#include "trt/gpu_generic_cuda_preprocessor.hpp"
 
 namespace ai_core::dnn {
 
