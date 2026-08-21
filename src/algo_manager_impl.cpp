@@ -1,16 +1,6 @@
-/**
- * @file algo_manager_impl.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Implementation for AlgoManager PImpl
- * @version 0.1
- * @date 2025-07-15 (Update date)
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "algo_manager_impl.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <mutex>
 #include <ostream>
 

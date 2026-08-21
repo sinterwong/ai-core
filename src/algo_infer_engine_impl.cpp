@@ -1,17 +1,7 @@
-/**
- * @file algo_infer_engine_impl.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-18
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "algo_infer_engine_impl.hpp"
 #include "ai_core/algo_types.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
+#include "logger.hpp"
 
 namespace ai_core::dnn {
 AlgoInferEngine::Impl::Impl(const std::string &module_name,
@@ -22,9 +12,8 @@ InferErrorCode AlgoInferEngine::Impl::initialize() {
   try {
     AlgoConstructParams temp_infer_params;
     temp_infer_params.setParam("params", m_inferParams);
-    m_engine =
-        PluginRegistry::instance().createInferenceEngine(m_moduleName,
-                                                         temp_infer_params);
+    m_engine = PluginRegistry::instance().createInferenceEngine(
+        m_moduleName, temp_infer_params);
 
     if (m_engine == nullptr) {
       LOG_ERROR_S << "Failed to create inference engine for name: "

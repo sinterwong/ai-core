@@ -1,16 +1,6 @@
-/**
- * @file trt_infer_stream.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief TensorRT inference stream implementation
- * @version 0.1
- * @date 2026-01-06
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "trt_infer_stream.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include "trt_infer.hpp"
 #include "trt_utils.hpp"
 #include <cstring>
@@ -18,10 +8,6 @@
 #include <numeric>
 
 namespace ai_core::dnn {
-
-// ============================================================================
-// Constructor / Destructor
-// ============================================================================
 
 TrtInferStream::TrtInferStream(TrtAlgoInference &engine)
     : m_engine(engine), m_sharedEngine(engine.m_engine), m_cudaStream(nullptr),
@@ -49,13 +35,8 @@ TrtInferStream::~TrtInferStream() {
   LOG_DEBUG_S << "TrtInferStream destroyed";
 }
 
-// ============================================================================
-// IExecutionContext Implementation
-// ============================================================================
-
 std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
                                                        TensorData &outputs) {
-  // Early validation - return immediately settled future on error
   if (!m_initialized) {
     std::promise<InferErrorCode> promise;
     promise.set_value(InferErrorCode::NotInitialized);
@@ -63,16 +44,12 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
   }
 
   try {
-    // Update input shapes if dynamic
     if (!updateInputShapesIfNeeded(inputs)) {
       std::promise<InferErrorCode> promise;
       promise.set_value(InferErrorCode::InferExecutionFailed);
       return promise.get_future();
     }
 
-    // Submit all async operations (non-blocking)
-
-    // H2D: Copy inputs to device (async)
     auto copy_result = copyInputsToDevice(inputs);
     if (copy_result != InferErrorCode::SUCCESS) {
       std::promise<InferErrorCode> promise;
@@ -80,7 +57,6 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
       return promise.get_future();
     }
 
-    // Execute: Run inference kernel (async)
     InferErrorCode exec_result;
     if (m_graphEnabled && m_graphCaptured) {
       exec_result = launchGraph();
@@ -96,7 +72,6 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
       return promise.get_future();
     }
 
-    // D2H: Submit async output copy (non-blocking)
     auto d2h_result = submitAsyncD2H(outputs);
     if (d2h_result != InferErrorCode::SUCCESS) {
       std::promise<InferErrorCode> promise;
@@ -104,18 +79,12 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
       return promise.get_future();
     }
 
-    // Return deferred future for caller-side synchronization
-    //
-    // Key design: No thread is created here!
-    // The lambda executes in the caller's thread when future.get() is called.
-    // This eliminates thread creation overhead (~100-500μs per call).
-
+    // A deferred future synchronizes on the caller thread without allocating a
+    // helper thread per submission. `outputs` must remain alive until `get()`.
     cudaStream_t stream = m_cudaStream;
 
     return std::async(std::launch::deferred,
                       [this, stream, &outputs]() -> InferErrorCode {
-                        // Synchronize CUDA stream (blocks until all ops
-                        // complete)
                         cudaError_t err = cudaStreamSynchronize(stream);
                         if (err != cudaSuccess) {
                           LOG_ERROR_S << "CUDA stream synchronize failed: "
@@ -123,7 +92,6 @@ std::future<InferErrorCode> TrtInferStream::inferAsync(const TensorData &inputs,
                           return InferErrorCode::StreamSyncFailed;
                         }
 
-                        // Finalize: Copy from pinned buffers to output
                         return finalizeOutputs(outputs);
                       });
 
@@ -190,10 +158,6 @@ InferErrorCode TrtInferStream::setGraphEnabled(bool enable) {
 
 bool TrtInferStream::isGraphEnabled() const { return m_graphEnabled; }
 
-// ============================================================================
-// Stream Lifecycle
-// ============================================================================
-
 InferErrorCode TrtInferStream::initialize() {
   if (m_initialized) {
     return InferErrorCode::SUCCESS;
@@ -204,27 +168,23 @@ InferErrorCode TrtInferStream::initialize() {
     return InferErrorCode::NotInitialized;
   }
 
-  // Create high-priority non-blocking CUDA stream
   int least_priority, greatest_priority;
   CHECK_CUDA_ERROR(
       cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
   CHECK_CUDA_ERROR(cudaStreamCreateWithPriority(
       &m_cudaStream, cudaStreamNonBlocking, greatest_priority));
 
-  // Create execution context
   m_context.reset(m_sharedEngine->createExecutionContext());
   if (!m_context) {
     LOG_ERROR_S << "Failed to create TensorRT execution context for stream";
     return InferErrorCode::InitContextFailed;
   }
 
-  // Allocate device buffers
   auto alloc_result = allocateBuffers();
   if (alloc_result != InferErrorCode::SUCCESS) {
     return alloc_result;
   }
 
-  // Allocate pinned output buffers
   auto pinned_result = allocatePinnedOutputBuffers();
   if (pinned_result != InferErrorCode::SUCCESS) {
     return pinned_result;
@@ -235,10 +195,6 @@ InferErrorCode TrtInferStream::initialize() {
   return InferErrorCode::SUCCESS;
 }
 
-// ============================================================================
-// Internal Methods
-// ============================================================================
-
 InferErrorCode TrtInferStream::allocateBuffers() {
   const int32_t num_io_tensors = m_sharedEngine->getNbIOTensors();
   const int profile_index = 0;
@@ -247,7 +203,7 @@ InferErrorCode TrtInferStream::allocateBuffers() {
   m_deviceBuffers.reserve(num_io_tensors);
   m_tensorAddressMap.clear();
 
-  // Set input shapes to MAX for buffer allocation
+  // Maximum profile shapes determine the capacity of stable graph buffers.
   for (int32_t i = 0; i < num_io_tensors; ++i) {
     const char *name = m_sharedEngine->getIOTensorName(i);
     if (m_sharedEngine->getTensorIOMode(name) ==
@@ -260,7 +216,6 @@ InferErrorCode TrtInferStream::allocateBuffers() {
     }
   }
 
-  // Allocate buffers for each tensor
   for (int32_t i = 0; i < num_io_tensors; ++i) {
     const char *name = m_sharedEngine->getIOTensorName(i);
     size_t buffer_size = m_engine.m_tensorSizeMap.at(name);
@@ -332,7 +287,7 @@ bool TrtInferStream::updateInputShapesIfNeeded(const TensorData &inputs) {
     }
   }
 
-  // If shapes changed and we had a captured graph, invalidate it
+  // Captured graphs encode tensor shapes and cannot survive a shape change.
   if (shape_changed && m_graphCaptured) {
     LOG_DEBUG_S << "Input shapes changed, invalidating CUDA Graph.";
     destroyGraph();
@@ -396,26 +351,22 @@ InferErrorCode TrtInferStream::submitAsyncD2H(TensorData &outputs) {
 
     uint8_t *dest_host_ptr = pinned_buffer.writePtr(actual_output_size_bytes);
 
-    // Submit async D2H copy (non-blocking)
     CHECK_CUDA_ERROR(cudaMemcpyAsync(dest_host_ptr, src_device_ptr,
                                      actual_output_size_bytes,
                                      cudaMemcpyDeviceToHost, m_cudaStream));
 
-    // Store output shapes immediately (available from context); the buffer
-    // is filled in by finalizeOutputs after stream sync.
+    // Shapes are available immediately; buffers are attached after stream sync.
     outputs.set(
         name, TypedBuffer(),
         std::vector<int>(actual_output_dims.d,
                          actual_output_dims.d + actual_output_dims.nbDims));
   }
 
-  // NOTE: No synchronization here! Caller is responsible for sync.
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode TrtInferStream::finalizeOutputs(TensorData &outputs) {
-  // Copy from pinned buffers to output TypedBuffers
-  // PRECONDITION: cudaStreamSynchronize must have been called!
+  // The caller must synchronize the stream before reading pinned buffers.
   for (const auto &output_info : m_engine.m_modelInfo->outputs) {
     const auto &name = output_info.name;
     auto &pinned_buffer = m_pinnedOutputBuffers.at(name);
@@ -434,13 +385,11 @@ InferErrorCode TrtInferStream::finalizeOutputs(TensorData &outputs) {
 }
 
 InferErrorCode TrtInferStream::copyOutputsToHost(TensorData &outputs) {
-  // Legacy synchronous version for backward compatibility
   auto result = submitAsyncD2H(outputs);
   if (result != InferErrorCode::SUCCESS) {
     return result;
   }
 
-  // Synchronize to ensure D2H copies complete
   CHECK_CUDA_ERROR(cudaStreamSynchronize(m_cudaStream));
 
   return finalizeOutputs(outputs);

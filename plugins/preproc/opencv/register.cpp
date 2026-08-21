@@ -1,4 +1,5 @@
 #include "ai_core/plugin_manager.hpp"
+#include "ai_core/version.hpp"
 #include "preproc/cpu_generic_preprocess.hpp"
 #include "preproc/frame_with_mask_prep.hpp"
 
@@ -10,7 +11,7 @@ using namespace ai_core::dnn;
 extern "C" AI_CORE_PLUGIN_EXPORT bool
 ai_core_register_plugin_v1(PluginRegistry &registry, PluginInfo &info) {
   info = {.name = "ai_core.preproc.opencv",
-          .version = "2.1.0",
+          .version = AI_CORE_SEMVER_STR,
           .provider = "ai-core",
           .description = "OpenCV CPU preprocessing",
           .capabilities = {"preproc", "backend:cpu", "framework:opencv"}};

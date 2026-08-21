@@ -5,21 +5,14 @@ project(AICoreSrc VERSION ${AI_CORE_VERSION} LANGUAGES CXX)
 # Enable position independent code for shared library
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Android-specific configuration
-if(TARGET_OS STREQUAL "Android")
-    load_android_env()
-    list(APPEND ANDROID_JIN_LIBS mediandk)
-endif()
+include("${AI_CORE_CMAKE_DIR}/dependencies/Platform.cmake")
+ai_core_load_platform()
 
-# Base dependencies
-set(DEPENDENCY_INCLUDES)
-
-set(DEPENDENCY_LIBS ${ANDROID_JIN_LIBS})
-
-# Public API headers
-# Recursively find all headers in api/ai_core/
-file(GLOB_RECURSE AI_CORE_PUBLIC_HEADERS CONFIGURE_DEPENDS 
-    "api/ai_core/*.hpp"
+# Public API headers live outside the implementation tree so consumers cannot
+# accidentally depend on private headers.
+set(AI_CORE_PUBLIC_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../include")
+file(GLOB_RECURSE AI_CORE_PUBLIC_HEADERS CONFIGURE_DEPENDS
+    "${AI_CORE_PUBLIC_INCLUDE_DIR}/ai_core/*.hpp"
 )
 
 # Private/Internal sources — explicitly listed (no GLOB) so adding a file is a
@@ -50,6 +43,7 @@ file(GLOB AI_CORE_PRIVATE_HEADERS CONFIGURE_DEPENDS "*.hpp")
 add_library(ai_core SHARED
     ${AI_CORE_SOURCES}
     ${AI_CORE_PRIVATE_HEADERS}
+    ${AI_CORE_PUBLIC_HEADERS}
 )
 
 # Create namespaced alias for modern CMake usage
@@ -61,17 +55,14 @@ target_compile_features(ai_core PUBLIC cxx_std_20)
 # Configure include directories
 target_include_directories(ai_core
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api>
+        $<BUILD_INTERFACE:${AI_CORE_PUBLIC_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE
-        ${DEPENDENCY_INCLUDES}
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Link dependencies
-target_link_libraries(ai_core
-    PRIVATE ${DEPENDENCY_LIBS} ${CMAKE_DL_LIBS}
-)
+target_link_libraries(ai_core PRIVATE ai_core::platform ${CMAKE_DL_LIBS})
 
 # ============================================================================
 # Compile Definitions
@@ -84,36 +75,39 @@ target_link_libraries(ai_core
 install(
     TARGETS ai_core
     EXPORT ai_core_export_set
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT development
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime
 )
 
 # Install public headers (top-level only; subdir headers install with their
 # module below to preserve the ai_core/<module>/ layout).
-file(GLOB AI_CORE_PUBLIC_HEADERS_TOP CONFIGURE_DEPENDS "api/ai_core/*.hpp")
+file(GLOB AI_CORE_PUBLIC_HEADERS_TOP CONFIGURE_DEPENDS
+    "${AI_CORE_PUBLIC_INCLUDE_DIR}/ai_core/*.hpp")
 install(
     FILES ${AI_CORE_PUBLIC_HEADERS_TOP}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core
-    COMPONENT dev
+    COMPONENT development
 )
 
 # ============================================================================
 # Optional module: ai_core::config (JSON pipeline loader)
 # ============================================================================
-if(BUILD_AI_CORE_CONFIG)
+if(AI_CORE_BUILD_CONFIG)
+    include("${AI_CORE_CMAKE_DIR}/dependencies/NlohmannJson.cmake")
+    ai_core_load_nlohmann_json()
     message(STATUS "Configuring config module (ai_core::config)")
     add_library(ai_core_config SHARED config/algo_config.cpp)
     add_library(ai_core::config ALIAS ai_core_config)
     target_compile_features(ai_core_config PUBLIC cxx_std_20)
     target_include_directories(ai_core_config
         PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api>
+            $<BUILD_INTERFACE:${AI_CORE_PUBLIC_INCLUDE_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-        PRIVATE
-            ${PROJECT_INCLUDE_DIR} # nlohmann/json.hpp
     )
-    target_link_libraries(ai_core_config PUBLIC ai_core::ai_core)
+    target_link_libraries(ai_core_config
+        PUBLIC ai_core::ai_core
+        PRIVATE nlohmann_json::nlohmann_json)
     # EXPORT_NAME makes the installed target `ai_core::config` too, matching the
     # build-tree ALIAS above — consumers use one name either way.
     set_target_properties(ai_core_config PROPERTIES
@@ -125,14 +119,14 @@ if(BUILD_AI_CORE_CONFIG)
     install(
         TARGETS ai_core_config
         EXPORT ai_core_export_set
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT config
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT config
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT config
     )
     install(
-        FILES api/ai_core/config/algo_config.hpp
+        FILES ${AI_CORE_PUBLIC_INCLUDE_DIR}/ai_core/config/algo_config.hpp
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core/config
-        COMPONENT dev
+        COMPONENT config
     )
 endif()
 
@@ -168,7 +162,7 @@ set(AI_CORE_CMAKE_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/ai_core)
 # configure_package_config_file (not configure_file) is what expands
 # @PACKAGE_INIT@ and makes the generated config relocatable.
 configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ai_core-config.cmake.in"
+    "${AI_CORE_CMAKE_DIR}/ai_core-config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config.cmake"
     INSTALL_DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
 )
@@ -180,7 +174,7 @@ install(
         "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config-version.cmake"
         "${CMAKE_CURRENT_LIST_DIR}/../cmake/AICorePlugin.cmake"
     DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
-    COMPONENT dev
+    COMPONENT development
 )
 
 # Install targets for install tree
@@ -189,5 +183,5 @@ install(
     FILE ai_core-targets.cmake
     NAMESPACE ai_core::
     DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
-    COMPONENT dev
+    COMPONENT development
 )

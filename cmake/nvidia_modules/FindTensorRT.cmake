@@ -1,23 +1,23 @@
-if(NOT TRT_ROOT AND DEFINED ENV{TRT_ROOT})
-    set(TRT_ROOT "$ENV{TRT_ROOT}")
-endif()
-
 find_path(TensorRT_INCLUDE_DIR NvInfer.h
-    HINTS ${TRT_ROOT} /usr/local/include /opt/TensorRT
+    HINTS ${TRT_ROOT}
     PATH_SUFFIXES include
+    NO_DEFAULT_PATH
 )
 
 find_library(TensorRT_nvinfer_LIBRARY nvinfer
-    HINTS ${TRT_ROOT} /usr/local/lib /opt/TensorRT
+    HINTS ${TRT_ROOT}
     PATH_SUFFIXES lib lib64
+    NO_DEFAULT_PATH
 )
 find_library(TensorRT_nvinfer_plugin_LIBRARY nvinfer_plugin
-    HINTS ${TRT_ROOT} /usr/local/lib /opt/TensorRT
+    HINTS ${TRT_ROOT}
     PATH_SUFFIXES lib lib64
+    NO_DEFAULT_PATH
 )
 find_library(TensorRT_nvonnxparser_LIBRARY nvonnxparser
-    HINTS ${TRT_ROOT} /usr/local/lib /opt/TensorRT
+    HINTS ${TRT_ROOT}
     PATH_SUFFIXES lib lib64
+    NO_DEFAULT_PATH
 )
 
 set(TensorRT_INCLUDE_DIRS ${TensorRT_INCLUDE_DIR})

@@ -2,16 +2,20 @@ cmake_minimum_required(VERSION 3.18)
 
 project(Benchmarks)
 
-# ============================================================================
-# Load Dependencies
-# ============================================================================
-load_opencv()
-
-# Android-specific configuration
-if(TARGET_OS STREQUAL "Android")
-    load_android_env()
-    list(APPEND ANDROID_JIN_LIBS mediandk)
+if(NOT TARGET ai_core_plugin_preproc_opencv OR
+   NOT TARGET ai_core_plugin_postproc_opencv)
+    message(FATAL_ERROR
+        "Benchmarks require both OpenCV plugins. Enable "
+        "AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV and "
+        "AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV.")
 endif()
+
+include("${AI_CORE_CMAKE_DIR}/dependencies/DevTools.cmake")
+include("${AI_CORE_CMAKE_DIR}/dependencies/OpenCV.cmake")
+include("${AI_CORE_CMAKE_DIR}/dependencies/Platform.cmake")
+ai_core_load_benchmark()
+ai_core_load_opencv()
+ai_core_load_platform()
 
 # ============================================================================
 # Source Files
@@ -29,24 +33,22 @@ set(BENCHMARK_SOURCES
 # ============================================================================
 # Base dependencies
 set(DEPENDENCY_INCLUDES
-    ${OpenCV_INCLUDE_DIRS}
     ${PROJECT_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/plugins/common/include
-    ${CMAKE_SOURCE_DIR}/plugins/common/opencv
-    ${CMAKE_SOURCE_DIR}/plugins/preproc/opencv
-    ${CMAKE_SOURCE_DIR}/plugins/postproc/opencv
-    ${CMAKE_SOURCE_DIR}/plugins/infer/onnxruntime
-    ${CMAKE_SOURCE_DIR}/plugins/infer/ncnn
-    ${CMAKE_SOURCE_DIR}/plugins/infer/tensorrt
+    ${AI_CORE_SOURCE_DIR}/src
+    ${AI_CORE_SOURCE_DIR}/plugins/common/include
+    ${AI_CORE_SOURCE_DIR}/plugins/common/opencv
+    ${AI_CORE_SOURCE_DIR}/plugins/preproc/opencv
+    ${AI_CORE_SOURCE_DIR}/plugins/postproc/opencv
+    ${AI_CORE_SOURCE_DIR}/plugins/infer/onnxruntime
+    ${AI_CORE_SOURCE_DIR}/plugins/infer/ncnn
+    ${AI_CORE_SOURCE_DIR}/plugins/infer/tensorrt
 )
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core
-    encrypt::encrypt
     benchmark::benchmark
-    ${OpenCV_LIBS}
-    opencv_imgcodecs
-    ${ANDROID_JIN_LIBS}
+    ai_core::opencv_imgcodecs
+    ai_core::platform
 )
 
 if(TARGET ai_core_plugin_preproc_opencv)
@@ -58,37 +60,22 @@ if(TARGET ai_core_plugin_postproc_opencv)
 endif()
 
 # Engine-specific dependencies
-if(WITH_ORT_ENGINE)
-    load_onnxruntime()
-    list(APPEND DEPENDENCY_INCLUDES
-        ${ONNXRUNTIME_INCLUDE_DIR}
-        ${ONNXRUNTIME_INCLUDE_DIR}/onnxruntime
-    )
+if(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME)
     list(APPEND DEPENDENCY_LIBS
         onnxruntime::onnxruntime
         ai_core::plugin_onnxruntime)
 endif()
 
-if(WITH_NCNN_ENGINE)
-    load_openmp()
-    load_ncnn()
-    list(APPEND DEPENDENCY_INCLUDES ${NCNN_INCLUDE_DIR})
+if(AI_CORE_BUILD_PLUGIN_NCNN)
     list(APPEND DEPENDENCY_LIBS
-        ${NCNN_LIBS}
-        OpenMP::OpenMP_CXX
+        ai_core::ncnn
         ai_core::plugin_ncnn)
 endif()
 
-if(WITH_TRT_ENGINE)
-    load_cuda()
-    load_tensorrt()
-    list(APPEND DEPENDENCY_INCLUDES
-        ${TensorRT_INCLUDE_DIR}
-        ${CUDAToolkit_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/trt
-    )
+if(AI_CORE_BUILD_PLUGIN_TENSORRT)
     list(APPEND DEPENDENCY_LIBS
         TensorRT::nvinfer
+        CUDA::cudart_static
         ai_core::plugin_tensorrt)
 endif()
 
@@ -124,19 +111,19 @@ endif()
 # ============================================================================
 # Compile Definitions
 # ============================================================================
-if(WITH_ORT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME)
     target_compile_definitions(ai_core_benchmarks PRIVATE
         WITH_ORT
         AI_CORE_BENCH_ORT_PLUGIN="$<TARGET_FILE:ai_core_plugin_onnxruntime>")
 endif()
 
-if(WITH_NCNN_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_NCNN)
     target_compile_definitions(ai_core_benchmarks PRIVATE
         WITH_NCNN
         AI_CORE_BENCH_NCNN_PLUGIN="$<TARGET_FILE:ai_core_plugin_ncnn>")
 endif()
 
-if(WITH_TRT_ENGINE)
+if(AI_CORE_BUILD_PLUGIN_TENSORRT)
     target_compile_definitions(ai_core_benchmarks PRIVATE
         WITH_TRT
         AI_CORE_BENCH_TRT_PLUGIN="$<TARGET_FILE:ai_core_plugin_tensorrt>")
@@ -145,4 +132,5 @@ endif()
 # ============================================================================
 # Installation
 # ============================================================================
-install(TARGETS ai_core_benchmarks DESTINATION benchmarks)
+install(TARGETS ai_core_benchmarks DESTINATION benchmarks
+    COMPONENT benchmarks)

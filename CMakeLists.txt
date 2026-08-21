@@ -13,33 +13,51 @@ ai_core_extract_version()
 # Declare project
 project(AICore VERSION ${AI_CORE_VERSION} LANGUAGES CXX)
 
+set(AI_CORE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(AI_CORE_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Use standard installation directories
 include(GNUInstallDirs)
 
 # ============================================================================
 # Build Options
 # ============================================================================
-option(BUILD_AI_CORE_TESTS "Build unit tests" OFF)
-option(BUILD_AI_CORE_BENCHMARKS "Build benchmarks" OFF)
-option(BUILD_AI_CORE_EXAMPLES "Build examples" OFF)
-option(BUILD_AI_CORE_CONFIG "Build the JSON config module (ai_core::config)" ON)
-option(AI_CORE_BUILD_BUNDLED_PLUGINS "Build plugins maintained in this repository" OFF)
-option(AI_CORE_PLUGIN_VISION "Build bundled OpenCV pre/post-process plugins" ON)
+option(AI_CORE_BUILD_CONFIG "Build the JSON config module (ai_core::config)" OFF)
+option(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV
+    "Build the OpenCV preprocessing plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV
+    "Build the OpenCV postprocessing plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_ONNXRUNTIME
+    "Build the ONNX Runtime inference plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_NCNN "Build the NCNN inference plugin" OFF)
+option(AI_CORE_BUILD_PLUGIN_TENSORRT
+    "Build the TensorRT inference plugin" OFF)
+option(AI_CORE_ENABLE_MODEL_DECRYPTION
+    "Enable encrypted-model support in inference plugins" OFF)
+option(AI_CORE_BUILD_TESTS "Build tests" OFF)
+option(AI_CORE_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(AI_CORE_BUILD_EXAMPLES "Build examples" OFF)
 
-# Inference engine options
-option(WITH_ORT_ENGINE "Build bundled ONNX Runtime inference plugin" OFF)
-option(WITH_NCNN_ENGINE "Build bundled NCNN inference plugin" OFF)
-option(WITH_TRT_ENGINE "Build bundled TensorRT inference plugin" OFF)
-
-if((WITH_ORT_ENGINE OR WITH_NCNN_ENGINE OR WITH_TRT_ENGINE) AND
-   NOT AI_CORE_BUILD_BUNDLED_PLUGINS)
-    message(FATAL_ERROR
-        "Inference plugin requested while AI_CORE_BUILD_BUNDLED_PLUGINS=OFF")
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(AI_CORE_FORMAT_CHECK_DEFAULT ON)
+else()
+    set(AI_CORE_FORMAT_CHECK_DEFAULT OFF)
 endif()
+option(AI_CORE_FORMAT_CHECK_ON_BUILD
+    "Run clang-format validation as part of the default build"
+    ${AI_CORE_FORMAT_CHECK_DEFAULT})
+unset(AI_CORE_FORMAT_CHECK_DEFAULT)
 
-if(BUILD_AI_CORE_TESTS AND NOT AI_CORE_BUILD_BUNDLED_PLUGINS)
-    message(FATAL_ERROR
-        "BUILD_AI_CORE_TESTS requires AI_CORE_BUILD_BUNDLED_PLUGINS=ON")
+include(cmake/CodeQuality.cmake)
+ai_core_configure_code_quality()
+
+set(AI_CORE_BUILD_ANY_PLUGIN OFF)
+if(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV OR
+   AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV OR
+   AI_CORE_BUILD_PLUGIN_ONNXRUNTIME OR
+   AI_CORE_BUILD_PLUGIN_NCNN OR
+   AI_CORE_BUILD_PLUGIN_TENSORRT)
+    set(AI_CORE_BUILD_ANY_PLUGIN ON)
 endif()
 
 # ============================================================================
@@ -49,15 +67,17 @@ message(INFO "================================")
 message(STATUS "AICore version: ${AI_CORE_VERSION}")
 message(INFO "================================")
 message(STATUS "Build configuration:")
-message(STATUS "  Tests:       ${BUILD_AI_CORE_TESTS}")
-message(STATUS "  Benchmarks:  ${BUILD_AI_CORE_BENCHMARKS}")
-message(STATUS "  Examples:    ${BUILD_AI_CORE_EXAMPLES}")
-message(STATUS "  Bundled plugins: ${AI_CORE_BUILD_BUNDLED_PLUGINS}")
-message(STATUS "")
-message(STATUS "Inference engines:")
-message(STATUS "  ONNX Runtime: ${WITH_ORT_ENGINE}")
-message(STATUS "  NCNN:         ${WITH_NCNN_ENGINE}")
-message(STATUS "  TensorRT:     ${WITH_TRT_ENGINE}")
+message(STATUS "  Config:                ${AI_CORE_BUILD_CONFIG}")
+message(STATUS "  OpenCV preprocessor:   ${AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV}")
+message(STATUS "  OpenCV postprocessor:  ${AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV}")
+message(STATUS "  ONNX Runtime plugin:   ${AI_CORE_BUILD_PLUGIN_ONNXRUNTIME}")
+message(STATUS "  NCNN plugin:           ${AI_CORE_BUILD_PLUGIN_NCNN}")
+message(STATUS "  TensorRT plugin:       ${AI_CORE_BUILD_PLUGIN_TENSORRT}")
+message(STATUS "  Model decryption:      ${AI_CORE_ENABLE_MODEL_DECRYPTION}")
+message(STATUS "  Tests:                 ${AI_CORE_BUILD_TESTS}")
+message(STATUS "  Benchmarks:            ${AI_CORE_BUILD_BENCHMARKS}")
+message(STATUS "  Examples:              ${AI_CORE_BUILD_EXAMPLES}")
+message(STATUS "  Format check on build: ${AI_CORE_FORMAT_CHECK_ON_BUILD}")
 message(STATUS "")
 message(STATUS "Installation prefix: ${CMAKE_INSTALL_PREFIX}")
 
@@ -89,19 +109,13 @@ if(NOT TARGET_ARCH)
     set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
+include(cmake/dependencies/Common.cmake)
+
 message(STATUS "")
 message(STATUS "Platform information:")
 message(STATUS "  Target OS:          ${TARGET_OS}")
 message(STATUS "  Target architecture: ${TARGET_ARCH}")
 message(STATUS "  Build type:         ${CMAKE_BUILD_TYPE}")
-
-# ============================================================================
-# Third-Party Dependencies
-# ============================================================================
-message(INFO "================================")
-message(INFO "Loading third-party dependencies")
-message(INFO "================================")
-include(cmake/load_3rdparty.cmake)
 
 # ============================================================================
 # Output Directories
@@ -134,34 +148,35 @@ message(INFO "================================")
 message(INFO "Building project components")
 message(INFO "================================")
 
-# Third-party libraries
-add_subdirectory(3rdparty)
-
 # Main library
 add_subdirectory(src)
+if(AI_CORE_FORMAT_CHECK_ON_BUILD AND TARGET ai_core_format_check)
+    add_dependencies(ai_core ai_core_format_check)
+endif()
 
-if(AI_CORE_BUILD_BUNDLED_PLUGINS)
+if(AI_CORE_BUILD_ANY_PLUGIN)
     add_subdirectory(plugins)
 endif()
 
 # Optional components
-if(BUILD_AI_CORE_TESTS)
+if(AI_CORE_BUILD_TESTS)
     message(STATUS "Adding tests to build")
+    enable_testing()
     add_subdirectory(tests)
 endif()
 
-if(BUILD_AI_CORE_BENCHMARKS)
+if(AI_CORE_BUILD_BENCHMARKS)
     message(STATUS "Adding benchmarks to build")
     add_subdirectory(benchmarks)
 endif()
 
-if(BUILD_AI_CORE_EXAMPLES)
+if(AI_CORE_BUILD_EXAMPLES)
     message(STATUS "Adding examples to build")
     add_subdirectory(examples)
 endif()
 
 # Assets (test/benchmark resources)
-if(BUILD_AI_CORE_TESTS OR BUILD_AI_CORE_BENCHMARKS)
+if(AI_CORE_BUILD_TESTS OR AI_CORE_BUILD_BENCHMARKS)
     message(STATUS "Adding asset resources to build")
     add_subdirectory(assets)
 endif()

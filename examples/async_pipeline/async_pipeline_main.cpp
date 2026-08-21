@@ -1,34 +1,15 @@
-/**
- * @file async_pipeline_main.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief End-to-end async inference pipeline: the framework's performance
- * showcase. Demonstrates the supported path to concurrency —
- *
- *   AlgoInferEngine::getAsyncEngine()   (front door, no dynamic_cast)
- *     -> a pool of IExecutionContext    (one CUDA stream each)
- *     -> pinned host buffers            (async, overlappable H2D/D2H)
- *     -> CUDA Graph                     (amortized launch overhead)
- *     -> N worker threads pulling from a shared frame queue
- *
- * Each worker owns one execution context (contexts are NOT thread-safe) and
- * runs inferAsync + synchronize, so compute on different streams overlaps.
- *
- * @version 0.1
- * @date 2026-07-18
- *
- * @copyright Copyright (c) 2026
- */
 #include "ai_core/algo_types.hpp"
 #include "ai_core/infer_async.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/infer_engine_wrapper.hpp"
-#include "ai_core/logger.hpp"
+#include "ai_core/runtime.hpp"
 #include "ai_core/tensor_data.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
@@ -68,7 +49,9 @@ TensorData makePinnedInput(IAsyncInferEngine &engine, int seed) {
 } // namespace
 
 int main(int argc, char **argv) {
-  logging::Logger::instance().setLevel(logging::LogLevel::Info);
+  LoggingConfig logging;
+  logging.min_level = LogLevel::Info;
+  Runtime::configureLogging(logging);
 
   std::string model_path = "assets/models/yolov11n_trt_fp16.engine";
   int num_workers = 4;
@@ -89,20 +72,20 @@ int main(int argc, char **argv) {
 
   AlgoInferEngine engine("TrtAlgoInference", infer_params);
   if (engine.initialize() != InferErrorCode::SUCCESS) {
-    LOG_ERROR_S << "Failed to initialize engine (need a TensorRT engine at "
-                << model_path
-                << "; build one with scripts/fetch_models.sh --trt-only).";
+    std::cerr << "Failed to initialize engine (need a TensorRT engine at "
+              << model_path
+              << "; build one with scripts/fetch_models.sh --trt-only).";
     return 1;
   }
 
   std::shared_ptr<IAsyncInferEngine> async_engine = engine.getAsyncEngine();
   if (!async_engine) {
-    LOG_ERROR_S << "Backend has no async support (getAsyncEngine() == null). "
-                   "This example needs the TensorRT backend.";
+    std::cerr << "Backend has no async support (getAsyncEngine() == null). "
+                 "This example needs the TensorRT backend.";
     return 1;
   }
-  LOG_INFO_S << "Async engine acquired. Workers=" << num_workers
-             << " frames=" << total_frames;
+  std::clog << "Async engine acquired. Workers=" << num_workers
+            << " frames=" << total_frames;
 
   // --- Build a pool of execution contexts (one CUDA stream each) -------------
   // Each context gets its own pinned input, CUDA graph, and is captured during
@@ -152,11 +135,11 @@ int main(int argc, char **argv) {
           .count();
 
   const int processed = total_frames - failures.load();
-  LOG_INFO_S << "Processed " << processed << "/" << total_frames
-             << " frames in " << elapsed << " s  (" << (processed / elapsed)
-             << " img/s, " << num_workers << " workers)";
+  std::clog << "Processed " << processed << "/" << total_frames << " frames in "
+            << elapsed << " s  (" << (processed / elapsed) << " img/s, "
+            << num_workers << " workers)";
   if (failures.load() > 0) {
-    LOG_ERROR_S << failures.load() << " inference(s) failed.";
+    std::cerr << failures.load() << " inference(s) failed.";
     return 1;
   }
   return 0;

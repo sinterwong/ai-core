@@ -1,13 +1,3 @@
-/**
- * @file test_vision_util.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Unit tests for escaleResizeWithPad and box coordinate restoration
- * @version 0.1
- * @date 2026-07-17
- *
- * @copyright Copyright (c) 2026
- *
- */
 #include "ai_core/preprocess_types.hpp"
 #include "vision_util.hpp"
 #include "gtest/gtest.h"
@@ -193,9 +183,7 @@ TEST(ScaleRatioTest, EmptySourceShapeDegradesToIdentity) {
   EXPECT_FLOAT_EQ(rh, 1.f);
 }
 
-// ============================================================================
 // NMS + IoU
-// ============================================================================
 
 TEST(NmsTest, CalculateIoUOverlap) {
   BBox a{Rect{0, 0, 10, 10}, 0.9f, 0};
@@ -228,9 +216,7 @@ TEST(NmsTest, KeepsDifferentClassesEvenIfOverlapping) {
   EXPECT_EQ(kept.size(), 2u);
 }
 
-// ============================================================================
 // PixelFormatPlan / convertPixelFormat
-// ============================================================================
 
 using ai_core::ImagePixelFormat;
 using ai_core::utils::convertPixelFormat;

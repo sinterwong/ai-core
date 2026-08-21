@@ -1,8 +1,3 @@
-/**
- * @file test_core_types.cpp
- * @brief Unit tests for DataPacket, ParamCenter and the type-safe Factory.
- * No model assets required.
- */
 #include "ai_core/algo_types.hpp"
 #include "ai_core/data_packet.hpp"
 #include "ai_core/error_code.hpp"
@@ -11,13 +6,12 @@
 #include "gtest/gtest.h"
 
 #include <sstream>
+#include <string_view>
 
 namespace testing_core_types {
 using namespace ai_core;
 
-// ============================================================================
 // DataPacket
-// ============================================================================
 
 TEST(DataPacketTest, SetAndGet) {
   DataPacket packet;
@@ -69,9 +63,7 @@ TEST(DataPacketTest, SetOverwrites) {
   EXPECT_THROW(packet.getParam<int>("key"), std::runtime_error);
 }
 
-// ============================================================================
 // ParamCenter
-// ============================================================================
 
 TEST(ParamCenterTest, DefaultHoldsMonostate) {
   AlgoPreprocParams params;
@@ -159,14 +151,56 @@ TEST(AlgoOutputTest, BuiltinAlternativesStillWork) {
   EXPECT_EQ(output.getParams<DataPacket>(), nullptr);
 }
 
-// ============================================================================
 // InferErrorCode::to_string
-// ============================================================================
 
 TEST(ErrorCodeTest, ToStringNamesCodes) {
-  EXPECT_EQ(to_string(InferErrorCode::SUCCESS), "SUCCESS");
-  EXPECT_EQ(to_string(InferErrorCode::InferSizeMismatch), "InferSizeMismatch");
-  EXPECT_EQ(to_string(InferErrorCode::AlgoNotFound), "AlgoNotFound");
+  struct ExpectedName {
+    InferErrorCode code;
+    std::string_view name;
+  };
+  constexpr ExpectedName expected_names[] = {
+      {InferErrorCode::SUCCESS, "SUCCESS"},
+      {InferErrorCode::InitFailed, "InitFailed"},
+      {InferErrorCode::InitConfigFailed, "InitConfigFailed"},
+      {InferErrorCode::InitModelLoadFailed, "InitModelLoadFailed"},
+      {InferErrorCode::InitDeviceFailed, "InitDeviceFailed"},
+      {InferErrorCode::InitMemoryAllocFailed, "InitMemoryAllocFailed"},
+      {InferErrorCode::InitDecryptionFailed, "InitDecryptionFailed"},
+      {InferErrorCode::NotInitialized, "NotInitialized"},
+      {InferErrorCode::InitRuntimeFailed, "InitRuntimeFailed"},
+      {InferErrorCode::InitEngineFailed, "InitEngineFailed"},
+      {InferErrorCode::InitContextFailed, "InitContextFailed"},
+      {InferErrorCode::InitBindingFailed, "InitBindingFailed"},
+      {InferErrorCode::InferFailed, "InferFailed"},
+      {InferErrorCode::InferInputError, "InferInputError"},
+      {InferErrorCode::InferOutputError, "InferOutputError"},
+      {InferErrorCode::InferDeviceError, "InferDeviceError"},
+      {InferErrorCode::InferPreprocessFailed, "InferPreprocessFailed"},
+      {InferErrorCode::InferMemoryError, "InferMemoryError"},
+      {InferErrorCode::InferSetInputFailed, "InferSetInputFailed"},
+      {InferErrorCode::InferExtractFailed, "InferExtractFailed"},
+      {InferErrorCode::InferUnsupportedOutputType,
+       "InferUnsupportedOutputType"},
+      {InferErrorCode::InferTypeMismatch, "InferTypeMismatch"},
+      {InferErrorCode::InferSizeMismatch, "InferSizeMismatch"},
+      {InferErrorCode::InferInvalidInput, "InferInvalidInput"},
+      {InferErrorCode::InferExecutionFailed, "InferExecutionFailed"},
+      {InferErrorCode::InferBindingError, "InferBindingError"},
+      {InferErrorCode::StreamCreationFailed, "StreamCreationFailed"},
+      {InferErrorCode::StreamSyncFailed, "StreamSyncFailed"},
+      {InferErrorCode::GraphCaptureFailed, "GraphCaptureFailed"},
+      {InferErrorCode::GraphLaunchFailed, "GraphLaunchFailed"},
+      {InferErrorCode::AsyncOperationPending, "AsyncOperationPending"},
+      {InferErrorCode::TerminateFailed, "TerminateFailed"},
+      {InferErrorCode::AlgoNotFound, "AlgoNotFound"},
+      {InferErrorCode::AlgoRegisterFailed, "AlgoRegisterFailed"},
+      {InferErrorCode::AlgoUnregisterFailed, "AlgoUnregisterFailed"},
+      {InferErrorCode::AlgoInferFailed, "AlgoInferFailed"},
+  };
+
+  for (const auto &[code, name] : expected_names) {
+    EXPECT_EQ(to_string(code), name);
+  }
 }
 
 TEST(ErrorCodeTest, UnknownValueIsHandled) {
@@ -180,9 +214,7 @@ TEST(ErrorCodeTest, StreamOperatorIncludesNumericValue) {
   EXPECT_EQ(oss.str(), "NotInitialized(106)");
 }
 
-// ============================================================================
 // Factory
-// ============================================================================
 
 struct TestBase {
   virtual ~TestBase() = default;

@@ -1,20 +1,9 @@
-/**
- * @file param_validation.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Structural validation of pre/postprocess parameters, run once when
- * they are bound at initialize().
- * @version 0.1
- * @date 2026-07-17
- *
- * @copyright Copyright (c) 2026
- *
- */
 #ifndef AI_CORE_PARAM_VALIDATION_HPP
 #define AI_CORE_PARAM_VALIDATION_HPP
 
 #include "ai_core/algo_types.hpp"
 #include "ai_core/error_code.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <algorithm>
 
 namespace ai_core::dnn {

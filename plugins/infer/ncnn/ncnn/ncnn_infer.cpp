@@ -1,17 +1,9 @@
-/**
- * @file dnn_infer.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-01-17
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "ncnn_infer.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
 #include "crypto.hpp"
+#endif
 #include <cctype>
 #include <ncnn/cpu.h>
 #include <ostream>
@@ -86,6 +78,7 @@ InferErrorCode NCNNAlgoInference::initialize() {
     std::string bin_path = m_params.model_path + ".bin";
 
     if (m_params.need_decrypt) {
+#ifdef AI_CORE_ENABLE_MODEL_DECRYPTION
       int model_load_ret = -1;
       LOG_INFO_S << "Decrypting model weights: " << bin_path;
       std::vector<uint8_t> model_data;
@@ -146,6 +139,10 @@ InferErrorCode NCNNAlgoInference::initialize() {
         LOG_INFO_S
             << "Successfully loaded decrypted model weights from memory.";
       }
+#else
+      LOG_ERROR_S << "Encrypted-model support is disabled for this plugin";
+      return InferErrorCode::InitDecryptionFailed;
+#endif
     } else {
       if (m_net.load_model(bin_path.c_str()) != 0) {
         LOG_ERROR_S << "Failed to load model weights: " << bin_path;
@@ -275,37 +272,11 @@ InferErrorCode NCNNAlgoInference::infer(const TensorData &inputs,
       } else if (ncnn_out.dims == 4) { // (Channels, Depth, Height, Width)
         shape_vec = {ncnn_out.c, static_cast<int>(ncnn_out.elemsize),
                      ncnn_out.h, ncnn_out.w};
-        // representation
-        // A common interpretation for ncnn output with dims=4 is (N, C, H, W)
-        // where N=1 and d is used for C if cdim is implicit.
-        // For safety, let's assume it's (ncnn_out.c, ncnn_out.d, ncnn_out.h,
-        // ncnn_out.w)
-        // The actual interpretation depends on how the model was constructed.
-        // For now, let's use a simpler representation.
         LOG_WARNING_S
             << "4D NCNN output tensor, shape interpretation might need "
                "verification.";
-        // A common output format might be just a flat list of features, or
-        // CHW.
-        // If it's truly 4D like (1, C, H, W), then:
-        // shapeVec = {1, ncnn_out.c, ncnn_out.h, ncnn_out.w}; if we assume d is
-        // batch.
-        // Let's stick to ncnn's perspective: c, h, w (and d if present)
-        // If dims is 4, it's (w, h, depth, channels) according to some docs for
-        // ncnn::Mat constructor,
-        // but ncnn::Mat members are c, d, h, w.
-        // Let's assume dims indicates number of dimensions, and then c,h,w (and
-        // d) are populated.
-        // So if dims = 4, it's (ncnn_out.c, ncnn_out.d, ncnn_out.h,
-        // ncnn_out.w)
-        // This is very confusing. Let's assume for vision tasks, output is
-        // rarely 4D unless it's sequence.
-        // Most likely, it's 3D (C,H,W) or 1D (features).
-        // For now, if dims==4, we'll use {ncnn_out.c, ncnn_out.d, ncnn_out.h,
-        // ncnn_out.w}
-        // but this should be verified against actual model outputs.
-        // A safer bet for unknown 4D is to flatten or use a known convention.
-        // Let's assume it's (C,D,H,W) from ncnn if dims == 4
+        // ncnn stores axes innermost-first as w, h, d, c; expose them in
+        // outermost-first order to match the other backends.
         shape_vec = {ncnn_out.c, ncnn_out.d, ncnn_out.h, ncnn_out.w};
       }
       outputs.set(output_name, std::move(output_buffer), std::move(shape_vec));

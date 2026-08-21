@@ -1,8 +1,3 @@
-/**
- * @file test_tensor_data.cpp
- * @brief Unit tests for Tensor / TensorData: insertion order, name lookup,
- * replace semantics. No model assets required.
- */
 #include "ai_core/tensor_data.hpp"
 #include "gtest/gtest.h"
 

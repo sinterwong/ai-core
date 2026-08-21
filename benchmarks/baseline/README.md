@@ -5,13 +5,13 @@
 ## 采集方式
 
 ```bash
-cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_AI_CORE_BENCHMARKS=ON -DWITH_ORT_ENGINE=ON \
-  -DWITH_NCNN_ENGINE=ON -DWITH_TRT_ENGINE=ON
-cmake --build build-release -j && cmake --install build-release
+scripts/deps.sh init vision onnxruntime ncnn tensorrt benchmarking
+cmake --preset all-backends
+cmake --build --preset all-backends
+cmake --install build/all-backends --prefix install/all-backends
 
-cd install-release
-LD_LIBRARY_PATH=$PWD/lib:<3rdparty-libs> ./benchmarks/ai_core_benchmarks \
+cd install/all-backends
+LD_LIBRARY_PATH=$PWD/lib:<sdk-libs> ./benchmarks/ai_core_benchmarks \
   --benchmark_filter='BM_CPU_FramePreproc_Yolo|BM_CPU_YoloDetPostproc|GPU_FramePreproc|YoloInfer' \
   --benchmark_repetitions=5 --benchmark_report_aggregates_only=true \
   --benchmark_format=json --benchmark_out=../benchmarks/baseline/v1.5-x86_64.json

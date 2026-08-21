@@ -1,13 +1,3 @@
-/**
- * @file argmax_cls.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Classification decoder for models whose output is already normalized
- * @version 0.1
- * @date 2026-08-02
- *
- * @copyright Copyright (c) 2026
- *
- */
 #ifndef AI_CORE_INFERENCE_VISION_ARGMAX_CLS_HPP
 #define AI_CORE_INFERENCE_VISION_ARGMAX_CLS_HPP
 

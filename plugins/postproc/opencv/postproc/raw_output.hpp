@@ -1,13 +1,3 @@
-/**
- * @file raw_output.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-02-15
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP
 #define AI_CORE_INFERENCE_VISION_RAW_MODEL_OUTPUT_HPP
 

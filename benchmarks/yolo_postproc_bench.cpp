@@ -1,13 +1,3 @@
-/**
- * @file yolo_postproc_bench.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-04
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/algo_preprocessor.hpp"
 #include "ai_core/algo_types.hpp"
@@ -129,11 +119,9 @@ static void BM_CPU_YoloDetPostproc(benchmark::State &state) {
 
   ai_core::AlgoOutput algo_output;
 
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     postproc.process(model_output, algo_output, runtime_context);
   }
-  // =================================================
 
   for (auto _ : state) {
     postproc.process(model_output, algo_output, runtime_context);

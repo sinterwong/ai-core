@@ -1,6 +1,6 @@
 #include "ocr_utils.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
+#include <iostream>
 #include <opencv2/imgcodecs.hpp>
 
 namespace ai_core::example {
@@ -20,9 +20,9 @@ OCRUtils::OCRUtils(const std::string &det_config_path,
     m_ocrDetector = std::make_unique<GenericImageInfer>(det_config_path);
     m_ocrRec = std::make_unique<OCRRec>(rec_config_path, dict_path);
   } catch (const std::exception &e) {
-    LOG_ERROR_S << "Failed to initialize OCR: " << e.what();
+    std::cerr << "Failed to initialize OCR: " << e.what();
   }
-  LOG_INFO_S << "OCRUtils initialized successfully.";
+  std::clog << "OCRUtils initialized successfully.";
 }
 
 std::vector<std::string> OCRUtils::process(const cv::Mat &frame,
@@ -31,7 +31,7 @@ std::vector<std::string> OCRUtils::process(const cv::Mat &frame,
                                            float expand_ratio_x,
                                            float expand_ratio_y) {
   if (!m_ocrDetector || !m_ocrRec) {
-    LOG_ERROR_S << "OCR not initialized.";
+    std::cerr << "OCR not initialized.";
     return {};
   }
 
@@ -44,23 +44,23 @@ std::vector<std::string> OCRUtils::process(const cv::Mat &frame,
 
   for (cv::Rect bbox : detected_boxes) {
     if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-      LOG_WARNING_S
+      std::cerr
           << "Detected bounding box is empty or has zero dimension, skipping.";
       continue;
     }
 
     bbox = bbox & cv::Rect(0, 0, frame.cols, frame.rows);
     if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-      LOG_WARNING_S << "Bounding box clipped to image boundaries is empty or "
-                       "has zero dimension, skipping.";
+      std::cerr << "Bounding box clipped to image boundaries is empty or "
+                   "has zero dimension, skipping.";
       continue;
     }
 
     bbox = expandBox(bbox, expand_ratio_x, expand_ratio_y, frame.size());
 
     if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-      LOG_WARNING_S << "Expanded bounding box is empty or has zero dimension, "
-                       "skipping.";
+      std::cerr << "Expanded bounding box is empty or has zero dimension, "
+                   "skipping.";
       continue;
     }
 
@@ -88,14 +88,14 @@ std::vector<cv::Rect> OCRUtils::detect(const cv::Mat &frame,
   ai_core::AlgoOutput algo_output = (*m_ocrDetector)(frame, roi);
   auto ocr_det_ret = algo_output.getParams<ai_core::SegRet>();
   if (ocr_det_ret == nullptr) {
-    LOG_ERROR_S << "OCR Detector output is null.";
+    std::cerr << "OCR Detector output is null.";
     return {};
   }
 
   if (ocr_det_ret->cls_to_contours.size() != 1) {
-    LOG_ERROR_S << "OCR Detector output does not contain expected number of "
-                   "classes. Expected 1, got "
-                << ocr_det_ret->cls_to_contours.size();
+    std::cerr << "OCR Detector output does not contain expected number of "
+                 "classes. Expected 1, got "
+              << ocr_det_ret->cls_to_contours.size();
     return {};
   }
 
@@ -166,7 +166,7 @@ std::vector<std::pair<cv::Rect, std::string>> OCRUtils::regionsHaveKeywords(
 
   std::vector<std::pair<cv::Rect, std::string>> result;
   if (!m_ocrDetector || !m_ocrRec) {
-    LOG_ERROR_S << "OCR not initialized.";
+    std::cerr << "OCR not initialized.";
     return result;
   }
 
@@ -179,18 +179,16 @@ std::vector<std::pair<cv::Rect, std::string>> OCRUtils::regionsHaveKeywords(
 
     for (cv::Rect bbox : detected_boxes) {
       if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-        LOG_WARNING_S
-            << "Detected bounding box is empty or has zero dimension, "
-               "skipping.";
+        std::cerr << "Detected bounding box is empty or has zero dimension, "
+                     "skipping.";
         continue;
       }
 
       bbox = expandBox(bbox, expand_ratio_x, expand_ratio_y, frame.size());
 
       if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-        LOG_WARNING_S
-            << "Expanded bounding box is empty or has zero dimension, "
-               "skipping.";
+        std::cerr << "Expanded bounding box is empty or has zero dimension, "
+                     "skipping.";
         continue;
       }
 
@@ -243,37 +241,31 @@ cv::Mat OCRUtils::convertToBlackWords(const cv::Mat &gray_image) {
   return ret_mat;
 }
 
-/**
- * @brief 将包含多行文本的图像分割成单行文本图像列表。
- * @param grayImage 输入的图像是灰度图
- * @return 包含所有分割出的单行图像的向量。
- */
+// Row projection preserves the source's top-to-bottom line order.
 std::vector<cv::Mat> OCRUtils::lineSplit(const cv::Mat &gray_image) {
   if (gray_image.empty() || gray_image.channels() != 1) {
-    LOG_ERROR_S << "Input image is empty or not a single channel image.";
+    std::cerr << "Input image is empty or not a single channel image.";
     return {};
   }
 
-  // 转换成黑底白字
+  // Normalize polarity before building the row projection.
   cv::Mat in_img = convertToBlackWords(gray_image);
 
   constexpr int intensity_threshold = 100;
-  // 有效文本行的最小高度
+  // Shorter runs are treated as noise rather than text lines.
   constexpr int min_line_height = 8;
 
   std::vector<cv::Mat> result_lines;
   const auto image_rows = in_img.rows;
   const auto image_cols = in_img.cols;
 
-  // 黑字白底 -> 白字黑底
   cv::Mat inverted_img;
   cv::subtract(255, in_img, inverted_img);
 
-  // 沿水平方向进行reduce操作，计算每行的最大像素值，生成垂直投影
+  // A row is active when any column contains foreground text.
   cv::Mat vertical_projection;
   cv::reduce(inverted_img, vertical_projection, 1, cv::REDUCE_MAX);
 
-  // 裁剪逻辑
   auto extract_and_push_line = [&](int start_row, int end_row) {
     if (end_row - start_row + 1 >= min_line_height) {
       int padded_start = std::max(0, start_row - 1);
@@ -286,7 +278,6 @@ std::vector<cv::Mat> OCRUtils::lineSplit(const cv::Mat &gray_image) {
 
   int current_line_start = -1;
 
-  // 遍历垂直投影，寻找文本行的起止位置
   for (int i = 0; i < image_rows; ++i) {
     bool is_text_row = vertical_projection.at<uchar>(i) > intensity_threshold;
 

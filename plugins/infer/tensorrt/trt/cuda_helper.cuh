@@ -1,6 +1,6 @@
 #ifndef CUDA_UTILS_CUDA_HELPER_CUH
 #define CUDA_UTILS_CUDA_HELPER_CUH
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <cuda_runtime.h>
 #include <stdexcept>
 

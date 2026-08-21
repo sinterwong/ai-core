@@ -1,13 +1,7 @@
-/**
- * @file main.cpp
- * @brief Minimal ai_core starter: load a JSON pipeline definition, run one
- * detection, print the boxes. Copy this directory, point it at your model +
- * config, and you have a working product skeleton.
- */
 #include "ai_core/algo_inference.hpp"
 #include "ai_core/config/algo_config.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
+#include "ai_core/plugin_manager.hpp"
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -21,6 +15,10 @@ int main(int argc, char **argv) {
   const std::string image_path = argv[2];
 
   using namespace ai_core;
+
+  // Maintained plugins are separate DSOs in v2; loading the install directory
+  // makes their registered names available before constructing the pipeline.
+  dnn::PluginManager::instance().loadDirectory(AI_CORE_PLUGIN_DIR);
 
   // 1) Load + validate the pipeline definition from JSON (no C++ wiring).
   config::AlgoConfig cfg;

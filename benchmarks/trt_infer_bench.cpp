@@ -1,13 +1,3 @@
-/**
- * @file trt_infer_bench.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2026-01-08
- *
- * @copyright Copyright (c) 2026
- *
- */
 #ifdef WITH_TRT
 #include "ai_core/algo_types.hpp"
 #include "ai_core/infer_async.hpp"
@@ -27,43 +17,30 @@
 using namespace ai_core;
 using namespace ai_core::dnn;
 
-// ============================================================================
-// Configuration Constants
-// ============================================================================
-
 namespace config {
 constexpr int k_warmup_iterations = 10;
 constexpr const char *k_model_path = "assets/models/yolov11n_trt_fp16.engine";
 constexpr const char *k_model_name = "yolov11n";
 
-// Input sizes to test (batch, channels, height, width)
+// Shapes use NCHW order.
 const std::vector<std::vector<int64_t>> k_input_shapes = {
     {1, 3, 640, 640},
     {1, 3, 320, 320},
     {1, 3, 1280, 1280},
 };
 
-// Pipeline depths to test
 const std::vector<int> k_pipeline_depths = {2, 3, 4, 6};
 
-// Thread counts to test
 const std::vector<int> k_thread_counts = {1, 2, 4, 8};
 } // namespace config
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
-/**
- * @brief Calculate tensor size in bytes
- */
 static size_t calculateSizeBytes(const std::vector<int64_t> &shape,
                                  DataType dtype) {
   size_t elements = 1;
   for (auto dim : shape)
     elements *= dim;
 
-  size_t element_size = 4; // Default float32
+  size_t element_size = 4;
   switch (dtype) {
   case DataType::FLOAT16:
     element_size = 2;
@@ -83,9 +60,6 @@ static size_t calculateSizeBytes(const std::vector<int64_t> &shape,
   return elements * element_size;
 }
 
-/**
- * @brief Create pageable (non-pinned) input tensor
- */
 static TensorData createPageableInput(const std::vector<int64_t> &shape,
                                       DataType dtype) {
   TensorData data;
@@ -103,9 +77,6 @@ static TensorData createPageableInput(const std::vector<int64_t> &shape,
   return data;
 }
 
-/**
- * @brief Create pinned memory input tensor
- */
 static TensorData createPinnedInput(IAsyncInferEngine *engine,
                                     const std::vector<int64_t> &shape,
                                     DataType dtype) {
@@ -125,9 +96,6 @@ static TensorData createPinnedInput(IAsyncInferEngine *engine,
   return data;
 }
 
-/**
- * @brief Perform warmup inference
- */
 static void warmup(IInferEnginePlugin *engine, const TensorData &input,
                    int iterations = config::k_warmup_iterations) {
   TensorData output;
@@ -144,17 +112,11 @@ static void warmupStream(IExecutionContext *stream, const TensorData &input,
   }
 }
 
-// ============================================================================
-// Engine Manager: Thread-safe singleton for shared engine
-// ============================================================================
-
 class EngineManager {
 public:
   static EngineManager &instance() {
-    // static EngineManager inst;
-    // return inst;
-
-    // 使用不朽单例
+    // Intentionally leaked: CUDA objects may otherwise outlive the runtime
+    // during process shutdown and make benchmark teardown nondeterministic.
     static EngineManager *inst = new EngineManager();
     return *inst;
   }
@@ -174,8 +136,6 @@ public:
       m_engine->terminate();
       m_engine.reset();
     }
-    // Reset the once_flag by recreating the manager
-    // Note: In production, consider a more sophisticated approach
   }
 
 private:
@@ -202,15 +162,11 @@ private:
   std::mutex m_mutex;
 };
 
-// ============================================================================
-// Custom Counters for Rich Metrics
-// ============================================================================
-
 static void setCommonCounters(benchmark::State &state,
                               const std::vector<int64_t> &shape,
                               int items_per_iteration = 1) {
   size_t input_bytes = calculateSizeBytes(shape, DataType::FLOAT32);
-  // Estimate output bytes (YOLO output: 1 x 84 x 8400 for 640x640)
+  // YOLO 640x640 emits one 1x84x8400 tensor.
   size_t output_bytes = 84 * 8400 * sizeof(float);
   size_t total_bytes = input_bytes + output_bytes;
 
@@ -218,7 +174,6 @@ static void setCommonCounters(benchmark::State &state,
   state.SetBytesProcessed(state.iterations() * total_bytes *
                           items_per_iteration);
 
-  // Custom counters
   state.counters["InputMB"] = input_bytes / (1024.0 * 1024.0);
   state.counters["Latency_us"] = benchmark::Counter(
       state.iterations(),
@@ -226,18 +181,10 @@ static void setCommonCounters(benchmark::State &state,
       benchmark::Counter::OneK::kIs1000);
 }
 
-// ============================================================================
-// Baseline Comparisons (Single Thread, Fixed Shape)
-// ============================================================================
-
-/**
- * @brief Baseline: Legacy synchronous interface
- */
 static void BM_TRT_Baseline_Sync(benchmark::State &state) {
   auto engine = EngineManager::instance().getEngine();
   auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
 
-  // Warmup (critical for fair comparison)
   warmup(engine.get(), input);
 
   TensorData output;
@@ -253,17 +200,11 @@ static void BM_TRT_Baseline_Sync(benchmark::State &state) {
 }
 BENCHMARK(BM_TRT_Baseline_Sync)->Unit(benchmark::kMillisecond)->Iterations(100);
 
-/**
- * @brief Concurrent synchronous infer() throughput vs thread count.
- *
- * google-benchmark runs the loop body on `threads` threads simultaneously
- * against the shared engine. Because sync infer() now borrows an execution
- * context from a pool (no global mutex), items/s should scale with threads.
- * Acceptance (v1.7): items/s at 4 threads >= 3x the 1-thread rate.
- */
+// Google Benchmark runs the body concurrently against the shared engine. Each
+// call borrows an execution context, so throughput should scale with threads.
 static void BM_TRT_Sync_Concurrent(benchmark::State &state) {
   auto engine = EngineManager::instance().getEngine();
-  // Each thread owns its input/output so nothing but the engine is shared.
+  // Each worker owns its tensors; only the engine is shared.
   auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
   if (state.thread_index() == 0) {
     warmup(engine.get(), input);
@@ -284,15 +225,8 @@ BENCHMARK(BM_TRT_Sync_Concurrent)
     ->UseRealTime()
     ->Unit(benchmark::kMillisecond);
 
-/**
- * @brief Unambiguous aggregate-throughput sweep for concurrent sync infer().
- *
- * Spawns N worker threads that each call the shared engine's infer() in a
- * tight loop for a fixed wall-clock window, then reports the aggregate
- * images/sec at N = 1, 2, 4, 8. This measures the real scaling the context
- * pool provides (google-benchmark's Threads() aggregation is easy to
- * misread). Registered as a single benchmark that runs the whole sweep once.
- */
+// Report an explicit aggregate rate because the standard multi-threaded
+// benchmark aggregation can obscure context-pool scaling.
 static void BM_TRT_Sync_ThroughputSweep(benchmark::State &state) {
   auto engine = EngineManager::instance().getEngine();
   auto warmup_input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
@@ -354,9 +288,6 @@ BENCHMARK(BM_TRT_Sync_ThroughputSweep)
     ->Iterations(1)
     ->Unit(benchmark::kMillisecond);
 
-/**
- * @brief Async without CUDA Graph (measures async overhead)
- */
 static void BM_TRT_Async_NoGraph_Pageable(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto stream = async_engine->createExecutionContext();
@@ -381,16 +312,13 @@ BENCHMARK(BM_TRT_Async_NoGraph_Pageable)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(100);
 
-/**
- * @brief Async with CUDA Graph (measures graph benefit)
- */
 static void BM_TRT_Async_WithGraph_Pageable(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto stream = async_engine->createExecutionContext();
   stream->setGraphEnabled(true);
 
   auto input = createPageableInput({1, 3, 640, 640}, DataType::FLOAT32);
-  warmupStream(stream.get(), input); // Graph captured during warmup
+  warmupStream(stream.get(), input);
 
   for (auto _ : state) {
     TensorData output;
@@ -408,9 +336,6 @@ BENCHMARK(BM_TRT_Async_WithGraph_Pageable)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(100);
 
-/**
- * @brief Async with Graph + Pinned Memory (best single-stream latency)
- */
 static void BM_TRT_Async_WithGraph_Pinned(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto stream = async_engine->createExecutionContext();
@@ -436,20 +361,13 @@ BENCHMARK(BM_TRT_Async_WithGraph_Pinned)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(100);
 
-// ============================================================================
-// Memory Type Impact Analysis
-// ============================================================================
-
-/**
- * @brief Compare Pageable vs Pinned memory transfer overhead
- * Arg: 0 = Pageable, 1 = Pinned
- */
 static void BM_TRT_MemoryType_Comparison(benchmark::State &state) {
   const bool use_pinned = state.range(0) == 1;
 
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto stream = async_engine->createExecutionContext();
-  stream->setGraphEnabled(false); // Disable graph to isolate memory impact
+  // Disable graphs so the benchmark isolates host-memory transfer behavior.
+  stream->setGraphEnabled(false);
 
   TensorData input;
   if (use_pinned) {
@@ -475,25 +393,12 @@ BENCHMARK(BM_TRT_MemoryType_Comparison)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(100);
 
-// ============================================================================
-// Input Size Scaling
-// ============================================================================
-
-// ============================================================================
-// Pipeline Throughput Analysis
-// ============================================================================
-
-/**
- * @brief Measure throughput with different pipeline depths
- * Tests latency hiding effectiveness
- */
 static void BM_TRT_Pipeline_Throughput(benchmark::State &state) {
   const int pipeline_depth = state.range(0);
 
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto stream_pool = async_engine->createContextPool(pipeline_depth);
 
-  // Enable graph for all streams
   for (auto &s : stream_pool) {
     s->setGraphEnabled(true);
   }
@@ -501,24 +406,20 @@ static void BM_TRT_Pipeline_Throughput(benchmark::State &state) {
   auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
                                  DataType::FLOAT32);
 
-  // Warmup all streams
   for (auto &s : stream_pool) {
     warmupStream(s.get(), input, 5);
   }
 
-  // Pre-allocate output containers
   std::vector<TensorData> outputs(pipeline_depth);
 
   for (auto _ : state) {
     std::vector<std::future<InferErrorCode>> futures;
     futures.reserve(pipeline_depth);
 
-    // Submit all tasks (non-blocking)
     for (int i = 0; i < pipeline_depth; ++i) {
       futures.push_back(stream_pool[i]->inferAsync(input, outputs[i]));
     }
 
-    // Wait for all completions
     for (auto &f : futures) {
       if (f.get() != InferErrorCode::SUCCESS) {
         state.SkipWithError("Pipeline inference failed");
@@ -541,24 +442,16 @@ BENCHMARK(BM_TRT_Pipeline_Throughput)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(50);
 
-// ============================================================================
-// CUDA Graph Overhead Analysis
-// ============================================================================
-
-/**
- * @brief Measure CUDA Graph capture overhead (one-time cost)
- */
 static void BM_TRT_Graph_Capture_Overhead(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
                                  DataType::FLOAT32);
 
   for (auto _ : state) {
-    // Create fresh stream for each iteration
+    // A fresh context forces every iteration to include graph capture.
     auto stream = async_engine->createExecutionContext();
     stream->setGraphEnabled(true);
 
-    // First inference captures the graph
     TensorData output;
     auto result = stream->inferAsync(input, output).get();
     if (result != InferErrorCode::SUCCESS) {
@@ -573,9 +466,6 @@ BENCHMARK(BM_TRT_Graph_Capture_Overhead)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(20);
 
-/**
- * @brief Measure CUDA Graph replay latency (amortized benefit)
- */
 static void BM_TRT_Graph_Replay_Latency(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto stream = async_engine->createExecutionContext();
@@ -584,7 +474,6 @@ static void BM_TRT_Graph_Replay_Latency(benchmark::State &state) {
   auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
                                  DataType::FLOAT32);
 
-  // Capture graph during warmup
   warmupStream(stream.get(), input);
 
   for (auto _ : state) {
@@ -599,14 +488,6 @@ BENCHMARK(BM_TRT_Graph_Replay_Latency)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(100);
 
-// ============================================================================
-// Graph Toggle Overhead (Shape Change Simulation)
-// ============================================================================
-
-/**
- * @brief Measure overhead when Graph needs re-capture (shape change)
- * This simulates dynamic shape scenarios
- */
 static void BM_TRT_Graph_Recapture_Overhead(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto stream = async_engine->createExecutionContext();
@@ -617,12 +498,11 @@ static void BM_TRT_Graph_Recapture_Overhead(benchmark::State &state) {
   auto input320 = createPinnedInput(async_engine.get(), {1, 3, 320, 320},
                                     DataType::FLOAT32);
 
-  // Initial capture
   warmupStream(stream.get(), input640);
 
   bool toggle = false;
   for (auto _ : state) {
-    // Alternate between two shapes (forces recapture)
+    // Alternating shapes invalidates and recaptures the graph each time.
     const auto &input = toggle ? input320 : input640;
     toggle = !toggle;
 
@@ -636,13 +516,6 @@ BENCHMARK(BM_TRT_Graph_Recapture_Overhead)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(50);
 
-// ============================================================================
-// Stream Creation/Destruction Overhead
-// ============================================================================
-
-/**
- * @brief Measure stream creation overhead
- */
 static void BM_TRT_Stream_Creation_Overhead(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
 
@@ -657,9 +530,6 @@ BENCHMARK(BM_TRT_Stream_Creation_Overhead)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(100);
 
-/**
- * @brief Measure stream creation + first inference (cold start)
- */
 static void BM_TRT_Stream_ColdStart_Latency(benchmark::State &state) {
   auto async_engine = EngineManager::instance().getAsyncEngine();
   auto input = createPinnedInput(async_engine.get(), {1, 3, 640, 640},
@@ -679,14 +549,6 @@ BENCHMARK(BM_TRT_Stream_ColdStart_Latency)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(20);
 
-// ============================================================================
-// Comprehensive Summary Comparison
-// ============================================================================
-
-/**
- * @brief All-in-one comparison for executive summary
- * Args: [GraphEnabled, PinnedMemory]
- */
 static void BM_TRT_Summary_Comparison(benchmark::State &state) {
   const bool graph_enabled = state.range(0) == 1;
   const bool pinned_memory = state.range(1) == 1;

@@ -1,13 +1,3 @@
-/**
- * @file yolo_preproc_bench.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-04
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/algo_preprocessor.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/opencv_interop.hpp"
@@ -53,11 +43,9 @@ static void BM_CPU_FramePreproc_Yolo(benchmark::State &state) {
 
   ai_core::TensorData model_input;
 
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     preproc.process(input, model_input, runtime_context);
   }
-  // =================================================
 
   for (auto _ : state) {
     preproc.process(input, model_input, runtime_context);
@@ -69,7 +57,6 @@ BENCHMARK(BM_CPU_FramePreproc_Yolo)
     ->Unit(benchmark::kMillisecond);
 
 #ifdef WITH_TRT
-// ============================= Normal ================================
 static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
 
@@ -91,11 +78,9 @@ static void BM_GPU_FramePreproc_Yolo(benchmark::State &state) {
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     preproc.process(input, model_input, runtime_context);
   }
-  // ===============================================
 
   for (auto _ : state) {
     preproc.process(input, model_input, runtime_context);
@@ -106,7 +91,6 @@ BENCHMARK(BM_GPU_FramePreproc_Yolo)
     ->Iterations(100)
     ->Unit(benchmark::kMillisecond);
 
-// ========================= Without HWC2CWH ============================
 static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
 
@@ -129,11 +113,9 @@ static void BM_GPU_FramePreproc_No_HWC_Yolo(benchmark::State &state) {
 
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     preproc.process(input, model_input, runtime_context);
   }
-  // ===============================================
 
   for (auto _ : state) {
     preproc.process(input, model_input, runtime_context);
@@ -144,7 +126,6 @@ BENCHMARK(BM_GPU_FramePreproc_No_HWC_Yolo)
     ->Iterations(100)
     ->Unit(benchmark::kMillisecond);
 
-// ======================== Without FP16 ===========================
 static void BM_GPU_FramePreproc_No_FP16_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
 
@@ -167,11 +148,9 @@ static void BM_GPU_FramePreproc_No_FP16_Yolo(benchmark::State &state) {
 
   ai_core::TensorData model_input;
 
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     preproc.process(input, model_input, runtime_context);
   }
-  // ===============================================
 
   for (auto _ : state) {
     preproc.process(input, model_input, runtime_context);
@@ -182,7 +161,6 @@ BENCHMARK(BM_GPU_FramePreproc_No_FP16_Yolo)
     ->Iterations(100)
     ->Unit(benchmark::kMillisecond);
 
-// ======================== Without HWC2CWH and FP16 ===========================
 static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
   ai_core::dnn::AlgoPreproc preproc("CudaGenericPreprocess");
 
@@ -206,11 +184,9 @@ static void BM_GPU_FramePreproc_No_HWC_FP16_Yolo(benchmark::State &state) {
   std::shared_ptr<ai_core::RuntimeContext> runtime_context =
       std::make_shared<ai_core::RuntimeContext>();
 
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     preproc.process(input, model_input, runtime_context);
   }
-  // ===============================================
 
   for (auto _ : state) {
     preproc.process(input, model_input, runtime_context);

@@ -1,18 +1,8 @@
-/**
- * @file ncnn_generic_preprocessor.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-06-28
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ncnn_generic_preprocessor.hpp"
 
 #include "ai_core/opencv_interop.hpp"
 
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 #include <algorithm>
 #include <ncnn/mat.h>
 #include <ncnn/option.h>

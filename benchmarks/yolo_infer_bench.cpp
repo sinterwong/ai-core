@@ -1,13 +1,3 @@
-/**
- * @file yolo_infer_bench.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-04
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/algo_preprocessor.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/common_types.hpp"
@@ -83,11 +73,9 @@ static void BM_ORT_CPU_DATA_YoloInfer(benchmark::State &state) {
   preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     engine.infer(model_input, model_output);
   }
-  // =================================================
 
   for (auto _ : state) {
     engine.infer(model_input, model_output);
@@ -126,11 +114,9 @@ static void BM_NCNN_CPU_DATA_YoloInfer(benchmark::State &state) {
   preproc.process(input, model_input, runtime_context);
 
   ai_core::TensorData model_output;
-  // ==================== WARM-UP ====================
   for (int i = 0; i < 10; ++i) {
     engine.infer(model_input, model_output);
   }
-  // =================================================
 
   for (auto _ : state) {
     engine.infer(model_input, model_output);

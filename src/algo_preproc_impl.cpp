@@ -1,16 +1,6 @@
-/**
- * @file algo_preproc_impl.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-18
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "algo_preproc_impl.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
+#include "logger.hpp"
 #include "param_validation.hpp"
 
 namespace ai_core::dnn {
@@ -26,9 +16,8 @@ AlgoPreproc::Impl::initialize(const AlgoPreprocParams &preproc_params) {
   m_boundParams = preproc_params;
 
   try {
-    m_preprocessor =
-        PluginRegistry::instance().createPreprocessor(m_moduleName,
-                                                      AlgoConstructParams{});
+    m_preprocessor = PluginRegistry::instance().createPreprocessor(
+        m_moduleName, AlgoConstructParams{});
     if (m_preprocessor == nullptr) {
       LOG_ERROR_S << "Failed to create preprocessor for module: "
                   << m_moduleName;
@@ -100,7 +89,6 @@ InferErrorCode AlgoPreproc::Impl::batchProcess(
 }
 
 InferErrorCode AlgoPreproc::Impl::terminate() {
-  // No-op
   return InferErrorCode::SUCCESS;
 }
 } // namespace ai_core::dnn

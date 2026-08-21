@@ -1,13 +1,3 @@
-/**
- * @file fpr_cls.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-02-11
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ocr_reco.hpp"
 #include "ai_core/output_types.hpp"
 #include <opencv2/core.hpp>
@@ -51,7 +41,6 @@ bool OCRReco::batchProcessTyped(
   const std::vector<int> &argmax_shape =
       model_output.at(argmax_output_name).shape;
   if (argmax_shape.size() != 2) {
-    // Handle error: shape is not as expected for a batch
     return false;
   }
   const int batch_size = argmax_shape.at(0);
@@ -63,7 +52,7 @@ bool OCRReco::batchProcessTyped(
   algo_output.resize(batch_size);
 
   for (int i = 0; i < batch_size; ++i) {
-    // 计算当前样本在内存块中的起始位置
+    // The output is a contiguous `[batch, sequence]` tensor.
     const int64_t *current_argmax_data =
         argmax_data + (size_t)i * sequence_length;
     const int64_t current_output_length = lengths_data[i];

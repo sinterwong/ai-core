@@ -1,4 +1,5 @@
 #include "ai_core/plugin_manager.hpp"
+#include "ai_core/version.hpp"
 #include "postproc/argmax_cls.hpp"
 #include "postproc/fpr_cls.hpp"
 #include "postproc/nano_det.hpp"
@@ -18,12 +19,12 @@ using namespace ai_core::dnn;
 extern "C" AI_CORE_PLUGIN_EXPORT bool
 ai_core_register_plugin_v1(PluginRegistry &registry, PluginInfo &info) {
   info = {.name = "ai_core.postproc.opencv",
-          .version = "2.1.0",
+          .version = AI_CORE_SEMVER_STR,
           .provider = "ai-core",
           .description = "OpenCV model postprocessing",
           .capabilities = {"postproc", "backend:cpu", "framework:opencv"}};
   bool ok = true;
-#define AI_CORE_REGISTER_POSTPROCESSOR(Type)                                  \
+#define AI_CORE_REGISTER_POSTPROCESSOR(Type)                                   \
   ok &= registry.registerPostprocessor(#Type, [](const DataPacket &) {         \
     return std::make_shared<::ai_core::dnn::Type>();                           \
   })

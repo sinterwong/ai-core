@@ -1,13 +1,3 @@
-/**
- * @file algo_manager.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Manages algorithm instances and inference execution.
- * @version 0.2 (Refactored with PImpl)
- * @date 2025-07-15 (Update date)
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "ai_core/algo_manager.hpp"
 #include "algo_manager_impl.hpp"

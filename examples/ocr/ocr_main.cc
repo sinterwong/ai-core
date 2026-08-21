@@ -1,15 +1,5 @@
-/**
- * @file ocr_main.cc
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-09-15
- *
- * @copyright Copyright (c) 2025
- *
- */
-#include "ai_core/logger.hpp"
 #include "ai_core/plugin_manager.hpp"
+#include "ai_core/runtime.hpp"
 #include "ocr_utils.hpp"
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -38,16 +28,17 @@ int main(int argc, char *argv[]) {
   std::string image_path = argv[3];
   std::string dict_path = argv[4];
 
-  ai_core::logging::Logger::instance().setLevel(
-      ai_core::logging::LogLevel::Trace);
-  ai_core::logging::Logger::instance().enableConsole(true);
-  ai_core::logging::Logger::instance().enableFile(false);
-  ai_core::logging::Logger::instance().enableColor(true);
+  ai_core::LoggingConfig logging;
+  logging.min_level = ai_core::LogLevel::Trace;
+  logging.console_enabled = true;
+  logging.file_enabled = false;
+  logging.color_enabled = true;
+  ai_core::Runtime::configureLogging(logging);
 
   cv::Mat image = cv::imread(image_path);
 
   if (image.empty()) {
-    LOG_ERROR_S << "Failed to read image: " << image_path;
+    std::cerr << "Failed to read image: " << image_path;
     return -1;
   }
 
@@ -56,22 +47,21 @@ int main(int argc, char *argv[]) {
         det_config_path, rec_config_path, dict_path);
 
     auto detected_boxes = ocr->detect(image);
-    LOG_INFO_S << "Detected BBoxes: " << detected_boxes.size();
+    std::clog << "Detected BBoxes: " << detected_boxes.size();
 
     std::vector<std::string> recognized_texts;
     for (auto &bbox : detected_boxes) {
       bbox = ocr->expandBox(bbox, 0.0f, 0.5f, image.size());
       if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-        LOG_WARNING_S
-            << "Expanded bounding box is empty or has zero dimension, "
-               "skipping.";
+        std::cerr << "Expanded bounding box is empty or has zero dimension, "
+                     "skipping.";
         continue;
       }
       // make sure the bbox is inside the image
       bbox = bbox & cv::Rect(0, 0, image.cols, image.rows);
       if (bbox.empty() || bbox.width == 0 || bbox.height == 0) {
-        LOG_WARNING_S << "Expanded bounding box clipped to image boundaries is "
-                         "empty or has zero dimension, skipping.";
+        std::cerr << "Expanded bounding box clipped to image boundaries is "
+                     "empty or has zero dimension, skipping.";
         continue;
       }
 
@@ -88,9 +78,9 @@ int main(int argc, char *argv[]) {
         text += "-" + t;
       }
       if (!text.empty()) {
-        LOG_INFO_S << "Rect: " << bbox.x << ", " << bbox.y << ", " << bbox.width
-                   << ", " << bbox.height << "> "
-                   << "Recognized text : " << text;
+        std::clog << "Rect: " << bbox.x << ", " << bbox.y << ", " << bbox.width
+                  << ", " << bbox.height << "> "
+                  << "Recognized text : " << text;
       }
       recognized_texts.push_back(text);
     }
@@ -105,7 +95,7 @@ int main(int argc, char *argv[]) {
     cv::imwrite("vis_ocr_ret.png", image);
 
   } catch (const std::exception &e) {
-    LOG_ERROR_S << "An error occurred: " << e.what();
+    std::cerr << "An error occurred: " << e.what();
     return -1;
   }
 

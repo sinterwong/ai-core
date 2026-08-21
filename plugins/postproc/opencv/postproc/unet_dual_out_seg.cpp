@@ -1,16 +1,6 @@
-/**
- * @file unet_dual_out_seg.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-31
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "unet_dual_out_seg.hpp"
 
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 
 #include <cstring>
 
@@ -67,7 +57,7 @@ bool UNetDualOutputSeg::batchProcessTyped(
     return false;
   }
 
-  // 计算单个样本的元素数量
+  // Both outputs are contiguous and evenly partitioned by batch.
   size_t prob_item_size = prob_output.getElementCount() / batch_size;
   size_t mask_item_size = mask_output.getElementCount() / batch_size;
 
@@ -80,7 +70,6 @@ bool UNetDualOutputSeg::batchProcessTyped(
     const float *current_prob_data = prob_data_ptr + i * prob_item_size;
     const float *current_mask_data = mask_data_ptr + i * mask_item_size;
 
-    // 在循环中调用辅助函数
     DualRawSegRet ret =
         processSingleItem(current_prob_data, prob_shape, current_mask_data,
                           mask_shape, prep_args[i]);

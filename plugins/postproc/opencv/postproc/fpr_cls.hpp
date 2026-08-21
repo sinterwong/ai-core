@@ -1,13 +1,3 @@
-/**
- * @file fpr_cls.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-02-11
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_INFERENCE_VISION_FPR_CLS_HPP
 #define AI_CORE_INFERENCE_VISION_FPR_CLS_HPP
 

@@ -2,22 +2,22 @@ cmake_minimum_required(VERSION 3.18)
 
 project(AICoreExamples VERSION ${AI_CORE_VERSION})
 
+if(NOT TARGET ai_core_config)
+    message(FATAL_ERROR
+        "Examples require the config component. "
+        "Configure with -DAI_CORE_BUILD_CONFIG=ON.")
+endif()
+
 # Enable position independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Security key for examples
 set(COMMIT_CODE "689bc3e3bdf1c5f2cff81725011ba7d3c0089b25")
 
-# ============================================================================
-# Load Dependencies
-# ============================================================================
-load_opencv()
-
-# Android-specific configuration
-if(TARGET_OS STREQUAL "Android")
-    load_android_env()
-    list(APPEND ANDROID_JIN_LIBS mediandk)
-endif()
+include("${AI_CORE_CMAKE_DIR}/dependencies/OpenCV.cmake")
+include("${AI_CORE_CMAKE_DIR}/dependencies/Platform.cmake")
+ai_core_load_opencv()
+ai_core_load_platform()
 
 # ============================================================================
 # Source Files
@@ -31,14 +31,13 @@ set(EXAMPLES_SOURCES
 # ============================================================================
 set(DEPENDENCY_INCLUDES
     ${PROJECT_INCLUDE_DIR}
-    ${OpenCV_INCLUDE_DIRS}
 )
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core
     ai_core::config
-    ${OpenCV_LIBS}
-    ${ANDROID_JIN_LIBS}
+    ai_core::opencv
+    ai_core::platform
 )
 
 # ============================================================================
@@ -70,10 +69,7 @@ target_compile_definitions(ai_core_examples PRIVATE SECURITY_KEY="${COMMIT_CODE}
 # ============================================================================
 install(
     TARGETS ai_core_examples
-    EXPORT ai_export_set
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT examples
 )
 
 # ============================================================================

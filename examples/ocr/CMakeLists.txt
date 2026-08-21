@@ -6,11 +6,6 @@ project(AICoreExamplesOCRReco VERSION ${AI_CORE_VERSION})
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ============================================================================
-# Load Dependencies
-# ============================================================================
-load_opencv()
-
-# ============================================================================
 # Source Files
 # ============================================================================
 set(OCR_EXAMPLE_SOURCES
@@ -25,15 +20,13 @@ set(OCR_EXAMPLE_SOURCES
 set(DEPENDENCY_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${PROJECT_INCLUDE_DIR}
-    ${OpenCV_INCLUDE_DIRS}
 )
 
 set(DEPENDENCY_LIBS
     ai_core::ai_core_examples
     ai_core::ai_core
     ai_core::config
-    ${OpenCV_LIBS}
-    opencv_imgcodecs
+    ai_core::opencv_imgcodecs
 )
 
 if(TARGET ai_core_plugin_preproc_opencv AND
@@ -83,8 +76,5 @@ endif()
 # ============================================================================
 install(
     TARGETS ai_core_example_ocr
-    EXPORT ai_export_set
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT examples
 )

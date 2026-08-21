@@ -7,8 +7,7 @@
 
 namespace ai_core::dnn {
 namespace {
-template <class Map>
-std::vector<std::string> namesOf(const Map &map) {
+template <class Map> std::vector<std::string> namesOf(const Map &map) {
   std::vector<std::string> result;
   result.reserve(map.size());
   for (const auto &[name, unused] : map) {
@@ -19,8 +18,7 @@ std::vector<std::string> namesOf(const Map &map) {
   return result;
 }
 
-template <class Map>
-bool contains(const Map &map, std::string_view name) {
+template <class Map> bool contains(const Map &map, std::string_view name) {
   return map.find(std::string(name)) != map.end();
 }
 

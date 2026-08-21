@@ -3,8 +3,8 @@
 #include "ai_core/i_preprocess.hpp"
 #include "ai_core/infer_config.hpp"
 #include "ai_core/input_types.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"
+#include "ai_core/runtime.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "postproc/yolo_det.hpp"
 #include "preproc/cpu_generic_preprocess.hpp"
@@ -50,11 +50,12 @@ struct TestConfig {
 class YoloDetInferenceTest : public ::testing::TestWithParam<TestConfig> {
 protected:
   void SetUp() override {
-    ai_core::logging::Logger::instance().setLevel(
-        ai_core::logging::LogLevel::Trace);
-    ai_core::logging::Logger::instance().enableConsole(true);
-    ai_core::logging::Logger::instance().enableFile(false);
-    ai_core::logging::Logger::instance().enableColor(true);
+    LoggingConfig config;
+    config.min_level = LogLevel::Trace;
+    config.console_enabled = true;
+    config.file_enabled = false;
+    config.color_enabled = true;
+    Runtime::configureLogging(config);
 
     m_framePreproc = std::make_shared<CpuGenericPreprocess>();
     ASSERT_NE(m_framePreproc, nullptr);
@@ -109,7 +110,7 @@ TEST_P(YoloDetInferenceTest, Normal) {
   AlgoPreprocParams preproc_params;
   FramePreprocessArg frame_preprocess_arg;
   frame_preprocess_arg.model_input_shape = {640, 640, 3};
-  frame_preprocess_arg.data_type = config.preproc_data_type; // 使用 config
+  frame_preprocess_arg.data_type = config.preproc_data_type;
   frame_preprocess_arg.need_resize = true;
   frame_preprocess_arg.is_equal_scale = true;
   frame_preprocess_arg.pad = {0, 0, 0};
@@ -160,7 +161,9 @@ TEST_P(YoloDetInferenceTest, Normal) {
     cv::putText(vis_image, ss.str(), cv::Point(bbox.rect.x, bbox.rect.y),
                 cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
   }
-  std::string output_filename = "vis_yolodet_" + config.test_name + ".png";
+  const auto output_filename = (fs::path(AI_CORE_TEST_OUTPUT_DIR) /
+                                ("vis_yolodet_" + config.test_name + ".png"))
+                                   .string();
   cv::imwrite(output_filename, vis_image);
 }
 
@@ -254,6 +257,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/models/yolov11n-fp16.onnx", DataType::FLOAT16,
                      DataType::FLOAT16, DeviceType::CPU, "images",
                      BufferLocation::CPU, false});
+#ifdef AI_CORE_TEST_MODEL_DECRYPTION
   configs.push_back({"ort_enc",
                      [](const AlgoConstructParams &p) {
                        return std::make_shared<OrtAlgoInference>(p);
@@ -261,6 +265,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/enc_models/yolov11n-fp16.enc.onnx",
                      DataType::FLOAT16, DataType::FLOAT16, DeviceType::CPU,
                      "images", BufferLocation::CPU, true});
+#endif
 #endif
 #ifdef WITH_NCNN
   configs.push_back({"ncnn",
@@ -270,6 +275,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/models/yolov11n.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
                      BufferLocation::CPU, false});
+#ifdef AI_CORE_TEST_MODEL_DECRYPTION
   configs.push_back({"ncnn_enc",
                      [](const AlgoConstructParams &p) {
                        return std::make_shared<NCNNAlgoInference>(p);
@@ -277,6 +283,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/enc_models/yolov11n.enc.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
                      BufferLocation::CPU, true});
+#endif
 #endif
   return configs;
 }

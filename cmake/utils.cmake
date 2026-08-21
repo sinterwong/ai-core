@@ -1,19 +1,10 @@
 function(ai_core_extract_version)
-    set(possible_paths 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/api/ai_core/version.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/api/ai_core/version.hpp"
-    )
-    
-    set(target_ver_file "")
-    foreach(p ${possible_paths})
-        if(EXISTS "${p}")
-            set(target_ver_file "${p}")
-            break()
-        endif()
-    endforeach()
+    set(target_ver_file
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/ai_core/version.hpp")
 
-    if(NOT target_ver_file)
-        message(FATAL_ERROR "Could not find ai_core_version.hpp in src/api or api/")
+    if(NOT EXISTS "${target_ver_file}")
+        message(FATAL_ERROR
+            "Could not find public version header: ${target_ver_file}")
     endif()
 
     file(READ "${target_ver_file}" file_contents)

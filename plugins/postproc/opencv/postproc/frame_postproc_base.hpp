@@ -1,20 +1,10 @@
-/**
- * @file frame_postproc_base.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Shared IPostprocessPlugin adapter for frame-based postprocessors
- * @version 0.1
- * @date 2026-07-17
- *
- * @copyright Copyright (c) 2026
- *
- */
 #ifndef AI_CORE_FRAME_POSTPROC_BASE_HPP
 #define AI_CORE_FRAME_POSTPROC_BASE_HPP
 
 #include "ai_core/algo_types.hpp"
 #include "ai_core/i_postprocess.hpp"
-#include "ai_core/logger.hpp"
 #include "ai_core/tensor_data.hpp"
+#include "logger.hpp"
 
 namespace ai_core::dnn {
 

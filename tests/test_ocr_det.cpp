@@ -1,13 +1,3 @@
-/**
- * @file test_ocr_det.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-22
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/i_infer_engine.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
@@ -165,7 +155,9 @@ TEST_P(OCRDetInferenceTest, Normal) {
                        cv::Scalar(0, 255, 0), 2);
     }
   }
-  std::string output_filename = "vis_ocr_det_" + config.test_name + ".png";
+  const auto output_filename = (fs::path(AI_CORE_TEST_OUTPUT_DIR) /
+                                ("vis_ocr_det_" + config.test_name + ".png"))
+                                   .string();
   cv::imwrite(output_filename, vis_image);
 }
 

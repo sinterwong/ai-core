@@ -1,15 +1,5 @@
-/**
- * @file trt_utils.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-10
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "trt_utils.hpp"
-#include "ai_core/logger.hpp"
+#include "logger.hpp"
 
 namespace ai_core::trt_utils {
 
