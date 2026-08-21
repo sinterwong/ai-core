@@ -160,11 +160,10 @@ TypedBuffer TypedBuffer::fromStorage(DataType type,
   buffer.m_location = descriptor.kind == MemoryKind::Device
                           ? BufferLocation::GpuDevice
                           : BufferLocation::CPU;
-  buffer.m_memoryType = descriptor.kind == MemoryKind::HostPinned
-                            ? BufferMemoryType::Pinned
-                            : descriptor.kind == MemoryKind::Unified
-                                  ? BufferMemoryType::Managed
-                                  : BufferMemoryType::Pageable;
+  buffer.m_memoryType =
+      descriptor.kind == MemoryKind::HostPinned ? BufferMemoryType::Pinned
+      : descriptor.kind == MemoryKind::Unified  ? BufferMemoryType::Managed
+                                                : BufferMemoryType::Pageable;
   buffer.m_deviceId = descriptor.device_id;
   buffer.m_elementCount = storage->sizeBytes() / getElementSize(type);
   buffer.m_accelBuffer = std::move(storage);

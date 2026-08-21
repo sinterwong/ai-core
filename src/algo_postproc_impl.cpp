@@ -16,9 +16,8 @@ AlgoPostproc::Impl::initialize(const AlgoPostprocParams &postproc_params) {
   m_boundParams = postproc_params;
 
   try {
-    m_postprocessor =
-        PluginRegistry::instance().createPostprocessor(m_moduleName,
-                                                       AlgoConstructParams{});
+    m_postprocessor = PluginRegistry::instance().createPostprocessor(
+        m_moduleName, AlgoConstructParams{});
 
     if (m_postprocessor == nullptr) {
       LOG_ERROR_S << "Failed to create postprocessor for module: "

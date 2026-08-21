@@ -33,7 +33,8 @@ bool isSharedLibrary(const fs::path &path) {
 #if defined(_WIN32)
   return path.extension() == ".dll";
 #elif defined(__APPLE__)
-  return filename.ends_with(".dylib") || filename.find(".so") != std::string::npos;
+  return filename.ends_with(".dylib") ||
+         filename.find(".so") != std::string::npos;
 #else
   return filename.find(".so") != std::string::npos;
 #endif
@@ -170,8 +171,8 @@ std::vector<std::filesystem::path> PluginManager::defaultSearchPaths() const {
   return paths;
 }
 
-std::vector<PluginInfo>
-PluginManager::discover(const std::vector<std::filesystem::path> &search_paths) {
+std::vector<PluginInfo> PluginManager::discover(
+    const std::vector<std::filesystem::path> &search_paths) {
   auto paths = search_paths;
   const auto defaults = defaultSearchPaths();
   paths.insert(paths.end(), defaults.begin(), defaults.end());

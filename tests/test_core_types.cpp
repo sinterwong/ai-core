@@ -6,6 +6,7 @@
 #include "gtest/gtest.h"
 
 #include <sstream>
+#include <string_view>
 
 namespace testing_core_types {
 using namespace ai_core;
@@ -153,9 +154,53 @@ TEST(AlgoOutputTest, BuiltinAlternativesStillWork) {
 // InferErrorCode::to_string
 
 TEST(ErrorCodeTest, ToStringNamesCodes) {
-  EXPECT_EQ(to_string(InferErrorCode::SUCCESS), "SUCCESS");
-  EXPECT_EQ(to_string(InferErrorCode::InferSizeMismatch), "InferSizeMismatch");
-  EXPECT_EQ(to_string(InferErrorCode::AlgoNotFound), "AlgoNotFound");
+  struct ExpectedName {
+    InferErrorCode code;
+    std::string_view name;
+  };
+  constexpr ExpectedName expected_names[] = {
+      {InferErrorCode::SUCCESS, "SUCCESS"},
+      {InferErrorCode::InitFailed, "InitFailed"},
+      {InferErrorCode::InitConfigFailed, "InitConfigFailed"},
+      {InferErrorCode::InitModelLoadFailed, "InitModelLoadFailed"},
+      {InferErrorCode::InitDeviceFailed, "InitDeviceFailed"},
+      {InferErrorCode::InitMemoryAllocFailed, "InitMemoryAllocFailed"},
+      {InferErrorCode::InitDecryptionFailed, "InitDecryptionFailed"},
+      {InferErrorCode::NotInitialized, "NotInitialized"},
+      {InferErrorCode::InitRuntimeFailed, "InitRuntimeFailed"},
+      {InferErrorCode::InitEngineFailed, "InitEngineFailed"},
+      {InferErrorCode::InitContextFailed, "InitContextFailed"},
+      {InferErrorCode::InitBindingFailed, "InitBindingFailed"},
+      {InferErrorCode::InferFailed, "InferFailed"},
+      {InferErrorCode::InferInputError, "InferInputError"},
+      {InferErrorCode::InferOutputError, "InferOutputError"},
+      {InferErrorCode::InferDeviceError, "InferDeviceError"},
+      {InferErrorCode::InferPreprocessFailed, "InferPreprocessFailed"},
+      {InferErrorCode::InferMemoryError, "InferMemoryError"},
+      {InferErrorCode::InferSetInputFailed, "InferSetInputFailed"},
+      {InferErrorCode::InferExtractFailed, "InferExtractFailed"},
+      {InferErrorCode::InferUnsupportedOutputType,
+       "InferUnsupportedOutputType"},
+      {InferErrorCode::InferTypeMismatch, "InferTypeMismatch"},
+      {InferErrorCode::InferSizeMismatch, "InferSizeMismatch"},
+      {InferErrorCode::InferInvalidInput, "InferInvalidInput"},
+      {InferErrorCode::InferExecutionFailed, "InferExecutionFailed"},
+      {InferErrorCode::InferBindingError, "InferBindingError"},
+      {InferErrorCode::StreamCreationFailed, "StreamCreationFailed"},
+      {InferErrorCode::StreamSyncFailed, "StreamSyncFailed"},
+      {InferErrorCode::GraphCaptureFailed, "GraphCaptureFailed"},
+      {InferErrorCode::GraphLaunchFailed, "GraphLaunchFailed"},
+      {InferErrorCode::AsyncOperationPending, "AsyncOperationPending"},
+      {InferErrorCode::TerminateFailed, "TerminateFailed"},
+      {InferErrorCode::AlgoNotFound, "AlgoNotFound"},
+      {InferErrorCode::AlgoRegisterFailed, "AlgoRegisterFailed"},
+      {InferErrorCode::AlgoUnregisterFailed, "AlgoUnregisterFailed"},
+      {InferErrorCode::AlgoInferFailed, "AlgoInferFailed"},
+  };
+
+  for (const auto &[code, name] : expected_names) {
+    EXPECT_EQ(to_string(code), name);
+  }
 }
 
 TEST(ErrorCodeTest, UnknownValueIsHandled) {

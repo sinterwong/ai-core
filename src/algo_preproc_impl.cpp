@@ -16,9 +16,8 @@ AlgoPreproc::Impl::initialize(const AlgoPreprocParams &preproc_params) {
   m_boundParams = preproc_params;
 
   try {
-    m_preprocessor =
-        PluginRegistry::instance().createPreprocessor(m_moduleName,
-                                                      AlgoConstructParams{});
+    m_preprocessor = PluginRegistry::instance().createPreprocessor(
+        m_moduleName, AlgoConstructParams{});
     if (m_preprocessor == nullptr) {
       LOG_ERROR_S << "Failed to create preprocessor for module: "
                   << m_moduleName;

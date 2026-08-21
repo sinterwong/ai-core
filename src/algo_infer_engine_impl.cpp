@@ -12,9 +12,8 @@ InferErrorCode AlgoInferEngine::Impl::initialize() {
   try {
     AlgoConstructParams temp_infer_params;
     temp_infer_params.setParam("params", m_inferParams);
-    m_engine =
-        PluginRegistry::instance().createInferenceEngine(m_moduleName,
-                                                         temp_infer_params);
+    m_engine = PluginRegistry::instance().createInferenceEngine(
+        m_moduleName, temp_infer_params);
 
     if (m_engine == nullptr) {
       LOG_ERROR_S << "Failed to create inference engine for name: "

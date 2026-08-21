@@ -220,10 +220,8 @@ __global__ void batchEscaleResizeNormalizeBilinearKernel(
     float *d_batch_dst,               // Contiguous batched output.
     const int *d_src_hs, const int *d_src_ws, int src_c, const ROIData *d_rois,
     int dst_h, int dst_w, const float *mean, const float *std,
-    const int *pad_val, const int *d_new_hs,
-    const int *d_new_ws,
-    const int *d_pad_ys, const int *d_pad_xs,
-    int batch_size) {
+    const int *pad_val, const int *d_new_hs, const int *d_new_ws,
+    const int *d_pad_ys, const int *d_pad_xs, int batch_size) {
 
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int y = blockIdx.y * blockDim.y + threadIdx.y;

@@ -451,7 +451,6 @@ TEST_F(TrtInferenceTest, StressTestManyStreams) {
     auto future = stream->inferAsync(modelInput, model_output);
     EXPECT_EQ(future.get(), InferErrorCode::SUCCESS)
         << "Failed at iteration " << i;
-
   }
 
   engine->terminate();

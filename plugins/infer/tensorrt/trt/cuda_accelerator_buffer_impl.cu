@@ -27,8 +27,8 @@ public:
     }
   }
 
-  CudaAcceleratorBuffer(void *ptr, size_t size_bytes,
-                        MemoryKind type, bool manage, int device_id = 0)
+  CudaAcceleratorBuffer(void *ptr, size_t size_bytes, MemoryKind type,
+                        bool manage, int device_id = 0)
       : m_ptr(ptr), m_sizeBytes(size_bytes), m_type(type),
         m_deviceId(device_id), m_ownsMemory(manage) {}
 
@@ -47,8 +47,7 @@ public:
 
   CudaAcceleratorBuffer(const CudaAcceleratorBuffer &other, bool)
       : m_sizeBytes(other.m_sizeBytes), m_type(other.m_type),
-        m_deviceId(other.m_deviceId),
-        m_ownsMemory(true) {
+        m_deviceId(other.m_deviceId), m_ownsMemory(true) {
 
     if (m_sizeBytes == 0)
       return;
