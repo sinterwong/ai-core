@@ -34,10 +34,9 @@ OCRRec::OCRRec(const std::string &config_path, const std::string &dict_path) {
     std::string line;
     while (std::getline(dict_file, line)) {
       if (!line.empty()) {
-        size_t char_len = 1; // 默认 ASCII
-        // 获取第一个 UTF-8 字符
+        size_t char_len = 1;
         unsigned char first_byte = static_cast<unsigned char>(line[0]);
-        // UTF-8是变长编码，一个字符占1~4 byte。用首字符判断该字符占用多少byte
+        // Keep only the first UTF-8 code point from each dictionary line.
         if (first_byte >= 0xF0)
           char_len = 4;
         else if (first_byte >= 0xE0)

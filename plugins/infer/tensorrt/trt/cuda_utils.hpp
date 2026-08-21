@@ -1,13 +1,3 @@
-/**
- * @file cuda_utils.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief CUDA preprocessing kernels with stream support
- * @version 0.2
- * @date 2025-07-14
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_CUDA_UTILS_CUH
 #define AI_CORE_CUDA_UTILS_CUH
 
@@ -20,9 +10,7 @@ struct ROIData {
   int x, y, h, w;
 };
 
-// ===========================================================================
 // Single frame operations (with stream support)
-// ===========================================================================
 
 void hwcToChwGpu(const float *src, float *dst, int height, int width,
                  int channels, cudaStream_t stream = nullptr);
@@ -42,9 +30,7 @@ void escaleResizeNormalizeGpu(const uint8_t *src, float *dst, int full_image_w,
                               const int *pad_val,
                               cudaStream_t stream = nullptr);
 
-// ===========================================================================
 // Batch operations (with stream support)
-// ===========================================================================
 
 void batchHwcToChwGpu(const float *src, float *dst, int height, int width,
                       int channels, int batch_size,

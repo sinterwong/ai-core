@@ -1,14 +1,3 @@
-/**
- * @file logger.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Full logger implementation: sinks, async worker, formatting. Nothing
- * here leaks into the public header.
- * @version 0.2
- * @date 2026-07-17
- *
- * @copyright Copyright (c) 2026
- *
- */
 #include "ai_core/logger.hpp"
 
 #include <algorithm>
@@ -28,9 +17,7 @@
 
 namespace ai_core::logging {
 
-// ============================================================================
 // Console Colors (ANSI escape codes)
-// ============================================================================
 
 namespace color {
 inline constexpr std::string_view k_reset = "\033[0m";
@@ -43,10 +30,6 @@ inline constexpr std::string_view k_bold_red = "\033[1;31m";
 inline constexpr std::string_view k_gray = "\033[90m";
 } // namespace color
 
-// ============================================================================
-// LogEntry
-// ============================================================================
-
 LogEntry::LogEntry(LogLevel lvl, std::string msg, SourceLocation loc,
                    std::string_view cat) noexcept
     : level(lvl), message(std::move(msg)),
@@ -56,9 +39,7 @@ LogEntry::LogEntry(LogLevel lvl, std::string msg, SourceLocation loc,
 
 namespace {
 
-// ============================================================================
 // Lock-Free SPSC Ring Buffer for Async Logging
-// ============================================================================
 
 template <typename T> class SPSCRingBuffer {
 public:
@@ -66,13 +47,12 @@ public:
       : m_capacity(nextPowerOf2(capacity)), m_mask(m_capacity - 1),
         m_buffer(std::make_unique<Slot[]>(m_capacity)) {}
 
-  // Producer: try to push, returns false if full
   bool tryPush(T &&item) noexcept {
     const size_t head = m_head.load(std::memory_order_relaxed);
     const size_t next_head = (head + 1) & m_mask;
 
     if (next_head == m_tail.load(std::memory_order_acquire)) {
-      return false; // Full
+      return false;
     }
 
     m_buffer[head].data = std::move(item);
@@ -80,12 +60,11 @@ public:
     return true;
   }
 
-  // Consumer: try to pop, returns false if empty
   bool tryPop(T &item) noexcept {
     const size_t tail = m_tail.load(std::memory_order_relaxed);
 
     if (tail == m_head.load(std::memory_order_acquire)) {
-      return false; // Empty
+      return false;
     }
 
     item = std::move(m_buffer[tail].data);
@@ -123,9 +102,7 @@ private:
   alignas(64) std::atomic<size_t> m_tail{0};
 };
 
-// ============================================================================
 // Thread-Local Formatting Buffer
-// ============================================================================
 
 class FormatBuffer {
 public:
@@ -140,7 +117,6 @@ public:
   void append(char c) { m_buffer.push_back(c); }
 
   template <typename T> void appendNumber(T value) {
-    // Fast integer to string conversion
     char temp[32];
     char *end = temp + sizeof(temp);
     char *ptr = end;
@@ -194,7 +170,6 @@ private:
   std::string m_buffer;
 };
 
-// Thread-local buffer accessor
 FormatBuffer &getThreadLocalBuffer() {
   thread_local FormatBuffer buffer;
   buffer.clear();
@@ -249,13 +224,11 @@ std::string_view extractFilename(std::string_view path) noexcept {
 
 } // namespace
 
-// ============================================================================
 // Logger::Impl - all sinks and async machinery
-// ============================================================================
 
 class Logger::Impl {
 public:
-  // Configuration (atomic where possible for lock-free reads)
+  // Atomics keep the logging hot path independent of configuration locks.
   std::atomic<bool> console_enabled{true};
   std::atomic<bool> file_enabled{false};
   std::atomic<bool> color_enabled{true};
@@ -268,11 +241,9 @@ public:
   LoggerConfig config;
   mutable std::mutex config_mutex;
 
-  // File output
   std::ofstream file_stream;
   std::mutex file_mutex;
 
-  // Async logging
   std::unique_ptr<SPSCRingBuffer<LogEntry>> ring_buffer;
   std::unique_ptr<std::thread> worker_thread;
   std::atomic<bool> running{false};
@@ -280,7 +251,6 @@ public:
   std::condition_variable worker_cv;
   std::mutex worker_mutex;
 
-  // Custom callbacks
   std::vector<Logger::LogCallback> callbacks;
   std::mutex callback_mutex;
 
@@ -293,14 +263,13 @@ public:
       writeFile(entry);
     }
 
-    // Invoke callbacks
     {
       std::lock_guard lock(callback_mutex);
       for (const auto &cb : callbacks) {
         try {
           cb(entry);
         } catch (...) {
-          // Ignore callback exceptions
+          // A user callback must not break other sinks or the worker thread.
         }
       }
     }
@@ -331,7 +300,6 @@ public:
     if (!file_stream.is_open())
       return;
 
-    // Check rotation
     rotateFile();
 
     auto &buf = getThreadLocalBuffer();
@@ -344,7 +312,7 @@ public:
 
     file_stream << buf.view() << '\n';
 
-    // Flush for Error/Fatal levels immediately
+    // High-severity messages must survive a crash immediately after logging.
     if (entry.level >= LogLevel::Error) {
       file_stream.flush();
     }
@@ -356,7 +324,6 @@ public:
     batch.reserve(64);
 
     while (running.load(std::memory_order_acquire)) {
-      // Wait for entries or shutdown signal
       {
         std::unique_lock lock(worker_mutex);
         worker_cv.wait_for(lock, std::chrono::milliseconds(100), [this] {
@@ -365,7 +332,6 @@ public:
         });
       }
 
-      // Batch process entries for efficiency
       batch.clear();
       while (ring_buffer->tryPop(entry) && batch.size() < 64) {
         batch.push_back(std::move(entry));
@@ -376,7 +342,6 @@ public:
       }
     }
 
-    // Final drain on shutdown
     while (ring_buffer->tryPop(entry)) {
       processEntry(entry);
     }
@@ -425,19 +390,16 @@ public:
 
   void formatEntry(FormatBuffer &buf, const LogEntry &entry,
                    bool with_color) const {
-    // Timestamp
     buf.append('[');
     formatTimestamp(buf, entry.timestamp);
     buf.append(']');
 
-    // Level with optional color
     buf.append(" [");
     if (with_color) {
       buf.append(levelColor(entry.level));
     }
 
     auto level_str = levelName(entry.level);
-    // Pad to 7 chars for alignment
     for (size_t i = level_str.size(); i < 7; ++i) {
       buf.append(' ');
     }
@@ -448,14 +410,12 @@ public:
     }
     buf.append(']');
 
-    // Thread ID
     if (show_thread_id.load(std::memory_order_relaxed)) {
       buf.append(" [T:");
       buf.appendNumber(entry.thread_id);
       buf.append(']');
     }
 
-    // Category
     if (show_category.load(std::memory_order_relaxed) &&
         !entry.category.empty()) {
       buf.append(" [");
@@ -463,7 +423,6 @@ public:
       buf.append(']');
     }
 
-    // Source location
     if (show_source.load(std::memory_order_relaxed) &&
         entry.location.file != nullptr && entry.location.file[0] != '\0') {
       buf.append(" [");
@@ -480,7 +439,6 @@ public:
       buf.append(']');
     }
 
-    // Message
     buf.append(' ');
     buf.append(entry.message);
   }
@@ -520,7 +478,6 @@ public:
       }
     }
 
-    // Escape message for JSON
     buf.append(",\"msg\":\"");
     for (char c : entry.message) {
       switch (c) {
@@ -561,7 +518,6 @@ public:
     localtime_r(&time_t_val, &tm_val);
 #endif
 
-    // YYYY-MM-DD HH:MM:SS.mmm
     buf.appendNumber(tm_val.tm_year + 1900);
     buf.append('-');
     buf.appendPadded(tm_val.tm_mon + 1, 2);
@@ -577,10 +533,6 @@ public:
     buf.appendPadded(static_cast<int>(ms.count()), 3);
   }
 };
-
-// ============================================================================
-// Logger
-// ============================================================================
 
 Logger &Logger::instance() noexcept {
   static Logger logger;
@@ -603,7 +555,6 @@ Logger::Logger() : m_impl(std::make_unique<Impl>()) {
 Logger::~Logger() { shutdown(); }
 
 void Logger::configure(const LoggerConfig &config) {
-  // Atomics can be set lock-free
   m_level.store(config.min_level, std::memory_order_relaxed);
   m_impl->console_enabled.store(config.console_enabled,
                                 std::memory_order_relaxed);
@@ -626,7 +577,6 @@ void Logger::configure(const LoggerConfig &config) {
     m_impl->config = config;
   }
 
-  // Handle file changes
   if (need_file_reopen) {
     std::lock_guard lock(m_impl->file_mutex);
 
@@ -636,7 +586,6 @@ void Logger::configure(const LoggerConfig &config) {
     }
 
     if (config.file_enabled) {
-      // Create parent directories if needed
       auto parent = std::filesystem::path(config.file_path).parent_path();
       if (!parent.empty() && !std::filesystem::exists(parent)) {
         std::filesystem::create_directories(parent);
@@ -647,11 +596,9 @@ void Logger::configure(const LoggerConfig &config) {
     m_impl->file_enabled.store(config.file_enabled, std::memory_order_relaxed);
   }
 
-  // Handle async mode changes
   if (need_async_change) {
     if (config.async_enabled &&
         !m_impl->running.load(std::memory_order_acquire)) {
-      // Start async worker
       m_impl->ring_buffer =
           std::make_unique<SPSCRingBuffer<LogEntry>>(config.async_queue_size);
       m_impl->running.store(true, std::memory_order_release);
@@ -659,7 +606,6 @@ void Logger::configure(const LoggerConfig &config) {
           [impl = m_impl.get()] { impl->asyncWorker(); });
     } else if (!config.async_enabled &&
                m_impl->running.load(std::memory_order_acquire)) {
-      // Stop async worker
       m_impl->running.store(false, std::memory_order_release);
       {
         std::lock_guard lock(m_impl->worker_mutex);
@@ -671,7 +617,6 @@ void Logger::configure(const LoggerConfig &config) {
       }
       m_impl->worker_thread.reset();
 
-      // Drain remaining entries
       if (m_impl->ring_buffer) {
         LogEntry entry;
         while (m_impl->ring_buffer->tryPop(entry)) {
@@ -785,12 +730,10 @@ void Logger::log(LogLevel level, std::string_view message,
 
   if (m_impl->async_enabled.load(std::memory_order_acquire) &&
       m_impl->ring_buffer) {
-    // Try lock-free push; fall back to sync if queue full
     if (!m_impl->ring_buffer->tryPush(std::move(entry))) {
-      // Queue full - process synchronously to avoid log loss
+      // Preserve messages under overload at the cost of producer latency.
       m_impl->processEntry(entry);
     } else {
-      // Notify worker thread
       m_impl->worker_cv.notify_one();
     }
   } else {
@@ -829,15 +772,12 @@ void Logger::fatal(std::string_view msg, const SourceLocation &loc,
 }
 
 void Logger::flush() {
-  // Flush async queue first
   if (m_impl->async_enabled.load(std::memory_order_acquire) &&
       m_impl->ring_buffer) {
-    // Signal worker and wait briefly for drain
     m_impl->worker_cv.notify_one();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
-  // Flush file
   {
     std::lock_guard lock(m_impl->file_mutex);
     if (m_impl->file_stream.is_open()) {
@@ -854,7 +794,6 @@ void Logger::shutdown() {
     return;
   }
 
-  // Stop async worker
   if (m_impl->running.exchange(false, std::memory_order_acq_rel)) {
     m_impl->worker_cv.notify_all();
 
@@ -863,7 +802,6 @@ void Logger::shutdown() {
     }
     m_impl->worker_thread.reset();
 
-    // Drain remaining entries
     if (m_impl->ring_buffer) {
       LogEntry entry;
       while (m_impl->ring_buffer->tryPop(entry)) {
@@ -873,13 +811,11 @@ void Logger::shutdown() {
     }
   }
 
-  // Clear callbacks
   {
     std::lock_guard lock(m_impl->callback_mutex);
     m_impl->callbacks.clear();
   }
 
-  // Close file
   {
     std::lock_guard lock(m_impl->file_mutex);
     if (m_impl->file_stream.is_open()) {
@@ -889,10 +825,6 @@ void Logger::shutdown() {
   }
 }
 
-// ============================================================================
-// Hex Dump Utility
-// ============================================================================
-
 std::string hexDump(const void *data, size_t size, size_t bytes_per_line) {
   static constexpr char hex_chars[] = "0123456789ABCDEF";
 
@@ -901,12 +833,10 @@ std::string hexDump(const void *data, size_t size, size_t bytes_per_line) {
   result.reserve(size * 4); // Approximate
 
   for (size_t i = 0; i < size; i += bytes_per_line) {
-    // Offset
     char offset_buf[32];
     std::snprintf(offset_buf, sizeof(offset_buf), "%08zx  ", i);
     result += offset_buf;
 
-    // Hex bytes
     for (size_t j = 0; j < bytes_per_line; ++j) {
       if (i + j < size) {
         result += hex_chars[bytes[i + j] >> 4];
@@ -922,7 +852,6 @@ std::string hexDump(const void *data, size_t size, size_t bytes_per_line) {
 
     result += " |";
 
-    // ASCII representation
     for (size_t j = 0; j < bytes_per_line && i + j < size; ++j) {
       char c = static_cast<char>(bytes[i + j]);
       result += (c >= 32 && c < 127) ? c : '.';

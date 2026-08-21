@@ -1,13 +1,3 @@
-/**
- * @file cpu_generic_preprocessor.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-06-28
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP
 #define AI_CORE_OPENCV_CPU_GENERIC_CV_PREPROCESSOR_HPP
 

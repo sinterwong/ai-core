@@ -1,8 +1,3 @@
-/**
- * @file test_config.cpp
- * @brief Unit tests for ai_core::config: valid parse round-trip and schema
- * validation. Parses in-memory JSON strings — no assets required.
- */
 #include "ai_core/config/algo_config.hpp"
 #include "gtest/gtest.h"
 
@@ -45,7 +40,7 @@ TEST(ConfigTest, ParsesValidDetConfig) {
   ASSERT_NE(pp, nullptr);
   EXPECT_EQ(pp->model_input_shape.w, 640);
   EXPECT_EQ(pp->input_names, (std::vector<std::string>{"images"}));
-  EXPECT_TRUE(pp->is_equal_scale); // camelCase key parsed (was the v1.3 bug)
+  EXPECT_TRUE(pp->is_equal_scale); // Protect camelCase configuration parsing.
 
   ASSERT_TRUE(cfg.has_postproc);
   const auto *dp = cfg.postproc_params.getParams<AnchorDetParams>();

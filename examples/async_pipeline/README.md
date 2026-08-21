@@ -33,5 +33,5 @@ CUDA Graph + pinned buffer 把单 GPU 吞吐显著抬高（本机 RTX 3060 Lapto
 yolov11n@640-fp16：同步 ~319 img/s → 异步流水线 ~543 img/s）。真实场景里
 `makePinnedInput` 的位置就是预处理直接写 accelerator buffer 的落点。
 
-线程模型见 `doc/Framework.md`：engine 共享、可并发建 context；每个
+线程模型见 `docs/Framework.md`：engine 共享、可并发建 context；每个
 `IExecutionContext` 非线程安全，由单个 worker 独占。

@@ -1,30 +1,15 @@
-/**
- * @file typed_buffer.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Implementation of TypedBuffer with unified backend storage
- * @version 0.3
- * @date 2026-01-06
- *
- * @copyright Copyright (c) 2026
- *
- */
 #include "ai_core/typed_buffer.hpp"
 #include <algorithm>
 #include <cstring>
 
 namespace ai_core {
 
-// ============================================================================
-// Lifecycle Management
-// ============================================================================
-
 TypedBuffer::TypedBuffer() = default;
 
 TypedBuffer::~TypedBuffer() { reset(); }
 
 void TypedBuffer::reset() {
-  // mAccelBuffer and mCpuData clean themselves up; external pointers are
-  // never owned.
+  // External pointers are observed but never freed.
   m_accelBuffer.reset();
   m_cpuData.clear();
 
@@ -37,19 +22,16 @@ void TypedBuffer::reset() {
   m_deviceId = 0;
 }
 
-// Copy Constructor
 TypedBuffer::TypedBuffer(const TypedBuffer &other)
     : m_dataType(other.m_dataType), m_location(other.m_location),
       m_memoryType(other.m_memoryType), m_deviceId(other.m_deviceId),
       m_elementCount(other.m_elementCount),
-      // References are converted to deep copies by default in copy-ctor
+      // Copying a view intentionally detaches it into owned storage.
       m_isExternalRef(false), m_externalCpuPtr(nullptr) {
 
-  // Handle CPU Pageable Data
   if (other.m_location == BufferLocation::CPU &&
       other.m_memoryType == BufferMemoryType::Pageable) {
     if (other.m_isExternalRef && other.m_externalCpuPtr) {
-      // Deep copy external reference to internal vector
       size_t bytes = other.getSizeBytes();
       const uint8_t *src = static_cast<const uint8_t *>(other.getRawHostPtr());
       m_cpuData.assign(src, src + bytes);
@@ -58,16 +40,14 @@ TypedBuffer::TypedBuffer(const TypedBuffer &other)
     }
   }
 
-  // Handle Accelerator Data (GPU or Pinned)
   if (other.m_accelBuffer) {
     m_accelBuffer = other.m_accelBuffer->clone();
   }
 }
 
-// Copy Assignment
 TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
   if (this != &other) {
-    reset(); // Clean up current resources
+    reset();
 
     m_dataType = other.m_dataType;
     m_location = other.m_location;
@@ -75,7 +55,6 @@ TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
     m_deviceId = other.m_deviceId;
     m_elementCount = other.m_elementCount;
 
-    // Handle CPU Pageable
     if (other.m_location == BufferLocation::CPU &&
         other.m_memoryType == BufferMemoryType::Pageable) {
       if (other.m_isExternalRef && other.m_externalCpuPtr) {
@@ -88,7 +67,6 @@ TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
       }
     }
 
-    // Handle Accelerator Data
     if (other.m_accelBuffer) {
       m_accelBuffer = other.m_accelBuffer->clone();
     }
@@ -96,7 +74,6 @@ TypedBuffer &TypedBuffer::operator=(const TypedBuffer &other) {
   return *this;
 }
 
-// Move Constructor
 TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept
     : m_dataType(other.m_dataType), m_location(other.m_location),
       m_memoryType(other.m_memoryType), m_elementCount(other.m_elementCount),
@@ -106,13 +83,11 @@ TypedBuffer::TypedBuffer(TypedBuffer &&other) noexcept
       m_accelBuffer(std::move(other.m_accelBuffer)),
       m_deviceId(other.m_deviceId) {
 
-  // Neutralize other
   other.m_externalCpuPtr = nullptr;
   other.m_isExternalRef = false;
   other.m_elementCount = 0;
 }
 
-// Move Assignment
 TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept {
   if (this != &other) {
     reset();
@@ -129,17 +104,12 @@ TypedBuffer &TypedBuffer::operator=(TypedBuffer &&other) noexcept {
     m_externalCpuPtr = other.m_externalCpuPtr;
     m_isExternalRef = other.m_isExternalRef;
 
-    // Neutralize other
     other.m_externalCpuPtr = nullptr;
     other.m_isExternalRef = false;
     other.m_elementCount = 0;
   }
   return *this;
 }
-
-// ============================================================================
-// Factory Implementation
-// ============================================================================
 
 TypedBuffer TypedBuffer::createFromCpu(DataType type,
                                        const std::vector<uint8_t> &data) {
@@ -201,17 +171,12 @@ TypedBuffer TypedBuffer::fromStorage(DataType type,
   return buffer;
 }
 
-// ============================================================================
-// Property Queries
-// ============================================================================
-
 size_t TypedBuffer::getSizeBytes() const noexcept {
-  // If backed by accelerator (Pinned or GPU), trust it
+  // Backend storage is authoritative because its allocation policy is opaque.
   if (m_accelBuffer) {
     return m_accelBuffer->sizeBytes();
   }
 
-  // Otherwise, standard CPU logic
   if (m_isExternalRef) {
     return m_elementCount * getElementSize(m_dataType);
   }
@@ -248,10 +213,6 @@ size_t TypedBuffer::getElementSize(DataType type) noexcept {
   }
 }
 
-// ============================================================================
-// Data Access
-// ============================================================================
-
 const void *TypedBuffer::getRawHostPtr() const {
   return const_cast<TypedBuffer *>(this)->getRawHostPtr();
 }
@@ -262,17 +223,14 @@ void *TypedBuffer::getRawHostPtr() {
         "Attempted to access Host pointer on Non-CPU buffer");
   }
 
-  // 1. Check if it's Pinned Memory (held in AcceleratorBuffer)
   if (m_memoryType == BufferMemoryType::Pinned) {
     return m_accelBuffer ? m_accelBuffer->data() : nullptr;
   }
 
-  // 2. Check External Ref
   if (m_isExternalRef) {
     return m_externalCpuPtr;
   }
 
-  // 3. Standard Vector
   return m_cpuData.data();
 }
 
@@ -284,10 +242,6 @@ void *TypedBuffer::getRawDevicePtr() const {
   return m_accelBuffer ? m_accelBuffer->data() : nullptr;
 }
 
-// ============================================================================
-// Modification
-// ============================================================================
-
 void TypedBuffer::clear() { reset(); }
 
 void TypedBuffer::resizeDiscard(size_t new_element_count) {
@@ -298,7 +252,6 @@ void TypedBuffer::resizeDiscard(size_t new_element_count) {
   size_t new_size_bytes = new_element_count * getElementSize(m_dataType);
 
   if (m_accelBuffer) {
-    // Pinned host or GPU device storage: reallocate.
     m_accelBuffer = m_accelBuffer->allocate(new_size_bytes);
   } else {
     // CPU pageable. A wrapped external pointer is detached: this buffer is

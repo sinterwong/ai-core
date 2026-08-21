@@ -78,7 +78,6 @@ protected:
     return anchor_det_params;
   }
 
-  // Prepare model input from image
   std::pair<TensorData, std::shared_ptr<RuntimeContext>>
   prepareInput(const cv::Mat &image) {
     AlgoPreprocParams preproc_params;
@@ -124,21 +123,16 @@ TEST_F(TrtInferenceTest, AsyncCapabilityDetection) {
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
-  // Test dynamic_pointer_cast to IAsyncInferEngine
   auto async_engine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(async_engine, nullptr)
       << "TrtAlgoInference should support IAsyncInferEngine";
 
-  // Verify we can create a stream
   auto stream = async_engine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Single stream async inference without CUDA Graph
-// ============================================================================
 TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -147,15 +141,12 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   auto async_engine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(async_engine, nullptr);
 
-  // Create stream
   auto stream = async_engine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
-  // Ensure graph is disabled
   ASSERT_EQ(stream->setGraphEnabled(false), InferErrorCode::SUCCESS);
   ASSERT_FALSE(stream->isGraphEnabled());
 
-  // Load and preprocess image
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
 
@@ -163,15 +154,12 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
 
   TensorData model_output;
 
-  // Async inference
   auto future = stream->inferAsync(modelInput, model_output);
   ASSERT_TRUE(future.valid());
 
-  // Wait for completion
   auto status = future.get();
   ASSERT_EQ(status, InferErrorCode::SUCCESS);
 
-  // Post-process and verify
   AlgoPostprocParams postproc_params;
   postproc_params.setParams(getPostprocParams());
 
@@ -186,9 +174,6 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithoutGraph) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Single stream async inference with CUDA Graph
-// ============================================================================
 TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -200,7 +185,6 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
   auto stream = async_engine->createExecutionContext();
   ASSERT_NE(stream, nullptr);
 
-  // Enable CUDA Graph
   ASSERT_EQ(stream->setGraphEnabled(true), InferErrorCode::SUCCESS);
   ASSERT_TRUE(stream->isGraphEnabled());
 
@@ -209,7 +193,6 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
 
   auto [modelInput, runtime_context] = prepareInput(image);
 
-  // Run multiple iterations to test graph capture and replay
   const int num_iterations = 5;
   for (int i = 0; i < num_iterations; ++i) {
     TensorData model_output;
@@ -217,7 +200,6 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
     auto status = future.get();
     ASSERT_EQ(status, InferErrorCode::SUCCESS) << "Failed at iteration " << i;
 
-    // Verify results on first and last iteration
     if (i == 0 || i == num_iterations - 1) {
       AlgoPostprocParams postproc_params;
       postproc_params.setParams(getPostprocParams());
@@ -234,9 +216,6 @@ TEST_F(TrtInferenceTest, SingleStreamAsyncWithGraph) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Stream pool creation and usage
-// ============================================================================
 TEST_F(TrtInferenceTest, StreamPoolUsage) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -245,7 +224,6 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
   auto async_engine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(async_engine, nullptr);
 
-  // Create stream pool
   const size_t pool_size = 3;
   auto stream_pool = async_engine->createContextPool(pool_size);
   ASSERT_EQ(stream_pool.size(), pool_size);
@@ -257,7 +235,6 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
   cv::Mat image = cv::imread(m_image_path);
   ASSERT_FALSE(image.empty());
 
-  // Pipeline-style execution
   const int num_inferences = 10;
   std::vector<std::future<InferErrorCode>> futures;
   std::vector<TensorData> outputs(num_inferences);
@@ -266,7 +243,7 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
     auto &stream = stream_pool[i % pool_size];
     auto [modelInput, runtime_context] = prepareInput(image);
 
-    // Wait for previous inference on this stream
+    // A context cannot accept new work until its prior submission completes.
     if (i >= static_cast<int>(pool_size) && futures[i - pool_size].valid()) {
       futures[i - pool_size].get();
     }
@@ -274,7 +251,6 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
     futures.push_back(stream->inferAsync(modelInput, outputs[i]));
   }
 
-  // Wait for remaining futures
   for (auto &f : futures) {
     if (f.valid()) {
       EXPECT_EQ(f.get(), InferErrorCode::SUCCESS);
@@ -284,9 +260,6 @@ TEST_F(TrtInferenceTest, StreamPoolUsage) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: StreamContext with pre-allocated pinned buffers
-// ============================================================================
 TEST_F(TrtInferenceTest, StreamContextPreallocatedBuffers) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -295,11 +268,9 @@ TEST_F(TrtInferenceTest, StreamContextPreallocatedBuffers) {
   auto async_engine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(async_engine, nullptr);
 
-  // Create stream context with pre-allocated buffers
   auto ctx = async_engine->createContextPackage();
   ASSERT_NE(ctx.context, nullptr);
 
-  // Verify pre-allocated buffers exist
   const auto &model_info = engine->getModelInfo();
   for (const auto &input : model_info.inputs) {
     const ai_core::Tensor *t = ctx.inputs.find(input.name);
@@ -320,9 +291,6 @@ TEST_F(TrtInferenceTest, StreamContextPreallocatedBuffers) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Allocate pinned host buffer
-// ============================================================================
 TEST_F(TrtInferenceTest, allocateAcceleratorBuffer) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -331,8 +299,7 @@ TEST_F(TrtInferenceTest, allocateAcceleratorBuffer) {
   auto async_engine = std::dynamic_pointer_cast<IAsyncInferEngine>(engine);
   ASSERT_NE(async_engine, nullptr);
 
-  // Allocate pinned buffer
-  const size_t buffer_size = 1024 * 1024; // 1MB
+  const size_t buffer_size = 1024 * 1024;
   auto pinned_buffer =
       async_engine->allocateAcceleratorBuffer(DataType::FLOAT32, buffer_size);
 
@@ -345,9 +312,6 @@ TEST_F(TrtInferenceTest, allocateAcceleratorBuffer) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Graph enable/disable toggle
-// ============================================================================
 TEST_F(TrtInferenceTest, GraphEnableDisableToggle) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -364,7 +328,6 @@ TEST_F(TrtInferenceTest, GraphEnableDisableToggle) {
 
   auto [modelInput, runtime_context] = prepareInput(image);
 
-  // Phase 1: Without graph
   stream->setGraphEnabled(false);
   ASSERT_FALSE(stream->isGraphEnabled());
   {
@@ -373,7 +336,6 @@ TEST_F(TrtInferenceTest, GraphEnableDisableToggle) {
     ASSERT_EQ(future.get(), InferErrorCode::SUCCESS);
   }
 
-  // Phase 2: Enable graph
   stream->setGraphEnabled(true);
   ASSERT_TRUE(stream->isGraphEnabled());
   for (int i = 0; i < 3; ++i) {
@@ -382,7 +344,6 @@ TEST_F(TrtInferenceTest, GraphEnableDisableToggle) {
     ASSERT_EQ(future.get(), InferErrorCode::SUCCESS);
   }
 
-  // Phase 3: Disable graph again
   stream->setGraphEnabled(false);
   ASSERT_FALSE(stream->isGraphEnabled());
   {
@@ -394,9 +355,6 @@ TEST_F(TrtInferenceTest, GraphEnableDisableToggle) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Synchronize and isComplete
-// ============================================================================
 TEST_F(TrtInferenceTest, SynchronizeAndIsComplete) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -415,24 +373,17 @@ TEST_F(TrtInferenceTest, SynchronizeAndIsComplete) {
 
   TensorData model_output;
 
-  // Start async inference
   auto future = stream->inferAsync(modelInput, model_output);
 
-  // Wait using synchronize()
   ASSERT_EQ(stream->synchronize(), InferErrorCode::SUCCESS);
 
-  // After synchronize, should be complete
   EXPECT_TRUE(stream->isComplete());
 
-  // Future should also be ready
   EXPECT_EQ(future.get(), InferErrorCode::SUCCESS);
 
   engine->terminate();
 }
 
-// ============================================================================
-// Test: GetHandle returns valid stream handle
-// ============================================================================
 TEST_F(TrtInferenceTest, GetStreamHandle) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -451,9 +402,6 @@ TEST_F(TrtInferenceTest, GetStreamHandle) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Backward compatibility - infer() still works
-// ============================================================================
 TEST_F(TrtInferenceTest, BackwardCompatibilityInfer) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -465,7 +413,6 @@ TEST_F(TrtInferenceTest, BackwardCompatibilityInfer) {
   auto [modelInput, runtime_context] = prepareInput(image);
   TensorData model_output;
 
-  // Use the old synchronous infer() method
   ASSERT_EQ(engine->infer(modelInput, model_output), InferErrorCode::SUCCESS);
 
   AlgoPostprocParams postproc_params;
@@ -482,9 +429,6 @@ TEST_F(TrtInferenceTest, BackwardCompatibilityInfer) {
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Stress test - many streams created and destroyed
-// ============================================================================
 TEST_F(TrtInferenceTest, StressTestManyStreams) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);
@@ -498,11 +442,9 @@ TEST_F(TrtInferenceTest, StressTestManyStreams) {
 
   const int num_iterations = 20;
   for (int i = 0; i < num_iterations; ++i) {
-    // Create stream
     auto stream = async_engine->createExecutionContext();
     ASSERT_NE(stream, nullptr);
 
-    // Run one inference
     auto [modelInput, runtime_context] = prepareInput(image);
     TensorData model_output;
 
@@ -510,15 +452,11 @@ TEST_F(TrtInferenceTest, StressTestManyStreams) {
     EXPECT_EQ(future.get(), InferErrorCode::SUCCESS)
         << "Failed at iteration " << i;
 
-    // Stream goes out of scope and is destroyed
   }
 
   engine->terminate();
 }
 
-// ============================================================================
-// Test: Performance comparison - with and without CUDA Graph
-// ============================================================================
 TEST_F(TrtInferenceTest, PerformanceComparisonWithGraph) {
   auto engine = createEngine();
   ASSERT_NE(engine, nullptr);

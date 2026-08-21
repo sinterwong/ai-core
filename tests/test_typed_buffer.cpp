@@ -1,8 +1,3 @@
-/**
- * @file test_typed_buffer.cpp
- * @brief Unit tests for TypedBuffer: factory semantics, copy/move, resize
- * split, type-checked access. No model assets required.
- */
 #include "ai_core/typed_buffer.hpp"
 #include "gtest/gtest.h"
 

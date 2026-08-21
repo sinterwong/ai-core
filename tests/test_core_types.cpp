@@ -1,8 +1,3 @@
-/**
- * @file test_core_types.cpp
- * @brief Unit tests for DataPacket, ParamCenter and the type-safe Factory.
- * No model assets required.
- */
 #include "ai_core/algo_types.hpp"
 #include "ai_core/data_packet.hpp"
 #include "ai_core/error_code.hpp"
@@ -15,9 +10,7 @@
 namespace testing_core_types {
 using namespace ai_core;
 
-// ============================================================================
 // DataPacket
-// ============================================================================
 
 TEST(DataPacketTest, SetAndGet) {
   DataPacket packet;
@@ -69,9 +62,7 @@ TEST(DataPacketTest, SetOverwrites) {
   EXPECT_THROW(packet.getParam<int>("key"), std::runtime_error);
 }
 
-// ============================================================================
 // ParamCenter
-// ============================================================================
 
 TEST(ParamCenterTest, DefaultHoldsMonostate) {
   AlgoPreprocParams params;
@@ -159,9 +150,7 @@ TEST(AlgoOutputTest, BuiltinAlternativesStillWork) {
   EXPECT_EQ(output.getParams<DataPacket>(), nullptr);
 }
 
-// ============================================================================
 // InferErrorCode::to_string
-// ============================================================================
 
 TEST(ErrorCodeTest, ToStringNamesCodes) {
   EXPECT_EQ(to_string(InferErrorCode::SUCCESS), "SUCCESS");
@@ -180,9 +169,7 @@ TEST(ErrorCodeTest, StreamOperatorIncludesNumericValue) {
   EXPECT_EQ(oss.str(), "NotInitialized(106)");
 }
 
-// ============================================================================
 // Factory
-// ============================================================================
 
 struct TestBase {
   virtual ~TestBase() = default;

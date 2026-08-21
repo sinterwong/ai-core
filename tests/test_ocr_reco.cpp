@@ -1,13 +1,3 @@
-/**
- * @file test_ocr_reco.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-25
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "ai_core/i_infer_engine.hpp"
 #include "ai_core/i_postprocess.hpp"
 #include "ai_core/i_preprocess.hpp"
@@ -105,7 +95,7 @@ TEST_P(OCRRecoInferTest, Normal) {
   infer_params.need_decrypt = config.need_decrypt;
   infer_params.decryptkey_str = config.decryptkey_str;
   infer_params.max_output_buffer_sizes = {
-      // 这里不设置output_lengths的最大尺寸用来测试自动分配
+      // Omit `output_lengths` to cover automatic output allocation.
       // {"output_lengths", 1 * sizeof(int64_t)},
       {"argmax_output", 1 * 32 * sizeof(int32_t) * 1}};
   temp_infer_params.setParam("params", infer_params);

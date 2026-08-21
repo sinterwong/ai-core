@@ -1,13 +1,3 @@
-/**
- * @file cuda_utils.cu
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief CUDA preprocessing kernels implementation with stream support
- * @version 0.2
- * @date 2025-07-12
- *
- * @copyright Copyright (c) 2025
- *
- */
 
 #include "cuda_utils.hpp"
 #include <cuda_fp16.h>
@@ -102,7 +92,7 @@ __global__ void escaleResizeNormalizeBilinearKernel(
     int scaled_x = x - pad_x;
     int scaled_y = y - pad_y;
 
-    // 缩放坐标映射回 ROI 内部的坐标
+    // Map the resized pixel center back into ROI coordinates.
     float src_x_f = (scaled_x + 0.5f) * (float)roi.w / (float)new_w - 0.5f;
     float src_y_f = (scaled_y + 0.5f) * (float)roi.h / (float)new_h - 0.5f;
 
@@ -114,20 +104,20 @@ __global__ void escaleResizeNormalizeBilinearKernel(
     float x_diff = src_x_f - x1;
     float y_diff = src_y_f - y1;
 
-    // 坐标钳位在 ROI 尺寸内
+    // Clamp both bilinear samples to the ROI boundary.
     x1 = max(0, x1);
     y1 = max(0, y1);
     x2 = min(roi.w - 1, x2);
     y2 = min(roi.h - 1, y2);
 
-    // 将 ROI 内部坐标转换为完整图像的绝对坐标
+    // Convert ROI-relative samples to absolute image coordinates.
     int abs_x1 = roi.x + x1;
     int abs_y1 = roi.y + y1;
     int abs_x2 = roi.x + x2;
     int abs_y2 = roi.y + y2;
 
     for (int c = 0; c < src_c; c++) {
-      // 使用 full_image_w 作为 stride 进行寻址
+      // Source rows use the full-image width, not the cropped ROI width.
       float p11 = src[(abs_y1 * full_image_w + abs_x1) * src_c + c];
       float p12 = src[(abs_y2 * full_image_w + abs_x1) * src_c + c];
       float p21 = src[(abs_y1 * full_image_w + abs_x2) * src_c + c];
@@ -167,8 +157,8 @@ __global__ void batchHwcToChwKernel(const float *src, float *dst, int height,
 }
 
 __global__ void batchCropResizeNormalizeBilinearKernel(
-    const uint8_t *const *d_src_ptrs, // 指针数组，指向每张图的GPU内存
-    float *d_batch_dst,               // 批处理输出缓冲区
+    const uint8_t *const *d_src_ptrs, // One device pointer per input image.
+    float *d_batch_dst,               // Contiguous batched output.
     const int *d_src_hs, const int *d_src_ws, int src_c, const ROIData *d_rois,
     int dst_h, int dst_w, const float *mean, const float *std, int batch_size) {
 
@@ -179,7 +169,6 @@ __global__ void batchCropResizeNormalizeBilinearKernel(
   if (x >= dst_w || y >= dst_h || b >= batch_size)
     return;
 
-  // 获取当前图像的元数据
   const uint8_t *src = d_src_ptrs[b];
   int src_h = d_src_hs[b];
   int src_w = d_src_ws[b];
@@ -187,11 +176,10 @@ __global__ void batchCropResizeNormalizeBilinearKernel(
   int crop_w = roi.w;
   int crop_h = roi.h;
 
-  // 计算输出在批处理缓冲区中的偏移
+  // Each block indexes one image's slice of the contiguous batch.
   size_t dst_image_size = (size_t)dst_h * dst_w * src_c;
   float *dst = d_batch_dst + b * dst_image_size;
 
-  // 双线性插值逻辑 (与单帧版本相同)
   float src_x = (x + 0.5f) * (float)crop_w / (float)dst_w - 0.5f;
   float src_y = (y + 0.5f) * (float)crop_h / (float)dst_h - 0.5f;
 
@@ -228,13 +216,13 @@ __global__ void batchCropResizeNormalizeBilinearKernel(
 }
 
 __global__ void batchEscaleResizeNormalizeBilinearKernel(
-    const uint8_t *const *d_src_ptrs, // 指针数组
-    float *d_batch_dst,               // 批处理输出
+    const uint8_t *const *d_src_ptrs, // One device pointer per input image.
+    float *d_batch_dst,               // Contiguous batched output.
     const int *d_src_hs, const int *d_src_ws, int src_c, const ROIData *d_rois,
     int dst_h, int dst_w, const float *mean, const float *std,
     const int *pad_val, const int *d_new_hs,
-    const int *d_new_ws,                      // 每张图缩放后的尺寸
-    const int *d_pad_ys, const int *d_pad_xs, // 每张图的padding
+    const int *d_new_ws,
+    const int *d_pad_ys, const int *d_pad_xs,
     int batch_size) {
 
   int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -244,23 +232,22 @@ __global__ void batchEscaleResizeNormalizeBilinearKernel(
   if (x >= dst_w || y >= dst_h || b >= batch_size)
     return;
 
-  // 获取当前图像的元数据
   const uint8_t *src = d_src_ptrs[b];
   ROIData roi = d_rois[b];
-  int src_h = roi.h; // 对于escale, src_h/w 是roi的h/w
+  int src_h = roi.h;
   int src_w = roi.w;
   int new_h = d_new_hs[b];
   int new_w = d_new_ws[b];
   int pad_y = d_pad_ys[b];
   int pad_x = d_pad_xs[b];
 
-  // 计算输出在批处理缓冲区中的偏移
+  // Each block indexes one image's slice of the contiguous batch.
   size_t dst_image_size = (size_t)dst_h * dst_w * src_c;
   float *dst = d_batch_dst + b * dst_image_size;
 
-  // 定位到src图像的ROI起点
+  // Address the ROI through the original full-image row stride.
   const uint8_t *roi_src = src + ((size_t)roi.y * d_src_ws[b] + roi.x) * src_c;
-  int src_pitch = d_src_ws[b] * src_c; // 原始图像的行步长
+  int src_pitch = d_src_ws[b] * src_c;
 
   if (x >= pad_x && x < pad_x + new_w && y >= pad_y && y < pad_y + new_h) {
     int scaled_x = x - pad_x;

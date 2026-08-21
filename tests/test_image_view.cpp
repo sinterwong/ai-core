@@ -1,8 +1,3 @@
-/**
- * @file test_image_view.cpp
- * @brief Unit tests for ImageView and the OpenCV interop layer.
- * No model assets required.
- */
 #include "ai_core/image_view.hpp"
 #include "ai_core/opencv_interop.hpp"
 #include "gtest/gtest.h"

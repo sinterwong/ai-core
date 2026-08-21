@@ -1,13 +1,3 @@
-/**
- * @file algo_infer_impl.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-04-23
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_INFERENCE_VISION_INFER_HPP
 #define AI_CORE_INFERENCE_VISION_INFER_HPP
 

@@ -1,13 +1,3 @@
-/**
- * @file ort_dnn_infer_base.hpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-01-18
- *
- * @copyright Copyright (c) 2025
- *
- */
 #ifndef AI_CORE_ONNXRUNTIME_INFERENCE_HPP
 #define AI_CORE_ONNXRUNTIME_INFERENCE_HPP
 

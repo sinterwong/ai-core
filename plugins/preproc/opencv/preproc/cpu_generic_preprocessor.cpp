@@ -1,13 +1,3 @@
-/**
- * @file cpu_generic_preprocessor.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.2
- * @date 2025-06-28
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "cpu_generic_preprocessor.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/opencv_interop.hpp"

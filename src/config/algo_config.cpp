@@ -1,13 +1,3 @@
-/**
- * @file algo_config.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief Implementation of the ai_core::config JSON loader with schema
- * validation. Key style is camelCase throughout, matching assets/conf/*.json.
- * @version 1.0
- * @date 2026-07-18
- *
- * @copyright Copyright (c) 2026
- */
 #include "ai_core/config/algo_config.hpp"
 
 #include "nlohmann/json.hpp"
@@ -24,7 +14,7 @@ namespace {
 
 using nlohmann::json;
 
-// --- Small validation helpers ------------------------------------------------
+// Validation helpers
 
 [[noreturn]] void fail(const std::string &ctx, const std::string &msg) {
   throw ConfigError("config error at '" + ctx + "': " + msg);
@@ -111,7 +101,7 @@ DataType toDataType(int v, const std::string &ctx) {
   return static_cast<DataType>(v);
 }
 
-// --- Section parsers ---------------------------------------------------------
+// Section parsers
 
 AlgoModuleTypes parseModuleTypes(const json &types) {
   AlgoModuleTypes t;

@@ -1,13 +1,3 @@
-/**
- * @file algo_preproc_impl.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-18
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "algo_preproc_impl.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
@@ -100,7 +90,6 @@ InferErrorCode AlgoPreproc::Impl::batchProcess(
 }
 
 InferErrorCode AlgoPreproc::Impl::terminate() {
-  // No-op
   return InferErrorCode::SUCCESS;
 }
 } // namespace ai_core::dnn

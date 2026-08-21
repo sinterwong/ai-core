@@ -188,7 +188,10 @@ function(load_tensorrt)
     set(TRT_ROOT ${3RDPARTY_DIR}/tensorrt)
     set(TRT_LIB_DIR ${TRT_ROOT}/lib)
 
-    list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/nvidia_modules")
+    # Resolve the module relative to this file. PROJECT_SOURCE_DIR changes in
+    # nested components that call project(), such as tests and benchmarks.
+    list(APPEND CMAKE_MODULE_PATH
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/nvidia_modules")
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} PARENT_SCOPE)
 
     find_package(TensorRT REQUIRED)

@@ -16,10 +16,11 @@ set(DEPENDENCY_INCLUDES)
 
 set(DEPENDENCY_LIBS ${ANDROID_JIN_LIBS})
 
-# Public API headers
-# Recursively find all headers in api/ai_core/
-file(GLOB_RECURSE AI_CORE_PUBLIC_HEADERS CONFIGURE_DEPENDS 
-    "api/ai_core/*.hpp"
+# Public API headers live outside the implementation tree so consumers cannot
+# accidentally depend on private headers.
+set(AI_CORE_PUBLIC_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../include")
+file(GLOB_RECURSE AI_CORE_PUBLIC_HEADERS CONFIGURE_DEPENDS
+    "${AI_CORE_PUBLIC_INCLUDE_DIR}/ai_core/*.hpp"
 )
 
 # Private/Internal sources — explicitly listed (no GLOB) so adding a file is a
@@ -50,6 +51,7 @@ file(GLOB AI_CORE_PRIVATE_HEADERS CONFIGURE_DEPENDS "*.hpp")
 add_library(ai_core SHARED
     ${AI_CORE_SOURCES}
     ${AI_CORE_PRIVATE_HEADERS}
+    ${AI_CORE_PUBLIC_HEADERS}
 )
 
 # Create namespaced alias for modern CMake usage
@@ -61,10 +63,10 @@ target_compile_features(ai_core PUBLIC cxx_std_20)
 # Configure include directories
 target_include_directories(ai_core
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api>
+        $<BUILD_INTERFACE:${AI_CORE_PUBLIC_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
         ${DEPENDENCY_INCLUDES}
 )
 
@@ -91,7 +93,8 @@ install(
 
 # Install public headers (top-level only; subdir headers install with their
 # module below to preserve the ai_core/<module>/ layout).
-file(GLOB AI_CORE_PUBLIC_HEADERS_TOP CONFIGURE_DEPENDS "api/ai_core/*.hpp")
+file(GLOB AI_CORE_PUBLIC_HEADERS_TOP CONFIGURE_DEPENDS
+    "${AI_CORE_PUBLIC_INCLUDE_DIR}/ai_core/*.hpp")
 install(
     FILES ${AI_CORE_PUBLIC_HEADERS_TOP}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core
@@ -108,7 +111,7 @@ if(BUILD_AI_CORE_CONFIG)
     target_compile_features(ai_core_config PUBLIC cxx_std_20)
     target_include_directories(ai_core_config
         PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api>
+            $<BUILD_INTERFACE:${AI_CORE_PUBLIC_INCLUDE_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
             ${PROJECT_INCLUDE_DIR} # nlohmann/json.hpp
@@ -130,7 +133,7 @@ if(BUILD_AI_CORE_CONFIG)
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
     )
     install(
-        FILES api/ai_core/config/algo_config.hpp
+        FILES ${AI_CORE_PUBLIC_INCLUDE_DIR}/ai_core/config/algo_config.hpp
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core/config
         COMPONENT dev
     )

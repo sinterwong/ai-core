@@ -1,18 +1,18 @@
 # Minimal Doxygen config for the AI Core public API.
-#   doxygen Doxyfile   ->   doc/doxygen/html/index.html
+#   doxygen Doxyfile   ->   docs/doxygen/html/index.html
 PROJECT_NAME           = "AI Core"
 PROJECT_BRIEF          = "Pluggable multi-backend inference framework"
-OUTPUT_DIRECTORY       = doc/doxygen
+OUTPUT_DIRECTORY       = docs/doxygen
 GENERATE_LATEX         = NO
 GENERATE_HTML          = YES
 RECURSIVE              = YES
 
 # Document the public API (headers) plus the design docs.
-INPUT                  = src/api/ai_core \
+INPUT                  = include/ai_core \
                          README.md \
-                         doc/Framework.md \
-                         doc/API.md \
-                         doc/PluginGuide.md
+                         docs/Framework.md \
+                         docs/API.md \
+                         docs/PluginGuide.md
 FILE_PATTERNS          = *.hpp *.md
 USE_MDFILE_AS_MAINPAGE = README.md
 

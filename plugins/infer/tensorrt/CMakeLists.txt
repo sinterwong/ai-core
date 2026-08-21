@@ -10,6 +10,7 @@ else()
 endif()
 
 add_library(ai_core_plugin_tensorrt SHARED
+    ${PROJECT_SOURCE_DIR}/plugins/common/preproc/generic_frame_preproc_base.cpp
     trt/trt_infer.cpp
     trt/trt_utils.cpp
     trt/trt_infer_stream.cpp

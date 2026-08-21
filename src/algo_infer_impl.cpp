@@ -1,13 +1,3 @@
-/**
- * @file algo_infer_impl.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-04-23
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include <chrono>
 
 #include "ai_core/error_code.hpp"
@@ -59,7 +49,6 @@ AlgoInference::Impl::infer(const AlgoInput &input, AlgoOutput &output,
   std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
 
-  // prep const time
   auto start_pre = std::chrono::steady_clock::now();
   TensorData model_input;
   if (auto ec = m_preprocessor->process(input, model_input, runtime_context,
@@ -73,7 +62,6 @@ AlgoInference::Impl::infer(const AlgoInput &input, AlgoOutput &output,
   auto duration_pre = std::chrono::duration_cast<std::chrono::milliseconds>(
       end_pre - start_pre);
 
-  // infer cost time
   auto start_infer = std::chrono::steady_clock::now();
   TensorData model_output;
   auto ret = m_engine->infer(model_input, model_output);
@@ -86,7 +74,6 @@ AlgoInference::Impl::infer(const AlgoInput &input, AlgoOutput &output,
   auto duration_infer = std::chrono::duration_cast<std::chrono::milliseconds>(
       end_infer - start_infer);
 
-  // post cost time
   auto start_post = std::chrono::steady_clock::now();
   if (auto ec = m_postprocessor->process(model_output, output, runtime_context,
                                          postproc_override);
@@ -119,7 +106,6 @@ AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
   std::shared_ptr<RuntimeContext> runtime_context =
       std::make_shared<RuntimeContext>();
 
-  // prep const time
   auto start_pre = std::chrono::steady_clock::now();
   TensorData model_input;
   if (m_preprocessor->batchProcess(inputs, model_input, runtime_context,
@@ -132,7 +118,6 @@ AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
   auto duration_pre = std::chrono::duration_cast<std::chrono::milliseconds>(
       end_pre - start_pre);
 
-  // infer cost time
   auto start_infer = std::chrono::steady_clock::now();
   TensorData model_output;
   auto ret = m_engine->infer(model_input, model_output);
@@ -143,7 +128,6 @@ AlgoInference::Impl::batchInfer(const std::vector<AlgoInput> &inputs,
   auto duration_infer = std::chrono::duration_cast<std::chrono::milliseconds>(
       end_infer - start_infer);
 
-  // post cost time
   auto start_post = std::chrono::steady_clock::now();
   if (m_postprocessor->batchProcess(model_output, outputs, runtime_context,
                                     postproc_override) !=

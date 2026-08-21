@@ -1,13 +1,3 @@
-/**
- * @file algo_infer_engine_impl.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-07-18
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "algo_infer_engine_impl.hpp"
 #include "ai_core/algo_types.hpp"
 #include "ai_core/logger.hpp"

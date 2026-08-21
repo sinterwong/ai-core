@@ -243,37 +243,31 @@ cv::Mat OCRUtils::convertToBlackWords(const cv::Mat &gray_image) {
   return ret_mat;
 }
 
-/**
- * @brief 将包含多行文本的图像分割成单行文本图像列表。
- * @param grayImage 输入的图像是灰度图
- * @return 包含所有分割出的单行图像的向量。
- */
+// Row projection preserves the source's top-to-bottom line order.
 std::vector<cv::Mat> OCRUtils::lineSplit(const cv::Mat &gray_image) {
   if (gray_image.empty() || gray_image.channels() != 1) {
     LOG_ERROR_S << "Input image is empty or not a single channel image.";
     return {};
   }
 
-  // 转换成黑底白字
+  // Normalize polarity before building the row projection.
   cv::Mat in_img = convertToBlackWords(gray_image);
 
   constexpr int intensity_threshold = 100;
-  // 有效文本行的最小高度
+  // Shorter runs are treated as noise rather than text lines.
   constexpr int min_line_height = 8;
 
   std::vector<cv::Mat> result_lines;
   const auto image_rows = in_img.rows;
   const auto image_cols = in_img.cols;
 
-  // 黑字白底 -> 白字黑底
   cv::Mat inverted_img;
   cv::subtract(255, in_img, inverted_img);
 
-  // 沿水平方向进行reduce操作，计算每行的最大像素值，生成垂直投影
+  // A row is active when any column contains foreground text.
   cv::Mat vertical_projection;
   cv::reduce(inverted_img, vertical_projection, 1, cv::REDUCE_MAX);
 
-  // 裁剪逻辑
   auto extract_and_push_line = [&](int start_row, int end_row) {
     if (end_row - start_row + 1 >= min_line_height) {
       int padded_start = std::max(0, start_row - 1);
@@ -286,7 +280,6 @@ std::vector<cv::Mat> OCRUtils::lineSplit(const cv::Mat &gray_image) {
 
   int current_line_start = -1;
 
-  // 遍历垂直投影，寻找文本行的起止位置
   for (int i = 0; i < image_rows; ++i) {
     bool is_text_row = vertical_projection.at<uchar>(i) > intensity_threshold;
 

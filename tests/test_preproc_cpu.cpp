@@ -1,9 +1,3 @@
-/**
- * @file test_preproc_cpu.cpp
- * @brief Unit tests for the CPU frame preprocessor (layout conversion,
- * normalization, ROI crop) and the parameter binding contract of the
- * AlgoPreproc facade. Synthetic pixel data only - no model assets.
- */
 #include "ai_core/algo_postprocessor.hpp"
 #include "ai_core/algo_preprocessor.hpp"
 #include "ai_core/algo_types.hpp"
@@ -307,9 +301,7 @@ TEST(CpuPreprocTest, BatchProcessConcatenatesFrames) {
   EXPECT_EQ(ctx->frame_transform_batch.size(), 2u);
 }
 
-// ============================================================================
 // Parameter binding contract (param_validation at initialize)
-// ============================================================================
 
 TEST(ParamBindingTest, MonostatePreprocParamsRejected) {
   AlgoPreproc preproc("CpuGenericPreprocess");
@@ -408,9 +400,7 @@ TEST(CpuPreprocTest, EmptyImageFails) {
             InferErrorCode::InferPreprocessFailed);
 }
 
-// ============================================================================
 // FrameWithMaskPreprocess: mask regions become an extra input channel
-// ============================================================================
 
 TEST(FrameWithMaskTest, RasterizesMaskChannel) {
   const int w = 4, h = 4;

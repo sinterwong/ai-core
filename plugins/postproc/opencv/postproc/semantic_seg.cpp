@@ -1,13 +1,3 @@
-/**
- * @file semantic_seg.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-08-19
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "semantic_seg.hpp"
 #include "ai_core/logger.hpp"
 #include "ai_core/postprocess_types.hpp"
@@ -101,16 +91,15 @@ SemanticSeg::processSingleItem(const float *data, int num_classes, int height,
 
   if (num_classes == 1) {
     cv::Mat prob_map(height, width, CV_32FC1, const_cast<float *>(data));
-    // 大于阈值的设为1，否则为0
+    // A single-channel model emits foreground probabilities.
     cv::threshold(prob_map, class_map, post_args.cond_thre, 1,
                   cv::THRESH_BINARY);
-    class_map.convertTo(class_map, CV_8U); // 确保是 8 位
+    class_map.convertTo(class_map, CV_8U);
   } else {
-    // 第一个通道作为初始最大概率图
+    // Track the per-pixel argmax across planar class channels.
     cv::Mat max_probs(height, width, CV_32F, const_cast<float *>(data));
-    class_map.setTo(0); // 默认类别为0 (背景)
+    class_map.setTo(0);
 
-    // 从第二个通道开始遍历，更新 maxProbs 和 classMap
     for (int c = 1; c < num_classes; ++c) {
       cv::Mat current_probs(height, width, CV_32F,
                             const_cast<float *>(data + c * channel_step));

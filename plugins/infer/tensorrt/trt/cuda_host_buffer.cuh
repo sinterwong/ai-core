@@ -12,14 +12,9 @@
 
 namespace ai_core::cuda_utils {
 
-// 前置声明
 template <typename T> class CudaDeviceBuffer;
 
-/**
- * @brief 只读 Host 内存视图
- *
- * 用于传递 host buffer 的只读引用，支持迭代器。
- */
+/** Non-owning read-only range over pinned host memory. */
 template <typename T> struct HostReadSpan {
   const T *ptr;
   size_t count;
@@ -35,11 +30,7 @@ template <typename T> struct HostReadSpan {
   const T *cend() const { return ptr + count; }
 };
 
-/**
- * @brief 可写 Host 内存视图
- *
- * 用于传递 host buffer 的可写引用。
- */
+/** Non-owning writable range over pinned host memory. */
 template <typename T> struct HostWriteSpan {
   T *ptr;
   size_t count;
@@ -58,28 +49,14 @@ template <typename T> struct HostWriteSpan {
 };
 
 /**
- * @brief CUDA 锁页内存（Pinned Memory）管理类
+ * @brief Move-only vector-like container backed by CUDA pinned host memory.
  *
- * 设计理念：与 CudaDeviceBuffer 保持一致的语义化 API
- *
- * 锁页内存特点：
- * - Host 端可直接读写（支持下标访问）
- * - 与 GPU 之间的 DMA 传输更快
- * - 支持异步传输（cudaMemcpyAsync）
- * - 分配/释放开销比普通内存大
- *
- * API 分类：
- * - 只读访问：readSpan() / readPtr()
- * - 写入访问：writeSpan(count) / writePtr(count)
- * - 追加写入：appendSpan(count) / appendPtr(count)
- * - 直接元素访问：operator[]（Host 端特有）
- * - 不安全访问：unsafePtr() + unsafeSetSize()
+ * Pinned allocation makes host/device copies eligible for asynchronous DMA.
+ * Any buffer participating in an asynchronous copy must remain alive until
+ * the associated CUDA stream completes.
  */
 template <typename T> class CudaHostBuffer {
 public:
-  // ==========================================================================
-  // 构造与析构
-  // ==========================================================================
 
   CudaHostBuffer() : m_size(0), m_capacity(0), m_ptr(nullptr) {}
 
@@ -91,9 +68,6 @@ public:
     }
   }
 
-  /**
-   * @brief 从初始化列表构造
-   */
   CudaHostBuffer(std::initializer_list<T> init)
       : m_size(init.size()), m_capacity(init.size()), m_ptr(nullptr) {
     if (m_capacity > 0) {
@@ -102,9 +76,6 @@ public:
     }
   }
 
-  /**
-   * @brief 从迭代器范围构造
-   */
   template <typename InputIt>
   CudaHostBuffer(InputIt first, InputIt last)
       : m_size(0), m_capacity(0), m_ptr(nullptr) {
@@ -119,11 +90,9 @@ public:
 
   ~CudaHostBuffer() { freeMemory(); }
 
-  // 禁止拷贝
   CudaHostBuffer(const CudaHostBuffer &) = delete;
   CudaHostBuffer &operator=(const CudaHostBuffer &) = delete;
 
-  // 允许移动
   CudaHostBuffer(CudaHostBuffer &&other) noexcept
       : m_size(other.m_size), m_capacity(other.m_capacity), m_ptr(other.m_ptr) {
     other.m_size = 0;
@@ -145,9 +114,6 @@ public:
     return *this;
   }
 
-  // ==========================================================================
-  // 属性查询
-  // ==========================================================================
 
   size_t size() const { return m_size; }
   size_t capacity() const { return m_capacity; }
@@ -156,18 +122,9 @@ public:
   bool empty() const { return m_size == 0; }
   explicit operator bool() const { return m_ptr != nullptr; }
 
-  // ==========================================================================
-  // 只读访问 API
-  // ==========================================================================
 
-  /**
-   * @brief 获取只读视图
-   */
   HostReadSpan<T> readSpan() const { return {m_ptr, m_size}; }
 
-  /**
-   * @brief 获取指定范围的只读视图
-   */
   HostReadSpan<T> readSpan(size_t offset, size_t count) const {
     if (offset + count > m_size) {
       throw std::out_of_range("readSpan: range exceeds valid size");
@@ -175,38 +132,20 @@ public:
     return {m_ptr + offset, count};
   }
 
-  /**
-   * @brief 获取只读指针
-   */
   const T *readPtr() const { return m_ptr; }
 
-  // ==========================================================================
-  // 写入访问 API
-  // ==========================================================================
 
-  /**
-   * @brief 准备写入，获取可写视图
-   *
-   * 会确保容量足够，并立即将 size 设置为 count。
-   *
-   * @param count 预期写入的元素数量
-   */
+  /** Reserve `count` writable elements and mark the whole range valid. */
   HostWriteSpan<T> writeSpan(size_t count) {
     prepareForWrite(count);
     return {m_ptr, count};
   }
 
-  /**
-   * @brief 准备写入，获取可写指针
-   */
   T *writePtr(size_t count) {
     prepareForWrite(count);
     return m_ptr;
   }
 
-  /**
-   * @brief 在指定偏移处准备写入
-   */
   HostWriteSpan<T> writeSpanAt(size_t offset, size_t count) {
     size_t required_size = offset + count;
     if (required_size > m_capacity) {
@@ -216,16 +155,7 @@ public:
     return {m_ptr + offset, count};
   }
 
-  // ==========================================================================
-  // 追加写入 API
-  // ==========================================================================
 
-  /**
-   * @brief 在末尾追加空间
-   *
-   * @param count 追加的元素数量
-   * @return 指向追加区域的可写视图
-   */
   HostWriteSpan<T> appendSpan(size_t count) {
     size_t offset = m_size;
     size_t new_size = m_size + count;
@@ -241,13 +171,7 @@ public:
 
   T *appendPtr(size_t count) { return appendSpan(count).ptr; }
 
-  // ==========================================================================
-  // 直接元素访问（Host Buffer 特有）
-  // ==========================================================================
 
-  /**
-   * @brief 下标访问（带边界检查）
-   */
   T &at(size_t index) {
     if (index >= m_size) {
       throw std::out_of_range("CudaHostBuffer::at: index out of range");
@@ -262,27 +186,15 @@ public:
     return m_ptr[index];
   }
 
-  /**
-   * @brief 下标访问（不检查边界）
-   */
   T &operator[](size_t index) { return m_ptr[index]; }
   const T &operator[](size_t index) const { return m_ptr[index]; }
 
-  /**
-   * @brief 首元素引用
-   */
   T &front() { return m_ptr[0]; }
   const T &front() const { return m_ptr[0]; }
 
-  /**
-   * @brief 尾元素引用
-   */
   T &back() { return m_ptr[m_size - 1]; }
   const T &back() const { return m_ptr[m_size - 1]; }
 
-  // ==========================================================================
-  // STL 风格迭代器
-  // ==========================================================================
 
   T *begin() { return m_ptr; }
   T *end() { return m_ptr + m_size; }
@@ -291,21 +203,16 @@ public:
   const T *cbegin() const { return m_ptr; }
   const T *cend() const { return m_ptr + m_size; }
 
-  // ==========================================================================
-  // 不安全/低级访问
-  // ==========================================================================
 
   /**
-   * @brief 获取裸指针（不安全）
+   * @brief Return the allocation without changing its valid size.
    *
-   * @warning 通过此指针的写入不会自动更新 size
+   * A caller writing beyond `size()` must subsequently call
+   * `unsafeSetSize()` before exposing the data.
    */
   T *unsafePtr() { return m_ptr; }
   const T *unsafePtr() const { return m_ptr; }
 
-  /**
-   * @brief 手动设置有效大小（不安全）
-   */
   void unsafeSetSize(size_t new_size) {
     if (new_size > m_capacity) {
       throw std::length_error("unsafeSetSize: new_size exceeds capacity");
@@ -313,9 +220,6 @@ public:
     m_size = new_size;
   }
 
-  // ==========================================================================
-  // 内存管理
-  // ==========================================================================
 
   void reserve(size_t new_capacity) {
     if (new_capacity <= m_capacity) {
@@ -343,14 +247,10 @@ public:
     m_size = new_size;
   }
 
-  /**
-   * @brief 调整大小并用指定值填充新增区域
-   */
   void resize(size_t new_size, const T &value) {
     size_t old_size = m_size;
     resize(new_size, true);
 
-    // 填充新增部分
     if (new_size > old_size) {
       std::fill(m_ptr + old_size, m_ptr + new_size, value);
     }
@@ -390,13 +290,7 @@ public:
     std::swap(m_capacity, other.m_capacity);
   }
 
-  // ==========================================================================
-  // STL 风格修改操作
-  // ==========================================================================
 
-  /**
-   * @brief 在末尾添加元素
-   */
   void pushBack(const T &value) {
     if (m_size >= m_capacity) {
       size_t new_capacity = m_capacity == 0 ? 16 : m_capacity * 2;
@@ -413,18 +307,12 @@ public:
     m_ptr[m_size++] = std::move(value);
   }
 
-  /**
-   * @brief 移除末尾元素
-   */
   void popBack() {
     if (m_size > 0) {
       --m_size;
     }
   }
 
-  /**
-   * @brief 原地构造元素
-   */
   template <typename... Args> T &emplaceBack(Args &&...args) {
     if (m_size >= m_capacity) {
       size_t new_capacity = m_capacity == 0 ? 16 : m_capacity * 2;
@@ -434,31 +322,16 @@ public:
     return m_ptr[m_size++];
   }
 
-  // ==========================================================================
-  // Host 端内存操作
-  // ==========================================================================
 
-  /**
-   * @brief 用指定值填充有效区域
-   */
   void fill(const T &value) { std::fill(m_ptr, m_ptr + m_size, value); }
 
-  /**
-   * @brief 将有效区域清零
-   */
   void zero() {
     if (m_size > 0) {
       std::memset(m_ptr, 0, m_size * sizeof(T));
     }
   }
 
-  // ==========================================================================
-  // 与其他容器的数据交换
-  // ==========================================================================
 
-  /**
-   * @brief 从 vector 初始化
-   */
   void initFromVector(const std::vector<T> &src) {
     if (src.empty()) {
       m_size = 0;
@@ -473,30 +346,16 @@ public:
     m_size = src.size();
   }
 
-  /**
-   * @brief 转换为 vector
-   */
   std::vector<T> toVector() const {
     return std::vector<T>(m_ptr, m_ptr + m_size);
   }
 
-  /**
-   * @brief 赋值操作符（从 vector）
-   */
   CudaHostBuffer &operator=(const std::vector<T> &src) {
     initFromVector(src);
     return *this;
   }
 
-  // ==========================================================================
-  // Host <-> Device 数据传输
-  // ==========================================================================
 
-  /**
-   * @brief 从 Device buffer 读取数据
-   *
-   * 会调整本 buffer 的 size 以匹配源数据。
-   */
   void readFromDevice(const CudaDeviceBuffer<T> &src, cudaStream_t stream = 0) {
     if (src.empty()) {
       m_size = 0;
@@ -512,9 +371,6 @@ public:
     m_size = src.size();
   }
 
-  /**
-   * @brief 从 Device buffer 读取指定范围
-   */
   void readFromDevice(const CudaDeviceBuffer<T> &src, size_t src_offset,
                       size_t dst_offset, size_t count,
                       cudaStream_t stream = 0) {
@@ -537,18 +393,10 @@ public:
     m_size = std::max(m_size, required_size);
   }
 
-  /**
-   * @brief 写入到 Device buffer
-   *
-   * 便捷方法，等价于 dst.initFromHost(*this)
-   */
   void writeToDevice(CudaDeviceBuffer<T> &dst, cudaStream_t stream = 0) const {
     dst.initFromHost(m_ptr, m_size, stream);
   }
 
-  /**
-   * @brief 异步写入到 Device buffer（指定范围）
-   */
   void writeToDeviceAsync(CudaDeviceBuffer<T> &dst, size_t src_offset,
                           size_t dst_offset, size_t count,
                           cudaStream_t stream = 0) const {
@@ -562,12 +410,9 @@ public:
     dst.writeFromHost(m_ptr + src_offset, dst_offset, count, stream);
   }
 
-  /**
-   * @brief 将数据拷贝到外部 vector，自动处理 resize
-   */
   void copyTo(std::vector<T> &dest) const {
     if (dest.size() != m_size) {
-      dest.resize(m_size); // 只有在大小改变时才会重新分配内存
+      dest.resize(m_size);
     }
     if (m_size > 0) {
       std::memcpy(dest.data(), m_ptr, m_size * sizeof(T));
@@ -609,7 +454,7 @@ private:
   T *m_ptr;
 };
 
-// ADL swap
+// Enables unqualified `swap` without exposing allocation details.
 template <typename T>
 void swap(CudaHostBuffer<T> &a, CudaHostBuffer<T> &b) noexcept {
   a.swap(b);

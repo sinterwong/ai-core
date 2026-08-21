@@ -198,9 +198,9 @@ algo.terminate();
 
 ## 文档
 
-- [doc/Framework.md](doc/Framework.md) — 框架结构与设计
-- [doc/API.md](doc/API.md) — 公共 API
-- [doc/PluginGuide.md](doc/PluginGuide.md) — 插件开发与张量契约
+- [docs/Framework.md](docs/Framework.md) — 框架结构与设计
+- [docs/API.md](docs/API.md) — 公共 API
+- [docs/PluginGuide.md](docs/PluginGuide.md) — 插件开发与张量契约
 
 ## 许可
 

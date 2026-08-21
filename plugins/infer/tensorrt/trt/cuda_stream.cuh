@@ -2,6 +2,7 @@
 #define CUDA_UTILS_CUDA_STREAM_CUH
 #include "cuda_helper.cuh"
 namespace ai_core::cuda_utils {
+/** Owns a non-blocking CUDA stream. */
 class CudaStream {
 public:
   enum class Priority { Default, High, Low };
@@ -30,11 +31,9 @@ public:
     }
   }
 
-  // Non-copyable
   CudaStream(const CudaStream &) = delete;
   CudaStream &operator=(const CudaStream &) = delete;
 
-  // Movable
   CudaStream(CudaStream &&other) noexcept : m_stream(other.m_stream) {
     other.m_stream = nullptr;
   }
@@ -50,20 +49,16 @@ public:
     return *this;
   }
 
-  /// Get the underlying CUDA stream handle
   cudaStream_t get() const { return m_stream; }
 
-  /// Implicit conversion to cudaStream_t for convenience
   operator cudaStream_t() const { return m_stream; }
 
-  /// Synchronize this stream (wait for all operations to complete)
   void synchronize() const {
     if (m_stream) {
       CHECK_CUDA_ERROR(cudaStreamSynchronize(m_stream));
     }
   }
 
-  /// Check if all operations on this stream have completed
   bool isComplete() const {
     if (!m_stream)
       return true;
