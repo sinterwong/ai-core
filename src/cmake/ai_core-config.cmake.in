@@ -2,8 +2,7 @@
 # Config file for the ai_core package.
 #
 # It defines the following:
-# - Imported targets: ai_core::ai_core, and ai_core::config when the JSON
-#   config module was built.
+# - Imported targets for every component produced by this build.
 # - The custom macro 'check_required_components' to ensure self-sufficiency.
 # ==================================================================================
 
@@ -38,19 +37,19 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/AICorePlugin.cmake")
 
-# --- Bundled inference plugins produced by this build ---
-# These flags describe optional plugin DSOs that accompanied the configured
-# build. They do not change ai_core's ABI and external plugins remain fully
-# supported regardless of these values.
-set(ai_core_WITH_ORT @AI_CORE_BUILD_PLUGIN_ONNXRUNTIME@)
-set(ai_core_WITH_NCNN @AI_CORE_BUILD_PLUGIN_NCNN@)
-set(ai_core_WITH_TRT @AI_CORE_BUILD_PLUGIN_TENSORRT@)
-set(ai_core_WITH_CONFIG @AI_CORE_BUILD_CONFIG@)
+set(ai_core_PLUGIN_DIR
+    "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/ai_core/plugins")
 
-set(ai_core_ort_FOUND ${ai_core_WITH_ORT})
-set(ai_core_ncnn_FOUND ${ai_core_WITH_NCNN})
-set(ai_core_trt_FOUND ${ai_core_WITH_TRT})
-set(ai_core_config_FOUND ${ai_core_WITH_CONFIG})
+# --- Components produced by this build ---
+set(ai_core_core_FOUND TRUE)
+set(ai_core_config_FOUND @AI_CORE_BUILD_CONFIG@)
+set(ai_core_plugin_preproc_opencv_FOUND
+    @AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV@)
+set(ai_core_plugin_postproc_opencv_FOUND
+    @AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV@)
+set(ai_core_plugin_onnxruntime_FOUND @AI_CORE_BUILD_PLUGIN_ONNXRUNTIME@)
+set(ai_core_plugin_ncnn_FOUND @AI_CORE_BUILD_PLUGIN_NCNN@)
+set(ai_core_plugin_tensorrt_FOUND @AI_CORE_BUILD_PLUGIN_TENSORRT@)
 
 # --- Final check for requested components ---
 # This uses the self-defined macro from above.

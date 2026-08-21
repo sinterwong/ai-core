@@ -131,4 +131,4 @@ endif()
 # ============================================================================
 # Installation
 # ============================================================================
-install(TARGETS ai_core_tests DESTINATION tests)
+install(TARGETS ai_core_tests DESTINATION tests COMPONENT tests)

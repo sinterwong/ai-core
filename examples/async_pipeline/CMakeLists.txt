@@ -27,6 +27,5 @@ target_link_libraries(ai_core_example_async_pipeline
 
 install(
     TARGETS ai_core_example_async_pipeline
-    EXPORT ai_export_set
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT examples
 )

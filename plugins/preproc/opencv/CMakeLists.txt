@@ -22,10 +22,14 @@ target_link_libraries(ai_core_plugin_preproc_opencv PRIVATE
     ai_core::opencv
 )
 set_target_properties(ai_core_plugin_preproc_opencv PROPERTIES
+    EXPORT_NAME plugin_preproc_opencv
     VERSION ${AI_CORE_VERSION}
     SOVERSION ${AI_CORE_VERSION_MAJOR}
 )
 install(TARGETS ai_core_plugin_preproc_opencv
+    EXPORT ai_core_export_set
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/ai_core/plugins
+        COMPONENT plugin-preproc-opencv
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/ai_core/plugins
+        COMPONENT plugin-preproc-opencv
 )

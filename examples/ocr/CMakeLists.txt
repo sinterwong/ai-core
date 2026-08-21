@@ -76,8 +76,5 @@ endif()
 # ============================================================================
 install(
     TARGETS ai_core_example_ocr
-    EXPORT ai_export_set
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT examples
 )

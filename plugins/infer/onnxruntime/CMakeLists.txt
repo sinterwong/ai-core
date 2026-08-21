@@ -22,7 +22,15 @@ if(AI_CORE_ENABLE_MODEL_DECRYPTION)
         AI_CORE_ENABLE_MODEL_DECRYPTION=1)
     target_link_libraries(ai_core_plugin_onnxruntime PRIVATE encrypt::encrypt)
 endif()
+set_target_properties(ai_core_plugin_onnxruntime PROPERTIES
+    EXPORT_NAME plugin_onnxruntime
+    VERSION ${AI_CORE_VERSION}
+    SOVERSION ${AI_CORE_VERSION_MAJOR}
+)
 install(TARGETS ai_core_plugin_onnxruntime
+    EXPORT ai_core_export_set
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/ai_core/plugins
+        COMPONENT plugin-onnxruntime
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/ai_core/plugins
+        COMPONENT plugin-onnxruntime
 )

@@ -75,9 +75,9 @@ target_link_libraries(ai_core PRIVATE ai_core::platform ${CMAKE_DL_LIBS})
 install(
     TARGETS ai_core
     EXPORT ai_core_export_set
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT development
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime
 )
 
 # Install public headers (top-level only; subdir headers install with their
@@ -87,7 +87,7 @@ file(GLOB AI_CORE_PUBLIC_HEADERS_TOP CONFIGURE_DEPENDS
 install(
     FILES ${AI_CORE_PUBLIC_HEADERS_TOP}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core
-    COMPONENT dev
+    COMPONENT development
 )
 
 # ============================================================================
@@ -119,14 +119,14 @@ if(AI_CORE_BUILD_CONFIG)
     install(
         TARGETS ai_core_config
         EXPORT ai_core_export_set
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT config
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT config
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT config
     )
     install(
         FILES ${AI_CORE_PUBLIC_INCLUDE_DIR}/ai_core/config/algo_config.hpp
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ai_core/config
-        COMPONENT dev
+        COMPONENT config
     )
 endif()
 
@@ -174,7 +174,7 @@ install(
         "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config-version.cmake"
         "${CMAKE_CURRENT_LIST_DIR}/../cmake/AICorePlugin.cmake"
     DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
-    COMPONENT dev
+    COMPONENT development
 )
 
 # Install targets for install tree
@@ -183,5 +183,5 @@ install(
     FILE ai_core-targets.cmake
     NAMESPACE ai_core::
     DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
-    COMPONENT dev
+    COMPONENT development
 )

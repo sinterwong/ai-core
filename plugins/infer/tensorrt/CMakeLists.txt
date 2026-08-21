@@ -23,6 +23,9 @@ add_library(ai_core_plugin_tensorrt SHARED
 add_library(ai_core::plugin_tensorrt ALIAS ai_core_plugin_tensorrt)
 target_compile_features(ai_core_plugin_tensorrt PRIVATE cxx_std_20)
 set_target_properties(ai_core_plugin_tensorrt PROPERTIES
+    EXPORT_NAME plugin_tensorrt
+    VERSION ${AI_CORE_VERSION}
+    SOVERSION ${AI_CORE_VERSION_MAJOR}
     CUDA_STANDARD 20
     CUDA_STANDARD_REQUIRED ON
     CUDA_SEPARABLE_COMPILATION ON
@@ -45,6 +48,9 @@ if(AI_CORE_ENABLE_MODEL_DECRYPTION)
     target_link_libraries(ai_core_plugin_tensorrt PRIVATE encrypt::encrypt)
 endif()
 install(TARGETS ai_core_plugin_tensorrt
+    EXPORT ai_core_export_set
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/ai_core/plugins
+        COMPONENT plugin-tensorrt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/ai_core/plugins
+        COMPONENT plugin-tensorrt
 )

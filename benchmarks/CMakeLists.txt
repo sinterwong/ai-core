@@ -123,4 +123,5 @@ endif()
 # ============================================================================
 # Installation
 # ============================================================================
-install(TARGETS ai_core_benchmarks DESTINATION benchmarks)
+install(TARGETS ai_core_benchmarks DESTINATION benchmarks
+    COMPONENT benchmarks)

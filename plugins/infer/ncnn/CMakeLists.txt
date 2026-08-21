@@ -24,7 +24,15 @@ if(AI_CORE_ENABLE_MODEL_DECRYPTION)
         AI_CORE_ENABLE_MODEL_DECRYPTION=1)
     target_link_libraries(ai_core_plugin_ncnn PRIVATE encrypt::encrypt)
 endif()
+set_target_properties(ai_core_plugin_ncnn PROPERTIES
+    EXPORT_NAME plugin_ncnn
+    VERSION ${AI_CORE_VERSION}
+    SOVERSION ${AI_CORE_VERSION_MAJOR}
+)
 install(TARGETS ai_core_plugin_ncnn
+    EXPORT ai_core_export_set
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/ai_core/plugins
+        COMPONENT plugin-ncnn
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/ai_core/plugins
+        COMPONENT plugin-ncnn
 )

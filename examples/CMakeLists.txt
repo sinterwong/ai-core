@@ -63,10 +63,7 @@ target_compile_definitions(ai_core_examples PRIVATE SECURITY_KEY="${COMMIT_CODE}
 # ============================================================================
 install(
     TARGETS ai_core_examples
-    EXPORT ai_export_set
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT examples
 )
 
 # ============================================================================
