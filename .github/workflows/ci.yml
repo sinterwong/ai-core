@@ -53,14 +53,7 @@ jobs:
         run: cmake --preset core
       - run: cmake --build --preset core
       - name: Verify core runtime dependency allowlist
-        run: |
-          library=build/core/x86_64/lib/libai_core.so
-          unexpected=$(ldd "${library}" | awk '/=>/ {print $1}' \
-            | grep -Ev '^(libstdc\+\+|libgcc_s|libc|libm|libdl|libpthread|librt)\.so' || true)
-          test -z "${unexpected}" || {
-            echo "unexpected core dependencies: ${unexpected}" >&2
-            exit 1
-          }
+        run: scripts/verify_core_runtime.sh build/core/x86_64/lib/libai_core.so
       - name: Verify installed package consumer
         run: |
           cmake --install build/core --prefix install/core
