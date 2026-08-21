@@ -95,12 +95,31 @@ scripts/bootstrap.sh
 依赖定位参数：
 
 - `AI_CORE_OPENCV_PROVIDER=BUNDLED|SYSTEM`，默认 `BUNDLED`。
+- `AI_CORE_OPENCV_ROOT`，为 `SYSTEM` provider 指定可重定位的 OpenCV SDK 根目录。
 - `AI_CORE_DEPS_ROOT`，默认 `.deps/<OS>_<ARCH>`。
 - `AI_CORE_ONNXRUNTIME_ROOT`、`AI_CORE_NCNN_ROOT`、`AI_CORE_TENSORRT_ROOT`。
 - `AI_CORE_CUDA_ARCHITECTURES`。
 
 缺失依赖会在 configure 阶段报出精确路径、对应 profile 和可覆盖的 root，不会扫描
 隐式系统目录或回退到另一套 SDK。
+
+### Android arm64 交叉编译
+
+Android 预编译 SDK 建议使用以下布局：
+
+```text
+.deps/Android_aarch64/
+├── ncnn/
+├── onnxruntime/
+└── opencv/              # OpenCV Android SDK 根，内部包含 sdk/native/jni
+```
+
+设置 `ANDROID_NDK_HOME` 后，仓库内的 `.vscode/settings.json` 可直接由 VS Code
+CMake Tools 配置和构建 arm64-v8a。等价的关键参数是
+`AI_CORE_DEPS_ROOT=.deps/Android_aarch64`、
+`AI_CORE_OPENCV_PROVIDER=SYSTEM` 和
+`AI_CORE_OPENCV_ROOT=.deps/Android_aarch64/opencv`。显式 SDK package 在交叉编译时
+不会被重映射到 NDK sysroot。
 
 ## 测试
 

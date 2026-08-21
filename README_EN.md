@@ -98,6 +98,8 @@ Every option defaults to `OFF`.
 Dependency location settings:
 
 - `AI_CORE_OPENCV_PROVIDER=BUNDLED|SYSTEM`, default `BUNDLED`.
+- `AI_CORE_OPENCV_ROOT`, a relocatable OpenCV SDK root for the `SYSTEM`
+  provider.
 - `AI_CORE_DEPS_ROOT`, default `.deps/<OS>_<ARCH>`.
 - `AI_CORE_ONNXRUNTIME_ROOT`, `AI_CORE_NCNN_ROOT`, and
   `AI_CORE_TENSORRT_ROOT`.
@@ -105,6 +107,24 @@ Dependency location settings:
 
 A missing dependency fails during configure with its exact path, provisioning
 profile, and root override. Discovery does not scan implicit fallback SDKs.
+
+### Android arm64 cross-compilation
+
+Use the following layout for prebuilt Android SDKs:
+
+```text
+.deps/Android_aarch64/
+├── ncnn/
+├── onnxruntime/
+└── opencv/              # OpenCV Android SDK root containing sdk/native/jni
+```
+
+After setting `ANDROID_NDK_HOME`, the checked-in `.vscode/settings.json` can be
+configured and built directly with VS Code CMake Tools for arm64-v8a. Its key
+settings are `AI_CORE_DEPS_ROOT=.deps/Android_aarch64`,
+`AI_CORE_OPENCV_PROVIDER=SYSTEM`, and
+`AI_CORE_OPENCV_ROOT=.deps/Android_aarch64/opencv`. Explicit SDK packages are
+not remapped into the NDK sysroot during cross-compilation.
 
 ## Tests
 

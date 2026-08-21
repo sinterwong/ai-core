@@ -4,6 +4,8 @@ include("${AI_CORE_CMAKE_DIR}/dependencies/Common.cmake")
 set(AI_CORE_OPENCV_PROVIDER "BUNDLED" CACHE STRING
     "OpenCV provider used by official plugins: BUNDLED or SYSTEM")
 set_property(CACHE AI_CORE_OPENCV_PROVIDER PROPERTY STRINGS BUNDLED SYSTEM)
+set(AI_CORE_OPENCV_ROOT "" CACHE PATH
+    "Optional OpenCV SDK root used by the SYSTEM provider")
 
 function(ai_core_load_opencv)
     if(TARGET ai_core::opencv)
@@ -50,6 +52,9 @@ function(ai_core_load_opencv)
             "${AI_CORE_THIRD_PARTY_DIR}/plugins/opencv/modules/dnn/include"
             "${AI_CORE_THIRD_PARTY_DIR}/plugins/opencv/modules/imgcodecs/include"
             "${CMAKE_BINARY_DIR}")
+        set(ai_core_opencv_libraries
+            opencv_core opencv_imgproc opencv_dnn)
+        set(ai_core_opencv_imgcodecs_libraries opencv_imgcodecs)
 
         if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND
            CMAKE_CXX_FLAGS MATCHES "fsanitize=.*undefined")
@@ -63,8 +68,35 @@ function(ai_core_load_opencv)
             endforeach()
         endif()
     elseif(AI_CORE_OPENCV_PROVIDER STREQUAL "SYSTEM")
-        find_package(OpenCV 4 CONFIG REQUIRED COMPONENTS ${opencv_components})
+        if(AI_CORE_OPENCV_ROOT)
+            if(NOT IS_DIRECTORY "${AI_CORE_OPENCV_ROOT}")
+                message(FATAL_ERROR
+                    "OpenCV SDK was not found at ${AI_CORE_OPENCV_ROOT}.\n"
+                    "Set AI_CORE_OPENCV_ROOT to an OpenCV package root, or "
+                    "use AI_CORE_OPENCV_PROVIDER=BUNDLED.")
+            endif()
+            find_package(OpenCV 4 CONFIG REQUIRED
+                COMPONENTS ${opencv_components}
+                PATHS
+                    "${AI_CORE_OPENCV_ROOT}"
+                    "${AI_CORE_OPENCV_ROOT}/lib/cmake/opencv4"
+                    "${AI_CORE_OPENCV_ROOT}/sdk/native/jni"
+                    "${AI_CORE_OPENCV_ROOT}/sdk/native/jni/abi-${ANDROID_ABI}"
+                    "${AI_CORE_OPENCV_ROOT}/jni"
+                    "${AI_CORE_OPENCV_ROOT}/jni/abi-${ANDROID_ABI}"
+                NO_DEFAULT_PATH
+                NO_CMAKE_FIND_ROOT_PATH)
+        else()
+            find_package(OpenCV 4 CONFIG REQUIRED
+                COMPONENTS ${opencv_components})
+        endif()
         set(ai_core_opencv_include_dirs ${OpenCV_INCLUDE_DIRS})
+        if(TARGET opencv_world AND NOT TARGET opencv_core)
+            set(ai_core_opencv_libraries opencv_world)
+        else()
+            set(ai_core_opencv_libraries ${OpenCV_LIBS})
+        endif()
+        set(ai_core_opencv_imgcodecs_libraries)
     else()
         message(FATAL_ERROR
             "AI_CORE_OPENCV_PROVIDER must be BUNDLED or SYSTEM, got: "
@@ -76,14 +108,17 @@ function(ai_core_load_opencv)
     target_include_directories(ai_core_opencv SYSTEM INTERFACE
         ${ai_core_opencv_include_dirs})
     target_link_libraries(ai_core_opencv INTERFACE
-        opencv_core opencv_imgproc opencv_dnn)
+        ${ai_core_opencv_libraries})
 
     if("imgcodecs" IN_LIST opencv_components)
         add_library(ai_core_opencv_imgcodecs INTERFACE)
         add_library(ai_core::opencv_imgcodecs ALIAS ai_core_opencv_imgcodecs)
         target_link_libraries(ai_core_opencv_imgcodecs INTERFACE
-            ai_core::opencv opencv_imgcodecs)
+            ai_core::opencv ${ai_core_opencv_imgcodecs_libraries})
     endif()
 
     message(STATUS "OpenCV provider: ${AI_CORE_OPENCV_PROVIDER}")
+    if(AI_CORE_OPENCV_PROVIDER STREQUAL "SYSTEM" AND AI_CORE_OPENCV_ROOT)
+        message(STATUS "OpenCV SDK root: ${AI_CORE_OPENCV_ROOT}")
+    endif()
 endfunction()

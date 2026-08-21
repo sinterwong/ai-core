@@ -15,7 +15,8 @@ function(ai_core_load_onnxruntime)
         "ONNX Runtime" "${AI_CORE_ONNXRUNTIME_ROOT}" "onnxruntime")
     find_package(onnxruntime CONFIG REQUIRED
         PATHS "${AI_CORE_ONNXRUNTIME_ROOT}/lib/cmake/onnxruntime"
-        NO_DEFAULT_PATH)
+        NO_DEFAULT_PATH
+        NO_CMAKE_FIND_ROOT_PATH)
     # find_package() is invoked from a component directory. Promote imported
     # SDK targets so sibling developer targets (tests/benchmarks) can consume
     # the same resolved dependency without running discovery again.
@@ -31,7 +32,8 @@ function(ai_core_load_ncnn)
         PATHS
             "${AI_CORE_NCNN_ROOT}"
             "${AI_CORE_NCNN_ROOT}/lib/cmake/ncnn"
-        NO_DEFAULT_PATH)
+        NO_DEFAULT_PATH
+        NO_CMAKE_FIND_ROOT_PATH)
     get_target_property(ncnn_is_imported ncnn IMPORTED)
     if(ncnn_is_imported)
         set_property(TARGET ncnn PROPERTY IMPORTED_GLOBAL TRUE)

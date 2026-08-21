@@ -21,6 +21,9 @@
   不再引入 OpenCV 或推理 SDK。
 - 新增 `scripts/deps.sh` profile 入口，并统一 bootstrap、coverage、presets 与 CI。
   CI 的 core job 不初始化任何 submodule，并检查 `libai_core` 动态依赖 allowlist。
+- 恢复 Android arm64 交叉编译工作流：显式 SDK root 不再被 CMake 重映射进 NDK
+  sysroot，`SYSTEM` OpenCV 支持 Android SDK 的 `opencv_world` 导出；VS Code 配置
+  统一从 `.deps/Android_aarch64` 解析依赖。
 
 **公共 API 与下游反馈：**
 
