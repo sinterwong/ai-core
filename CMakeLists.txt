@@ -144,6 +144,7 @@ endif()
 # Optional components
 if(AI_CORE_BUILD_TESTS)
     message(STATUS "Adding tests to build")
+    enable_testing()
     add_subdirectory(tests)
 endif()
 

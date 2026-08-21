@@ -155,7 +155,9 @@ TEST_P(OCRDetInferenceTest, Normal) {
                        cv::Scalar(0, 255, 0), 2);
     }
   }
-  std::string output_filename = "vis_ocr_det_" + config.test_name + ".png";
+  const auto output_filename = (fs::path(AI_CORE_TEST_OUTPUT_DIR) /
+                                ("vis_ocr_det_" + config.test_name + ".png"))
+                                   .string();
   cv::imwrite(output_filename, vis_image);
 }
 

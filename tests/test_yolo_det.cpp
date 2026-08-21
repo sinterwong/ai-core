@@ -160,7 +160,9 @@ TEST_P(YoloDetInferenceTest, Normal) {
     cv::putText(vis_image, ss.str(), cv::Point(bbox.rect.x, bbox.rect.y),
                 cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
   }
-  std::string output_filename = "vis_yolodet_" + config.test_name + ".png";
+  const auto output_filename = (fs::path(AI_CORE_TEST_OUTPUT_DIR) /
+                                ("vis_yolodet_" + config.test_name + ".png"))
+                                   .string();
   cv::imwrite(output_filename, vis_image);
 }
 
@@ -254,6 +256,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/models/yolov11n-fp16.onnx", DataType::FLOAT16,
                      DataType::FLOAT16, DeviceType::CPU, "images",
                      BufferLocation::CPU, false});
+#ifdef AI_CORE_TEST_MODEL_DECRYPTION
   configs.push_back({"ort_enc",
                      [](const AlgoConstructParams &p) {
                        return std::make_shared<OrtAlgoInference>(p);
@@ -261,6 +264,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/enc_models/yolov11n-fp16.enc.onnx",
                      DataType::FLOAT16, DataType::FLOAT16, DeviceType::CPU,
                      "images", BufferLocation::CPU, true});
+#endif
 #endif
 #ifdef WITH_NCNN
   configs.push_back({"ncnn",
@@ -270,6 +274,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/models/yolov11n.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
                      BufferLocation::CPU, false});
+#ifdef AI_CORE_TEST_MODEL_DECRYPTION
   configs.push_back({"ncnn_enc",
                      [](const AlgoConstructParams &p) {
                        return std::make_shared<NCNNAlgoInference>(p);
@@ -277,6 +282,7 @@ std::vector<TestConfig> getTestConfigs() {
                      "assets/enc_models/yolov11n.enc.ncnn", DataType::FLOAT16,
                      DataType::FLOAT32, DeviceType::CPU, "in0",
                      BufferLocation::CPU, true});
+#endif
 #endif
   return configs;
 }
