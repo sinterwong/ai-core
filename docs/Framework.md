@@ -193,7 +193,7 @@ mgr.infer("det", input, output);
 | `Logger` | 完全并发安全（日志宏可任意线程调用）；重配置建议启动期做 |
 | `AlgoManager` | 完全并发安全（`shared_mutex`）：注册/查找/推理可并发 |
 | `AlgoInference` / `AlgoInferEngine` / `AlgoPreproc` / `AlgoPostproc` | 单实例 `infer`/`process` 并发安全（调用私有 scratch + 后端自锁）；`initialize`/`terminate` 需独占 |
-| 推理后端并行度 | ORT：`Session::Run` 并发；NCNN/TRT：内部串行（TRT 的 context pool 见 v1.7） |
+| 推理后端并行度 | ORT：`Session::Run` 并发；NCNN：内部串行；TensorRT：通过 execution context pool 并发 |
 | `IAsyncInferEngine` | engine 共享、可并发建 context；每个 `IExecutionContext` **非线程安全**，由单个 worker 线程独占——这是多线程并行推理的正道 |
 | `TypedBuffer` / `Tensor` / `TensorData` / `DataPacket` / `ParamCenter` | 值类型，无内部同步；并发只读安全，并发写需外部同步 |
 | `Factory` | 注册在启动期（无锁），注册完成后 `create` 只读并发安全 |

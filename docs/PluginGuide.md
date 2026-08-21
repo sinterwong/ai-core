@@ -63,7 +63,7 @@ REGISTER_POSTPROCESS_ALGO(MyPostproc); // IPostprocessPlugin 子类
 三类插件统一用 `InferErrorCode` 返回；异常只允许存在于插件内部，不得穿透
 facade。`process` / `batchProcess` 是 `const` 且必须可重入——对象上不留可变的
 per-call 状态，所有 scratch 走入参的 `TensorData` / `RuntimeContext`，这样一个
-实例能并发服务多次调用（见 `doc/Framework.md` 线程模型）。
+实例能并发服务多次调用（见 `docs/Framework.md` 线程模型）。
 
 预处理把坐标变换信息写进 `RuntimeContext::frame_transform`
 （`FrameTransformContext`：原始尺寸、ROI、缩放、padding），后处理读出来做坐标

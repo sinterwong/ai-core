@@ -181,9 +181,9 @@ More complete samples are in `examples/generic_image_infer.cpp`, `examples/ocr/`
 
 ## Documentation
 
-- [doc/Framework.md](doc/Framework.md) — framework structure and design
-- [doc/API.md](doc/API.md) — public API reference
-- [doc/PluginGuide.md](doc/PluginGuide.md) — writing plugins, tensor contracts
+- [docs/Framework.md](docs/Framework.md) — framework structure and design
+- [docs/API.md](docs/API.md) — public API reference
+- [docs/PluginGuide.md](docs/PluginGuide.md) — writing plugins, tensor contracts
 
 ## License
 
