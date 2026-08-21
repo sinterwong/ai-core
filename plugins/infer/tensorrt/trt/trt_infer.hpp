@@ -4,9 +4,9 @@
 #include "ai_core/algo_types.hpp"
 #include "ai_core/infer_async.hpp"
 #include "ai_core/infer_config.hpp"
-#include "logger.hpp"
 #include "cuda_device_buffer.cuh"
 #include "cuda_host_buffer.cuh"
+#include "logger.hpp"
 #include <NvInfer.h>
 #include <NvInferRuntime.h>
 #include <memory>

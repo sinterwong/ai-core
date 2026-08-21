@@ -1,9 +1,9 @@
-#include "logger.hpp"
 #include "ai_core/typed_buffer.hpp"
 #include "cuda_buffer_storage.hpp"
 #include "cuda_stream.cuh"
 #include "cuda_utils.hpp"
 #include "gpu_generic_cuda_preprocessor.hpp"
+#include "logger.hpp"
 #include <cmath>
 #include <opencv2/core.hpp>
 

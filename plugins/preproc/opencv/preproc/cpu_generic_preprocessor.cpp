@@ -1,6 +1,6 @@
 #include "cpu_generic_preprocessor.hpp"
-#include "logger.hpp"
 #include "ai_core/opencv_interop.hpp"
+#include "logger.hpp"
 #include "vision_util.hpp"
 #include <algorithm>
 #include <array>

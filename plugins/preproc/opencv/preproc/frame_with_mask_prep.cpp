@@ -1,8 +1,8 @@
 #include "frame_with_mask_prep.hpp"
 #include "ai_core/algo_types.hpp"
-#include "logger.hpp"
 #include "ai_core/opencv_interop.hpp"
 #include "cpu_generic_preprocessor.hpp"
+#include "logger.hpp"
 #include "preproc/frame_preprocessor_base.hpp"
 #include "vision_util.hpp"
 #include <opencv2/opencv.hpp>

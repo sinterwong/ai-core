@@ -3,8 +3,8 @@
 
 #include "ai_core/algo_types.hpp"
 #include "ai_core/i_postprocess.hpp"
-#include "logger.hpp"
 #include "ai_core/tensor_data.hpp"
+#include "logger.hpp"
 
 namespace ai_core::dnn {
 

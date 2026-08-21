@@ -20,8 +20,8 @@ jobs:
           sudo apt-get install -y clang-format-21
       - name: Check formatting
         run: |
-          git ls-files '*.hpp' '*.cpp' '*.cc' '*.cu' \
-            | xargs -r clang-format-21 --dry-run --Werror
+          cmake --preset core
+          cmake --build --preset core --target ai_core_format_check
       - name: Check release version
         run: |
           header=include/ai_core/version.hpp

@@ -1,9 +1,9 @@
 #include <chrono>
 
 #include "ai_core/error_code.hpp"
-#include "logger.hpp"
 #include "ai_core/tensor_data.hpp"
 #include "algo_infer_impl.hpp"
+#include "logger.hpp"
 
 namespace ai_core::dnn {
 AlgoInference::Impl::Impl(const AlgoModuleTypes &algo_module_types,

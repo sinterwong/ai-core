@@ -38,6 +38,19 @@ option(AI_CORE_BUILD_TESTS "Build tests" OFF)
 option(AI_CORE_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(AI_CORE_BUILD_EXAMPLES "Build examples" OFF)
 
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(AI_CORE_FORMAT_CHECK_DEFAULT ON)
+else()
+    set(AI_CORE_FORMAT_CHECK_DEFAULT OFF)
+endif()
+option(AI_CORE_FORMAT_CHECK_ON_BUILD
+    "Run clang-format validation as part of the default build"
+    ${AI_CORE_FORMAT_CHECK_DEFAULT})
+unset(AI_CORE_FORMAT_CHECK_DEFAULT)
+
+include(cmake/CodeQuality.cmake)
+ai_core_configure_code_quality()
+
 set(AI_CORE_BUILD_ANY_PLUGIN OFF)
 if(AI_CORE_BUILD_PLUGIN_PREPROC_OPENCV OR
    AI_CORE_BUILD_PLUGIN_POSTPROC_OPENCV OR
@@ -64,6 +77,7 @@ message(STATUS "  Model decryption:      ${AI_CORE_ENABLE_MODEL_DECRYPTION}")
 message(STATUS "  Tests:                 ${AI_CORE_BUILD_TESTS}")
 message(STATUS "  Benchmarks:            ${AI_CORE_BUILD_BENCHMARKS}")
 message(STATUS "  Examples:              ${AI_CORE_BUILD_EXAMPLES}")
+message(STATUS "  Format check on build: ${AI_CORE_FORMAT_CHECK_ON_BUILD}")
 message(STATUS "")
 message(STATUS "Installation prefix: ${CMAKE_INSTALL_PREFIX}")
 
@@ -136,6 +150,9 @@ message(INFO "================================")
 
 # Main library
 add_subdirectory(src)
+if(AI_CORE_FORMAT_CHECK_ON_BUILD AND TARGET ai_core_format_check)
+    add_dependencies(ai_core ai_core_format_check)
+endif()
 
 if(AI_CORE_BUILD_ANY_PLUGIN)
     add_subdirectory(plugins)

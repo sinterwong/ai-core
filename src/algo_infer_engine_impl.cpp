@@ -1,7 +1,7 @@
 #include "algo_infer_engine_impl.hpp"
 #include "ai_core/algo_types.hpp"
-#include "logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
+#include "logger.hpp"
 
 namespace ai_core::dnn {
 AlgoInferEngine::Impl::Impl(const std::string &module_name,

@@ -1,6 +1,6 @@
 #include "algo_postproc_impl.hpp"
-#include "logger.hpp"
 #include "ai_core/plugin_registrar.hpp"
+#include "logger.hpp"
 #include "param_validation.hpp"
 
 namespace ai_core::dnn {

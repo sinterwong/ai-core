@@ -42,6 +42,17 @@ cmake --build --preset core
 cmake --install build/core
 ```
 
+顶层源码构建会在编译时自动运行 clang-format 21 检查；手动检查或修复可使用：
+
+```bash
+cmake --build --preset core --target ai_core_format_check
+cmake --build --preset core --target ai_core_format
+```
+
+未安装 clang-format 21 时 CMake 会提示并跳过；也可以通过
+`AI_CORE_CLANG_FORMAT_EXECUTABLE` 指定程序，或用
+`-DAI_CORE_FORMAT_CHECK_ON_BUILD=OFF` 关闭默认构建检查。
+
 构建某个组件时先初始化同名依赖 profile：
 
 ```bash
