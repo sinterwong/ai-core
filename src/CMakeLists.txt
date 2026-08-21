@@ -162,7 +162,7 @@ set(AI_CORE_CMAKE_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/ai_core)
 # configure_package_config_file (not configure_file) is what expands
 # @PACKAGE_INIT@ and makes the generated config relocatable.
 configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ai_core-config.cmake.in"
+    "${AI_CORE_CMAKE_DIR}/ai_core-config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/ai_core-config.cmake"
     INSTALL_DESTINATION ${AI_CORE_CMAKE_INSTALL_DIR}
 )

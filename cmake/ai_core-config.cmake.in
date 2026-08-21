@@ -1,5 +1,5 @@
 # ==================================================================================
-# Config file for the ai_core package.
+# Package config file for ai_core.
 #
 # It defines the following:
 # - Imported targets for every component produced by this build.
